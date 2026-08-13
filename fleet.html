@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="Browse CARRENTPE's premium self-drive car fleet across India."
+    />
+    <title>Premium Fleet | CARRENTPE</title>
+
+    <!-- Keep your global design system, then let fleet.css own this page. -->
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+
+  <body class="fleet-page">
+    <div class="background-video-wrap" aria-hidden="true">
+      <video autoplay muted loop playsinline preload="metadata">
+        <source src="assets/background%20video.mp4" type="video/mp4" />
+      </video>
+    </div>
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <a href="index.html" class="logo" aria-label="CARRENTPE home">
+          CARRENTPE
+        </a>
+
+        <button
+          class="mobile-nav-toggle"
+          type="button"
+          aria-label="Open navigation"
+          aria-expanded="false"
+          aria-controls="mainNav"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <nav class="nav" id="mainNav" aria-label="Primary navigation">
+          <a href="fleet.html" class="active" aria-current="page">Fleet</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="profile.html">Profile</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="fleet-main">
+      <!-- Compact page hero: no huge empty gap before the fleet controls. -->
+      <section class="fleet-hero">
+        <div class="container">
+          <div class="fleet-hero__content">
+            <span class="fleet-eyebrow">CARRENTPE FLEET</span>
+
+            <h1>
+              Curated cars for every route, mood, and occasion.
+            </h1>
+
+            <p>
+              Browse, filter, and sort your ideal ride with the same polished
+              experience as the rest of CARRENTPE.
+            </p>
+          </div>
+        </div>
+      </section>
+      <br>
+      <section class="fleet-listing-section">
+        <div class="container">
+          <div class="fleet-toolbar">
+            <div class="fleet-controls">
+              <div class="fleet-field fleet-field--search">
+                <label for="search">Search vehicles</label>
+
+                <div class="fleet-input-wrap">
+                  <span class="fleet-search-icon" aria-hidden="true">
+                    <input
+                    id="search"
+                    type="search"
+                    autocomplete="off"
+                    placeholder="Search car, category, fuel or transmission..."
+                  />
+                  </span>
+                </div>
+              </div>
+
+              <div class="fleet-field">
+                <label for="categorySelect">Select category</label>
+                <div class="fleet-select-wrap">
+                  <select id="categorySelect">
+                    <option value="all">All Categories</option>
+                    <option value="economy">Economy</option>
+                    <option value="suv">SUV</option>
+                    <option value="luxury">Luxury</option>
+                    <option value="van">Van</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="fleet-field">
+                <label for="sort">Sort vehicles</label>
+                <div class="fleet-select-wrap">
+                  <select id="sort">
+                    <option value="recommended">Sort: Recommended</option>
+                    <option value="price-asc">Price: Low to High</option>
+                    <option value="price-desc">Price: High to Low</option>
+                    <option value="seats-desc">Seats: High to Low</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="fleet-toolbar__bottom">
+              <div
+                class="fleet-chips"
+                id="chips"
+                aria-label="Vehicle category filters"
+              >
+                <button
+                  class="chip active"
+                  type="button"
+                  data-category="all"
+                  aria-pressed="true"
+                >
+                  All
+                </button>
+                <button
+                  class="chip"
+                  type="button"
+                  data-category="economy"
+                  aria-pressed="false"
+                >
+                  Economy
+                </button>
+                <button
+                  class="chip"
+                  type="button"
+                  data-category="suv"
+                  aria-pressed="false"
+                >
+                  SUV
+                </button>
+                <button
+                  class="chip"
+                  type="button"
+                  data-category="luxury"
+                  aria-pressed="false"
+                >
+                  Luxury
+                </button>
+                <button
+                  class="chip"
+                  type="button"
+                  data-category="van"
+                  aria-pressed="false"
+                >
+                  Van
+                </button>
+              </div>
+<!-- 
+              <p class="fleet-result-count" id="fleetResultCount">
+                Loading vehicles...
+              </p> -->
+            </div>
+          </div>
+
+          <div
+            class="fleet-grid"
+            id="fleetGrid"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            <div class="fleet-grid__placeholder">
+              <span class="fleet-loader" aria-hidden="true"></span>
+              Loading fleet...
+            </div>
+          </div>
+
+          <div class="fleet-empty-state hidden" id="fleetEmptyState">
+            <div class="fleet-empty-state__icon" aria-hidden="true">🚘</div>
+            <h2>No matching cars found</h2>
+            <p>
+              Try changing your search term or selecting another category.
+            </p>
+            <button class="btn btn-light" id="clearFleetFilters" type="button">
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand footer-section">
+            <a href="index.html" class="logo">CARRENTPE</a>
+            <p>
+              Premium self-drive rentals across India with trusted,
+              hassle-free booking and 24/7 support.
+            </p>
+          </div>
+
+          <div class="footer-links footer-section">
+            <h4>Quick Links</h4>
+            <ul class="footer-list">
+              <li><a href="fleet.html">Fleet</a></li>
+              <li><a href="about.html">About</a></li>
+              <li><a href="contact.html">Contact</a></li>
+              <li><a href="profile.html">Profile</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-legal footer-section">
+            <h4>Legal</h4>
+            <ul class="footer-list">
+              <li><a href="privacy.html">Privacy Policy</a></li>
+              <li><a href="terms.html">Terms &amp; Conditions</a></li>
+              <li><a href="refund.html">Refund Policy</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-office footer-section">
+            <h4>Office</h4>
+            <p>Gavson Business Park, Ghansoli, Navi Mumbai, Maharashtra</p>
+            <p>Mon – Sat: 9:00 AM – 8:00 PM</p>
+            <p><a href="tel:+919167164547">+91 91671 64547</a></p>
+
+            <div class="social-links">
+              <a href="#" class="social-link instagram" aria-label="CARRENTPE on Instagram">Instagram</a>
+              <a href="#" class="social-link facebook" aria-label="CARRENTPE on Facebook">Facebook</a>
+              <a href="#" class="social-link twitter" aria-label="CARRENTPE on X">Twitter</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="footer-copy">
+          © 2026 CARRENTPE. All rights reserved.
+        </div>
+      </div>
+    </footer>
+
+    <script src="js/vehicles.js"></script>
+    <script src="js/fleet.js"></script>
+  </body>
+</html>

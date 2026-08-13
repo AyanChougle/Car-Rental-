@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard | CARRENTPE</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="stylesheet" href="css/animations.css" />
+<style id="admin-panel-overrides">
+.admin-wrapper{width:100%;max-width:1180px;margin-inline:auto;min-width:0}.admin-stats-grid{width:100%;align-items:stretch}.admin-stats-grid .stat-card{min-width:0;min-height:112px;display:flex;flex-direction:column;justify-content:center}.admin-tabs{width:100%;display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px!important;border-bottom:0!important;padding-bottom:0!important}.admin-tabs .tab-btn{width:100%;min-width:0;min-height:46px;justify-content:center;text-align:center;white-space:normal}.tab-panel{width:100%;min-width:0}.admin-panel-card{width:100%;min-width:0;overflow:hidden}.admin-table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}.admin-table{width:100%;min-width:920px;border-collapse:collapse;table-layout:fixed}.admin-table th,.admin-table td{padding:14px 12px!important;vertical-align:middle;line-height:1.45}.admin-table th{font-size:.76rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;white-space:nowrap}.admin-table td{font-size:.88rem}.admin-table tbody tr:hover{background:rgba(255,255,255,.025)}.admin-table .admin-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.admin-table .admin-actions .btn{margin:0!important;white-space:nowrap}.admin-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.admin-toolbar input,.admin-toolbar select{width:100%!important;min-height:44px;box-sizing:border-box}.admin-modal{position:fixed!important;inset:0!important;display:none;align-items:center;justify-content:center;padding:20px;z-index:1000}.admin-modal[hidden]{display:none!important}.admin-modal__card{width:min(720px,100%);max-height:90vh;overflow-y:auto;position:relative;padding:26px}.host-document-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:10px}.host-document-item{padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.02)}.host-document-item span{display:block;color:var(--sub);font-size:.72rem;margin-bottom:3px}.host-document-item strong{font-size:.82rem}.admin-empty{padding:32px 20px;text-align:center;color:var(--sub)}@media(max-width:900px){.admin-tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.admin-table{min-width:860px}}@media(max-width:600px){.admin-tabs{grid-template-columns:1fr}.admin-stats-grid{grid-template-columns:1fr!important}.host-document-grid{grid-template-columns:1fr}.admin-modal{padding:12px}.admin-modal__card{padding:20px 16px}}
+</style>
+
+  </head>
+  <body>
+    <div class="background-video-wrap" aria-hidden="true">
+      <video autoplay muted loop playsinline>
+        <source src="assets/background%20video.mp4" type="video/mp4" />
+      </video>
+    </div>
+    <header class="site-header">
+      <div class="container header-inner">
+        <a href="index.html" class="logo">CARRENTPE</a>
+        <nav class="nav">
+          <a href="fleet.html">Fleet</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="partner.html">Host Car</a>
+          <a href="profile.html">Profile</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="section">
+      <div class="container">
+        <div class="section-header centered">
+          <span class="section-label">Administration</span>
+          <h2 class="section-title">Control Panel & Verification</h2>
+        </div>
+
+        <div id="adminAccessDenied" class="card" hidden style="max-width: 650px; margin: 40px auto; text-align: center; padding: 40px 24px;">
+          <div style="font-size: 2.5rem; margin-bottom: 12px;">🛡️</div>
+          <h3 style="color: var(--accent); margin-bottom: 12px;">Administrator Access Required</h3>
+          <p style="color: var(--muted); margin-bottom: 24px; line-height: 1.7;">
+            This page is restricted to CARRENTPE administrators. If you believe your account should have admin access, ask an existing administrator to grant it from the Users tab, or set it directly in Firebase Console → Firestore → users → your account → role: "admin" (see README, Step 5).
+          </p>
+          <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+            <a href="profile.html" class="btn btn-light">Go to Profile</a>
+          </div>
+        </div>
+
+        <div id="adminContent" class="admin-wrapper" hidden style="margin-top: 20px;">
+          <!-- Metrics Overview -->
+          <div class="admin-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 16px;">
+            <div class="card stat-card" style="padding: 20px;">
+              <span style="color: var(--sub); font-size: 0.85rem;">Total Users</span>
+              <div id="statTotalUsers" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin-top: 4px;">—</div>
+            </div>
+            <div class="card stat-card" style="padding: 20px;">
+              <span style="color: var(--sub); font-size: 0.85rem;">Pending Document Reviews</span>
+              <div id="statPendingDocs" style="font-size: 1.8rem; font-weight: 700; color: #ffd166; margin-top: 4px;">—</div>
+            </div>
+            <div class="card stat-card" style="padding: 20px;">
+              <span style="color: var(--sub); font-size: 0.85rem;">Total Bookings</span>
+              <div id="statTotalBookings" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin-top: 4px;">—</div>
+            </div>
+            <div class="card stat-card" style="padding: 20px;">
+              <span style="color: var(--sub); font-size: 0.85rem;">Pending Host Approvals</span>
+              <div id="statPendingHosts" style="font-size: 1.8rem; font-weight: 700; color: #ffd166; margin-top: 4px;">—</div>
+            </div>
+          </div>
+
+          <!-- Revenue & Sales KPIs -->
+          <div class="admin-stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div class="card stat-card" style="padding: 20px; border-color: rgba(0,209,255,0.3);">
+              <span style="color: var(--sub); font-size: 0.85rem;">Total Revenue (Verified)</span>
+              <div id="statTotalRevenue" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin-top: 4px;">—</div>
+            </div>
+            <div class="card stat-card" style="padding: 20px; border-color: rgba(0,209,255,0.3);">
+              <span style="color: var(--sub); font-size: 0.85rem;">Revenue This Month</span>
+              <div id="statMonthRevenue" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin-top: 4px;">—</div>
+            </div>
+            <div class="card stat-card" style="padding: 20px;">
+              <span style="color: var(--sub); font-size: 0.85rem;">Awaiting Payment Verification</span>
+              <div id="statPendingPayments" style="font-size: 1.8rem; font-weight: 700; color: #ffd166; margin-top: 4px;">—</div>
+            </div>
+            <div class="card stat-card" style="padding: 20px;">
+              <span style="color: var(--sub); font-size: 0.85rem;">Avg. Booking Value</span>
+              <div id="statAvgBooking" style="font-size: 1.8rem; font-weight: 700; color: var(--accent); margin-top: 4px;">—</div>
+            </div>
+          </div>
+
+          <!-- Admin Tabs -->
+          <div class="admin-tabs" style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--line); padding-bottom: 12px; flex-wrap: wrap;">
+            <button class="btn btn-dark tab-btn active" data-tab="tab-users">User Accounts & Verification</button>
+            <button class="btn btn-outline tab-btn" data-tab="tab-payments">Payments <span id="paymentsTabBadge" class="tab-badge" hidden>0</span></button>
+            <button class="btn btn-outline tab-btn" data-tab="tab-bookings">All Bookings</button>
+            <button class="btn btn-outline tab-btn" data-tab="tab-hosts">Host Car Listings</button>
+          </div>
+
+          <!-- TAB 1: USERS & DOCUMENT VERIFICATION -->
+          <section id="tab-users" class="tab-panel">
+            <div class="card admin-panel-card" style="padding: 24px; overflow-x: auto;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                <h3 style="margin: 0; font-size: 1.2rem;">Registered Users & Identity Documents</h3>
+                <input type="text" id="userSearchInput" placeholder="Search name or email..." style="padding: 8px 14px; background: rgba(0,0,0,0.4); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius); width: 240px;" />
+              </div>
+              <div id="usersTableWrap">
+                <p style="color: var(--sub);">Loading users...</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- TAB 2: PAYMENT VERIFICATION -->
+          <section id="tab-payments" class="tab-panel" hidden>
+            <div class="card admin-panel-card" style="padding: 24px; overflow-x: auto;">
+              <h3 style="margin: 0 0 20px; font-size: 1.2rem;">UPI / Bank Transfer Payments Awaiting Verification</h3>
+              <div id="paymentsTableWrap">
+                <p style="color: var(--sub);">Loading payments...</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- TAB 3: ALL BOOKINGS -->
+          <section id="tab-bookings" class="tab-panel" hidden>
+            <div class="card admin-panel-card" style="padding: 24px; overflow-x: auto;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                <h3 style="margin: 0; font-size: 1.2rem;">System Bookings</h3>
+                <select id="bookingStatusFilter" style="padding: 8px 14px; background: rgba(0,0,0,0.4); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius);">
+                  <option value="all">All Statuses</option>
+                  <option value="pending_payment">Payment Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="completed">Completed</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+              <div id="bookingsTableWrap">
+                <p style="color: var(--sub);">Loading bookings...</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- TAB 4: HOST CAR LISTINGS -->
+          <section id="tab-hosts" class="tab-panel" hidden>
+            <div class="card admin-panel-card" style="padding: 24px; overflow-x: auto;">
+              <h3 style="margin-bottom: 20px; font-size: 1.2rem;">Host Car Listing Requests</h3>
+              <div id="hostCarsTableWrap">
+                <p style="color: var(--sub);">Loading host listings...</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <!-- Document Modal Preview -->
+    <div id="docModal" class="modal admin-modal" hidden style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); align-items: center; justify-content: center; z-index: 1000; padding: 20px;">
+      <div class="card" style="max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; padding: 24px;">
+        <button id="closeDocModal" style="position: absolute; top: 16px; right: 16px; background: transparent; border: none; color: var(--text); font-size: 1.5rem; cursor: pointer;">&times;</button>
+        <h3 id="modalTitle" style="margin-top: 0;">Document Preview</h3>
+        <img id="modalImg" src="" alt="Document Preview" style="width: 100%; max-height: 400px; object-fit: contain; border-radius: var(--radius); margin: 16px 0; background: #000;" />
+        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+          <button id="approveDocBtn" class="btn btn-dark">Approve Verification</button>
+          <button id="rejectDocBtn" class="btn btn-outline" style="border-color: #ef476f; color: #ef476f;">Reject Document</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Review Modal -->
+    <div id="paymentModal" class="modal admin-modal" hidden style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); align-items: center; justify-content: center; z-index: 1000; padding: 20px;">
+      <div class="card" style="max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; padding: 24px;">
+        <button id="closePaymentModal" style="position: absolute; top: 16px; right: 16px; background: transparent; border: none; color: var(--text); font-size: 1.5rem; cursor: pointer;">&times;</button>
+        <h3 id="paymentModalTitle" style="margin-top: 0;">Payment Review</h3>
+        <div id="paymentModalBody"></div>
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+          <button id="approvePaymentBtn" class="btn btn-dark">Approve &amp; Confirm Booking</button>
+          <button id="rejectPaymentBtn" class="btn btn-outline" style="border-color: #ef476f; color: #ef476f;">Reject</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Process Return / Damage Assessment Modal -->
+    <div id="returnModal" class="modal admin-modal" hidden style="position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); align-items: center; justify-content: center; z-index: 1000; padding: 20px;">
+      <div class="card" style="max-width: 620px; width: 100%; max-height: 90vh; overflow-y: auto; position: relative; padding: 24px;">
+        <button id="closeReturnModal" style="position: absolute; top: 16px; right: 16px; background: transparent; border: none; color: var(--text); font-size: 1.5rem; cursor: pointer;">&times;</button>
+        <h3 id="returnModalTitle" style="margin-top: 0;">Process Return</h3>
+        <p class="section-sub" id="returnModalSubtitle" style="margin: 0 0 16px;">Check anything found on inspection, adjust the deduction amount if needed, then save.</p>
+
+        <div id="returnItemsList"></div>
+
+        <div class="booking-summary__row" style="margin-top: 12px;">
+          <span>Original Security Deposit</span>
+          <strong id="returnDepositOriginal">₹0</strong>
+        </div>
+        <div class="booking-summary__row">
+          <span>Total Deductions</span>
+          <strong id="returnDeductionTotal" style="color: #ef476f;">₹0</strong>
+        </div>
+        <div class="booking-summary__row" style="border-top: 1px solid var(--line); padding-top: 10px;">
+          <span>Refundable to Customer</span>
+          <strong id="returnDepositRefund" style="color: var(--accent); font-size: 1.1rem;">₹0</strong>
+        </div>
+
+        <div class="field full" style="margin-top: 16px;">
+          <label for="returnInvoiceNotes">Invoice notes (editable, shown to customer)</label>
+          <textarea id="returnInvoiceNotes" rows="3" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.4); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius); resize: vertical;" placeholder="e.g. Scratch on rear bumper, photographed at return. Deposit refund processed via original payment method."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px;">
+          <button id="saveReturnBtn" class="btn btn-dark">Save &amp; Mark Completed</button>
+        </div>
+      </div>
+    </div>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand footer-section">
+            <a href="index.html" class="logo">CARRENTPE</a>
+            <p>Admin Operations & Fleet Verification Console. Control, manage, and verify system operations in real time.</p>
+          </div>
+          <div class="footer-links footer-section">
+            <h4>Quick Links</h4>
+            <ul class="footer-list">
+              <li><a href="fleet.html">Fleet Catalog</a></li>
+              <li><a href="partner.html">Host Car</a></li>
+              <li><a href="manager.html">Manager Console</a></li>
+              <li><a href="admin.html">Admin Dashboard</a></li>
+              <li><a href="profile.html">Member Profile</a></li>
+            </ul>
+          </div>
+          <div class="footer-legal footer-section">
+            <h4>Legal & Policy</h4>
+            <ul class="footer-list">
+              <li><a href="privacy.html">Privacy Policy</a></li>
+              <li><a href="terms.html">Terms & Conditions</a></li>
+              <li><a href="refund.html">Refund Policy</a></li>
+            </ul>
+          </div>
+          <div class="footer-office footer-section">
+            <h4>Support Office</h4>
+            <p>Gavson Business Park, Ghansoli, Navi Mumbai</p>
+            <p><a href="tel:+919167164547">+91 91671 64547</a></p>
+          </div>
+        </div>
+        <div class="footer-copy">© 2026 CARRENTPE Admin Console. All rights reserved.</div>
+      </div>
+    </footer>
+
+    <script type="module" src="js/admin.js"></script>
+  </body>
+</html>

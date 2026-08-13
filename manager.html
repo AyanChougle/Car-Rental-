@@ -1,0 +1,918 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Manager Operations | CARRENTPE</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+
+  <style>
+    /* =========================================================
+       MANAGER PAGE
+       ========================================================= */
+
+    .manager-page {
+      min-height: 100vh;
+    }
+
+    .manager-container {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    /* Hero */
+
+    .manager-hero {
+      text-align: center;
+      margin-bottom: 38px;
+    }
+
+    .manager-hero .section-label {
+      display: inline-block;
+      margin-bottom: 10px;
+    }
+
+    .manager-hero .section-title {
+      margin-bottom: 12px;
+    }
+
+    .manager-hero-text {
+      max-width: 680px;
+      margin: 0 auto;
+      color: var(--sub);
+      line-height: 1.7;
+    }
+
+    /* Access denied */
+
+    .manager-access-denied {
+      max-width: 650px;
+      margin: 40px auto;
+      padding: 42px 28px;
+      text-align: center;
+    }
+
+    .manager-access-icon {
+      font-size: 2.8rem;
+      margin-bottom: 16px;
+    }
+
+    .manager-access-denied h3 {
+      margin: 0 0 12px;
+      color: var(--accent);
+    }
+
+    .manager-access-denied p {
+      color: var(--muted);
+      line-height: 1.7;
+      margin: 0 auto 24px;
+      max-width: 540px;
+    }
+
+    .manager-access-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    /* Dashboard */
+
+    .manager-dashboard {
+      width: 100%;
+    }
+
+    /* Statistics */
+
+    .manager-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 24px;
+    }
+
+    .manager-stat-card {
+      padding: 22px;
+      min-width: 0;
+    }
+
+    .manager-stat-label {
+      display: block;
+      color: var(--sub);
+      font-size: 0.86rem;
+      line-height: 1.4;
+      margin-bottom: 7px;
+    }
+
+    .manager-stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--accent);
+    }
+
+    .manager-stat-card.pickups .manager-stat-value {
+      color: #ffd166;
+    }
+
+    .manager-stat-card.documents .manager-stat-value {
+      color: #ef476f;
+    }
+
+    /* Content cards */
+
+    .manager-panel {
+      padding: 24px;
+      margin-bottom: 24px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .manager-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .manager-panel-title {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .manager-panel-subtitle {
+      color: var(--sub);
+      font-size: 0.86rem;
+      margin: 5px 0 0;
+    }
+
+    /* Tables */
+
+    .manager-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .manager-table {
+      width: 100%;
+      min-width: 820px;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    .manager-table th {
+      padding: 13px 14px;
+      text-align: left;
+      color: var(--sub);
+      font-size: 0.78rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+
+    .manager-table td {
+      padding: 15px 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      vertical-align: middle;
+      font-size: 0.88rem;
+      line-height: 1.45;
+    }
+
+    .manager-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .manager-table tbody tr:hover {
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .manager-table .customer-name {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .manager-table .secondary-text {
+      display: block;
+      margin-top: 3px;
+      color: var(--sub);
+      font-size: 0.78rem;
+    }
+
+    .manager-table .action-cell {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .manager-table .action-cell .btn {
+      margin-left: 6px;
+    }
+
+    /* Empty / loading states */
+
+    .manager-state {
+      padding: 28px 18px;
+      text-align: center;
+      color: var(--sub);
+    }
+
+    /* Status */
+
+    .manager-status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .manager-status.confirmed,
+    .manager-status.completed,
+    .manager-status.verified {
+      color: var(--accent);
+      background: rgba(0, 220, 255, 0.08);
+      border: 1px solid rgba(0, 220, 255, 0.18);
+    }
+
+    .manager-status.pending {
+      color: #ffd166;
+      background: rgba(255, 209, 102, 0.08);
+      border: 1px solid rgba(255, 209, 102, 0.18);
+    }
+
+    .manager-status.rejected,
+    .manager-status.cancelled {
+      color: #ef476f;
+      background: rgba(239, 71, 111, 0.08);
+      border: 1px solid rgba(239, 71, 111, 0.18);
+    }
+
+    /* Buttons */
+
+    .manager-action-btn {
+      padding: 7px 11px !important;
+      font-size: 0.78rem !important;
+      line-height: 1.2;
+    }
+
+    .manager-cancel-btn {
+      color: #ef476f !important;
+      border-color: rgba(239, 71, 111, 0.5) !important;
+    }
+
+    /* Modal */
+
+    .manager-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      padding: 20px;
+
+      background: rgba(0, 0, 0, 0.86);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+
+      box-sizing: border-box;
+    }
+
+    .manager-modal[hidden] {
+      display: none !important;
+    }
+
+    .manager-modal-card {
+      width: min(620px, 100%);
+      max-height: 90vh;
+      overflow-y: auto;
+
+      position: relative;
+
+      padding: 28px;
+      box-sizing: border-box;
+    }
+
+    .manager-modal-close {
+      position: absolute;
+      top: 14px;
+      right: 16px;
+
+      width: 36px;
+      height: 36px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      border: none;
+      background: transparent;
+      color: var(--text);
+
+      font-size: 1.6rem;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+
+    .manager-modal-close:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .manager-modal-title {
+      margin: 0 42px 6px 0;
+    }
+
+    .manager-modal-subtitle {
+      margin: 0 0 20px;
+      color: var(--sub);
+      line-height: 1.6;
+    }
+
+    .manager-summary {
+      margin-top: 18px;
+    }
+
+    .manager-summary-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+
+      padding: 12px 0;
+
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .manager-summary-row:last-child {
+      border-bottom: none;
+    }
+
+    .manager-summary-row strong {
+      white-space: nowrap;
+    }
+
+    .manager-notes {
+      margin-top: 18px;
+    }
+
+    .manager-notes textarea {
+      width: 100%;
+      box-sizing: border-box;
+
+      padding: 12px;
+
+      background: rgba(0, 0, 0, 0.4);
+      color: var(--text);
+
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+
+      resize: vertical;
+      font-family: inherit;
+      line-height: 1.5;
+    }
+
+    .manager-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 22px;
+    }
+
+    /* Responsive */
+
+    @media (max-width: 900px) {
+      .manager-container {
+        width: min(100% - 24px, 760px);
+      }
+
+      .manager-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .manager-stat-card {
+        padding: 20px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .manager-container {
+        width: calc(100% - 20px);
+      }
+
+      .manager-hero {
+        margin-bottom: 28px;
+      }
+
+      .manager-panel {
+        padding: 18px 14px;
+      }
+
+      .manager-stat-card {
+        padding: 18px;
+      }
+
+      .manager-table {
+        min-width: 760px;
+      }
+
+      .manager-modal {
+        padding: 12px;
+      }
+
+      .manager-modal-card {
+        padding: 22px 18px;
+      }
+
+      .manager-modal-actions {
+        flex-direction: column;
+      }
+
+      .manager-modal-actions .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Background -->
+  <div class="background-video-wrap" aria-hidden="true">
+    <video autoplay muted loop playsinline>
+      <source
+        src="assets/background%20video.mp4"
+        type="video/mp4"
+      />
+    </video>
+  </div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+
+      <a href="index.html" class="logo">
+        CARRENTPE
+      </a>
+
+      <nav class="nav">
+        <a href="fleet.html">Fleet</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="partner.html">Host Car</a>
+        <a href="profile.html">Profile</a>
+      </nav>
+
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="section manager-page">
+
+    <div class="manager-container">
+
+      <!-- Page heading -->
+      <div class="manager-hero">
+
+        <span class="section-label">
+          Operations Console
+        </span>
+
+        <h1 class="section-title">
+          Fleet & Booking Management
+        </h1>
+
+        <p class="manager-hero-text">
+          Manage active rentals, today's vehicle pickups,
+          customer documents, and vehicle returns from one
+          operations dashboard.
+        </p>
+
+      </div>
+
+
+      <!-- Access denied -->
+      <div
+        id="managerAccessDenied"
+        class="card manager-access-denied"
+        hidden
+      >
+
+        <div class="manager-access-icon">
+          👔
+        </div>
+
+        <h3>
+          Manager Access Required
+        </h3>
+
+        <p>
+          This operations console is restricted to managers
+          and administrators. If you believe your account
+          should have manager access, ask an administrator
+          to grant it from the Admin panel's Users tab.
+        </p>
+
+        <div class="manager-access-actions">
+
+          <a
+            href="profile.html"
+            class="btn btn-light"
+          >
+            Go to Profile
+          </a>
+
+        </div>
+
+      </div>
+
+
+      <!-- Dashboard -->
+      <div
+        id="managerContent"
+        class="manager-dashboard"
+        hidden
+      >
+
+        <!-- Statistics -->
+        <section class="manager-stats">
+
+          <div class="card manager-stat-card">
+
+            <span class="manager-stat-label">
+              Active Ongoing Trips
+            </span>
+
+            <div
+              id="mgrActiveCount"
+              class="manager-stat-value"
+            >
+              —
+            </div>
+
+          </div>
+
+
+          <div class="card manager-stat-card pickups">
+
+            <span class="manager-stat-label">
+              Pending Pickups Today
+            </span>
+
+            <div
+              id="mgrPickupCount"
+              class="manager-stat-value"
+            >
+              —
+            </div>
+
+          </div>
+
+
+          <div class="card manager-stat-card documents">
+
+            <span class="manager-stat-label">
+              Unverified Driver Licenses
+            </span>
+
+            <div
+              id="mgrPendingDocCount"
+              class="manager-stat-value"
+            >
+              —
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- Booking queue -->
+        <section class="card manager-panel">
+
+          <div class="manager-panel-header">
+
+            <div>
+              <h2 class="manager-panel-title">
+                Live Booking Queue
+              </h2>
+
+              <p class="manager-panel-subtitle">
+                Monitor confirmed rentals and process vehicle returns.
+              </p>
+            </div>
+
+          </div>
+
+          <div
+            id="mgrBookingsWrap"
+            class="manager-table-wrap"
+          >
+
+            <div class="manager-state">
+              Loading bookings...
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- Documents -->
+        <section class="card manager-panel">
+
+          <div class="manager-panel-header">
+
+            <div>
+              <h2 class="manager-panel-title">
+                Pending Driver Document Checks
+              </h2>
+
+              <p class="manager-panel-subtitle">
+                Review and verify customer driving documents.
+              </p>
+            </div>
+
+          </div>
+
+          <div
+            id="mgrDocsWrap"
+            class="manager-table-wrap"
+          >
+
+            <div class="manager-state">
+              Loading pending document verifications...
+            </div>
+
+          </div>
+
+        </section>
+
+      </div>
+
+    </div>
+
+  </main>
+
+
+  <!-- Footer -->
+  <footer class="site-footer">
+
+    <div class="container">
+
+      <div class="footer-grid">
+
+        <div class="footer-brand footer-section">
+
+          <a href="index.html" class="logo">
+            CARRENTPE
+          </a>
+
+          <p>
+            Operations & Fleet Dispatch Console.
+            Track active trips, process daily pickups,
+            and verify driver credentials.
+          </p>
+
+        </div>
+
+
+        <div class="footer-links footer-section">
+
+          <h4>Quick Links</h4>
+
+          <ul class="footer-list">
+            <li>
+              <a href="fleet.html">Fleet Catalog</a>
+            </li>
+
+            <li>
+              <a href="partner.html">Host Car</a>
+            </li>
+
+            <li>
+              <a href="manager.html">Manager Console</a>
+            </li>
+
+            <li>
+              <a href="profile.html">Member Profile</a>
+            </li>
+          </ul>
+
+        </div>
+
+
+        <div class="footer-legal footer-section">
+
+          <h4>Legal & Policy</h4>
+
+          <ul class="footer-list">
+
+            <li>
+              <a href="privacy.html">
+                Privacy Policy
+              </a>
+            </li>
+
+            <li>
+              <a href="terms.html">
+                Terms & Conditions
+              </a>
+            </li>
+
+            <li>
+              <a href="refund.html">
+                Refund Policy
+              </a>
+            </li>
+
+          </ul>
+
+        </div>
+
+
+        <div class="footer-office footer-section">
+
+          <h4>Support Office</h4>
+
+          <p>
+            Gavson Business Park, Ghansoli,
+            Navi Mumbai
+          </p>
+
+          <p>
+            <a href="tel:+919167164547">
+              +91 91671 64547
+            </a>
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="footer-copy">
+        © 2026 CARRENTPE Operations.
+        All rights reserved.
+      </div>
+
+    </div>
+
+  </footer>
+
+
+  <!-- Return Inspection Modal -->
+  <div
+    id="returnModal"
+    class="manager-modal"
+    hidden
+  >
+
+    <div class="card manager-modal-card">
+
+      <button
+        id="closeReturnModal"
+        class="manager-modal-close"
+        type="button"
+        aria-label="Close"
+      >
+        &times;
+      </button>
+
+
+      <h3
+        id="returnModalTitle"
+        class="manager-modal-title"
+      >
+        Process Return
+      </h3>
+
+
+      <p
+        id="returnModalSubtitle"
+        class="manager-modal-subtitle"
+      >
+        Check anything found on inspection, adjust the
+        deduction amount if needed, then save.
+      </p>
+
+
+      <div id="returnItemsList"></div>
+
+
+      <div class="manager-summary">
+
+        <div class="manager-summary-row">
+
+          <span>
+            Original Security Deposit
+          </span>
+
+          <strong id="returnDepositOriginal">
+            ₹0
+          </strong>
+
+        </div>
+
+
+        <div class="manager-summary-row">
+
+          <span>
+            Total Deductions
+          </span>
+
+          <strong
+            id="returnDeductionTotal"
+            style="color: #ef476f;"
+          >
+            ₹0
+          </strong>
+
+        </div>
+
+
+        <div
+          class="manager-summary-row"
+          style="border-top: 1px solid var(--line); padding-top: 14px;"
+        >
+
+          <span>
+            Refundable to Customer
+          </span>
+
+          <strong
+            id="returnDepositRefund"
+            style="
+              color: var(--accent);
+              font-size: 1.15rem;
+            "
+          >
+            ₹0
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <div class="manager-notes">
+
+        <div class="field full">
+
+          <label for="returnInvoiceNotes">
+            Invoice notes
+            <span style="color: var(--sub);">
+              (editable, shown to customer)
+            </span>
+          </label>
+
+          <textarea
+            id="returnInvoiceNotes"
+            rows="4"
+            placeholder="e.g. Scratch on rear bumper, photographed at return. Deposit refund processed via original payment method."
+          ></textarea>
+
+        </div>
+
+      </div>
+
+
+      <div class="manager-modal-actions">
+
+        <button
+          id="saveReturnBtn"
+          class="btn btn-dark"
+          type="button"
+        >
+          Save &amp; Mark Completed
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <script
+    type="module"
+    src="js/manager.js"
+  ></script>
+
+</body>
+</html>

@@ -1,0 +1,120 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+    }
+
+    function isManagerOrAdmin() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["admin", "manager"];
+    }
+
+    // users/{uid}
+    // - Owner can read their own doc; managers/admins can read all (needed for
+    //   the Admin/Manager dashboards and verification queues).
+    // - Owner can create their own doc on signup (role is forced to
+    //   "customer" here so a crafted direct write can't self-signup as
+    //   staff), and can update their own profile fields (name, phone, age,
+    //   license/aadhar upload URLs) — but NEVER their own role,
+    //   licenseStatus, or aadharStatus. Those are privilege fields and
+    //   self-granting them was a real vulnerability in an earlier version
+    //   of this app (a "Grant Admin" button wrote role: "admin" straight
+    //   to the signed-in user's own doc). Only an admin can change role;
+    //   only a manager or admin can change license/aadhar verification
+    //   status.
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isManagerOrAdmin();
+      allow create: if isOwner(uid) && request.resource.data.role == "customer";
+
+      allow update: if isOwner(uid)
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.licenseStatus == resource.data.licenseStatus
+        && request.resource.data.aadharStatus == resource.data.aadharStatus;
+
+      allow update: if isManagerOrAdmin()
+        && request.resource.data.role == resource.data.role;
+
+      allow update: if isAdmin();
+    }
+
+    // bookings/{bookingId} — owner can create their own booking and cancel
+    // it later; admins/managers can read/update all for operations.
+    // Payment fields are field-restricted: the owner can submit a UPI
+    // reference/screenshot (which only ever moves paymentStatus to
+    // "pending_verification") and can cancel their own booking (status ->
+    // "cancelled"), but can never set their own paymentStatus to "paid" or
+    // "rejected", or flip status to "confirmed"/"completed" — those require
+    // a staff review from the Admin/Manager Payments or Bookings tab.
+    // returnInspection, totalAmount, and securityDeposit are locked to
+    // their existing value on an owner update — those are the damage/
+    // deposit-deduction record set by staff when a car is returned, and a
+    // customer directly editing their own deposit deduction would defeat
+    // the entire point of that record.
+    match /bookings/{bookingId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn()
+        && (resource.data.userId == request.auth.uid || isManagerOrAdmin());
+
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
+        && (request.resource.data.status == resource.data.status
+            || request.resource.data.status == "cancelled")
+        && (request.resource.data.paymentStatus == resource.data.paymentStatus
+            || request.resource.data.paymentStatus == "pending_verification")
+        && request.resource.data.get("returnInspection", null) == resource.data.get("returnInspection", null)
+        && request.resource.data.get("totalAmount", null) == resource.data.get("totalAmount", null)
+        && request.resource.data.get("securityDeposit", null) == resource.data.get("securityDeposit", null);
+
+      allow update: if isManagerOrAdmin();
+      allow delete: if isManagerOrAdmin();
+    }
+
+    // partner_cars/{carId} — signed-in users can list their own car and
+    // edit/withdraw it later; admins/managers approve/reject and add
+    // professional photos once approved. The owner can edit their own
+    // listing's details but can never set their own status to "approved"
+    // (that would let a host self-approve, bypassing review entirely) or
+    // touch the photos array (those are staff-uploaded via the Admin
+    // Host Car Listings tab, not something the host writes directly).
+    match /partner_cars/{carId} {
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow read: if isSignedIn();
+
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.get("photos", null) == resource.data.get("photos", null);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      allow update, delete: if isManagerOrAdmin();
+    }
+
+    // contact_messages/{id} — public contact form, no login required to send;
+    // only staff can read the inbox.
+    match /contact_messages/{id} {
+      allow create: if true;
+      allow read, update, delete: if isManagerOrAdmin();
+    }
+
+    // vehicles/{regNo} — reserved for a future Firestore-backed fleet catalog.
+    // The live fleet catalog today is the static list in js/vehicles.js;
+    // this collection isn't read by the app yet, kept here so admins can
+    // start migrating fleet data without a rules change.
+    match /vehicles/{regNo} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

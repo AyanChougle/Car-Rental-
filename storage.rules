@@ -1,0 +1,71 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Only the document owner, or a signed-in manager/admin (checked
+    // against their Firestore user doc), may read a license/Aadhar file.
+    // Earlier this only checked isSignedIn(), which let any registered
+    // customer read any other customer's government ID photo by guessing
+    // their uid — that's fixed here.
+    function isOwnerOrStaff(uid) {
+      return isSignedIn() && (
+        request.auth.uid == uid ||
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ["admin", "manager"]
+      );
+    }
+
+    // licenses/{uid}/*
+    match /licenses/{uid}/{fileName} {
+      allow read: if isOwnerOrStaff(uid);
+      allow write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // aadhar/{uid}/*
+    match /aadhar/{uid}/{fileName} {
+      allow read: if isOwnerOrStaff(uid);
+      allow write: if isSignedIn() && request.auth.uid == uid;
+    }
+
+    // payment_screenshots/{bookingId}/* — keyed by booking, not uid, so
+    // ownership is checked by looking up the booking doc's userId rather
+    // than matching the path segment directly.
+    function isBookingOwnerOrStaff(bookingId) {
+      return isSignedIn() && (
+        firestore.get(/databases/(default)/documents/bookings/$(bookingId)).data.userId == request.auth.uid ||
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ["admin", "manager"]
+      );
+    }
+
+    match /payment_screenshots/{bookingId}/{fileName} {
+      allow read: if isBookingOwnerOrStaff(bookingId);
+      allow write: if isBookingOwnerOrStaff(bookingId);
+    }
+
+    // host_car_photos/{hostCarId}/* — professional photos admin adds to an
+    // approved host-car listing once it's live. Only staff can upload
+    // these (a host submits their own car via partner.html with an
+    // optional link, but doesn't shoot/upload the polished photos
+    // themselves); the listing's owner can view them alongside staff.
+    function isStaff() {
+      return isSignedIn() &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role in ["admin", "manager"];
+    }
+
+    function isHostCarOwnerOrStaff(hostCarId) {
+      return isSignedIn() && (
+        firestore.get(/databases/(default)/documents/partner_cars/$(hostCarId)).data.userId == request.auth.uid ||
+        isStaff()
+      );
+    }
+
+    match /host_car_photos/{hostCarId}/{fileName} {
+      allow read: if isHostCarOwnerOrStaff(hostCarId);
+      allow write: if isStaff();
+    }
+  }
+}

@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CARRENTPE | Premium Self Drive Rentals</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+
+  <body>
+    <div class="background-video-wrap" aria-hidden="true">
+      <video autoplay muted loop playsinline>
+        <source src="assets/background%20video.mp4" type="video/mp4" />
+      </video>
+    </div>
+    <header class="site-header">
+      <div class="container header-inner">
+        <a href="index.html" class="logo">CARRENTPE</a>
+
+        <button
+          type="button"
+          class="mobile-nav-toggle"
+          id="mobileNavToggle"
+          aria-label="Open navigation menu"
+          aria-controls="mainNav"
+          aria-expanded="false"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <nav class="nav" id="mainNav" aria-label="Main navigation">
+          <a href="fleet.html">Fleet</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="partner.html">Host Car</a>
+          <a href="profile.html">Profile</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero section">
+        <div class="container hero-grid">
+          <div class="hero-content" data-aos="fade-up">
+            <span class="section-label">Premium Self Drive Rentals</span>
+            <h1 class="home-hero__title">
+              Self Drive Car Rentals Across India - under 60 seconds
+            </h1>
+            <p class="hero-text">
+              Luxury, comfort, and reliability in one seamless rental
+              experience. Choose from a curated fleet designed for city drives,
+              long trips, and special occasions.
+            </p>
+            <div class="hero-actions">
+              <a href="fleet.html" class="btn btn-dark">Explore Fleet</a>
+              <a href="contact.html" class="btn btn-light">Contact Us</a>
+            </div>
+          </div>
+          <div class="auth-card">
+            <div id="authGuestView">
+              <button type="button" id="googleLoginBtn" class="btn btn-google btn-full">
+                <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+                  <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.9c1.7-1.57 2.7-3.88 2.7-6.62z"/>
+                  <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.9-2.26c-.8.54-1.84.86-3.06.86-2.35 0-4.34-1.59-5.05-3.72H.95v2.33A9 9 0 0 0 9 18z"/>
+                  <path fill="#FBBC05" d="M3.95 10.7A5.4 5.4 0 0 1 3.66 9c0-.59.1-1.16.29-1.7V4.97H.95A9 9 0 0 0 0 9c0 1.45.35 2.83.95 4.03l3-2.33z"/>
+                  <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.46 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .95 4.97l3 2.33C4.66 5.17 6.65 3.58 9 3.58z"/>
+                </svg>
+                Continue with Google
+              </button>
+              <p class="form-status" id="googleAuthStatus" role="status" aria-live="polite"></p>
+
+              <div class="auth-divider"><span>or continue with email</span></div>
+
+              <!-- Tabs -->
+              <input type="radio" id="login-tab" name="auth-tab" checked hidden />
+              <input type="radio" id="signup-tab" name="auth-tab" hidden />
+
+              <div class="auth-tabs">
+                <label class="tab-label" for="login-tab">Login</label>
+                <label class="tab-label" for="signup-tab">Sign Up</label>
+              </div>
+
+              <div class="auth-container">
+                <!-- LOGIN -->
+                <form id="loginForm" class="auth-form login-form">
+                  <h2>Welcome Back</h2>
+                  <p>Login to continue booking your ride.</p>
+
+                  <div class="input-group">
+                    <label for="loginEmail">Email</label>
+                    <input
+                      type="email"
+                      id="loginEmail"
+                      placeholder="Enter your email"
+                      required
+                    />
+                  </div>
+
+                  <div class="input-group">
+                    <label for="loginPassword">Password</label>
+
+                    <div class="password-box">
+                      <input
+                        type="password"
+                        id="loginPassword"
+                        placeholder="Enter your password"
+                        required
+                      />
+                      <button type="button" class="toggle-password">show</button>
+                    </div>
+                  </div>
+
+                  <div class="auth-options">
+                    <label class="remember">
+                      <input type="checkbox" />
+                      Remember me
+                    </label>
+
+                    <a href="#" class="forgot-password"> Forgot Password? </a>
+                  </div>
+
+                  <button type="submit" class="btn btn-dark btn-full">
+                    Login
+                  </button>
+                  <p class="form-status" role="status" aria-live="polite"></p>
+                </form>
+
+                <!-- SIGNUP -->
+                <form id="signupForm" class="auth-form signup-form">
+                  <h2>Create Account</h2>
+                  <p>Create your account to start renting cars.</p>
+
+                  <div class="input-group">
+                    <label for="signupName">Full Name</label>
+                    <input
+                      type="text"
+                      id="signupName"
+                      placeholder="John Doe"
+                      required
+                    />
+                  </div>
+
+                  <div class="input-group">
+                    <label for="signupEmail">Email</label>
+                    <input
+                      type="email"
+                      id="signupEmail"
+                      placeholder="john@example.com"
+                      required
+                    />
+                  </div>
+
+                  <div class="input-group">
+                    <label for="signupPhone">Phone Number</label>
+                    <input
+                      type="tel"
+                      id="signupPhone"
+                      placeholder="+91 1234567890"
+                    />
+                  </div>
+
+                  <div class="input-group">
+                    <label for="signupPassword">Password</label>
+
+                    <div class="password-box">
+                      <input
+                        type="password"
+                        id="signupPassword"
+                        placeholder="Create password"
+                        required
+                      />
+                      <button type="button" class="toggle-password">show</button>
+                    </div>
+                  </div>
+
+                  <div class="input-group">
+                    <label for="confirmPassword"> Confirm Password </label>
+
+                    <div class="password-box">
+                      <input
+                        type="password"
+                        id="confirmPassword"
+                        placeholder="Confirm password"
+                        required
+                      />
+                      <button type="button" class="toggle-password">show</button>
+                    </div>
+                  </div>
+
+                  <label class="terms">
+                    <input type="checkbox" required />
+                    I agree to the
+                    <a href="#">Terms & Conditions</a>
+                  </label>
+
+                  <button type="submit" class="btn btn-dark btn-full">
+                    Create Account
+                  </button>
+                  <p class="form-status" role="status" aria-live="polite"></p>
+                </form>
+              </div>
+            </div>
+
+            <div id="authUserView" class="quick-book-card" hidden>
+              <h2>Welcome back<span id="authUserName"></span></h2>
+              <p>Pick your dates and find available cars in seconds.</p>
+
+              <div class="quick-book-fields">
+                <div class="input-group">
+                  <label for="quickPickup">Pickup date &amp; time</label>
+                  <input type="datetime-local" id="quickPickup" required />
+                </div>
+                <div class="input-group">
+                  <label for="quickDrop">Drop date &amp; time</label>
+                  <input type="datetime-local" id="quickDrop" required />
+                </div>
+              </div>
+
+              <button type="button" id="quickBookBtn" class="btn btn-dark btn-full">
+                Find Available Cars
+              </button>
+              <p class="form-status" id="quickBookStatus" role="status" aria-live="polite"></p>
+
+              <button type="button" id="quickLogoutBtn" class="btn btn-outline btn-full" style="margin-top: 10px;">
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="fleet" class="section">
+        <div class="container">
+          <div class="section-header centered" data-aos="fade-up">
+            <span class="section-label">Our Fleet</span>
+            <h2 class="section-title">Premium Cars for Every Journey</h2>
+          </div>
+
+          <div class="grid-3">
+            <article class="car-card" data-aos="fade-up">
+              <div class="car-card__image">
+                <img src="assets/fleet/BMW.png" alt="Sedan" />
+              </div>
+              <div class="car-card__body">
+                <h3>Luxury Sedan</h3>
+                <p>Perfect for business rides and city comfort.</p>
+                <div class="car-card__meta">
+                  <span>Starts at ₹3,499/day</span>
+                  <a href="fleet.html">Book</a>
+                </div>
+              </div>
+            </article>
+
+            <article class="car-card" data-aos="fade-up" data-aos-delay="100">
+              <div class="car-card__image">
+                <img src="assets/fleet/Thar%20Roxx.PNG" alt="SUV" />
+              </div>
+              <div class="car-card__body">
+                <h3>Premium SUV</h3>
+                <p>Ideal for family trips and long drives.</p>
+                <div class="car-card__meta">
+                  <span>Starts at ₹2,099/day</span>
+                  <a href="fleet.html">Book</a>
+                </div>
+              </div>
+            </article>
+
+            <article class="car-card" data-aos="fade-up" data-aos-delay="200">
+              <div class="car-card__image">
+                <img src="assets/fleet/Maruti%20Suzuki%20Swift.png" alt="Hatchback" />
+              </div>
+              <div class="car-card__body">
+                <h3>Compact Hatchback</h3>
+                <p>Efficient, stylish, and easy to drive.</p>
+                <div class="car-card__meta">
+                  <span>Starts at ₹1,999/day</span>
+                  <a href="fleet.html">Book</a>
+                </div>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="services" class="section section-alt">
+        <div class="container">
+          <div class="section-header centered" data-aos="fade-up">
+            <span class="section-label">Why Choose Us</span>
+            <h2 class="section-title">Premium Service, Zero Hassle</h2>
+          </div>
+
+          <div class="grid-3">
+            <div class="feature-card" data-aos="fade-up">
+              <h3>Flexible Booking</h3>
+              <p>Simple booking and quick confirmation for every trip.</p>
+            </div>
+            <div class="feature-card" data-aos="fade-up" data-aos-delay="100">
+              <h3>Well-Maintained Cars</h3>
+              <p>Clean, inspected, and reliable vehicles for a smooth drive.</p>
+            </div>
+            <div class="feature-card" data-aos="fade-up" data-aos-delay="200">
+              <h3>24/7 Support</h3>
+              <p>Dedicated support whenever you need assistance.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="testimonials"
+        class="section testimonials-section"
+        aria-labelledby="testimonials-title"
+      >
+        <div class="container">
+          <div class="section-header centered" data-aos="fade-up">
+            <span class="section-label">Client Stories</span>
+            <h2 class="section-title" id="testimonials-title">
+              What Our Clients Say
+            </h2>
+          </div>
+
+          <div class="grid-3">
+            <div class="testimonial-card" data-aos="fade-up" data-aos-delay="0">
+              <span class="testimonial-quote" aria-hidden="true">"</span>
+              <div class="testimonial-stars" aria-label="5 stars">★★★★★</div>
+              <p>
+                Had a great experience. The car was clean, comfortable, and
+                well-maintained.
+              </p>
+              <div class="testimonial-author">
+                <div class="testimonial-author-avatar"></div>
+                <div class="testimonial-author-info">
+                  <strong>Rahul Mehta</strong>
+                  <span>Bandra West, Mumbai</span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="testimonial-card"
+              data-aos="fade-up"
+              data-aos-delay="100"
+            >
+              <span class="testimonial-quote" aria-hidden="true">"</span>
+              <div class="testimonial-stars" aria-label="5 stars">★★★★★</div>
+              <p>
+                The booking process was smooth and easy through the website.
+              </p>
+              <div class="testimonial-author">
+                <div class="testimonial-author-avatar"></div>
+                <div class="testimonial-author-info">
+                  <strong>Priya Sharma</strong>
+                  <span>Powai, Mumbai</span>
+                </div>
+              </div>
+            </div>
+
+            <div
+              class="testimonial-card"
+              data-aos="fade-up"
+              data-aos-delay="200"
+            >
+              <span class="testimonial-quote" aria-hidden="true">"</span>
+              <div class="testimonial-stars" aria-label="5 stars">★★★★★</div>
+              <p>
+                Pickup and drop were hassle-free, and the host was responsive
+                throughout.
+              </p>
+              <div class="testimonial-author">
+                <div class="testimonial-author-avatar"></div>
+                <div class="testimonial-author-info">
+                  <strong>Arjun Khanna</strong>
+                  <span>Worli, Mumbai</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="contact" class="section cta-section">
+        <div class="container cta-box" data-aos="zoom-in">
+          <span class="section-label">Book Your Ride</span>
+          <h2 class="section-title">Ready for your next premium drive?</h2>
+          <p>
+            Contact us now and get your car delivered with comfort and style.
+          </p>
+          <a href="tel:+911234567890" class="btn btn-dark">Call Now</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand footer-section">
+            <a href="index.html" class="logo">CARRENTPE</a>
+            <p>
+              Premium self-drive rentals across India with trusted, hassle-free
+              booking and 24/7 support.
+            </p>
+          </div>
+
+          <div class="footer-links footer-section">
+            <h4>Quick Links</h4>
+            <ul class="footer-list">
+              <li><a href="fleet.html">Fleet</a></li>
+              <li><a href="about.html">About</a></li>
+              <li><a href="contact.html">Contact</a></li>
+              <li><a href="profile.html">Profile</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-legal footer-section">
+            <h4>Legal</h4>
+            <ul class="footer-list">
+              <li><a href="privacy.html">Privacy Policy</a></li>
+              <li><a href="terms.html">Terms & Conditions</a></li>
+              <li><a href="refund.html">Refund Policy</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-office footer-section">
+            <h4>Office</h4>
+            <p>Gavson Business Park, Ghansoli, Navi Mumbai, Maharashtra</p>
+            <p>Mon – Sat: 9:00 AM – 8:00 PM</p>
+            <p><a href="tel:+919167164547">+91 91671 64547</a></p>
+            <div class="social-links">
+              <a href="#" class="social-link instagram" aria-label="Instagram"
+                >Instagram</a
+              >
+              <a href="#" class="social-link facebook" aria-label="Facebook"
+                >Facebook</a
+              >
+              <a href="#" class="social-link twitter" aria-label="Twitter"
+                >Twitter</a
+              >
+            </div>
+          </div>
+        </div>
+        <div class="footer-copy">© 2026 CARRENTPE. All rights reserved.</div>
+      </div>
+    </footer>
+
+
+    <script>
+      (() => {
+        const toggle = document.getElementById("mobileNavToggle");
+        const nav = document.getElementById("mainNav");
+
+        if (!toggle || !nav) return;
+
+        const closeMenu = () => {
+          nav.classList.remove("is-open");
+          toggle.classList.remove("is-open");
+          toggle.setAttribute("aria-expanded", "false");
+          toggle.setAttribute("aria-label", "Open navigation menu");
+        };
+
+        toggle.addEventListener("click", () => {
+          const open = nav.classList.toggle("is-open");
+          toggle.classList.toggle("is-open", open);
+          toggle.setAttribute("aria-expanded", String(open));
+          toggle.setAttribute(
+            "aria-label",
+            open ? "Close navigation menu" : "Open navigation menu"
+          );
+        });
+
+        nav.querySelectorAll("a").forEach((link) => {
+          link.addEventListener("click", closeMenu);
+        });
+
+        window.addEventListener("resize", () => {
+          if (window.innerWidth > 760) closeMenu();
+        });
+      })();
+    </script>
+    <script type="module" src="js/auth.js"></script>
+  </body>
+</html>

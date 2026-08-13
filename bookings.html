@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Bookings | CARRENTPE</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/bookings.css" />
+</head>
+
+<body>
+  <div class="background-video-wrap" aria-hidden="true">
+    <video autoplay muted loop playsinline>
+      <source src="assets/background%20video.mp4" type="video/mp4" />
+    </video>
+  </div>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo">CARRENTPE</a>
+
+      <nav class="nav" aria-label="Main navigation">
+        <a href="fleet.html">Fleet</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="partner.html">Host Car</a>
+        <a href="profile.html">Profile</a>
+        <a href="bookings.html" class="active">My Bookings</a>
+        <a href="verification.html">ID Verification</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="bookings-page">
+
+    <section class="bookings-hero">
+      <div class="container">
+        <span class="section-label">ACCOUNT &amp; BOOKINGS</span>
+        <h1 class="bookings-title">My Bookings</h1>
+        <p class="bookings-subtitle">
+          Everything you've got coming up, plus your full rental history.
+        </p>
+      </div>
+    </section>
+
+    <section class="bookings-section">
+      <div class="container">
+        <div class="bookings-section-heading">
+          <div>
+            <span class="section-label">LIVE &amp; UPCOMING</span>
+            <h2>Active bookings</h2>
+          </div>
+        </div>
+
+        <div class="booking-list" id="liveBookings">
+          <div class="booking-loading">Loading your bookings...</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="bookings-section">
+      <div class="container">
+        <div class="bookings-section-heading">
+          <div>
+            <span class="section-label">HISTORY</span>
+            <h2>Past bookings</h2>
+          </div>
+        </div>
+
+        <div class="booking-list" id="pastBookings">
+          <div class="booking-loading">Loading...</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-copy">© 2026 CARRENTPE. All rights reserved.</div>
+    </div>
+  </footer>
+
+  <script type="module" src="js/vehicles.js"></script>
+  <script type="module" src="js/bookings.js"></script>
+</body>
+</html>

@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Contact Us | Car Rent PE</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="background-video-wrap" aria-hidden="true">
+      <video autoplay muted loop playsinline>
+        <source src="assets/background%20video.mp4" type="video/mp4" />
+      </video>
+    </div>
+    <header class="site-header">
+      <div class="container header-inner">
+        <a href="index.html" class="logo">CARRENTPE</a>
+        <nav class="nav">
+          <a href="fleet.html">Fleet</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="partner.html">Host Car</a>
+          <a href="profile.html">Profile</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="section contact-hero">
+        <div class="container contact-hero__content">
+          <span class="section-label">Contact</span>
+          <h1 class="section-title">
+            Plan your ride with a team that responds fast.
+          </h1>
+          <p class="hero-text">
+            Need support, a booking, or a custom request? We will help you get
+            behind the wheel quickly and comfortably.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container contact-grid">
+          <section class="card contact-card">
+            <h2 class="section-title">Send us a message</h2>
+            <p class="section-sub">
+              Fill out the form below and our team will get back to you shortly.
+            </p>
+
+            <form class="contact-form" id="contact-form">
+              <div class="field">
+                <label for="name">Full Name</label>
+                <input
+                  id="name"
+                  name="name"
+                  type="text"
+                  placeholder="Your name"
+                  autocomplete="name"
+                  required
+                />
+              </div>
+              <div class="field">
+                <label for="email">Email Address</label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  autocomplete="email"
+                  required
+                />
+              </div>
+              <div class="field">
+                <label for="phone">Phone Number</label>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  placeholder="Your phone number"
+                  autocomplete="tel"
+                  required
+                />
+              </div>
+              <div class="field">
+                <label for="subject">Subject</label>
+                <select id="subject" name="subject">
+                  <option>General Inquiry</option>
+                  <option>Booking Support</option>
+                  <option>Fleet Information</option>
+                  <option>Billing Question</option>
+                </select>
+              </div>
+              <div class="field full">
+                <label for="message">Message</label>
+                <textarea
+                  id="message"
+                  name="message"
+                  placeholder="Tell us how we can help..."
+                  required
+                ></textarea>
+              </div>
+              <div class="field full">
+                <button type="submit" class="btn btn-dark">Send Message</button>
+                <p
+                  class="form-status"
+                  id="form-status"
+                  role="status"
+                  aria-live="polite"
+                ></p>
+              </div>
+            </form>
+          </section>
+
+          <aside class="card contact-card">
+            <h2 class="section-title">Contact Details</h2>
+            <p class="section-sub">
+              Our support team is available to assist with reservations and
+              rentals.
+            </p>
+
+            <div class="contact-details">
+              <div class="contact-info-item">
+                <div class="contact-icon">📍</div>
+                <div>
+                  <h4>Office Address</h4>
+                  <p>Gavson Business Park, Navi Mumbai, India</p>
+                </div>
+              </div>
+
+              <div class="contact-info-item">
+                <div class="contact-icon">📞</div>
+                <div>
+                  <h4>Phone</h4>
+                  <p><a href="tel:+919167164547">+91 9167164547</a></p>
+                </div>
+              </div>
+
+              <div class="contact-info-item">
+                <div class="contact-icon">✉️</div>
+                <div>
+                  <h4>Email</h4>
+                  <p>
+                    <a href="mailto:support@CARRENTPE.com"
+                      >support@CARRENTPE.com</a
+                    >
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="contact-hours">
+              <h4>Working Hours</h4>
+              <p>Mon - Fri: 9:00 AM - 8:00 PM</p>
+              <p>Sat - Sun: 10:00 AM - 6:00 PM</p>
+            </div>
+
+            <iframe
+              class="contact-map"
+              title="Map"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3769.9300541647494!2d73.0281664!3d19.1107242!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3be7c1d7439987f7%3A0xfb133af42dbc3a0c!2sGavson%20Business%20Park!5e0!3m2!1sen!2sin!4v1785836886387!5m2!1sen!2sin"
+              loading="lazy"
+              referrerpolicy="strict-origin-when-cross-origin"
+            ></iframe>
+          </aside>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand footer-section">
+            <a href="index.html" class="logo">CARRENTPE</a>
+            <p>
+              Premium self-drive rentals across India with trusted, hassle-free
+              booking and 24/7 support.
+            </p>
+          </div>
+
+          <div class="footer-links footer-section">
+            <h4>Quick Links</h4>
+            <ul class="footer-list">
+              <li><a href="fleet.html">Fleet</a></li>
+              <li><a href="about.html">About</a></li>
+              <li><a href="contact.html">Contact</a></li>
+              <li><a href="profile.html">Profile</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-legal footer-section">
+            <h4>Legal</h4>
+            <ul class="footer-list">
+              <li><a href="privacy.html">Privacy Policy</a></li>
+              <li><a href="terms.html">Terms & Conditions</a></li>
+              <li><a href="refund.html">Refund Policy</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-office footer-section">
+            <h4>Office</h4>
+            <p>Gavson Business Park, Ghansoli, Navi Mumbai, Maharashtra</p>
+            <p>Mon – Sat: 9:00 AM – 8:00 PM</p>
+            <p><a href="tel:+919167164547">+91 91671 64547</a></p>
+            <div class="social-links">
+              <a href="#" class="social-link instagram" aria-label="Instagram"
+                >Instagram</a
+              >
+              <a href="#" class="social-link facebook" aria-label="Facebook"
+                >Facebook</a
+              >
+              <a href="#" class="social-link twitter" aria-label="Twitter"
+                >Twitter</a
+              >
+            </div>
+          </div>
+        </div>
+        <div class="footer-copy">© 2026 CARRENTPE. All rights reserved.</div>
+      </div>
+    </footer>
+
+    <script type="module" src="js/contact.js"></script>
+  </body>
+</html>

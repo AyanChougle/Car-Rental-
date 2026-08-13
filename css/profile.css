@@ -1,0 +1,1120 @@
+/* ============================================================
+   CARRENTPE PROFILE PAGE
+   FINAL UI FIX
+   Keeps existing HTML + JS intact
+   ============================================================ */
+
+.profile-page,
+.profile-page * {
+    box-sizing: border-box;
+}
+
+/* ============================================================
+   PAGE
+   ============================================================ */
+
+.profile-page {
+    position: relative;
+    width: 100%;
+    min-height: calc(100vh - 78px);
+    padding: 0 0 80px;
+    color: #f5f5f5;
+}
+
+.profile-page .profile-container {
+    width: min(1180px, calc(100% - 48px)) !important;
+    max-width: 1180px !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+}
+
+/* ============================================================
+   PAGE HEADER
+   ============================================================ */
+
+.profile-page .profile-page-header {
+    position: relative;
+    z-index: 2;
+
+    width: 100%;
+    text-align: center;
+
+    padding: 74px 0 26px;
+}
+
+.profile-page .profile-page-header .section-label {
+    display: block;
+
+    margin: 0 0 14px;
+
+    color: rgba(255,255,255,.62);
+
+    font-size: 11px;
+    line-height: 1.2;
+
+    letter-spacing: .22em;
+    text-transform: uppercase;
+}
+
+.profile-page .profile-page-title {
+    margin: 0;
+
+    color: #fff;
+
+    font-size: clamp(42px, 5vw, 68px);
+    line-height: .98;
+
+    letter-spacing: -.045em;
+
+    font-weight: 800;
+}
+
+.profile-page .profile-page-subtitle {
+    max-width: 650px;
+
+    margin: 20px auto 0;
+
+    color: rgba(255,255,255,.68);
+
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+/* ============================================================
+   TABS
+   ============================================================ */
+
+.profile-page .profile-tabs {
+    position: relative;
+    z-index: 10;
+
+    display: flex;
+
+    justify-content: center;
+    align-items: center;
+
+    gap: 9px;
+
+    width: 100%;
+
+    margin: 0 auto 24px;
+}
+
+.profile-page .prof-tab-btn {
+    appearance: none;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    min-height: 48px;
+
+    padding: 0 22px;
+
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 999px;
+
+    background: rgba(7,7,7,.65);
+
+    color: #f1f1f1;
+
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition:
+        background .2s ease,
+        color .2s ease,
+        border-color .2s ease,
+        transform .2s ease;
+
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+.profile-page .prof-tab-btn:hover {
+    border-color: rgba(0,190,240,.65);
+    transform: translateY(-1px);
+}
+
+.profile-page .prof-tab-btn.active {
+    background: #fff;
+    border-color: #fff;
+
+    color: #101010;
+
+    box-shadow: 0 8px 28px rgba(255,255,255,.12);
+}
+
+/* ============================================================
+   MAIN CARD
+   IMPORTANT:
+   Strong selector prevents global .card/.container CSS
+   from shrinking this card.
+   ============================================================ */
+
+.profile-page .profile-card {
+    position: relative;
+    z-index: 2;
+
+    display: block;
+
+    width: 100% !important;
+    max-width: none !important;
+
+    margin: 0 !important;
+    padding: 0 !important;
+
+    border: 1px solid rgba(0,190,240,.55);
+
+    border-radius: 24px;
+
+    background:
+        linear-gradient(
+            145deg,
+            rgba(24,24,24,.94),
+            rgba(12,12,12,.96)
+        );
+
+    box-shadow:
+        0 22px 70px rgba(0,0,0,.38);
+
+    overflow: hidden;
+}
+
+/* ============================================================
+   PANELS
+   ============================================================ */
+
+.profile-page .prof-panel {
+    display: block;
+
+    width: 100% !important;
+
+    margin: 0;
+    padding: 38px !important;
+}
+
+.profile-page .prof-panel[hidden] {
+    display: none !important;
+}
+
+/* ============================================================
+   PROFILE HEADER
+   ============================================================ */
+
+.profile-page .profile-head {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    width: 100%;
+
+    gap: 24px;
+
+    padding-bottom: 26px;
+
+    border-bottom:
+        1px solid rgba(255,255,255,.11);
+}
+
+.profile-page .profile-identity {
+    min-width: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 16px;
+}
+
+.profile-page .profile-avatar {
+    width: 56px;
+    height: 56px;
+
+    flex: 0 0 56px;
+
+    display: grid;
+    place-items: center;
+
+    border:
+        1px solid rgba(255,255,255,.20);
+
+    border-radius: 15px;
+
+    background:
+        linear-gradient(
+            145deg,
+            #252525,
+            #151515
+        );
+
+    color: #fff;
+
+    font-size: 21px;
+    font-weight: 800;
+}
+
+.profile-page .profile-identity-text {
+    min-width: 0;
+}
+
+.profile-page .profile-identity-text h2 {
+    margin: 0 0 5px;
+
+    color: #fff;
+
+    font-size: 24px;
+    line-height: 1.1;
+
+    font-weight: 800;
+}
+
+.profile-page .profile-email {
+    margin: 0;
+
+    color: rgba(255,255,255,.58);
+
+    font-size: 13px;
+
+    overflow-wrap: anywhere;
+}
+
+/* ============================================================
+   STATUS BADGES
+   ============================================================ */
+
+.profile-page .profile-verification-badge,
+.profile-page .verification-badge,
+.profile-page .status-pill,
+.profile-page .fleet-status {
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    width: fit-content !important;
+
+    min-height: 28px;
+
+    padding: 0 12px;
+
+    border:
+        1px solid rgba(255,255,255,.16);
+
+    border-radius: 999px;
+
+    background:
+        rgba(255,255,255,.05);
+
+    color:
+        rgba(255,255,255,.72);
+
+    font-size: 10px;
+
+    line-height: 1;
+
+    font-weight: 800;
+
+    letter-spacing: .06em;
+
+    text-transform: uppercase;
+
+    white-space: nowrap;
+}
+
+.profile-page .profile-verification-badge.verified,
+.profile-page .verification-badge.verified,
+.profile-page .status-pill.verified,
+.profile-page .fleet-status.verified {
+    border-color: rgba(42,220,142,.55);
+
+    background:
+        rgba(31,160,102,.14);
+
+    color: #39e89a;
+}
+
+.profile-page .status-pill.pending,
+.profile-page .fleet-status.pending,
+.profile-page .verification-badge.pending {
+    border-color: rgba(241,184,62,.45);
+
+    background:
+        rgba(190,135,20,.12);
+
+    color: #f2c35b;
+}
+
+.profile-page .status-pill.rejected,
+.profile-page .fleet-status.rejected,
+.profile-page .verification-badge.rejected {
+    border-color: rgba(245,80,80,.45);
+
+    background:
+        rgba(190,35,35,.12);
+
+    color: #ff7777;
+}
+
+/* ============================================================
+   PROFILE INFORMATION
+   EXACT 2 x 2
+   ============================================================ */
+
+.profile-page .profile-info-grid {
+    display: grid !important;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr)) !important;
+
+    gap: 14px;
+
+    width: 100%;
+
+    margin-top: 26px;
+}
+
+.profile-page .profile-info-item {
+    min-width: 0;
+
+    min-height: 92px;
+
+    padding: 18px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: space-between;
+
+    gap: 12px;
+
+    border:
+        1px solid rgba(255,255,255,.11);
+
+    border-radius: 16px;
+
+    background:
+        rgba(255,255,255,.035);
+}
+
+.profile-page .profile-info-label {
+    color: rgba(255,255,255,.48);
+
+    font-size: 10px;
+    line-height: 1.2;
+
+    font-weight: 800;
+
+    letter-spacing: .1em;
+
+    text-transform: uppercase;
+}
+
+.profile-page .profile-info-item strong {
+    color: #fff;
+
+    font-size: 15px;
+    line-height: 1.25;
+
+    font-weight: 700;
+
+    overflow-wrap: anywhere;
+}
+
+/* ============================================================
+   PROFILE ACTIONS
+   ============================================================ */
+
+.profile-page .profile-actions {
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin-top: 22px;
+
+    flex-wrap: wrap;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+
+.profile-page .profile-action,
+.profile-page .profile-button {
+    appearance: none;
+
+    display: inline-flex;
+
+    align-items: center;
+    justify-content: center;
+
+    min-height: 44px;
+
+    padding: 0 18px;
+
+    border:
+        1px solid rgba(255,255,255,.18);
+
+    border-radius: 999px;
+
+    background: transparent;
+
+    color: #fff;
+
+    text-decoration: none;
+
+    font: inherit;
+
+    font-size: 13px;
+    font-weight: 750;
+
+    cursor: pointer;
+
+    transition:
+        transform .2s ease,
+        border-color .2s ease,
+        background .2s ease;
+}
+
+.profile-page .profile-action.primary,
+.profile-page .profile-button.primary {
+    background: #fff;
+
+    color: #111;
+
+    border-color: #fff;
+}
+
+.profile-page .profile-action.secondary,
+.profile-page .profile-button.secondary {
+    background: transparent;
+
+    color: #fff;
+}
+
+.profile-page .profile-action:hover,
+.profile-page .profile-button:hover {
+    transform: translateY(-1px);
+
+    border-color:
+        rgba(0,190,240,.65);
+}
+
+.profile-page .profile-action:disabled {
+    opacity: .45;
+
+    cursor: not-allowed;
+
+    transform: none;
+}
+
+/* ============================================================
+   EDIT PROFILE
+   ============================================================ */
+
+.profile-page .profile-edit-form[hidden] {
+    display: none !important;
+}
+
+.profile-page .form-section-heading h2,
+.profile-page .bookings-header h2,
+.profile-page .documents-header h2 {
+    margin: 4px 0 8px;
+
+    color: #fff;
+
+    font-size: 28px;
+    line-height: 1.15;
+}
+
+.profile-page .form-section-heading p,
+.profile-page .bookings-header p,
+.profile-page .documents-header p {
+    margin: 0;
+
+    color: rgba(255,255,255,.58);
+
+    line-height: 1.6;
+}
+
+.profile-page .profile-form-grid {
+    display: grid;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr));
+
+    gap: 16px;
+
+    margin-top: 28px;
+}
+
+.profile-page .profile-form-grid .field.full {
+    grid-column: 1 / -1;
+}
+
+.profile-page .profile-form-grid label {
+    display: block;
+
+    margin-bottom: 8px;
+
+    color: rgba(255,255,255,.62);
+
+    font-size: 12px;
+
+    font-weight: 700;
+}
+
+.profile-page .profile-form-grid input {
+    width: 100%;
+
+    height: 48px;
+
+    padding: 0 14px;
+
+    border:
+        1px solid rgba(255,255,255,.14);
+
+    border-radius: 12px;
+
+    outline: none;
+
+    background:
+        rgba(255,255,255,.045);
+
+    color: #fff;
+
+    font: inherit;
+}
+
+.profile-page .profile-form-grid input:focus {
+    border-color:
+        rgba(0,190,240,.65);
+}
+
+.profile-page .profile-form-actions {
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin-top: 20px;
+
+    flex-wrap: wrap;
+}
+
+.profile-page .form-status {
+    margin: 0;
+
+    color: rgba(255,255,255,.62);
+
+    font-size: 13px;
+
+    line-height: 1.5;
+}
+
+.profile-page .form-status.success {
+    color: #39e89a;
+}
+
+.profile-page .form-status.error {
+    color: #ff7777;
+}
+
+/* ============================================================
+   BOOKINGS HEADER
+   ============================================================ */
+
+.profile-page .bookings-header {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    width: 100%;
+
+    gap: 24px;
+
+    padding-bottom: 26px;
+
+    border-bottom:
+        1px solid rgba(255,255,255,.10);
+}
+
+.profile-page .bookings-header > div {
+    min-width: 0;
+}
+
+.profile-page .book-new-car-btn {
+    flex: 0 0 auto;
+
+    white-space: nowrap;
+}
+
+/* ============================================================
+   BOOKINGS LIST
+   ============================================================ */
+
+.profile-page .profile-bookings-list {
+    display: grid;
+
+    gap: 14px;
+
+    width: 100%;
+
+    margin-top: 22px;
+}
+
+.profile-page .booking-loading,
+.profile-page .empty-state,
+.profile-page .error-state {
+    width: 100%;
+
+    padding: 34px 20px;
+
+    border:
+        1px dashed rgba(255,255,255,.14);
+
+    border-radius: 16px;
+
+    text-align: center;
+
+    color: rgba(255,255,255,.62);
+}
+
+/* ============================================================
+   BOOKING CARD
+   ============================================================ */
+
+.profile-page .profile-bookings-list .booking-card {
+    display: block;
+
+    width: 100% !important;
+
+    min-width: 0;
+
+    padding: 20px;
+
+    border:
+        1px solid rgba(255,255,255,.11);
+
+    border-radius: 17px;
+
+    background:
+        rgba(255,255,255,.035);
+}
+
+/* Header of booking */
+
+.profile-page .profile-bookings-list .booking-top {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 20px;
+
+    width: 100%;
+
+    padding-bottom: 16px;
+
+    border-bottom:
+        1px solid rgba(255,255,255,.08);
+}
+
+.profile-page .profile-bookings-list .booking-top > div {
+    min-width: 0;
+}
+
+.profile-page .profile-bookings-list .booking-vehicle {
+    color: #fff;
+
+    font-size: 18px;
+
+    line-height: 1.2;
+
+    font-weight: 800;
+}
+
+.profile-page .profile-bookings-list .booking-ref {
+    margin-top: 5px;
+
+    color: rgba(255,255,255,.42);
+
+    font-size: 11px;
+
+    overflow-wrap: anywhere;
+}
+
+/* ============================================================
+   BOOKING DETAILS
+   Clean 4-column row
+   ============================================================ */
+
+.profile-page .profile-bookings-list .booking-grid {
+    display: grid !important;
+
+    grid-template-columns:
+        repeat(4, minmax(0, 1fr)) !important;
+
+    gap: 10px;
+
+    width: 100%;
+
+    margin-top: 16px;
+}
+
+.profile-page .profile-bookings-list .booking-detail {
+    min-width: 0;
+
+    min-height: 76px;
+
+    padding: 14px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    justify-content: space-between;
+
+    gap: 8px;
+
+    border-radius: 12px;
+
+    background:
+        rgba(0,0,0,.22);
+}
+
+.profile-page .profile-bookings-list .booking-detail span {
+    color: rgba(255,255,255,.48);
+
+    font-size: 10px;
+
+    line-height: 1.2;
+
+    font-weight: 800;
+
+    letter-spacing: .08em;
+
+    text-transform: uppercase;
+}
+
+.profile-page .profile-bookings-list .booking-detail strong {
+    min-width: 0;
+
+    color: #fff;
+
+    font-size: 14px;
+
+    line-height: 1.25;
+
+    overflow-wrap: anywhere;
+}
+
+.profile-page .profile-bookings-list .booking-actions {
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    margin-top: 16px;
+
+    flex-wrap: wrap;
+}
+
+/* ============================================================
+   VERIFICATION
+   ============================================================ */
+
+.profile-page .documents-header {
+    width: 100%;
+
+    padding-bottom: 26px;
+
+    border-bottom:
+        1px solid rgba(255,255,255,.10);
+}
+
+.profile-page .document-card-grid {
+    display: grid !important;
+
+    grid-template-columns:
+        repeat(2, minmax(0, 1fr)) !important;
+
+    gap: 16px;
+
+    width: 100%;
+
+    margin-top: 22px;
+}
+
+/* ============================================================
+   DOCUMENT CARD
+   ============================================================ */
+
+.profile-page .document-card {
+    min-width: 0;
+
+    width: 100%;
+
+    min-height: 270px;
+
+    padding: 22px;
+
+    display: flex;
+
+    flex-direction: column;
+
+    border:
+        1px solid rgba(255,255,255,.11);
+
+    border-radius: 17px;
+
+    background:
+        rgba(255,255,255,.035);
+}
+
+.profile-page .document-card-header {
+    display: flex;
+
+    align-items: flex-start;
+
+    justify-content: space-between;
+
+    gap: 16px;
+
+    width: 100%;
+}
+
+.profile-page .document-card-header > div {
+    min-width: 0;
+
+    flex: 1;
+}
+
+.profile-page .document-card h3 {
+    margin: 0 0 7px;
+
+    color: #fff;
+
+    font-size: 18px;
+
+    line-height: 1.2;
+
+    font-weight: 800;
+}
+
+.profile-page .document-card p {
+    margin: 0;
+
+    color: rgba(255,255,255,.56);
+
+    font-size: 13px;
+
+    line-height: 1.55;
+}
+
+/* ============================================================
+   DOCUMENT ICON
+   ============================================================ */
+
+.profile-page .document-icon {
+    display: grid;
+
+    place-items: center;
+
+    flex: 0 0 42px;
+
+    width: 42px;
+    height: 42px;
+
+    border:
+        1px solid rgba(255,255,255,.14);
+
+    border-radius: 12px;
+
+    background:
+        rgba(255,255,255,.04);
+
+    color: #fff;
+
+    font-size: 11px;
+
+    font-weight: 800;
+}
+
+/* ============================================================
+   DOCUMENT UPLOAD AREA
+   ============================================================ */
+
+.profile-page .doc-upload__row {
+    display: grid;
+
+    grid-template-columns:
+        120px minmax(0, 1fr);
+
+    align-items: center;
+
+    gap: 16px;
+
+    width: 100%;
+
+    margin-top: auto;
+
+    padding-top: 22px;
+}
+
+.profile-page .doc-upload__preview {
+    display: block;
+
+    width: 120px;
+    height: 84px;
+
+    object-fit: cover;
+
+    border:
+        1px solid rgba(255,255,255,.12);
+
+    border-radius: 10px;
+
+    background: #080808;
+}
+
+.profile-page .doc-upload__controls {
+    min-width: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 10px;
+
+    flex-wrap: wrap;
+}
+
+.profile-page .doc-upload__controls .profile-action {
+    flex: 0 0 auto;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (max-width: 1100px) {
+
+    .profile-page .profile-container {
+        width: min(
+            100% - 36px,
+            960px
+        ) !important;
+    }
+
+    .profile-page .profile-bookings-list .booking-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr)) !important;
+    }
+
+}
+
+@media (max-width: 800px) {
+
+    .profile-page .profile-container {
+        width: calc(100% - 28px) !important;
+    }
+
+    .profile-page .prof-panel {
+        padding: 26px !important;
+    }
+
+    .profile-page .profile-info-grid {
+        grid-template-columns:
+            repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    .profile-page .document-card-grid {
+        grid-template-columns:
+            1fr !important;
+    }
+
+    .profile-page .bookings-header {
+        align-items: flex-start;
+
+        flex-direction: column;
+    }
+
+}
+
+@media (max-width: 640px) {
+
+    .profile-page .profile-container {
+        width: calc(100% - 20px) !important;
+    }
+
+    .profile-page .profile-page-header {
+        padding:
+            48px 0 22px;
+    }
+
+    .profile-page .profile-page-title {
+        font-size: 39px;
+    }
+
+    .profile-page .profile-tabs {
+        flex-wrap: wrap;
+    }
+
+    .profile-page .prof-tab-btn {
+        min-height: 44px;
+
+        padding: 0 15px;
+
+        font-size: 12px;
+    }
+
+    .profile-page .profile-head {
+        align-items: flex-start;
+
+        flex-direction: column;
+    }
+
+    .profile-page .profile-verification-badge {
+        align-self: flex-start;
+    }
+
+    .profile-page .profile-info-grid,
+    .profile-page .profile-form-grid,
+    .profile-page .profile-bookings-list .booking-grid {
+        grid-template-columns:
+            1fr !important;
+    }
+
+    .profile-page .profile-form-grid .field.full {
+        grid-column: auto;
+    }
+
+    .profile-page .booking-top {
+        align-items: flex-start;
+
+        flex-direction: column;
+    }
+
+    .profile-page .doc-upload__row {
+        grid-template-columns: 1fr;
+    }
+
+    .profile-page .doc-upload__preview {
+        width: 160px;
+        height: 110px;
+    }
+
+}

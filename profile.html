@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Profile | CARRENTPE</title>
+
+  <!-- Existing global styles -->
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+
+  <!-- NEW profile-specific styles -->
+  <link rel="stylesheet" href="css/profile.css" />
+</head>
+
+<body>
+
+  <!-- =========================================================
+       BACKGROUND
+  ========================================================== -->
+
+  <div
+    class="background-video-wrap"
+    aria-hidden="true"
+  >
+    <video
+      autoplay
+      muted
+      loop
+      playsinline
+    >
+      <source
+        src="assets/background%20video.mp4"
+        type="video/mp4"
+      />
+    </video>
+  </div>
+
+
+  <!-- =========================================================
+       HEADER
+  ========================================================== -->
+
+  <header class="site-header">
+
+    <div class="container header-inner">
+
+      <a
+        href="index.html"
+        class="logo"
+      >
+        CARRENTPE
+      </a>
+
+      <nav class="nav">
+
+        <a href="fleet.html">
+          Fleet
+        </a>
+
+        <a href="about.html">
+          About
+        </a>
+
+        <a href="contact.html">
+          Contact
+        </a>
+
+        <a href="partner.html">
+          Host Car
+        </a>
+
+        <a
+          href="profile.html"
+          class="active"
+        >
+          Profile
+        </a>
+
+      </nav>
+
+    </div>
+
+  </header>
+
+
+  <!-- =========================================================
+       MAIN
+  ========================================================== -->
+
+  <main class="profile-page">
+
+    <div class="container profile-container">
+
+
+      <!-- =====================================================
+           PAGE HEADER
+      ====================================================== -->
+
+      <div class="profile-page-header">
+
+        <span class="section-label">
+          ACCOUNT & DASHBOARD
+        </span>
+
+        <h1 class="profile-page-title">
+          Your Member Profile
+        </h1>
+
+        <p class="profile-page-subtitle">
+          Manage your account, bookings and identity verification.
+        </p>
+
+      </div>
+
+
+      <!-- =====================================================
+           PROFILE TABS
+      ====================================================== -->
+
+      <div
+        class="profile-tabs"
+        role="tablist"
+        aria-label="Profile sections"
+      >
+
+        <button
+          type="button"
+          class="prof-tab-btn active"
+          data-tab="prof-tab-info"
+          role="tab"
+          aria-selected="true"
+        >
+          Profile Details
+        </button>
+
+        <button
+          type="button"
+          class="prof-tab-btn"
+          data-tab="prof-tab-bookings"
+          role="tab"
+          aria-selected="false"
+        >
+          My Bookings
+        </button>
+
+        <button
+          type="button"
+          class="prof-tab-btn"
+          data-tab="prof-tab-docs"
+          role="tab"
+          aria-selected="false"
+        >
+          ID Verification
+        </button>
+
+      </div>
+
+
+      <!-- =====================================================
+           MAIN PROFILE CARD
+      ====================================================== -->
+
+      <div class="profile-card">
+
+
+        <!-- ===================================================
+             TAB 1 — PROFILE DETAILS
+        ==================================================== -->
+
+        <section
+          id="prof-tab-info"
+          class="prof-panel"
+        >
+
+          <!-- PROFILE VIEW -->
+
+          <div id="profileView">
+
+            <div class="profile-head">
+
+              <div class="profile-identity">
+
+                <div
+                  class="profile-avatar"
+                  id="profileAvatar"
+                >
+                  ?
+                </div>
+
+                <div class="profile-identity-text">
+
+                  <h2 id="profileName">
+                    Loading profile...
+                  </h2>
+
+                  <p
+                    class="profile-email"
+                    id="profileEmail"
+                  >
+                    —
+                  </p>
+
+                </div>
+
+              </div>
+
+
+              <div
+                id="verificationBadge"
+                class="fleet-status profile-verification-badge"
+              >
+                Not Verified
+              </div>
+
+            </div>
+
+
+            <!-- PROFILE INFORMATION -->
+
+            <div class="profile-info-grid">
+
+              <div class="profile-info-item">
+
+                <span class="profile-info-label">
+                  Phone
+                </span>
+
+                <strong id="profilePhone">
+                  Phone not added
+                </strong>
+
+              </div>
+
+
+              <div class="profile-info-item">
+
+                <span class="profile-info-label">
+                  Age
+                </span>
+
+                <strong id="profileAge">
+                  Not added
+                </strong>
+
+              </div>
+
+
+              <div class="profile-info-item">
+
+                <span class="profile-info-label">
+                  License
+                </span>
+
+                <span
+                  class="fleet-status"
+                  id="licenseStatusPill"
+                >
+                  Not submitted
+                </span>
+
+              </div>
+
+
+              <div class="profile-info-item">
+
+                <span class="profile-info-label">
+                  Aadhaar
+                </span>
+
+                <span
+                  class="fleet-status"
+                  id="aadharStatusPill"
+                >
+                  Not submitted
+                </span>
+
+              </div>
+
+            </div>
+
+
+            <!-- PROFILE ACTIONS -->
+
+            <div class="profile-actions">
+
+              <button
+                type="button"
+                id="editProfile"
+                class="profile-action primary"
+              >
+                Edit Details
+              </button>
+
+              <button
+                type="button"
+                id="logoutBtn"
+                class="profile-action secondary"
+              >
+                Logout
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <!-- =================================================
+               EDIT PROFILE FORM
+          ================================================== -->
+
+          <form
+            id="profileEditForm"
+            class="profile-edit-form"
+            hidden
+          >
+
+            <div class="form-section-heading">
+
+              <span class="section-label">
+                ACCOUNT
+              </span>
+
+              <h2>
+                Edit Profile Information
+              </h2>
+
+              <p>
+                Update your personal information below.
+              </p>
+
+            </div>
+
+
+            <div class="profile-form-grid">
+
+              <div class="field">
+
+                <label for="editName">
+                  Full Name
+                </label>
+
+                <input
+                  type="text"
+                  id="editName"
+                  name="editName"
+                  autocomplete="name"
+                  required
+                />
+
+              </div>
+
+
+              <div class="field">
+
+                <label for="editAge">
+                  Age
+                </label>
+
+                <input
+                  type="number"
+                  id="editAge"
+                  name="editAge"
+                  min="18"
+                  max="100"
+                  placeholder="e.g. 27"
+                />
+
+              </div>
+
+
+              <div class="field full">
+
+                <label for="editPhone">
+                  Phone Number
+                </label>
+
+                <input
+                  type="tel"
+                  id="editPhone"
+                  name="editPhone"
+                  placeholder="+91 1234567890"
+                  autocomplete="tel"
+                />
+
+              </div>
+
+            </div>
+
+
+            <div class="profile-form-actions">
+
+              <button
+                type="submit"
+                id="saveProfile"
+                class="profile-action primary"
+              >
+                Save Changes
+              </button>
+
+              <button
+                type="button"
+                id="cancelProfile"
+                class="profile-action secondary"
+              >
+                Cancel
+              </button>
+
+              <p
+                class="form-status"
+                id="editProfileStatus"
+                role="status"
+                aria-live="polite"
+              ></p>
+
+            </div>
+
+          </form>
+
+        </section>
+
+
+        <!-- ===================================================
+             TAB 2 — MY BOOKINGS
+        ==================================================== -->
+
+        <section
+          id="prof-tab-bookings"
+          class="prof-panel"
+          hidden
+        >
+
+          <div class="bookings-header">
+
+            <div>
+
+              <span class="section-label">
+                RENTAL HISTORY
+              </span>
+
+              <h2>
+                My Booking History
+              </h2>
+
+              <p>
+                View your current and previous rentals.
+              </p>
+
+            </div>
+
+
+            <a
+              href="fleet.html"
+              class="btn btn-light book-new-car-btn"
+            >
+              + Book New Car
+            </a>
+
+          </div>
+
+
+          <!-- IMPORTANT:
+               profile.js loads the Firebase bookings here.
+          -->
+
+          <div
+            id="profLiveBookings"
+            class="profile-bookings-list"
+          >
+
+            <div class="booking-loading">
+              Loading your bookings...
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- ===================================================
+             TAB 3 — DOCUMENT VERIFICATION
+        ==================================================== -->
+
+        <section
+          id="prof-tab-docs"
+          class="prof-panel"
+          hidden
+        >
+
+          <div class="documents-header">
+
+            <span class="section-label">
+              IDENTITY
+            </span>
+
+            <h2>
+              Identity & Driving Verification
+            </h2>
+
+            <p>
+              Upload your documents before vehicle pickup.
+            </p>
+
+          </div>
+
+
+          <div class="document-card-grid">
+
+          <!-- =================================================
+               DRIVING LICENSE
+          ================================================== -->
+
+          <div class="document-card">
+
+            <div class="document-card-header">
+
+              <div>
+
+                <h3>
+                  Driving License
+                </h3>
+
+                <p>
+                  Upload a clear photo of your driving license.
+                  It is required before vehicle pickup.
+                </p>
+
+              </div>
+
+              <span
+                class="document-icon"
+                aria-hidden="true"
+              >
+                DL
+              </span>
+
+            </div>
+
+
+            <div class="doc-upload__row">
+
+              <img
+                id="licensePreview"
+                class="doc-upload__preview"
+                alt="Driving license preview"
+                hidden
+              />
+
+
+              <div class="doc-upload__controls">
+
+                <label
+                  class="profile-action primary"
+                  for="licenseFile"
+                >
+                  Choose File
+                </label>
+
+                <input
+                  type="file"
+                  id="licenseFile"
+                  accept="image/jpeg,image/png,image/webp"
+                  hidden
+                />
+
+
+                <button
+                  type="button"
+                  id="licenseUploadBtn"
+                  class="profile-action primary"
+                  disabled
+                >
+                  Upload License
+                </button>
+
+              </div>
+
+            </div>
+
+
+            <p
+              class="form-status"
+              id="licenseUploadStatus"
+              role="status"
+              aria-live="polite"
+            ></p>
+
+          </div>
+
+
+          <!-- =================================================
+               AADHAAR
+          ================================================== -->
+
+          <div class="document-card">
+
+            <div class="document-card-header">
+
+              <div>
+
+                <h3>
+                  Aadhaar Card
+                </h3>
+
+                <p>
+                  Upload a clear photo of your Aadhaar card
+                  for identity verification.
+                </p>
+
+              </div>
+
+              <span
+                class="document-icon"
+                aria-hidden="true"
+              >
+                ID
+              </span>
+
+            </div>
+
+
+            <div class="doc-upload__row">
+
+              <img
+                id="aadharPreview"
+                class="doc-upload__preview"
+                alt="Aadhaar card preview"
+                hidden
+              />
+
+
+              <div class="doc-upload__controls">
+
+                <label
+                  class="profile-action primary"
+                  for="aadharFile"
+                >
+                  Choose File
+                </label>
+
+                <input
+                  type="file"
+                  id="aadharFile"
+                  accept="image/jpeg,image/png,image/webp"
+                  hidden
+                />
+
+
+                <button
+                  type="button"
+                  id="aadharUploadBtn"
+                  class="profile-action primary"
+                  disabled
+                >
+                  Upload Aadhaar
+                </button>
+
+              </div>
+
+            </div>
+
+
+            <p
+              class="form-status"
+              id="aadharUploadStatus"
+              role="status"
+              aria-live="polite"
+            ></p>
+
+          </div>
+
+          </div>
+
+        </section>
+
+      </div>
+
+    </div>
+
+  </main>
+
+
+  <!-- =========================================================
+       FOOTER
+  ========================================================== -->
+
+  <footer class="site-footer">
+
+    <div class="container">
+
+      <div class="footer-grid">
+
+        <div class="footer-brand footer-section">
+
+          <a
+            href="index.html"
+            class="logo"
+          >
+            CARRENTPE
+          </a>
+
+          <p>
+            Premium self-drive rentals across India with
+            trusted, hassle-free booking and 24/7 support.
+          </p>
+
+        </div>
+
+
+        <div class="footer-links footer-section">
+
+          <h4>
+            Quick Links
+          </h4>
+
+          <ul class="footer-list">
+
+            <li>
+              <a href="fleet.html">
+                Fleet
+              </a>
+            </li>
+
+            <li>
+              <a href="about.html">
+                About
+              </a>
+            </li>
+
+            <li>
+              <a href="contact.html">
+                Contact
+              </a>
+            </li>
+
+            <li>
+              <a href="partner.html">
+                Host Car
+              </a>
+            </li>
+
+            <li>
+              <a href="profile.html">
+                Profile
+              </a>
+            </li>
+
+          </ul>
+
+        </div>
+
+
+        <div class="footer-legal footer-section">
+
+          <h4>
+            Legal
+          </h4>
+
+          <ul class="footer-list">
+
+            <li>
+              <a href="privacy.html">
+                Privacy Policy
+              </a>
+            </li>
+
+            <li>
+              <a href="terms.html">
+                Terms & Conditions
+              </a>
+            </li>
+
+            <li>
+              <a href="refund.html">
+                Refund Policy
+              </a>
+            </li>
+
+          </ul>
+
+        </div>
+
+
+        <div class="footer-office footer-section">
+
+          <h4>
+            Office
+          </h4>
+
+          <p>
+            Gavson Business Park, Ghansoli,
+            Navi Mumbai, Maharashtra
+          </p>
+
+          <p>
+            <a href="tel:+919167164547">
+              +91 91671 64547
+            </a>
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="footer-copy">
+        © 2026 CARRENTPE. All rights reserved.
+      </div>
+
+    </div>
+
+  </footer>
+
+
+  <!-- =========================================================
+       SCRIPTS
+  ========================================================== -->
+
+  <script
+    type="module"
+    src="js/vehicles.js"
+  ></script>
+
+  <script
+    type="module"
+    src="js/profile.js"
+  ></script>
+
+</body>
+</html>

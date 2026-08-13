@@ -1,0 +1,1568 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Checkout | CARRENTPE</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    /* =========================================================
+       CARRENTPE — PRODUCTION CHECKOUT PAGE
+       Scoped only to payment.html
+       ========================================================= */
+
+    .checkout-page {
+      min-height: 100vh;
+      padding-bottom: 80px;
+    }
+
+    /* ---------------------------------------------------------
+       HERO
+       --------------------------------------------------------- */
+
+    .checkout-hero {
+      position: relative;
+      padding: 74px 0 42px;
+      overflow: hidden;
+    }
+
+    .checkout-hero::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(
+          circle at 20% 20%,
+          rgba(0, 209, 255, 0.10),
+          transparent 35%
+        ),
+        linear-gradient(
+          180deg,
+          rgba(0, 0, 0, 0.12),
+          rgba(0, 0, 0, 0.65)
+        );
+      pointer-events: none;
+    }
+
+    .checkout-hero-inner {
+      position: relative;
+      z-index: 1;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 0 28px;
+    }
+
+    .checkout-step {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--accent);
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    .checkout-step::before {
+      content: "";
+      width: 28px;
+      height: 1px;
+      background: var(--accent);
+    }
+
+    .checkout-title {
+      max-width: 760px;
+      margin: 0;
+      font-size: clamp(2.5rem, 5vw, 4.5rem);
+      line-height: 0.98;
+      letter-spacing: -0.055em;
+      font-weight: 850;
+      color: var(--white);
+    }
+
+    .checkout-subtitle {
+      max-width: 650px;
+      margin-top: 18px;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.75;
+    }
+
+    /* ---------------------------------------------------------
+       MAIN CHECKOUT GRID
+       --------------------------------------------------------- */
+
+    .checkout-container {
+      position: relative;
+      z-index: 2;
+
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 20px 28px 0;
+
+      display: grid;
+      grid-template-columns: minmax(320px, 0.82fr) minmax(480px, 1.18fr);
+      gap: 24px;
+
+      align-items: start;
+    }
+
+    /* ---------------------------------------------------------
+       SHARED CHECKOUT CARD
+       --------------------------------------------------------- */
+
+    .checkout-card {
+      position: relative;
+      overflow: hidden;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(255, 255, 255, 0.065),
+          rgba(255, 255, 255, 0.018)
+        );
+
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+
+      box-shadow:
+        0 30px 80px rgba(0, 0, 0, 0.42),
+        inset 0 1px 0 rgba(255, 255, 255, 0.035);
+
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+    }
+
+    .checkout-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+
+      background:
+        radial-gradient(
+          circle at 0% 0%,
+          rgba(0, 209, 255, 0.075),
+          transparent 35%
+        );
+
+      pointer-events: none;
+    }
+
+    .checkout-card-inner {
+      position: relative;
+      z-index: 1;
+      padding: 28px;
+    }
+
+    .checkout-label {
+      display: block;
+
+      margin-bottom: 9px;
+
+      color: rgba(255, 255, 255, 0.48);
+
+      font-size: 0.68rem;
+      font-weight: 800;
+      letter-spacing: 0.17em;
+      text-transform: uppercase;
+    }
+
+    .checkout-card-title {
+      margin: 0;
+
+      font-size: 1.5rem;
+      line-height: 1.15;
+      letter-spacing: -0.035em;
+
+      color: var(--white);
+    }
+
+    .checkout-card-copy {
+      margin: 9px 0 0;
+
+      color: var(--muted);
+      font-size: 0.88rem;
+      line-height: 1.65;
+    }
+
+    /* ---------------------------------------------------------
+       BOOKING SUMMARY
+       --------------------------------------------------------- */
+
+    .payment-booking-card {
+      align-self: start;
+    }
+
+    .payment-vehicle {
+      display: grid;
+      grid-template-columns: 88px minmax(0, 1fr);
+      align-items: center;
+
+      gap: 16px;
+
+      margin-top: 24px;
+      padding-bottom: 24px;
+
+      border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+    }
+
+    .payment-vehicle-image {
+      position: relative;
+
+      width: 88px;
+      height: 72px;
+
+      display: grid;
+      place-items: center;
+
+      overflow: hidden;
+
+      border-radius: 16px;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(255,255,255,0.10),
+          rgba(255,255,255,0.025)
+        );
+
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+
+    .payment-vehicle-image img {
+      position: absolute;
+      inset: 0;
+
+      width: 100%;
+      height: 100%;
+
+      object-fit: contain;
+      padding: 5px;
+    }
+
+    .payment-vehicle-image span {
+      font-size: 1.8rem;
+    }
+
+    .payment-vehicle-name {
+      margin: 0;
+
+      color: var(--white);
+
+      font-size: 1.15rem;
+      line-height: 1.2;
+      font-weight: 800;
+    }
+
+    .payment-vehicle-meta {
+      margin-top: 6px;
+
+      color: var(--muted);
+
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+
+    .booking-details {
+      display: grid;
+      gap: 0;
+
+      margin-top: 6px;
+    }
+
+    .booking-detail {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      gap: 18px;
+
+      min-height: 56px;
+
+      border-bottom: 1px solid rgba(255,255,255,0.075);
+    }
+
+    .booking-detail:last-child {
+      border-bottom: 0;
+    }
+
+    .booking-detail span {
+      color: rgba(255,255,255,0.52);
+      font-size: 0.8rem;
+    }
+
+    .booking-detail strong {
+      color: var(--white);
+      font-size: 0.84rem;
+      font-weight: 700;
+      text-align: right;
+    }
+
+    .booking-detail--amount {
+      margin-top: 10px;
+      padding: 18px;
+
+      border: 1px solid rgba(0,209,255,0.18);
+      border-radius: 16px;
+
+      background:
+        linear-gradient(
+          135deg,
+          rgba(0,209,255,0.075),
+          rgba(255,255,255,0.025)
+        );
+    }
+
+    .booking-detail--amount span {
+      color: var(--white);
+      font-weight: 700;
+    }
+
+    .booking-detail--amount strong {
+      color: var(--accent);
+      font-size: 1.25rem;
+    }
+
+    /* ---------------------------------------------------------
+       PAYMENT CARD
+       --------------------------------------------------------- */
+
+    .payment-card {
+      align-self: start;
+    }
+
+    .payment-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+
+      margin-top: 24px;
+    }
+
+    .payment-tab {
+      appearance: none;
+
+      min-height: 74px;
+
+      padding: 15px 16px;
+
+      text-align: left;
+
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,0.10);
+
+      background: rgba(255,255,255,0.025);
+
+      color: var(--white);
+
+      cursor: pointer;
+
+      transition:
+        border-color 180ms ease,
+        background 180ms ease,
+        transform 180ms ease;
+    }
+
+    .payment-tab:hover {
+      transform: translateY(-1px);
+
+      border-color: rgba(0,209,255,0.30);
+    }
+
+    .payment-tab.active {
+      border-color: rgba(0,209,255,0.55);
+
+      background:
+        linear-gradient(
+          135deg,
+          rgba(0,209,255,0.12),
+          rgba(0,209,255,0.035)
+        );
+
+      box-shadow:
+        inset 0 0 0 1px rgba(0,209,255,0.04),
+        0 12px 30px rgba(0,0,0,0.18);
+    }
+
+    .payment-tab strong {
+      display: block;
+
+      font-size: 0.92rem;
+      font-weight: 800;
+    }
+
+    .payment-tab small {
+      display: block;
+
+      margin-top: 6px;
+
+      color: var(--muted);
+
+      font-size: 0.64rem;
+      line-height: 1.4;
+
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* ---------------------------------------------------------
+       PAYMENT AMOUNT
+       --------------------------------------------------------- */
+
+    .payment-amount-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+
+      gap: 20px;
+
+      margin-top: 18px;
+      padding: 18px 20px;
+
+      border: 1px solid rgba(255,255,255,0.09);
+      border-radius: 16px;
+
+      background: rgba(255,255,255,0.025);
+    }
+
+    .payment-amount-card span {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .payment-amount-card strong {
+      color: var(--accent);
+
+      font-size: 1.55rem;
+      line-height: 1;
+
+      letter-spacing: -0.035em;
+    }
+
+    /* ---------------------------------------------------------
+       UPI SECTION
+       --------------------------------------------------------- */
+
+    .upi-card {
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      gap: 26px;
+
+      margin-top: 18px;
+      padding: 22px;
+
+      border-radius: 20px;
+
+      background:
+        linear-gradient(
+          145deg,
+          rgba(255,255,255,0.055),
+          rgba(255,255,255,0.018)
+        );
+
+      border: 1px solid rgba(255,255,255,0.10);
+    }
+
+    .qr-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+
+      padding: 6px;
+    }
+
+    .upi-qr {
+      width: 188px;
+      height: 188px;
+
+      display: grid;
+      place-items: center;
+
+      padding: 12px;
+
+      background: #ffffff;
+
+      border-radius: 18px;
+
+      box-shadow:
+        0 20px 40px rgba(0,0,0,0.35);
+    }
+
+    .upi-qr img,
+    .upi-qr canvas {
+      display: block;
+
+      width: 100% !important;
+      height: 100% !important;
+
+      max-width: 100%;
+      max-height: 100%;
+    }
+
+    .qr-caption {
+      margin: 12px 0 0;
+
+      color: var(--muted);
+
+      font-size: 0.72rem;
+      text-align: center;
+    }
+
+    .upi-info {
+      min-width: 0;
+    }
+
+    .upi-info h3 {
+      margin: 0;
+
+      color: var(--white);
+
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    .upi-info .section-sub {
+      margin: 8px 0 18px;
+      font-size: 0.82rem;
+    }
+
+    .upi-id-box {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+
+      padding: 14px 16px;
+
+      border-radius: 14px;
+
+      border: 1px dashed rgba(0,209,255,0.35);
+
+      background: rgba(0,209,255,0.055);
+    }
+
+    .upi-id-box strong {
+      color: rgba(255,255,255,0.5);
+
+      font-size: 0.64rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .upi-id-box span {
+      overflow-wrap: anywhere;
+
+      color: var(--white);
+
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .upi-open-button {
+      margin-top: 12px;
+    }
+
+    .upi-apps {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+
+      gap: 8px;
+
+      margin-top: 12px;
+    }
+
+    .upi-app-btn {
+      min-height: 42px;
+
+      padding: 9px 12px;
+
+      border-radius: 11px;
+
+      border: 1px solid rgba(255,255,255,0.10);
+
+      background: rgba(255,255,255,0.025);
+
+      color: var(--muted);
+
+      font: inherit;
+      font-size: 0.76rem;
+      font-weight: 700;
+
+      cursor: pointer;
+
+      transition:
+        background 180ms ease,
+        border-color 180ms ease,
+        color 180ms ease;
+    }
+
+    .upi-app-btn:hover {
+      color: var(--white);
+      border-color: rgba(0,209,255,0.30);
+      background: rgba(0,209,255,0.06);
+    }
+
+    /* ---------------------------------------------------------
+       PAYMENT HELP
+       --------------------------------------------------------- */
+
+    .payment-help-card {
+      margin-top: 18px;
+
+      padding: 17px 18px;
+
+      border-radius: 15px;
+
+      border: 1px solid rgba(255,255,255,0.08);
+
+      background: rgba(255,255,255,0.025);
+    }
+
+    .payment-help-card strong {
+      color: var(--white);
+      font-size: 0.86rem;
+    }
+
+    .payment-help-card p {
+      margin: 6px 0 0;
+
+      font-size: 0.78rem;
+      line-height: 1.65;
+    }
+
+    /* ---------------------------------------------------------
+       FORM
+       --------------------------------------------------------- */
+
+    .payment-form {
+      margin-top: 20px;
+    }
+
+    .payment-form .field {
+      margin-bottom: 15px;
+    }
+
+    .payment-form label {
+      display: block;
+
+      margin-bottom: 8px;
+
+      color: rgba(255,255,255,0.65);
+
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .payment-form input[type="text"],
+    .payment-form input[type="file"] {
+      width: 100%;
+
+      min-height: 48px;
+
+      padding: 12px 14px;
+
+      border-radius: 13px;
+
+      border: 1px solid rgba(255,255,255,0.11);
+
+      background: rgba(255,255,255,0.035);
+
+      color: var(--white);
+
+      font: inherit;
+
+      outline: none;
+
+      transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease;
+    }
+
+    .payment-form input[type="file"] {
+      padding: 9px 11px;
+      cursor: pointer;
+    }
+
+    .payment-form input:focus {
+      border-color: rgba(0,209,255,0.60);
+
+      box-shadow:
+        0 0 0 3px rgba(0,209,255,0.07);
+    }
+
+    .payment-form small {
+      display: block;
+
+      margin-top: 7px;
+
+      color: rgba(255,255,255,0.40);
+
+      font-size: 0.68rem;
+      line-height: 1.5;
+    }
+
+    .payment-preview {
+      margin-top: 12px;
+    }
+
+    .payment-preview img {
+      display: block;
+
+      width: 100%;
+      max-height: 260px;
+
+      object-fit: contain;
+
+      border-radius: 14px;
+
+      border: 1px solid rgba(255,255,255,0.10);
+
+      background: rgba(255,255,255,0.025);
+    }
+
+    .payment-submit {
+      margin-top: 8px;
+    }
+
+    /* ---------------------------------------------------------
+       OFFLINE
+       --------------------------------------------------------- */
+
+    #offlinePaymentSection {
+      margin-top: 20px;
+    }
+
+    .offline-box {
+      padding: 22px;
+
+      border-radius: 18px;
+
+      border: 1px solid rgba(255,255,255,0.10);
+
+      background: rgba(255,255,255,0.025);
+    }
+
+    .offline-box h3 {
+      margin: 0 0 8px;
+
+      color: var(--white);
+
+      font-size: 1.15rem;
+    }
+
+    .offline-box p {
+      margin-bottom: 18px;
+    }
+
+    /* ---------------------------------------------------------
+       SECURITY NOTE
+       --------------------------------------------------------- */
+
+    .checkout-security {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+
+      margin-top: 18px;
+
+      color: rgba(255,255,255,0.42);
+
+      font-size: 0.7rem;
+      line-height: 1.5;
+    }
+
+    .checkout-security::before {
+      content: "✓";
+
+      width: 22px;
+      height: 22px;
+
+      display: grid;
+      place-items: center;
+
+      flex-shrink: 0;
+
+      border-radius: 50%;
+
+      background: rgba(0,209,255,0.08);
+      border: 1px solid rgba(0,209,255,0.20);
+
+      color: var(--accent);
+      font-weight: 900;
+    }
+
+    /* ---------------------------------------------------------
+       FOOTER SPACING
+       --------------------------------------------------------- */
+
+    .checkout-page + .site-footer {
+      margin-top: 0;
+    }
+
+    /* ---------------------------------------------------------
+       RESPONSIVE
+       --------------------------------------------------------- */
+
+    @media (max-width: 1000px) {
+      .checkout-container {
+        grid-template-columns: 1fr;
+      }
+
+      .payment-booking-card,
+      .payment-card {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .checkout-hero {
+        padding-top: 48px;
+      }
+
+      .checkout-hero-inner {
+        padding-inline: 18px;
+      }
+
+      .checkout-container {
+        padding-inline: 18px;
+      }
+
+      .checkout-card-inner {
+        padding: 20px;
+      }
+
+      .checkout-title {
+        font-size: clamp(2.2rem, 10vw, 3.4rem);
+      }
+
+      .upi-card {
+        grid-template-columns: 1fr;
+      }
+
+      .qr-section {
+        align-items: flex-start;
+      }
+
+      .payment-tabs {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .payment-vehicle {
+        grid-template-columns: 70px minmax(0, 1fr);
+      }
+
+      .payment-vehicle-image {
+        width: 70px;
+        height: 60px;
+      }
+
+      .upi-apps {
+        grid-template-columns: 1fr;
+      }
+
+      .booking-detail {
+        align-items: flex-start;
+        flex-direction: column;
+        justify-content: center;
+        gap: 4px;
+        padding: 12px 0;
+      }
+
+      .booking-detail strong {
+        text-align: left;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- =========================================================
+       BACKGROUND
+       ========================================================= -->
+
+  <div class="background-video-wrap" aria-hidden="true">
+    <video autoplay muted loop playsinline>
+      <source
+        src="assets/background%20video.mp4"
+        type="video/mp4"
+      />
+    </video>
+  </div>
+
+  <!-- =========================================================
+       HEADER
+       ========================================================= -->
+
+  <header class="site-header">
+    <div class="container header-inner">
+
+      <a href="index.html" class="logo">
+        CARRENTPE
+      </a>
+
+      <nav class="nav" aria-label="Main navigation">
+        <a href="fleet.html">Fleet</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="partner.html">Host Car</a>
+        <a href="profile.html">Profile</a>
+      </nav>
+
+    </div>
+  </header>
+
+  <!-- =========================================================
+       MAIN
+       ========================================================= -->
+
+  <main class="checkout-page">
+
+    <!-- HERO -->
+
+    <section class="checkout-hero">
+
+      <div class="checkout-hero-inner">
+
+        <div class="checkout-step">
+          Secure checkout
+        </div>
+
+        <h1 class="checkout-title">
+          Complete your payment
+        </h1>
+
+        <p class="checkout-subtitle">
+          Review your reservation, pay securely using UPI,
+          and submit your transaction reference for verification.
+        </p>
+
+      </div>
+
+    </section>
+
+
+    <!-- =======================================================
+         CHECKOUT GRID
+         ======================================================= -->
+
+    <section>
+
+      <div class="checkout-container">
+
+        <!-- ===================================================
+             LEFT — RESERVATION
+             =================================================== -->
+
+        <section class="checkout-card payment-booking-card">
+
+          <div class="checkout-card-inner">
+
+            <span class="checkout-label">
+              Payment summary
+            </span>
+
+            <h2 class="checkout-card-title">
+              Your reservation
+            </h2>
+
+            <p class="checkout-card-copy">
+              Confirm these details before completing your payment.
+            </p>
+
+
+            <!-- VEHICLE -->
+
+            <div class="payment-vehicle">
+
+              <div
+                class="payment-vehicle-image"
+                id="paymentVehicleImage"
+              >
+                <span id="paymentVehicleIcon">🚗</span>
+              </div>
+
+              <div>
+
+                <h3
+                  class="payment-vehicle-name"
+                  id="paymentVehicleName"
+                >
+                  Loading booking...
+                </h3>
+
+                <p
+                  class="payment-vehicle-meta"
+                  id="paymentVehicleMeta"
+                ></p>
+
+              </div>
+
+            </div>
+
+
+            <!-- BOOKING DETAILS -->
+
+            <div class="booking-details">
+
+              <div class="booking-detail">
+
+                <span>
+                  Booking
+                </span>
+
+                <strong>
+                  #<span id="paymentBookingId">---</span>
+                </strong>
+
+              </div>
+
+
+              <div class="booking-detail">
+
+                <span>
+                  Pickup
+                </span>
+
+                <strong id="paymentPickup">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="booking-detail">
+
+                <span>
+                  Drop
+                </span>
+
+                <strong id="paymentDrop">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="booking-detail">
+
+                <span>
+                  Duration
+                </span>
+
+                <strong id="paymentDuration">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="booking-detail booking-detail--amount">
+
+                <span>
+                  Amount to pay
+                </span>
+
+                <strong id="paymentAmount">
+                  ₹0.00
+                </strong>
+
+              </div>
+
+            </div>
+
+
+            <div class="checkout-security">
+              Your payment is reviewed by CARRENTPE before the
+              booking is confirmed.
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- ===================================================
+             RIGHT — PAYMENT
+             =================================================== -->
+
+        <section class="checkout-card payment-card">
+
+          <div class="checkout-card-inner">
+
+            <span class="checkout-label">
+              Secure payment
+            </span>
+
+            <h2 class="checkout-card-title">
+              Pay by UPI
+            </h2>
+
+            <p class="checkout-card-copy">
+              Use any supported UPI application to complete
+              your payment.
+            </p>
+
+
+            <!-- PAYMENT TABS -->
+
+            <div class="payment-tabs">
+
+              <button
+                type="button"
+                class="payment-tab active"
+                id="upiTab"
+              >
+
+                <strong>
+                  UPI payment
+                </strong>
+
+                <small>
+                  Google Pay · PhonePe · Paytm · BHIM
+                </small>
+
+              </button>
+
+
+              <button
+                type="button"
+                class="payment-tab"
+                id="offlineTab"
+              >
+
+                <strong>
+                  Bank transfer
+                </strong>
+
+                <small>
+                  Admin verification required
+                </small>
+
+              </button>
+
+            </div>
+
+
+            <!-- =================================================
+                 UPI
+                 ================================================= -->
+
+            <div id="upiPaymentSection">
+
+              <!-- AMOUNT -->
+
+              <div class="payment-amount-card">
+
+                <span>
+                  Amount to pay
+                </span>
+
+                <strong>
+                 <span id="upiAmount"> ₹0.00</span>
+                </strong>
+
+              </div>
+
+
+              <!-- QR + DETAILS -->
+
+              <div class="upi-card">
+
+                <div class="qr-section">
+
+                  <div
+                    id="upiQr"
+                    class="upi-qr"
+                  ></div>
+
+                  <p class="qr-caption">
+                    Scan with any UPI app
+                  </p>
+
+                </div>
+
+
+                <div class="upi-info">
+
+                  <h3>
+                    Pay using UPI
+                  </h3>
+
+                  <p class="section-sub">
+                    Scan the QR code or use the UPI ID below.
+                  </p>
+
+
+                  <div class="upi-id-box">
+
+                    <strong>
+                      UPI ID
+                    </strong>
+
+                    <span id="upiId">
+                      svcmerc00314092@svcbank
+                    </span>
+
+                  </div>
+
+
+                  <button
+                    type="button"
+                    id="openUpiBtn"
+                    class="btn btn-dark btn-full upi-open-button"
+                  >
+                    Open UPI App
+                  </button>
+
+
+                  <div class="upi-apps">
+
+                    <button
+                      type="button"
+                      class="upi-app-btn"
+                      data-app="gpay"
+                    >
+                      Google Pay
+                    </button>
+
+                    <button
+                      type="button"
+                      class="upi-app-btn"
+                      data-app="phonepe"
+                    >
+                      PhonePe
+                    </button>
+
+                    <button
+                      type="button"
+                      class="upi-app-btn"
+                      data-app="paytm"
+                    >
+                      Paytm
+                    </button>
+
+                    <button
+                      type="button"
+                      class="upi-app-btn"
+                      data-app="bhim"
+                    >
+                      BHIM / Other
+                    </button>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+
+              <!-- HELP -->
+
+              <div class="payment-help-card">
+
+                <strong>
+                  After making the payment
+                </strong>
+
+                <p class="section-sub">
+                  Enter your UTR / transaction ID and upload
+                  a screenshot showing the successful payment.
+                  Your booking remains pending until verification.
+                </p>
+
+              </div>
+
+
+              <!-- FORM -->
+
+              <form
+                class="payment-form"
+                id="paymentForm"
+              >
+
+                <div class="field">
+
+                  <label for="upiReference">
+                    Payment Reference / UPI Transaction ID *
+                  </label>
+
+                  <input
+                    type="text"
+                    id="upiReference"
+                    name="upiReference"
+                    placeholder="Enter UTR / transaction ID"
+                    autocomplete="off"
+                    required
+                  />
+
+                </div>
+
+
+                <div class="field">
+
+                  <label for="paymentScreenshot">
+                    Payment Screenshot *
+                  </label>
+
+                  <input
+                    type="file"
+                    id="paymentScreenshot"
+                    name="paymentScreenshot"
+                    accept="image/jpeg,image/png,image/webp"
+                    required
+                  />
+
+                  <small>
+                    Upload a clear screenshot of the successful
+                    payment. Maximum file size: 5 MB.
+                  </small>
+
+                </div>
+
+
+                <div
+                  id="paymentPreview"
+                  class="payment-preview"
+                ></div>
+
+
+                <button
+                  type="submit"
+                  id="submitPaymentBtn"
+                  class="btn btn-dark btn-full payment-submit"
+                >
+                  Submit Payment Reference
+                </button>
+
+
+                <p
+                  id="paymentStatus"
+                  class="form-status"
+                  role="status"
+                  aria-live="polite"
+                ></p>
+
+              </form>
+
+            </div>
+
+
+            <!-- =================================================
+                 OFFLINE PAYMENT
+                 ================================================= -->
+
+            <div
+              id="offlinePaymentSection"
+              style="display:none;"
+            >
+
+              <div class="offline-box">
+
+                <span class="checkout-label">
+                  Offline payment
+                </span>
+
+                <h3>
+                  Bank Transfer / Offline Payment
+                </h3>
+
+                <p class="section-sub">
+                  Contact CARRENTPE for bank transfer instructions.
+                  Your booking will remain pending until an
+                  administrator verifies the payment.
+                </p>
+
+                <a
+                  href="contact.html"
+                  class="btn btn-dark"
+                >
+                  Contact CARRENTPE
+                </a>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- =========================================================
+       FOOTER
+       ========================================================= -->
+
+  <footer class="site-footer">
+
+    <div class="container">
+
+      <div class="footer-grid">
+
+        <div class="footer-brand footer-section">
+
+          <a href="index.html" class="logo">
+            CARRENTPE
+          </a>
+
+          <p>
+            Premium self-drive rentals across India with trusted,
+            hassle-free booking and 24/7 support.
+          </p>
+
+        </div>
+
+
+        <div class="footer-links footer-section">
+
+          <h4>
+            Quick Links
+          </h4>
+
+          <ul class="footer-list">
+
+            <li>
+              <a href="fleet.html">Fleet</a>
+            </li>
+
+            <li>
+              <a href="about.html">About</a>
+            </li>
+
+            <li>
+              <a href="contact.html">Contact</a>
+            </li>
+
+            <li>
+              <a href="profile.html">Profile</a>
+            </li>
+
+          </ul>
+
+        </div>
+
+
+        <div class="footer-legal footer-section">
+
+          <h4>
+            Legal
+          </h4>
+
+          <ul class="footer-list">
+
+            <li>
+              <a href="privacy.html">
+                Privacy Policy
+              </a>
+            </li>
+
+            <li>
+              <a href="terms.html">
+                Terms & Conditions
+              </a>
+            </li>
+
+            <li>
+              <a href="refund.html">
+                Refund Policy
+              </a>
+            </li>
+
+          </ul>
+
+        </div>
+
+
+        <div class="footer-office footer-section">
+
+          <h4>
+            Office
+          </h4>
+
+          <p>
+            Gavson Business Park, Ghansoli,
+            Navi Mumbai, Maharashtra
+          </p>
+
+          <p>
+            Mon – Sat: 9:00 AM – 8:00 PM
+          </p>
+
+          <p>
+            <a href="tel:+919167164547">
+              +91 91671 64547
+            </a>
+          </p>
+
+          <div class="social-links">
+
+            <a
+              href="#"
+              class="social-link instagram"
+              aria-label="Instagram"
+            >
+              Instagram
+            </a>
+
+            <a
+              href="#"
+              class="social-link facebook"
+              aria-label="Facebook"
+            >
+              Facebook
+            </a>
+
+            <a
+              href="#"
+              class="social-link twitter"
+              aria-label="Twitter"
+            >
+              Twitter
+            </a>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div class="footer-copy">
+        © 2026 CARRENTPE. All rights reserved.
+      </div>
+
+    </div>
+
+  </footer>
+
+
+  <!-- =========================================================
+       SCRIPTS — ONLY ONCE
+       ========================================================= -->
+
+  <script src="js/vehicles.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <script
+    type="module"
+    src="js/payment.js"
+  ></script>
+
+</body>
+</html>

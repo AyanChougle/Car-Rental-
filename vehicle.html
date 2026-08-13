@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Explore a CARRENTPE vehicle in detail with full specs and a 360 degree gallery." />
+    <title>Vehicle Details | CARRENTPE</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <div class="background-video-wrap" aria-hidden="true">
+      <video autoplay muted loop playsinline preload="metadata">
+        <source src="assets/background%20video.mp4" type="video/mp4" />
+      </video>
+    </div>
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <a href="index.html" class="logo" aria-label="CARRENTPE home">CARRENTPE</a>
+        <nav class="nav" aria-label="Primary navigation">
+          <a href="fleet.html">Fleet</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="profile.html">Profile</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="section">
+        <div class="container">
+          <a href="fleet.html" class="vehicle-back-link">&larr; Back to Fleet</a>
+
+          <div class="vehicle-detail-head">
+            <div>
+              <span class="section-label" id="vehicleCategory">Category</span>
+              <h1 class="section-title" id="vehicleName">Loading vehicle&hellip;</h1>
+              <div class="fleet-meta" id="vehicleMetaRow"></div>
+            </div>
+
+            <div class="vehicle-detail-price">
+              <div class="fleet-price" id="vehiclePrice">&mdash;</div>
+              <a href="fleet.html" class="btn btn-dark" id="vehicleBookBtn">Book This Car</a>
+            </div>
+          </div>
+
+          <div class="fleet-specs vehicle-detail-specs" id="vehicleSpecs" style="margin-top: 28px;"></div>
+        </div>
+      </section>
+
+      <section class="vehicle-gallery" id="vehicleGallery">
+        <div class="vehicle-gallery__frame">
+          <span class="vehicle-gallery__label" id="galleryLabel">Front</span>
+          <div class="vehicle-gallery__stage" id="galleryStage"></div>
+          <div class="vehicle-gallery__progress" id="galleryProgress"></div>
+          <span class="vehicle-gallery__hint">Scroll to rotate &darr;</span>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container" style="text-align: center;">
+          <h2 class="section-title">Ready to drive it?</h2>
+          <p class="hero-text">Lock in your dates now, pricing and deposit are shown upfront, no surprises at pickup.</p>
+          <a href="fleet.html" class="btn btn-light">Browse More Cars</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand footer-section">
+            <a href="index.html" class="logo">CARRENTPE</a>
+            <p>Premium self-drive rentals across India with trusted, hassle-free booking and 24/7 support.</p>
+          </div>
+
+          <div class="footer-links footer-section">
+            <h4>Quick Links</h4>
+            <ul class="footer-list">
+              <li><a href="fleet.html">Fleet</a></li>
+              <li><a href="about.html">About</a></li>
+              <li><a href="contact.html">Contact</a></li>
+              <li><a href="profile.html">Profile</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-legal footer-section">
+            <h4>Legal</h4>
+            <ul class="footer-list">
+              <li><a href="privacy.html">Privacy Policy</a></li>
+              <li><a href="terms.html">Terms &amp; Conditions</a></li>
+              <li><a href="refund.html">Refund Policy</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-office footer-section">
+            <h4>Office</h4>
+            <p>Gavson Business Park, Ghansoli, Navi Mumbai, Maharashtra</p>
+            <p>Mon &ndash; Sat: 9:00 AM &ndash; 8:00 PM</p>
+            <p><a href="tel:+919167164547">+91 91671 64547</a></p>
+            <div class="social-links">
+              <a href="#" class="social-link instagram" aria-label="CARRENTPE on Instagram">Instagram</a>
+              <a href="#" class="social-link facebook" aria-label="CARRENTPE on Facebook">Facebook</a>
+              <a href="#" class="social-link twitter" aria-label="CARRENTPE on X">Twitter</a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-copy">© 2026 CARRENTPE. All rights reserved.</div>
+      </div>
+    </footer>
+
+    <script src="js/vehicles.js"></script>
+    <script src="js/vehicle-gallery.js"></script>
+    <script type="module" src="js/nav-helper.js"></script>
+  </body>
+</html>

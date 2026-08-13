@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ID Verification | CARRENTPE</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/profile.css" />
+  <link rel="stylesheet" href="css/verification.css" />
+</head>
+
+<body>
+  <div class="background-video-wrap" aria-hidden="true">
+    <video autoplay muted loop playsinline>
+      <source src="assets/background%20video.mp4" type="video/mp4" />
+    </video>
+  </div>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo">CARRENTPE</a>
+
+      <nav class="nav" aria-label="Main navigation">
+        <a href="fleet.html">Fleet</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="partner.html">Host Car</a>
+        <a href="profile.html">Profile</a>
+        <a href="bookings.html">My Bookings</a>
+        <a href="verification.html" class="active">ID Verification</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="verification-page">
+    <div class="container verification-container">
+
+      <header class="verification-header">
+        <span class="section-label">IDENTITY</span>
+        <h1>Identity &amp; Driving Verification</h1>
+        <p>
+          Upload your documents before vehicle pickup. Your documents are
+          reviewed by the CARRENTPE team before verification is completed.
+        </p>
+      </header>
+
+      <div class="verification-status-card">
+        <div>
+          <span class="verification-status-label">VERIFICATION STATUS</span>
+          <strong id="overallStatus">Checking...</strong>
+        </div>
+        <div class="verification-status-dot" id="overallStatusDot"></div>
+      </div>
+
+      <section class="verification-grid">
+
+        <article class="document-card">
+          <div class="document-card-header">
+            <div>
+              <span class="document-step">01</span>
+              <h2>Driving License</h2>
+              <p>
+                Upload a clear JPG or PNG image of your driving license.
+                Maximum file size: 5MB.
+              </p>
+            </div>
+
+            <span class="document-icon">DL</span>
+          </div>
+
+          <div class="document-status-row">
+            <span>Status</span>
+            <strong id="licenseStatusPill">Not submitted</strong>
+          </div>
+
+          <div class="doc-upload-row">
+            <img id="licensePreview"
+                 class="doc-upload-preview"
+                 alt="Driving license preview"
+                 hidden />
+
+            <div class="doc-upload-controls">
+              <label class="btn btn-light" for="licenseFile">
+                Choose File
+              </label>
+
+              <input type="file"
+                     id="licenseFile"
+                     accept="image/jpeg,image/png"
+                     hidden />
+
+              <button type="button"
+                      id="licenseUploadBtn"
+                      class="btn btn-dark"
+                      disabled>
+                Upload License
+              </button>
+            </div>
+          </div>
+
+          <p class="form-status"
+             id="licenseUploadStatus"
+             role="status"
+             aria-live="polite"></p>
+        </article>
+
+        <article class="document-card">
+          <div class="document-card-header">
+            <div>
+              <span class="document-step">02</span>
+              <h2>Aadhaar Card</h2>
+              <p>
+                Upload a clear JPG or PNG image of your Aadhaar card.
+                Maximum file size: 5MB.
+              </p>
+            </div>
+
+            <span class="document-icon">ID</span>
+          </div>
+
+          <div class="document-status-row">
+            <span>Status</span>
+            <strong id="aadharStatusPill">Not submitted</strong>
+          </div>
+
+          <div class="doc-upload-row">
+            <img id="aadharPreview"
+                 class="doc-upload-preview"
+                 alt="Aadhaar preview"
+                 hidden />
+
+            <div class="doc-upload-controls">
+              <label class="btn btn-light" for="aadharFile">
+                Choose File
+              </label>
+
+              <input type="file"
+                     id="aadharFile"
+                     accept="image/jpeg,image/png"
+                     hidden />
+
+              <button type="button"
+                      id="aadharUploadBtn"
+                      class="btn btn-dark"
+                      disabled>
+                Upload Aadhaar
+              </button>
+            </div>
+          </div>
+
+          <p class="form-status"
+             id="aadharUploadStatus"
+             role="status"
+             aria-live="polite"></p>
+        </article>
+
+      </section>
+
+      <div class="verification-note">
+        <strong>What happens after upload?</strong>
+        <div class="verification-steps">
+          <div><b>1</b><span>Upload both documents</span></div>
+          <div><b>2</b><span>Admin reviews the documents</span></div>
+          <div><b>3</b><span>Status changes to Verified</span></div>
+        </div>
+      </div>
+
+      <div class="verification-actions">
+        <a href="profile.html" class="btn btn-outline">Back to Profile</a>
+        <button type="button" id="logoutBtn" class="btn btn-light">
+          Logout
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-copy">© 2026 CARRENTPE. All rights reserved.</div>
+    </div>
+  </footer>
+
+  <script type="module" src="js/verification.js"></script>
+</body>
+</html>

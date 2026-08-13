@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Book Your Ride | CARRENTPE</title>
+
+  <!-- Main site CSS -->
+  <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Booking page CSS -->
+  <link rel="stylesheet" href="css/booking.css" />
+</head>
+
+<body class="booking-page">
+
+  <!-- =========================
+       BACKGROUND
+  ========================== -->
+  <div class="booking-background" aria-hidden="true">
+    <video autoplay muted loop playsinline>
+      <source
+        src="assets/background%20video.mp4"
+        type="video/mp4"
+      />
+    </video>
+
+    <div class="booking-background-overlay"></div>
+  </div>
+
+
+  <!-- =========================
+       HEADER
+  ========================== -->
+  <header class="site-header booking-header">
+    <div class="container header-inner">
+
+      <a href="index.html" class="logo">
+        CARRENTPE
+      </a>
+
+      <nav class="nav">
+        <a href="fleet.html">Fleet</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="partner.html">Host Car</a>
+        <a href="manager.html">Manager</a>
+        <a href="admin.html">Admin</a>
+        <a href="profile.html">Profile</a>
+      </nav>
+
+    </div>
+  </header>
+
+
+  <!-- =========================
+       MAIN
+  ========================== -->
+  <main class="booking-main">
+
+    <div class="booking-container">
+
+      <!-- =========================
+           PAGE INTRO
+      ========================== -->
+      <section class="booking-hero">
+
+        <a
+          href="fleet.html"
+          class="booking-back"
+        >
+          <span>←</span>
+          Back to Fleet
+        </a>
+
+        <div class="booking-step">
+          Step 1 of 2
+        </div>
+
+        <h1
+          class="booking-title"
+          id="bookingTitle"
+        >
+          Book Your Ride
+        </h1>
+
+        <p class="booking-subtitle">
+          Choose your pickup and drop dates.
+          We'll calculate your total before payment.
+        </p>
+
+      </section>
+
+
+      <!-- =========================
+           BOOKING GRID
+      ========================== -->
+      <section class="booking-layout">
+
+        <!-- =========================
+             LEFT — TRIP DETAILS
+        ========================== -->
+        <section class="booking-card booking-trip-card">
+
+          <div class="booking-card-heading">
+
+            <div class="booking-eyebrow">
+              YOUR TRIP
+            </div>
+
+            <h2>
+              Trip Details
+            </h2>
+
+            <p>
+              Select your dates and customize
+              your rental.
+            </p>
+
+          </div>
+
+
+          <form
+            class="booking-form"
+            id="bookingForm"
+          >
+
+            <!-- DATE ROW -->
+            <div class="booking-date-grid">
+
+              <div class="booking-field">
+                <label for="pickupDate">
+                  Pickup Date
+                </label>
+
+                <input
+                  type="date"
+                  id="pickupDate"
+                  required
+                />
+              </div>
+
+
+              <div class="booking-field">
+                <label for="dropDate">
+                  Drop Date
+                </label>
+
+                <input
+                  type="date"
+                  id="dropDate"
+                  required
+                />
+              </div>
+
+            </div>
+
+
+            <!-- DRIVER -->
+            <div class="booking-driver">
+
+              <label
+                class="booking-driver-label"
+                for="withDriver"
+              >
+
+                <input
+                  type="checkbox"
+                  id="withDriver"
+                />
+
+                <span class="booking-checkbox-box"></span>
+
+                <span class="booking-driver-copy">
+                  <strong>
+                    Add a professional driver
+                  </strong>
+
+                  <small>
+                    Professional driver charged per day
+                  </small>
+                </span>
+
+              </label>
+
+            </div>
+
+
+            <!-- TOTALS -->
+            <div
+              class="booking-totals"
+              id="bookingTotals"
+            ></div>
+
+
+            <!-- STATUS -->
+            <p
+              class="booking-status"
+              id="bookingStatus"
+              role="status"
+              aria-live="polite"
+            ></p>
+
+
+            <!-- BUTTON -->
+            <button
+              type="submit"
+              class="booking-submit"
+            >
+              <span>
+                Continue to Payment
+              </span>
+
+              <span class="booking-submit-arrow">
+                →
+              </span>
+            </button>
+
+          </form>
+
+        </section>
+
+
+        <!-- =========================
+             RIGHT — VEHICLE SUMMARY
+        ========================== -->
+        <aside class="booking-card booking-car-card">
+
+          <div class="booking-eyebrow">
+            YOUR CAR
+          </div>
+
+
+          <!-- VEHICLE HEADER -->
+          <div class="booking-vehicle">
+
+            <div
+              class="booking-vehicle-image"
+              id="bookingVehicleImage"
+            >
+              <span id="bookingVehicleIcon">
+                🚗
+              </span>
+            </div>
+
+            <div class="booking-vehicle-info">
+
+              <h2 id="bookingVehicleName">
+                Loading vehicle...
+              </h2>
+
+              <p id="bookingVehicleMeta">
+                —
+              </p>
+
+            </div>
+
+          </div>
+
+
+          <!-- VEHICLE SPECS -->
+          <div class="booking-specs">
+
+            <div class="booking-spec">
+
+              <span>
+                Day rate
+              </span>
+
+              <strong id="bookingDayRate">
+                —
+              </strong>
+
+            </div>
+
+
+            <div class="booking-spec">
+
+              <span>
+                Driver / day
+              </span>
+
+              <strong id="bookingDriverRate">
+                —
+              </strong>
+
+            </div>
+
+
+            <div class="booking-spec">
+
+              <span>
+                Security deposit
+              </span>
+
+              <strong id="bookingDeposit">
+                —
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <!-- LOCATION -->
+          <div class="booking-location">
+
+            <div class="booking-location-label">
+              PICKUP LOCATION
+            </div>
+
+            <strong id="bookingLocation">
+              —
+            </strong>
+
+          </div>
+
+
+          <!-- LICENSE NOTE -->
+          <p
+            class="booking-license-note"
+            id="bookingLicenseNote"
+          ></p>
+
+        </aside>
+
+      </section>
+
+    </div>
+
+  </main>
+
+
+  <!-- =========================
+       FOOTER
+  ========================== -->
+  <footer class="site-footer booking-footer">
+
+    <div class="container">
+
+      <div class="footer-grid">
+
+        <div class="footer-brand footer-section">
+
+          <a
+            href="index.html"
+            class="logo"
+          >
+            CARRENTPE
+          </a>
+
+          <p>
+            Premium self-drive rentals across India
+            with trusted, hassle-free booking and
+            24/7 support.
+          </p>
+
+        </div>
+
+
+        <div class="footer-links footer-section">
+
+          <h4>
+            Quick Links
+          </h4>
+
+          <ul class="footer-list">
+            <li>
+              <a href="fleet.html">
+                Fleet
+              </a>
+            </li>
+
+            <li>
+              <a href="about.html">
+                About
+              </a>
+            </li>
+
+            <li>
+              <a href="contact.html">
+                Contact
+              </a>
+            </li>
+
+            <li>
+              <a href="profile.html">
+                Profile
+              </a>
+            </li>
+          </ul>
+
+        </div>
+
+
+        <div class="footer-legal footer-section">
+
+          <h4>
+            Legal
+          </h4>
+
+          <ul class="footer-list">
+
+            <li>
+              <a href="privacy.html">
+                Privacy Policy
+              </a>
+            </li>
+
+            <li>
+              <a href="terms.html">
+                Terms & Conditions
+              </a>
+            </li>
+
+            <li>
+              <a href="refund.html">
+                Refund Policy
+              </a>
+            </li>
+
+          </ul>
+
+        </div>
+
+
+        <div class="footer-office footer-section">
+
+          <h4>
+            Office
+          </h4>
+
+          <p>
+            Gavson Business Park, Ghansoli,
+            Navi Mumbai, Maharashtra
+          </p>
+
+          <p>
+            Mon – Sat: 9:00 AM – 8:00 PM
+          </p>
+
+          <p>
+            <a href="tel:+919167164547">
+              +91 91671 64547
+            </a>
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="footer-copy">
+        © 2026 CARRENTPE. All rights reserved.
+      </div>
+
+    </div>
+
+  </footer>
+
+
+  <!-- =========================
+       SCRIPTS
+  ========================== -->
+
+  <script src="js/vehicles.js"></script>
+
+  <script
+    type="module"
+    src="js/booking.js"
+  ></script>
+
+</body>
+</html>

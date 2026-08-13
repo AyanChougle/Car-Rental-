@@ -1,0 +1,1066 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Host Your Car | CARRENTPE</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+
+  <!-- Partner page specific styles -->
+  <style>
+    /* =========================================================
+       PARTNER / HOST CAR PAGE
+       ========================================================= */
+
+    .partner-page {
+      padding-top: 80px;
+      padding-bottom: 80px;
+    }
+
+    .partner-page .section-header {
+      margin-bottom: 36px;
+    }
+
+    .partner-card {
+      width: 100%;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 36px;
+      box-sizing: border-box;
+    }
+
+    /* ---------------------------------------------------------
+       Form
+       --------------------------------------------------------- */
+
+    #partnerForm {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin: 0;
+    }
+
+    /* ---------------------------------------------------------
+       Sections
+       --------------------------------------------------------- */
+
+    .partner-form-section {
+      width: 100%;
+    }
+
+    .partner-form-section + .partner-form-section {
+      margin-top: 34px;
+      padding-top: 30px;
+      border-top: 1px solid var(--line);
+    }
+
+    .partner-form-title {
+      margin: 0 0 6px;
+      color: var(--text);
+      font-size: 1.2rem;
+      font-weight: 800;
+    }
+
+    .partner-form-description {
+      margin: 0 0 22px;
+      color: var(--muted);
+      font-size: 0.86rem;
+      line-height: 1.6;
+    }
+
+    /* ---------------------------------------------------------
+       2 column grid
+       --------------------------------------------------------- */
+
+    .partner-grid {
+      width: 100%;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      column-gap: 20px;
+      row-gap: 20px;
+    }
+
+    .partner-field {
+      width: 100%;
+      min-width: 0;
+    }
+
+    .partner-field.full {
+      grid-column: 1 / -1;
+    }
+
+    /* ---------------------------------------------------------
+       Labels
+       --------------------------------------------------------- */
+
+    .partner-field label {
+      display: block;
+      width: 100%;
+      margin-bottom: 8px;
+      color: var(--text);
+      font-size: 0.82rem;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    /* ---------------------------------------------------------
+       Inputs
+       --------------------------------------------------------- */
+
+    .partner-field input,
+    .partner-field select,
+    .partner-field textarea {
+      display: block;
+      width: 100%;
+      height: 48px;
+      min-height: 48px;
+      margin: 0;
+      padding: 0 14px;
+
+      box-sizing: border-box;
+
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 10px;
+
+      background: #151515;
+      color: #f5f5f5;
+
+      font-family: inherit;
+      font-size: 0.92rem;
+
+      outline: none;
+      transition:
+        border-color 180ms ease,
+        box-shadow 180ms ease,
+        background 180ms ease;
+    }
+
+    .partner-field textarea {
+      height: auto;
+      min-height: 110px;
+      padding-top: 13px;
+      padding-bottom: 13px;
+      resize: vertical;
+    }
+
+    .partner-field input::placeholder {
+      color: #858585;
+      opacity: 1;
+    }
+
+    .partner-field input:focus,
+    .partner-field select:focus,
+    .partner-field textarea:focus {
+      background: #181818;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(0, 200, 255, 0.08);
+    }
+
+    .partner-field select {
+      cursor: pointer;
+    }
+
+    .partner-field select option {
+      background: #151515;
+      color: #fff;
+    }
+
+    .partner-field input[type="date"] {
+      color-scheme: dark;
+    }
+
+    .partner-field input[type="date"]::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      opacity: 0.8;
+    }
+
+    .partner-field input:disabled,
+    .partner-field select:disabled {
+      background: #111;
+      color: #777;
+      opacity: 1;
+      cursor: not-allowed;
+    }
+
+    /* ---------------------------------------------------------
+       Helper text
+       --------------------------------------------------------- */
+
+    .partner-help {
+      display: block;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      line-height: 1.5;
+    }
+
+    /* ---------------------------------------------------------
+       Submit
+       --------------------------------------------------------- */
+
+    .partner-submit {
+      width: 100%;
+      margin-top: 30px;
+    }
+
+    .partner-submit .btn {
+      width: 100%;
+      min-height: 52px;
+    }
+
+    .partner-status {
+      margin-top: 12px;
+      text-align: center;
+    }
+
+    /* ---------------------------------------------------------
+       Success
+       --------------------------------------------------------- */
+
+    #partnerSuccessMsg {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    #partnerSuccessMsg .success-icon {
+      margin-bottom: 16px;
+      font-size: 3rem;
+    }
+
+    #partnerSuccessMsg h3 {
+      margin-bottom: 12px;
+      color: var(--accent);
+    }
+
+    #partnerSuccessMsg p {
+      max-width: 500px;
+      margin: 0 auto 24px;
+      color: var(--sub);
+      line-height: 1.7;
+    }
+
+    /* ---------------------------------------------------------
+       Listings
+       --------------------------------------------------------- */
+
+    #myListingsSection {
+      width: 100%;
+      max-width: 860px;
+      margin: 30px auto 0;
+      padding: 28px;
+      box-sizing: border-box;
+    }
+
+    #myListingsSection h3 {
+      margin: 0 0 16px;
+      color: var(--text);
+      font-size: 1.15rem;
+    }
+
+    #myListingsWrap {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .partner-listing {
+      width: 100%;
+      padding: 16px;
+      box-sizing: border-box;
+    }
+
+    .partner-listing__top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .partner-listing__title {
+      margin: 0;
+      color: var(--text);
+      font-size: 0.98rem;
+      font-weight: 800;
+    }
+
+    .partner-listing__meta {
+      margin-top: 5px;
+      color: var(--sub);
+      font-size: 0.82rem;
+    }
+
+    .partner-listing__photos {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .partner-listing__photos img {
+      width: 100%;
+      height: 90px;
+      object-fit: cover;
+      border-radius: 8px;
+      display: block;
+    }
+
+    /* ---------------------------------------------------------
+       Mobile
+       --------------------------------------------------------- */
+
+    @media (max-width: 720px) {
+
+      .partner-page {
+        padding-top: 50px;
+        padding-bottom: 50px;
+      }
+
+      .partner-card {
+        padding: 24px 20px;
+      }
+
+      .partner-grid {
+        grid-template-columns: 1fr;
+        row-gap: 18px;
+      }
+
+      .partner-field.full {
+        grid-column: auto;
+      }
+
+      .partner-form-section + .partner-form-section {
+        margin-top: 28px;
+        padding-top: 26px;
+      }
+    }
+
+    @media (max-width: 480px) {
+
+      .partner-card {
+        padding: 20px 16px;
+      }
+
+      .partner-form-title {
+        font-size: 1.08rem;
+      }
+
+      .partner-field input,
+      .partner-field select {
+        height: 46px;
+        min-height: 46px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Background -->
+  <div class="background-video-wrap" aria-hidden="true">
+    <video autoplay muted loop playsinline>
+      <source
+        src="assets/background%20video.mp4"
+        type="video/mp4"
+      />
+    </video>
+  </div>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="container header-inner">
+
+      <a href="index.html" class="logo">
+        CARRENTPE
+      </a>
+
+      <nav class="nav">
+        <a href="fleet.html">Fleet</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="partner.html">Host Car</a>
+        <a href="profile.html">Profile</a>
+      </nav>
+
+    </div>
+  </header>
+
+
+  <!-- =======================================================
+       MAIN
+       ======================================================= -->
+
+  <main class="section partner-page">
+
+    <div class="container">
+
+      <!-- Page heading -->
+      <div class="section-header centered">
+
+        <span class="section-label">
+          Earn With CARRENTPE
+        </span>
+
+        <h1 class="section-title">
+          List Your Car for Rent
+        </h1>
+
+        <p
+          class="section-sub"
+          style="max-width: 680px; margin: 12px auto 0;"
+        >
+          Turn your idle car into passive income. Partner with
+          CARRENTPE for verified renters, insured trips, and smooth
+          payouts.
+        </p>
+
+      </div>
+
+
+      <!-- =====================================================
+           PARTNER FORM CARD
+           ===================================================== -->
+
+      <div class="card partner-card">
+
+        <form id="partnerForm" autocomplete="on">
+
+          <!-- =================================================
+               VEHICLE DETAILS
+               ================================================= -->
+
+          <section class="partner-form-section">
+
+            <h2 class="partner-form-title">
+              Vehicle Details
+            </h2>
+
+            <p class="partner-form-description">
+              Enter your vehicle information exactly as shown on
+              your registration documents.
+            </p>
+
+
+            <div class="partner-grid">
+
+              <!-- Brand -->
+              <div class="partner-field">
+
+                <label for="carBrand">
+                  Vehicle Brand *
+                </label>
+
+                <select id="carBrand" required>
+
+                  <option value="">
+                    Select Brand
+                  </option>
+
+                  <option value="Mahindra">Mahindra</option>
+                  <option value="Hyundai">Hyundai</option>
+                  <option value="BMW">BMW</option>
+                  <option value="Mercedes-Benz">
+                    Mercedes-Benz
+                  </option>
+                  <option value="Audi">Audi</option>
+                  <option value="Jeep">Jeep</option>
+                  <option value="Volvo">Volvo</option>
+                  <option value="Jaguar">Jaguar</option>
+                  <option value="Maruti Suzuki">
+                    Maruti Suzuki
+                  </option>
+                  <option value="Tata">Tata</option>
+                  <option value="Toyota">Toyota</option>
+                  <option value="Kia">Kia</option>
+                  <option value="Honda">Honda</option>
+                  <option value="MG">MG</option>
+                  <option value="Renault">Renault</option>
+                  <option value="Skoda">Skoda</option>
+                  <option value="Volkswagen">Volkswagen</option>
+                  <option value="Ford">Ford</option>
+                  <option value="Nissan">Nissan</option>
+                  <option value="Lexus">Lexus</option>
+                  <option value="Mini">Mini</option>
+                  <option value="Porsche">Porsche</option>
+                  <option value="Land Rover">Land Rover</option>
+                  <option value="Fiat">Fiat</option>
+                  <option value="Isuzu">Isuzu</option>
+                  <option value="Maserati">Maserati</option>
+                  <option value="Bentley">Bentley</option>
+                  <option value="Rolls-Royce">
+                    Rolls-Royce
+                  </option>
+                  <option value="Aston Martin">
+                    Aston Martin
+                  </option>
+                  <option value="Bugatti">Bugatti</option>
+                  <option value="Ferrari">Ferrari</option>
+                  <option value="Lamborghini">
+                    Lamborghini
+                  </option>
+                  <option value="McLaren">McLaren</option>
+
+                </select>
+
+              </div>
+
+
+              <!-- Model -->
+              <div class="partner-field">
+
+                <label for="carModel">
+                  Vehicle Model *
+                </label>
+
+                <select
+                  id="carModel"
+                  required
+                  disabled
+                >
+
+                  <option value="">
+                    Select Model
+                  </option>
+
+                </select>
+
+              </div>
+
+
+              <!-- Manufacturing year -->
+              <div class="partner-field">
+
+                <label for="carYear">
+                  Manufacturing Year *
+                </label>
+
+                <input
+                  type="number"
+                  id="carYear"
+                  min="2015"
+                  max="2026"
+                  placeholder="2023"
+                  required
+                />
+
+              </div>
+
+
+              <!-- Category -->
+              <!-- <div class="partner-field">
+
+                <label for="carCategory">
+                  Category *
+                </label>
+
+                <select id="carCategory" required>
+
+                  <option value="economy">
+                    Economy / Hatchback
+                  </option>
+
+                  <option value="suv">
+                    SUV / MUV
+                  </option>
+
+                  <option value="luxury">
+                    Luxury / Premium
+                  </option>
+
+                  <option value="van">
+                    Van / 7-Seater
+                  </option>
+
+                </select>
+
+              </div> -->
+
+
+              <!-- Transmission -->
+              <div class="partner-field">
+
+                <label for="carTransmission">
+                  Transmission *
+                </label>
+
+                <select
+                  id="carTransmission"
+                  required
+                >
+
+                  <option value="Manual">
+                    Manual
+                  </option>
+
+                  <option value="Automatic">
+                    Automatic
+                  </option>
+
+                  <option value="AMT">
+                    AMT
+                  </option>
+
+                  <option value="IMT">
+                    IMT
+                  </option>
+
+                </select>
+
+              </div>
+
+
+              <!-- Fuel -->
+              <div class="partner-field">
+
+                <label for="carFuel">
+                  Fuel Type *
+                </label>
+
+                <select id="carFuel" required>
+
+                  <option value="Petrol">
+                    Petrol
+                  </option>
+
+                  <option value="Diesel">
+                    Diesel
+                  </option>
+
+                  <option value="Petrol + CNG">
+                    Petrol + CNG
+                  </option>
+
+                  <option value="Electric">
+                    Electric
+                  </option>
+
+                </select>
+
+              </div>
+
+
+              <!-- Seats -->
+              <div class="partner-field">
+
+                <label for="carSeats">
+                  Seats *
+                </label>
+
+                <input
+                  type="number"
+                  id="carSeats"
+                  min="2"
+                  max="10"
+                  placeholder="5"
+                  required
+                />
+
+              </div>
+
+
+              <!-- Registration -->
+              <div class="partner-field">
+
+                <label for="carRegNumber">
+                  Registration Number *
+                </label>
+
+                <input
+                  type="text"
+                  id="carRegNumber"
+                  placeholder="MH12AB1234"
+                  maxlength="20"
+                  required
+                />
+
+              </div>
+
+
+              <!-- Location -->
+              <div class="partner-field full">
+
+                <label for="carLocation">
+                  Pickup Location / City *
+                </label>
+
+                <input
+                  type="text"
+                  id="carLocation"
+                  placeholder="Bandra West, Mumbai"
+                  required
+                />
+
+              </div>
+
+            </div>
+
+          </section>
+
+
+          <!-- =================================================
+               VEHICLE DOCUMENTS
+               ================================================= -->
+
+          <section class="partner-form-section">
+
+            <h2 class="partner-form-title">
+              Vehicle Documents
+            </h2>
+
+            <p class="partner-form-description">
+              Enter the validity dates exactly as shown on your
+              vehicle documents.
+            </p>
+
+
+            <div class="partner-grid">
+
+              <!-- Insurance Start -->
+              <div class="partner-field">
+
+                <label for="InsStartDate">
+                  Insurance Start Date *
+                </label>
+
+                <input
+                  type="date"
+                  id="InsStartDate"
+                  required
+                />
+
+              </div>
+
+
+              <!-- Insurance End -->
+              <div class="partner-field">
+
+                <label for="InsEndDate">
+                  Insurance End Date *
+                </label>
+
+                <input
+                  type="date"
+                  id="InsEndDate"
+                  required
+                />
+
+              </div>
+
+
+              <!-- PUC Start -->
+              <div class="partner-field">
+
+                <label for="PUCStartDate">
+                  PUC Start Date *
+                </label>
+
+                <input
+                  type="date"
+                  id="PUCStartDate"
+                  required
+                />
+
+              </div>
+
+
+              <!-- PUC End -->
+              <div class="partner-field">
+
+                <label for="PUCEndDate">
+                  PUC End Date *
+                </label>
+
+                <input
+                  type="date"
+                  id="PUCEndDate"
+                  required
+                />
+
+              </div>
+
+
+              <!-- Vehicle photo -->
+              <div class="partner-field full">
+
+                <label for="carImageUrl">
+                  Vehicle Photo Link
+                </label>
+
+                <input
+                  type="url"
+                  id="carImageUrl"
+                  placeholder="https://..."
+                />
+
+                <small class="partner-help">
+                  Optional. Paste an image URL or cloud
+                  storage link of your vehicle.
+                </small>
+
+              </div>
+
+            </div>
+
+          </section>
+
+
+          <!-- =================================================
+               OWNER INFORMATION
+               ================================================= -->
+
+          <section class="partner-form-section">
+
+            <h2 class="partner-form-title">
+              Owner Information
+            </h2>
+
+            <p class="partner-form-description">
+              Enter the details of the registered vehicle owner.
+            </p>
+
+
+            <div class="partner-grid">
+
+              <!-- Owner name -->
+              <div class="partner-field">
+
+                <label for="ownerName">
+                  Owner Name *
+                </label>
+
+                <input
+                  type="text"
+                  id="ownerName"
+                  placeholder="Your full name"
+                  required
+                />
+
+              </div>
+
+
+              <!-- Phone -->
+              <div class="partner-field">
+
+                <label for="ownerPhone">
+                  Contact Phone *
+                </label>
+
+                <input
+                  type="tel"
+                  id="ownerPhone"
+                  placeholder="+91 9876543210"
+                  required
+                />
+
+              </div>
+
+            </div>
+
+          </section>
+
+
+          <!-- =================================================
+               SUBMIT
+               ================================================= -->
+
+          <div class="partner-submit">
+
+            <button
+              type="submit"
+              id="submitPartnerBtn"
+              class="btn btn-dark btn-full"
+            >
+              Submit Car for Approval
+            </button>
+
+            <p
+              id="partnerStatus"
+              class="form-status partner-status"
+              role="status"
+              aria-live="polite"
+            ></p>
+
+          </div>
+
+        </form>
+
+
+        <!-- ===================================================
+             SUCCESS
+             =================================================== -->
+
+        <!-- <div id="partnerSuccessMsg" hidden>
+
+          <div class="success-icon">
+            🎉
+          </div>
+
+          <h3>
+            Submission Received!
+          </h3>
+
+          <p>
+            Your car details have been submitted to our team
+            for verification. An admin will review your listing
+            shortly. Once approved, your car will be live in
+            our fleet catalog.
+          </p>
+
+          <a
+            href="fleet.html"
+            class="btn btn-light"
+          >
+            Browse Existing Fleet
+          </a>
+
+        </div>
+
+      </div> -->
+
+
+      <!-- =====================================================
+           MY LISTINGS
+           ===================================================== -->
+
+      <div
+        id="myListingsSection"
+        class="card"
+        hidden
+      >
+
+        <h3>
+          Your Car Listings
+        </h3>
+
+        <div id="myListingsWrap"></div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+
+  <!-- =======================================================
+       FOOTER
+       ======================================================= -->
+
+  <footer class="site-footer">
+
+    <div class="container">
+
+      <div class="footer-grid">
+
+        <div class="footer-brand footer-section">
+
+          <a href="index.html" class="logo">
+            CARRENTPE
+          </a>
+
+          <p>
+            Premium self-drive rentals across India with
+            trusted, hassle-free booking and 24/7 support.
+          </p>
+
+        </div>
+
+
+        <div class="footer-links footer-section">
+
+          <h4>Quick Links</h4>
+
+          <ul class="footer-list">
+
+            <li>
+              <a href="fleet.html">Fleet</a>
+            </li>
+
+            <li>
+              <a href="about.html">About</a>
+            </li>
+
+            <li>
+              <a href="partner.html">Host Car</a>
+            </li>
+
+            <li>
+              <a href="profile.html">Profile</a>
+            </li>
+
+          </ul>
+
+        </div>
+
+
+        <div class="footer-legal footer-section">
+
+          <h4>Legal</h4>
+
+          <ul class="footer-list">
+
+            <li>
+              <a href="privacy.html">
+                Privacy Policy
+              </a>
+            </li>
+
+            <li>
+              <a href="terms.html">
+                Terms & Conditions
+              </a>
+            </li>
+
+            <li>
+              <a href="refund.html">
+                Refund Policy
+              </a>
+            </li>
+
+          </ul>
+
+        </div>
+
+
+        <div class="footer-office footer-section">
+
+          <h4>Office</h4>
+
+          <p>
+            Gavson Business Park, Ghansoli,
+            Navi Mumbai, Maharashtra
+          </p>
+
+          <p>
+            <a href="tel:+919167164547">
+              +91 91671 64547
+            </a>
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="footer-copy">
+        © 2026 CARRENTPE. All rights reserved.
+      </div>
+
+    </div>
+
+  </footer>
+
+
+  <!-- Scripts -->
+  <script
+    type="module"
+    src="js/partner.js"
+  ></script>
+
+  <script src="js/carModels.js"></script>
+
+</body>
+</html>
