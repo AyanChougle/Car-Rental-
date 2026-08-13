@@ -15,9 +15,9 @@ import { getStorage } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-
 // Real protection comes from firestore.rules / storage.rules.
 const firebaseConfig = {
   apiKey: "AIzaSyARhtzwJV90HcdN7_szUWP34ZQ7zS2iMOw",
-  authDomain: "CARRENTPEweb.firebaseapp.com",
-  projectId: "CARRENTPEweb",
-  storageBucket: "CARRENTPEweb.firebasestorage.app",
+  authDomain: "carrentpeweb.firebaseapp.com",
+  projectId: "carrentpeweb",
+  storageBucket: "carrentpeweb.firebasestorage.app",
   messagingSenderId: "903989537070",
   appId: "1:903989537070:web:98402187513738b65d32bf",
   measurementId: "G-04LJBW1137",
