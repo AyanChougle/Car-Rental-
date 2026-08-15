@@ -1,0 +1,8 @@
+node_modules/
+.env
+serviceAccountKey.json
+db/media.sqlite
+db/media.sqlite-shm
+db/media.sqlite-wal
+uploads/*
+!uploads/.gitkeep

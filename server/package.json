@@ -1,0 +1,19 @@
+{
+  "name": "carrentpe-media-server",
+  "version": "1.0.0",
+  "description": "Local media upload/storage backend for CARRENTPE (photos, videos, docs) — SQLite metadata + disk storage.",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^2.0.1",
+    "better-sqlite3": "^11.3.0",
+    "firebase-admin": "^12.5.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5"
+  }
+}
