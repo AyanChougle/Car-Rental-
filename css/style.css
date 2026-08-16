@@ -1479,25 +1479,13 @@ header p {
 	box-shadow: 0 28px 60px rgba(0, 0, 0, 0.25);
 }
 
-.car-card__image {
-	height: 220px;
-	border-radius: 24px 24px 0 0;
-	overflow: hidden;
-	position: relative;
-	display: grid;
-	place-items: center;
-	background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03));
-	border-bottom: 1px solid var(--line);
-	color: var(--muted);
-}
-
-.car-card__image img {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-	object-position: center;
-	display: block;
-}
+/* .car-card__image / .car-card__image img base rules removed here —
+   this exact selector pair was declared 4 separate times across this
+   file (classic copy-pasted "fix" pattern). The #fleet-scoped version
+   near the bottom of this file (search "#fleet .car-card__image") is
+   the only one that actually renders, since it uses !important and a
+   higher-specificity ID selector — every other copy was dead weight
+   that could never win the cascade. Consolidated to that one block. */
 
 .car-card__body,
 .feature-card,
@@ -3635,32 +3623,12 @@ select:disabled {
   overflow: hidden;
 }
 
-.car-card__image {
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  min-height: 0;
-  overflow: hidden;
-  display: grid;
-  place-items: center;
-  background: rgba(255,255,255,0.03);
-}
-
-.car-card__image img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center;
-  padding: 8px;
-}
-
-.fleet-card__image img,
-.fleet-card--compact .fleet-card__image img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center;
-  display: block;
-}
+/* car-card__image duplicate removed here — see the note near the top
+   of this file where the block above it used to live; the real rule
+   is #fleet-scoped near the bottom. fleet-card__image img duplicate
+   also removed here — it was silently re-overriding the documented
+   "single source of truth" rule at .fleet-card--compact .fleet-card__image img
+   above, which defeated the whole point of that comment. */
 
 .testimonial-author {
   display: flex;
@@ -4404,17 +4372,9 @@ img {
   height: auto;
 }
 
-.car-card__image,
-.fleet-card__image {
-  width: 100%;
-  overflow: hidden;
-}
-
-.car-card__image img,
-.fleet-card__image img {
-  display: block;
-  max-width: 100%;
-}
+/* Third car-card__image / fleet-card__image duplicate removed here,
+   same reason as the two notes above — this pair never wins the
+   cascade against the #fleet-scoped !important rule. */
 
 /* =========================================================
    TABLET / SMALL LAPTOP
@@ -5019,16 +4979,8 @@ main {
   overflow: hidden;
 }
 
-.car-card__image {
-  width: 100%;
-  overflow: hidden;
-}
-
-.car-card__image img {
-  width: 100%;
-  max-width: 100%;
-  object-fit: contain;
-}
+/* Fourth and final car-card__image duplicate removed here — same
+   dead-weight reason as the other three removed above. */
 
 /* =========================================================
    TABLET
@@ -5401,8 +5353,8 @@ main {
 
 #fleet .car-card__meta a {
   display: inline-flex;
-  align-items: abs;
-  justify-content: absolute;
+  align-items: center;
+  justify-content: center;
   min-width: 66px;
   min-height: 34px;
   padding: 7px 12px;
