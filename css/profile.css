@@ -1118,3 +1118,195 @@
     }
 
 }
+
+/* ============================================================
+   MY MEDIA TAB
+   Personal photo/video gallery (local media server, /server).
+   Same card/border/spacing language as .document-card above.
+   ============================================================ */
+
+.profile-page .media-upload-row {
+    display: flex;
+
+    align-items: center;
+
+    flex-wrap: wrap;
+
+    gap: 10px;
+
+    margin-top: 22px;
+}
+
+.profile-page .media-error-state {
+    margin: 14px 0 0;
+
+    padding: 12px 14px;
+
+    border: 1px solid rgba(255,119,119,.3);
+
+    border-radius: 10px;
+
+    background: rgba(255,119,119,.08);
+
+    color: #ff9d9d;
+
+    font-size: 13px;
+
+    line-height: 1.5;
+}
+
+.profile-page .media-empty-state {
+    margin: 22px 0 0;
+
+    padding: 26px;
+
+    border: 1px dashed rgba(255,255,255,.14);
+
+    border-radius: 14px;
+
+    text-align: center;
+
+    color: rgba(255,255,255,.5);
+
+    font-size: 13px;
+}
+
+.profile-page .media-grid {
+    display: grid;
+
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+
+    gap: 14px;
+
+    width: 100%;
+
+    margin-top: 22px;
+}
+
+.profile-page .media-item {
+    display: flex;
+
+    flex-direction: column;
+
+    min-width: 0;
+
+    border: 1px solid rgba(255,255,255,.11);
+
+    border-radius: 14px;
+
+    background: rgba(255,255,255,.035);
+
+    overflow: hidden;
+}
+
+.profile-page .media-item__preview {
+    position: relative;
+
+    width: 100%;
+
+    aspect-ratio: 1 / 1;
+
+    display: grid;
+
+    place-items: center;
+
+    background: #080808;
+}
+
+.profile-page .media-item__preview img,
+.profile-page .media-item__preview video {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    display: block;
+}
+
+.profile-page .media-item__loading {
+    color: rgba(255,255,255,.4);
+
+    font-size: 12px;
+}
+
+.profile-page .media-item__meta {
+    display: flex;
+
+    align-items: center;
+
+    justify-content: space-between;
+
+    gap: 8px;
+
+    padding: 10px 12px 0;
+}
+
+.profile-page .media-item__name {
+    min-width: 0;
+
+    overflow: hidden;
+
+    text-overflow: ellipsis;
+
+    white-space: nowrap;
+
+    color: rgba(255,255,255,.8);
+
+    font-size: 12px;
+}
+
+.profile-page .media-item__size {
+    flex: 0 0 auto;
+
+    color: rgba(255,255,255,.4);
+
+    font-size: 11px;
+}
+
+.profile-page .media-item__delete {
+    margin: 10px 12px 12px;
+
+    padding: 8px 10px;
+
+    border: 1px solid rgba(255,119,119,.3);
+
+    border-radius: 8px;
+
+    background: transparent;
+
+    color: #ff9d9d;
+
+    font-size: 12px;
+
+    font-weight: 700;
+
+    cursor: pointer;
+
+    transition: background 160ms ease;
+}
+
+.profile-page .media-item__delete:hover {
+    background: rgba(255,119,119,.1);
+}
+
+.profile-page .media-item__delete:disabled {
+    opacity: .5;
+
+    cursor: default;
+}
+
+@media (max-width: 900px) {
+
+    .profile-page .media-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+}
+
+@media (max-width: 640px) {
+
+    .profile-page .media-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+}

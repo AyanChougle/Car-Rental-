@@ -168,6 +168,16 @@
           ID Verification
         </button>
 
+        <button
+          type="button"
+          class="prof-tab-btn"
+          data-tab="prof-tab-media"
+          role="tab"
+          aria-selected="false"
+        >
+          My Media
+        </button>
+
       </div>
 
 
@@ -687,6 +697,95 @@
 
         </section>
 
+
+        <!-- ===================================================
+             TAB 4 — MY MEDIA
+             Personal photo/video gallery. Stored on the local
+             media server (Node/Express + SQLite), not Firebase
+             Storage — see /server. Separate from the license and
+             Aadhaar uploads above, which stay on their own flow.
+        ==================================================== -->
+
+        <section
+          id="prof-tab-media"
+          class="prof-panel"
+          hidden
+        >
+
+          <div class="documents-header">
+
+            <span class="section-label">
+              GALLERY
+            </span>
+
+            <h2>
+              My Media
+            </h2>
+
+            <p>
+              Your own photos and videos, stored privately —
+              only you (or staff, for support) can view them.
+            </p>
+
+          </div>
+
+
+          <div class="media-upload-row">
+
+            <label
+              class="profile-action primary"
+              for="mediaFile"
+            >
+              Choose Photo or Video
+            </label>
+
+            <input
+              type="file"
+              id="mediaFile"
+              accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+              hidden
+            />
+
+            <button
+              type="button"
+              id="mediaUploadBtn"
+              class="profile-action primary"
+              disabled
+            >
+              Upload
+            </button>
+
+          </div>
+
+          <p
+            class="form-status"
+            id="mediaUploadStatus"
+            role="status"
+            aria-live="polite"
+          ></p>
+
+          <p
+            class="media-error-state"
+            id="mediaErrorState"
+            role="alert"
+            hidden
+          ></p>
+
+          <p
+            class="media-empty-state"
+            id="mediaEmptyState"
+            hidden
+          >
+            No media yet — upload a photo or video above to get started.
+          </p>
+
+          <div
+            class="media-grid"
+            id="mediaGrid"
+          ></div>
+
+        </section>
+
       </div>
 
     </div>
@@ -838,6 +937,11 @@
   <script
     type="module"
     src="js/profile.js"
+  ></script>
+
+  <script
+    type="module"
+    src="js/media.js"
   ></script>
 
 </body>

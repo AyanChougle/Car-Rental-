@@ -26,6 +26,7 @@ const ALLOWED_CATEGORIES = new Set([
   "partner_car_video",
   "payment_screenshot",
   "inspection_photo",
+  "personal_media", // Profile > My Media — user's own photo/video gallery
 ]);
 
 const ALLOWED_MIME = new Set([
