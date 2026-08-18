@@ -1,9 +1,26 @@
 {
-  "dependencies": {
-    "firebase": "^12.17.1"
+  "name": "carrentpe-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CARRENTPE secure media and payment verification backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
   },
-  "allowScripts": {
-    "@firebase/util@1.15.2": true,
-    "protobufjs@7.6.5": true
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.2",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "file-type": "16.5.4",
+    "firebase": "^12.17.1",
+    "firebase-admin": "^14.2.0",
+    "helmet": "^8.1.0",
+    "multer": "^2.2.0"
   }
 }

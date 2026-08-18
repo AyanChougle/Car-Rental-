@@ -92,3 +92,7 @@ Thumbs.db
 .vscode/
 
 .env
+server/serviceAccountKey.json
+.env
+server/db/
+server/uploads/

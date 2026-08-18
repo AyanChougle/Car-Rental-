@@ -1,22 +1,42 @@
 // ============================================================
 // CARRENTPE - PAYMENT / CHECKOUT
+// COMPLETE REPLACEMENT - LOCAL SQL MEDIA SERVER
 // ============================================================
 //
-// Manual payment verification:
+// Payment flow:
 //
 // 1. Customer opens checkout
-// 2. Customer chooses UPI or Bank Transfer
+// 2. Customer chooses UPI / Bank Transfer
 // 3. Customer makes payment
-// 4. Customer enters transaction / UTR
-// 5. Customer uploads screenshot
-// 6. Firestore paymentStatus = pending_verification
+// 4. Customer enters UTR / transaction ID
+// 5. Customer selects payment screenshot
+// 6. Screenshot uploads to Node.js media server
+// 7. Node.js saves file to /uploads
+// 8. SQLite saves media record
+// 9. Firestore booking is updated
+// 10. paymentStatus = pending_verification
 //
 // IMPORTANT:
-// This is manual payment verification.
-// It is NOT an automatic payment gateway.
+//
+// Firebase Storage is NOT used here.
+//
+// Firebase is used ONLY for:
+// - Authentication
+// - Firestore booking data
+//
+// Files are stored through:
+//
+// Browser
+//    ↓
+// Node.js /api/media/upload
+//    ↓
+// uploads/<firebaseUid>/<random-file>
+//    ↓
+// SQLite media.sqlite
+//
 // ============================================================
 
-import { auth, db, storage } from "./firebase-init.js";
+import { auth, db } from "./firebase-init.js";
 
 import {
   onAuthStateChanged,
@@ -29,15 +49,44 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-storage.js";
-
 import { PAYMENT_CONFIG } from "./payment-config.js";
 
 import "./nav-helper.js";
+
+
+// ============================================================
+// CONFIGURATION
+// ============================================================
+//
+// Your Node server is running on PORT=4001.
+//
+// If you later deploy the API somewhere else, change this URL.
+//
+// You can also define:
+//
+// window.MEDIA_API_URL = "https://your-api-domain.com";
+//
+// before this script loads.
+//
+// ============================================================
+
+const MEDIA_API_URL =
+  window.MEDIA_API_URL ||
+  "http://localhost:4001";
+
+
+// ============================================================
+// CONSTANTS
+// ============================================================
+
+const PAYMENT_SCREENSHOT_MAX_SIZE =
+  5 * 1024 * 1024;
+
+const ALLOWED_SCREENSHOT_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
 
 
 // ============================================================
@@ -52,123 +101,233 @@ function $(id) {
 function formatCurrency(value) {
   const amount = Number(value || 0);
 
-  return new Intl.NumberFormat("en-IN").format(amount);
+  return new Intl.NumberFormat("en-IN").format(
+    amount
+  );
 }
 
 
-function formatDate(iso) {
-  if (!iso) return "—";
+function formatDate(value) {
+  if (!value) {
+    return "—";
+  }
 
   try {
-    return new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
+    return new Date(
+      `${value}T00:00:00`
+    ).toLocaleDateString(
+      "en-IN",
+      {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }
+    );
   } catch {
     return "—";
   }
 }
 
 
-function escapeHTML(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+function setStatus(
+  message,
+  type = ""
+) {
+  const element =
+    $("paymentStatus");
+
+  if (!element) {
+    return;
+  }
+
+  element.className =
+    "form-status";
+
+  if (type) {
+    element.classList.add(type);
+  }
+
+  element.textContent =
+    message;
+}
+
+
+function setButtonState(
+  disabled,
+  text = "Submit Payment Reference"
+) {
+  const button =
+    $("submitPaymentBtn");
+
+  if (!button) {
+    return;
+  }
+
+  button.disabled =
+    disabled;
+
+  button.textContent =
+    text;
+}
+
+
+function getFileExtension(file) {
+  const mimeMap = {
+    "image/jpeg": "jpg",
+    "image/png": "png",
+    "image/webp": "webp",
+  };
+
+  return (
+    mimeMap[file.type] ||
+    file.name
+      ?.split(".")
+      .pop()
+      ?.toLowerCase() ||
+    "jpg"
+  );
+}
+
+
+function getMediaApiUrl(path) {
+  return (
+    `${MEDIA_API_URL}${path}`
+  );
 }
 
 
 // ============================================================
-// URL / BOOKING
+// BOOKING ID
 // ============================================================
 
-const params = new URLSearchParams(window.location.search);
+const urlParams =
+  new URLSearchParams(
+    window.location.search
+  );
 
-const bookingId = params.get("booking");
+const bookingId =
+  urlParams.get("booking");
 
 
 // ============================================================
 // PAGE ELEMENTS
 // ============================================================
 
-const paymentForm = $("paymentForm");
+const paymentForm =
+  $("paymentForm");
 
-const paymentStatus = $("paymentStatus");
+const paymentVehicleName =
+  $("paymentVehicleName");
 
-const paymentVehicleName = $("paymentVehicleName");
+const paymentVehicleIcon =
+  $("paymentVehicleIcon");
 
-const payButton = $("submitPaymentBtn");
+const paymentStatus =
+  $("paymentStatus");
 
-const upiTab = $("upiTab");
+const payButton =
+  $("submitPaymentBtn");
 
-const bankTab = $("offlineTab");
+const upiTab =
+  $("upiTab");
 
-const upiSection = $("upiPaymentSection");
+const bankTab =
+  $("offlineTab");
 
-const bankSection = $("offlinePaymentSection");
+const upiSection =
+  $("upiPaymentSection");
 
-const qrContainer = $("upiQr");
+const bankSection =
+  $("offlinePaymentSection");
 
-const upiIdElement = $("upiId");
+const qrContainer =
+  $("upiQr");
 
-const openUpiButton = $("openUpiBtn");
+const upiIdElement =
+  $("upiId");
+
+const openUpiButton =
+  $("openUpiBtn");
+
+const screenshotInput =
+  $("paymentScreenshot");
+
+const screenshotPreview =
+  $("paymentPreview");
+
+
+// ============================================================
+// ACTIVE PAYMENT METHOD
+// ============================================================
+
+let activeMethod =
+  "upi";
 
 
 // ============================================================
 // UPI URI
 // ============================================================
 
-function buildUpiUri(amount, bookingId) {
-
-  const upiId = PAYMENT_CONFIG?.upi?.id || "";
+function buildUpiUri(
+  amount,
+  currentBookingId
+) {
+  const upiId =
+    PAYMENT_CONFIG?.upi?.id ||
+    "";
 
   const payeeName =
-    PAYMENT_CONFIG?.upi?.payeeName || "CARRENTPE";
+    PAYMENT_CONFIG?.upi?.payeeName ||
+    "CARRENTPE";
 
   const safeAmount =
-    Number(amount || 0).toFixed(2);
+    Number(amount || 0)
+      .toFixed(2);
 
   const transactionNote =
-    `CARRENTPE Booking ${String(bookingId)
+    `CARRENTPE Booking ${String(
+      currentBookingId
+    )
       .slice(-6)
       .toUpperCase()}`;
 
-  const params = new URLSearchParams({
-    pa: upiId,
-    pn: payeeName,
-    am: safeAmount,
-    cu: "INR",
-    tn: transactionNote,
-    tr: String(bookingId),
-  });
+  const params =
+    new URLSearchParams({
+      pa: upiId,
+      pn: payeeName,
+      am: safeAmount,
+      cu: "INR",
+      tn: transactionNote,
+      tr: String(
+        currentBookingId
+      ),
+    });
 
-  return `upi://pay?${params.toString()}`;
+  return (
+    `upi://pay?${params.toString()}`
+  );
 }
 
 
 // ============================================================
-// ERROR
+// ERROR PAGE
 // ============================================================
 
 function showError(message) {
-
-  console.error(message);
+  console.error(
+    "PAYMENT ERROR:",
+    message
+  );
 
   if (paymentVehicleName) {
-    paymentVehicleName.textContent = message;
+    paymentVehicleName.textContent =
+      message;
   }
 
-  if (paymentStatus) {
-    paymentStatus.textContent = message;
-    paymentStatus.classList.add("form-status--error");
-  }
-
-  if (paymentForm) {
-    paymentForm.hidden = true;
-  }
+  setStatus(
+    message,
+    "form-status--error"
+  );
 }
 
 
@@ -177,25 +336,29 @@ function showError(message) {
 // ============================================================
 
 function hidePaymentInterface() {
-
   if (upiTab) {
-    upiTab.style.display = "none";
+    upiTab.style.display =
+      "none";
   }
 
   if (bankTab) {
-    bankTab.style.display = "none";
+    bankTab.style.display =
+      "none";
   }
 
   if (upiSection) {
-    upiSection.style.display = "none";
+    upiSection.style.display =
+      "none";
   }
 
   if (bankSection) {
-    bankSection.style.display = "none";
+    bankSection.style.display =
+      "none";
   }
 
   if (paymentForm) {
-    paymentForm.hidden = true;
+    paymentForm.hidden =
+      true;
   }
 }
 
@@ -204,11 +367,9 @@ function hidePaymentInterface() {
 // PAYMENT METHOD
 // ============================================================
 
-let activeMethod = "upi";
-
-
-function setActiveMethod(method) {
-
+function setActiveMethod(
+  method
+) {
   activeMethod =
     method === "bank"
       ? "bank"
@@ -218,12 +379,7 @@ function setActiveMethod(method) {
     activeMethod === "upi";
 
 
-  // ----------------------------------------------------------
-  // UPI TAB
-  // ----------------------------------------------------------
-
   if (upiTab) {
-
     upiTab.classList.toggle(
       "active",
       isUpi
@@ -236,12 +392,7 @@ function setActiveMethod(method) {
   }
 
 
-  // ----------------------------------------------------------
-  // BANK TAB
-  // ----------------------------------------------------------
-
   if (bankTab) {
-
     bankTab.classList.toggle(
       "active",
       !isUpi
@@ -254,12 +405,7 @@ function setActiveMethod(method) {
   }
 
 
-  // ----------------------------------------------------------
-  // UPI PANEL
-  // ----------------------------------------------------------
-
   if (upiSection) {
-
     upiSection.style.display =
       isUpi
         ? ""
@@ -267,23 +413,12 @@ function setActiveMethod(method) {
   }
 
 
-  // ----------------------------------------------------------
-  // BANK PANEL
-  // ----------------------------------------------------------
-
   if (bankSection) {
-
     bankSection.style.display =
       isUpi
         ? "none"
-        : "block";
+        : "";
   }
-
-
-  console.log(
-    "Payment method:",
-    activeMethod
-  );
 }
 
 
@@ -291,35 +426,39 @@ function setActiveMethod(method) {
 // PAYMENT TABS
 // ============================================================
 
-if (upiTab) {
+function initialisePaymentTabs() {
+  if (upiTab) {
+    upiTab.type =
+      "button";
 
-  upiTab.type = "button";
+    upiTab.addEventListener(
+      "click",
+      (event) => {
+        event.preventDefault();
 
-  upiTab.addEventListener(
-    "click",
-    function (event) {
-
-      event.preventDefault();
-
-      setActiveMethod("upi");
-    }
-  );
-}
+        setActiveMethod(
+          "upi"
+        );
+      }
+    );
+  }
 
 
-if (bankTab) {
+  if (bankTab) {
+    bankTab.type =
+      "button";
 
-  bankTab.type = "button";
+    bankTab.addEventListener(
+      "click",
+      (event) => {
+        event.preventDefault();
 
-  bankTab.addEventListener(
-    "click",
-    function (event) {
-
-      event.preventDefault();
-
-      setActiveMethod("bank");
-    }
-  );
+        setActiveMethod(
+          "bank"
+        );
+      }
+    );
+  }
 }
 
 
@@ -327,72 +466,57 @@ if (bankTab) {
 // OPEN UPI APP
 // ============================================================
 
-function openUPIApp(upiUri) {
-
+function openUPIApp(
+  upiUri
+) {
   if (!upiUri) {
-
-    alert("UPI payment is not configured.");
-
-    return;
-  }
-
-  console.log(
-    "Opening UPI:",
-    upiUri
-  );
-
-  /*
-   * IMPORTANT:
-   *
-   * This works on supported mobile devices where
-   * a UPI application can handle upi:// links.
-   *
-   * Desktop Chrome cannot directly open Google Pay,
-   * PhonePe, Paytm etc. through this protocol.
-   *
-   * On desktop, use the QR code.
-   */
-
-  window.location.href = upiUri;
-}
-
-
-// ============================================================
-// QR CODE
-// ============================================================
-
-function generateQRCode(upiUri) {
-
-  if (!qrContainer) {
-
-    console.error(
-      "QR container #upiQr was not found."
+    alert(
+      "UPI payment is not configured."
     );
 
     return;
   }
 
+  window.location.href =
+    upiUri;
+}
 
-  qrContainer.innerHTML = "";
+
+// ============================================================
+// GENERATE QR
+// ============================================================
+
+function generateQRCode(
+  upiUri
+) {
+  if (!qrContainer) {
+    console.warn(
+      "#upiQr was not found."
+    );
+
+    return;
+  }
+
+  qrContainer.innerHTML =
+    "";
 
 
   if (
     typeof window.QRCode ===
     "undefined"
   ) {
-
     console.error(
       "QRCode library is not loaded."
     );
 
     qrContainer.innerHTML = `
       <div style="
-        color:#111;
-        text-align:center;
-        font-size:12px;
         padding:20px;
+        text-align:center;
+        color:#111;
+        font-size:13px;
       ">
-        QR library unavailable.
+        QR code unavailable.
       </div>
     `;
 
@@ -401,45 +525,39 @@ function generateQRCode(upiUri) {
 
 
   try {
-
     new window.QRCode(
       qrContainer,
       {
         text: upiUri,
-
         width: 164,
-
         height: 164,
-
-        colorDark: "#000000",
-
-        colorLight: "#ffffff",
-
+        colorDark:
+          "#000000",
+        colorLight:
+          "#ffffff",
         correctLevel:
           window.QRCode.CorrectLevel.M,
       }
     );
 
-
     console.log(
-      "UPI QR generated successfully."
+      "UPI QR generated."
     );
 
   } catch (error) {
-
     console.error(
-      "QR generation failed:",
+      "QR ERROR:",
       error
     );
 
     qrContainer.innerHTML = `
       <div style="
-        color:#111;
-        text-align:center;
-        font-size:12px;
         padding:20px;
+        text-align:center;
+        color:#111;
+        font-size:13px;
       ">
-        QR generation failed.
+        Could not generate QR.
       </div>
     `;
   }
@@ -447,74 +565,85 @@ function generateQRCode(upiUri) {
 
 
 // ============================================================
-// UPI APP BUTTONS
+// UPI BUTTONS
 // ============================================================
 
-function setupUPIButtons(upiUri) {
-
+function initialiseUPIButtons(
+  upiUri
+) {
   if (openUpiButton) {
-
     openUpiButton.type =
       "button";
 
     openUpiButton.addEventListener(
       "click",
-      function (event) {
-
+      (event) => {
         event.preventDefault();
 
-        openUPIApp(upiUri);
+        openUPIApp(
+          upiUri
+        );
       }
     );
   }
 
 
   document
-    .querySelectorAll(".upi-app-btn")
-    .forEach((button) => {
+    .querySelectorAll(
+      ".upi-app-btn"
+    )
+    .forEach(
+      (button) => {
+        button.type =
+          "button";
 
-      button.type = "button";
+        button.addEventListener(
+          "click",
+          (event) => {
+            event.preventDefault();
 
-      button.addEventListener(
-        "click",
-        function (event) {
-
-          event.preventDefault();
-
-          openUPIApp(upiUri);
-        }
-      );
-    });
+            openUPIApp(
+              upiUri
+            );
+          }
+        );
+      }
+    );
 }
 
 
 // ============================================================
-// PAYMENT SCREENSHOT PREVIEW
+// SCREENSHOT PREVIEW
 // ============================================================
 
-function setupScreenshotPreview() {
+function initialiseScreenshotPreview() {
+  if (
+    !screenshotInput ||
+    !screenshotPreview
+  ) {
+    console.warn(
+      "Payment screenshot input/preview not found.",
+      {
+        input:
+          !!screenshotInput,
+        preview:
+          !!screenshotPreview,
+      }
+    );
 
-  const fileInput =
-    $("paymentScreenshot");
-
-  const preview =
-    $("paymentPreview");
-
-
-  if (!fileInput || !preview) {
     return;
   }
 
 
-  fileInput.addEventListener(
+  screenshotInput.addEventListener(
     "change",
-    function () {
-
+    () => {
       const file =
-        fileInput.files?.[0];
+        screenshotInput.files?.[0];
 
 
-      preview.innerHTML = "";
+      screenshotPreview.innerHTML =
+        "";
 
 
       if (!file) {
@@ -522,27 +651,91 @@ function setupScreenshotPreview() {
       }
 
 
+      // ------------------------------------------------------
+      // TYPE
+      // ------------------------------------------------------
+
       if (
-        !file.type.startsWith("image/")
+        !ALLOWED_SCREENSHOT_TYPES.includes(
+          file.type
+        )
       ) {
+        screenshotInput.value =
+          "";
+
+        screenshotPreview.innerHTML = `
+          <div class="form-status form-status--error">
+            Please select a JPG, PNG, or WebP image.
+          </div>
+        `;
+
         return;
       }
 
 
-      const image =
-        document.createElement("img");
+      // ------------------------------------------------------
+      // SIZE
+      // ------------------------------------------------------
 
+      if (
+        file.size >
+        PAYMENT_SCREENSHOT_MAX_SIZE
+      ) {
+        screenshotInput.value =
+          "";
+
+        screenshotPreview.innerHTML = `
+          <div class="form-status form-status--error">
+            Payment screenshot must be smaller than 5 MB.
+          </div>
+        `;
+
+        return;
+      }
+
+
+      // ------------------------------------------------------
+      // PREVIEW
+      // ------------------------------------------------------
+
+      const image =
+        document.createElement(
+          "img"
+        );
 
       image.src =
-        URL.createObjectURL(file);
-
+        URL.createObjectURL(
+          file
+        );
 
       image.alt =
         "Payment screenshot preview";
 
+      image.style.maxWidth =
+        "100%";
 
-      preview.appendChild(
+      image.style.maxHeight =
+        "300px";
+
+      image.style.objectFit =
+        "contain";
+
+      image.style.display =
+        "block";
+
+      image.style.margin =
+        "12px auto";
+
+      screenshotPreview.appendChild(
         image
+      );
+
+
+      console.log(
+        "Payment screenshot selected:",
+        file.name,
+        file.size,
+        file.type
       );
     }
   );
@@ -550,146 +743,123 @@ function setupScreenshotPreview() {
 
 
 // ============================================================
-// INITIALIZE PAYMENT
+// VEHICLE IMAGE
 // ============================================================
 
-async function initPaymentForm(booking) {
+async function loadVehicleImage(
+  booking
+) {
+  try {
+    const catalog =
+      window.fleetVehicles ||
+      [];
 
-  console.log(
-    "Initializing payment:",
-    booking
-  );
+    const vehicle =
+      catalog.find(
+        (item) =>
+          item.regNo ===
+          booking.vehicleReg
+      );
 
 
-  // ==========================================================
-  // VEHICLE
-  // ==========================================================
+    if (
+      !vehicle ||
+      typeof window.fleetImagePath !==
+        "function"
+    ) {
+      return;
+    }
 
+
+    const imagePath =
+      window.fleetImagePath(
+        vehicle
+      );
+
+
+    const container =
+      $("paymentVehicleImage");
+
+
+    if (
+      !container ||
+      !imagePath
+    ) {
+      return;
+    }
+
+
+    const image =
+      document.createElement(
+        "img"
+      );
+
+    image.src =
+      imagePath;
+
+    image.alt =
+      booking.vehicleName ||
+      "Vehicle";
+
+
+    image.onload =
+      () => {
+        if (paymentVehicleIcon) {
+          paymentVehicleIcon.style.display =
+            "none";
+        }
+      };
+
+
+    image.onerror =
+      () => {
+        image.remove();
+      };
+
+
+    container.prepend(
+      image
+    );
+
+  } catch (error) {
+    console.warn(
+      "Vehicle image failed:",
+      error
+    );
+  }
+}
+
+
+// ============================================================
+// DISPLAY BOOKING DETAILS
+// ============================================================
+
+function displayBooking(
+  booking
+) {
   if (paymentVehicleName) {
-
     paymentVehicleName.textContent =
       booking.vehicleName ||
       "Vehicle";
   }
 
 
-  const iconSpan =
-    $("paymentVehicleIcon");
-
-
-  if (iconSpan) {
-
-    iconSpan.textContent =
+  if (paymentVehicleIcon) {
+    paymentVehicleIcon.textContent =
       booking.vehicleIcon ||
       "🚗";
   }
 
 
-  // ==========================================================
-  // VEHICLE IMAGE
-  // ==========================================================
-
-  try {
-
-    const catalog =
-      window.fleetVehicles ||
-      [];
-
-
-    const vehicle =
-      catalog.find(
-        (v) =>
-          v.regNo ===
-          booking.vehicleReg
-      );
-
-
-    if (
-      vehicle &&
-      typeof window.fleetImagePath ===
-        "function"
-    ) {
-
-      const imagePath =
-        window.fleetImagePath(
-          vehicle
-        );
-
-
-      const imageContainer =
-        $("paymentVehicleImage");
-
-
-      if (
-        imageContainer &&
-        imagePath
-      ) {
-
-        const image =
-          document.createElement("img");
-
-
-        image.src =
-          imagePath;
-
-
-        image.alt =
-          booking.vehicleName ||
-          "Vehicle";
-
-
-        image.onload =
-          function () {
-
-            if (iconSpan) {
-
-              iconSpan.style.display =
-                "none";
-            }
-          };
-
-
-        image.onerror =
-          function () {
-
-            image.remove();
-          };
-
-
-        imageContainer.prepend(
-          image
-        );
-      }
-    }
-
-  } catch (error) {
-
-    console.warn(
-      "Vehicle image could not be loaded:",
-      error
-    );
-  }
-
-
-  // ==========================================================
-  // BOOKING ID
-  // ==========================================================
-
   if ($("paymentBookingId")) {
-
     $("paymentBookingId").textContent =
-      bookingId
+      String(bookingId)
         .slice(-6)
         .toUpperCase();
   }
 
 
-  // ==========================================================
-  // PICKUP
-  // ==========================================================
-
   if ($("paymentPickup")) {
-
     $("paymentPickup").textContent =
       booking.pickupLocation ||
       booking.pickup ||
@@ -697,12 +867,7 @@ async function initPaymentForm(booking) {
   }
 
 
-  // ==========================================================
-  // DROP
-  // ==========================================================
-
   if ($("paymentDrop")) {
-
     $("paymentDrop").textContent =
       booking.dropLocation ||
       booking.drop ||
@@ -710,12 +875,7 @@ async function initPaymentForm(booking) {
   }
 
 
-  // ==========================================================
-  // DATE
-  // ==========================================================
-
   if ($("paymentDateRange")) {
-
     $("paymentDateRange").textContent =
       `${formatDate(
         booking.pickupDate
@@ -725,90 +885,109 @@ async function initPaymentForm(booking) {
   }
 
 
-  // ==========================================================
-  // DURATION
-  // ==========================================================
-
-  if ($("paymentDuration")) {
-
-    let duration =
-      booking.duration ||
-      booking.durationDays;
+  let duration =
+    booking.duration ||
+    booking.durationDays;
 
 
-    if (!duration) {
+  if (
+    !duration &&
+    booking.pickupDate &&
+    booking.dropDate
+  ) {
+    const start =
+      new Date(
+        `${booking.pickupDate}T00:00:00`
+      );
 
-      const start =
-        booking.pickupDate
-          ? new Date(
-              `${booking.pickupDate}T00:00:00`
+    const end =
+      new Date(
+        `${booking.dropDate}T00:00:00`
+      );
+
+
+    if (
+      !isNaN(
+        start.getTime()
+      ) &&
+      !isNaN(
+        end.getTime()
+      )
+    ) {
+      duration =
+        Math.max(
+          1,
+          Math.ceil(
+            (
+              end.getTime() -
+              start.getTime()
+            ) /
+            (
+              1000 *
+              60 *
+              60 *
+              24
             )
-          : null;
-
-
-      const end =
-        booking.dropDate
-          ? new Date(
-              `${booking.dropDate}T00:00:00`
-            )
-          : null;
-
-
-      if (
-        start &&
-        end &&
-        !isNaN(start) &&
-        !isNaN(end)
-      ) {
-
-        duration =
-          Math.max(
-            1,
-            Math.ceil(
-              (end - start) /
-                (1000 * 60 * 60 * 24)
-            )
-          );
-      }
+          )
+        );
     }
-
-
-    $("paymentDuration").textContent =
-      duration
-        ? `${duration} day${Number(duration) === 1 ? "" : "s"}`
-        : "1 day";
   }
 
 
-  // ==========================================================
+  if ($("paymentDuration")) {
+    $("paymentDuration").textContent =
+      duration
+        ? `${duration} day${
+            Number(duration) === 1
+              ? ""
+              : "s"
+          }`
+        : "1 day";
+  }
+}
+
+
+// ============================================================
+// INITIALISE PAYMENT UI
+// ============================================================
+
+async function initialisePaymentUI(
+  booking
+) {
+  console.log(
+    "Initialising payment UI..."
+  );
+
+
+  displayBooking(
+    booking
+  );
+
+
+  await loadVehicleImage(
+    booking
+  );
+
+
+  // ----------------------------------------------------------
   // TOTAL
-  // ==========================================================
+  // ----------------------------------------------------------
 
   const totalAmount =
     Number(
-      booking.totalAmount ||
-      booking.amount ||
+      booking.totalAmount ??
+      booking.amount ??
       0
     );
 
 
   console.log(
-    "Payment amount:",
+    "Booking amount:",
     totalAmount
   );
 
 
-  if (totalAmount <= 0) {
-
-    console.warn(
-      "Booking has zero or missing totalAmount."
-    );
-  }
-
-
-  // LEFT SUMMARY
   if ($("paymentAmount")) {
-
     $("paymentAmount").textContent =
       `₹${formatCurrency(
         totalAmount
@@ -816,16 +995,7 @@ async function initPaymentForm(booking) {
   }
 
 
-  // UPI AMOUNT
   if ($("upiAmount")) {
-
-    /*
-     * HTML already contains ₹
-     * outside the span.
-     *
-     * Therefore DO NOT put another ₹ here.
-     */
-
     $("upiAmount").textContent =
       formatCurrency(
         totalAmount
@@ -833,9 +1003,9 @@ async function initPaymentForm(booking) {
   }
 
 
-  // ==========================================================
-  // UPI ID
-  // ==========================================================
+  // ----------------------------------------------------------
+  // UPI
+  // ----------------------------------------------------------
 
   const upiId =
     PAYMENT_CONFIG?.upi?.id ||
@@ -843,16 +1013,11 @@ async function initPaymentForm(booking) {
 
 
   if (upiIdElement) {
-
     upiIdElement.textContent =
       upiId ||
       "UPI ID not configured";
   }
 
-
-  // ==========================================================
-  // BUILD UPI URI
-  // ==========================================================
 
   const upiUri =
     buildUpiUri(
@@ -861,414 +1026,832 @@ async function initPaymentForm(booking) {
     );
 
 
-  console.log(
-    "UPI URI:",
-    upiUri
-  );
-
-
-  // ==========================================================
-  // GENERATE QR
-  // ==========================================================
-
   if (
     totalAmount > 0 &&
     upiId
   ) {
-
     generateQRCode(
       upiUri
     );
 
-  } else {
-
-    if (qrContainer) {
-
-      qrContainer.innerHTML = `
-        <div style="
-          color:#111;
-          text-align:center;
-          font-size:12px;
-          padding:20px;
-        ">
-          Payment amount unavailable.
-        </div>
-      `;
-    }
+  } else if (qrContainer) {
+    qrContainer.innerHTML = `
+      <div style="
+        padding:20px;
+        text-align:center;
+        color:#111;
+        font-size:13px;
+      ">
+        Payment amount unavailable.
+      </div>
+    `;
   }
 
 
-  // ==========================================================
-  // UPI BUTTONS
-  // ==========================================================
-
-  setupUPIButtons(
+  initialiseUPIButtons(
     upiUri
   );
 
 
-  // ==========================================================
-  // SCREENSHOT PREVIEW
-  // ==========================================================
-
-  setupScreenshotPreview();
-
-
-  // ==========================================================
-  // DEFAULT METHOD
-  // ==========================================================
-
   setActiveMethod(
     "upi"
-  );
-
-
-  // ==========================================================
-  // PAYMENT FORM
-  // ==========================================================
-
-  if (!paymentForm) {
-
-    console.warn(
-      "paymentForm not found."
-    );
-
-    return;
-  }
-
-
-  // ==========================================================
-  // PREVENT DUPLICATE LISTENER
-  // ==========================================================
-
-  if (
-    paymentForm.dataset.initialized ===
-    "true"
-  ) {
-
-    return;
-  }
-
-
-  paymentForm.dataset.initialized =
-    "true";
-
-
-  // ==========================================================
-  // SUBMIT PAYMENT
-  // ==========================================================
-
-  paymentForm.addEventListener(
-    "submit",
-    async function (event) {
-
-      event.preventDefault();
-
-      event.stopPropagation();
-
-
-      // ------------------------------------------------------
-      // REFERENCE
-      // ------------------------------------------------------
-
-      const refInput =
-        $("upiReference");
-
-
-      const fileInput =
-        $("paymentScreenshot");
-
-
-      if (!refInput) {
-
-        console.error(
-          "upiReference input not found."
-        );
-
-        return;
-      }
-
-
-      const refValue =
-        refInput.value.trim();
-
-
-      // ------------------------------------------------------
-      // VALIDATE REFERENCE
-      // ------------------------------------------------------
-
-      if (!refValue) {
-
-        if (paymentStatus) {
-
-          paymentStatus.classList.add(
-            "form-status--error"
-          );
-
-          paymentStatus.textContent =
-            "Enter your payment reference / transaction ID first.";
-        }
-
-
-        refInput.focus();
-
-        return;
-      }
-
-
-      // ------------------------------------------------------
-      // REQUIRE SCREENSHOT
-      // ------------------------------------------------------
-
-      const file =
-        fileInput?.files?.[0];
-
-
-      if (!file) {
-
-        if (paymentStatus) {
-
-          paymentStatus.classList.add(
-            "form-status--error"
-          );
-
-          paymentStatus.textContent =
-            "Please upload your payment screenshot.";
-        }
-
-
-        return;
-      }
-
-
-      // ------------------------------------------------------
-      // DISABLE SUBMIT
-      // ------------------------------------------------------
-
-      if (payButton) {
-
-        payButton.disabled =
-          true;
-
-        payButton.textContent =
-          "Submitting...";
-      }
-
-
-      if (paymentStatus) {
-
-        paymentStatus.classList.remove(
-          "form-status--error"
-        );
-
-        paymentStatus.textContent =
-          "Submitting your payment reference...";
-      }
-
-
-      try {
-
-        // ====================================================
-        // VALIDATE SCREENSHOT
-        // ====================================================
-
-        const allowedTypes = [
-          "image/jpeg",
-          "image/png",
-          "image/webp",
-        ];
-
-
-        if (
-          !allowedTypes.includes(
-            file.type
-          )
-        ) {
-
-          throw new Error(
-            "Please upload a JPG, PNG, or WebP screenshot."
-          );
-        }
-
-
-        const maxSize =
-          5 * 1024 * 1024;
-
-
-        if (
-          file.size >
-          maxSize
-        ) {
-
-          throw new Error(
-            "Payment screenshot must be smaller than 5 MB."
-          );
-        }
-
-
-        // ====================================================
-        // FILE EXTENSION
-        // ====================================================
-
-        const extension =
-          file.name
-            .split(".")
-            .pop()
-            ?.toLowerCase() ||
-          "jpg";
-
-
-        // ====================================================
-        // STORAGE PATH
-        // ====================================================
-
-        const fileRef =
-          ref(
-            storage,
-            `payment_screenshots/${bookingId}/${Date.now()}.${extension}`
-          );
-
-
-        // ====================================================
-        // UPLOAD
-        // ====================================================
-
-        await uploadBytes(
-          fileRef,
-          file
-        );
-
-
-        // ====================================================
-        // DOWNLOAD URL
-        // ====================================================
-
-        const screenshotURL =
-          await getDownloadURL(
-            fileRef
-          );
-
-
-        // ====================================================
-        // UPDATE FIRESTORE
-        // ====================================================
-
-        await updateDoc(
-          doc(
-            db,
-            "bookings",
-            bookingId
-          ),
-          {
-
-            paymentMethod:
-              activeMethod,
-
-            paymentRef:
-              refValue,
-
-            paymentScreenshotURL:
-              screenshotURL,
-
-            paymentStatus:
-              "pending_verification",
-
-            paymentSubmittedAt:
-              serverTimestamp(),
-          }
-        );
-
-
-        // ====================================================
-        // SUCCESS
-        // ====================================================
-
-        if (paymentStatus) {
-
-          paymentStatus.classList.remove(
-            "form-status--error"
-          );
-
-          paymentStatus.textContent =
-            "Payment submitted successfully. We'll verify it and confirm your booking.";
-        }
-
-
-        // ====================================================
-        // REDIRECT
-        // ====================================================
-
-        setTimeout(
-          function () {
-
-            window.location.href =
-              "bookings.html";
-
-          },
-          1200
-        );
-
-      } catch (error) {
-
-        console.error(
-          "Payment submission failed:",
-          error
-        );
-
-
-        if (paymentStatus) {
-
-          paymentStatus.classList.add(
-            "form-status--error"
-          );
-
-          paymentStatus.textContent =
-            error?.message ||
-            "Couldn't submit your payment reference. Please try again.";
-        }
-
-
-        if (payButton) {
-
-          payButton.disabled =
-            false;
-
-          payButton.textContent =
-            "Submit Payment Reference";
-        }
-      }
-    }
-  );
-
-
-  console.log(
-    "CARRENTPE payment page initialized successfully."
   );
 }
 
 
 // ============================================================
-// START
+// GET FIREBASE ID TOKEN
+// ============================================================
+//
+// This is the bridge between Firebase Auth and your Node API.
+//
+// Node's middleware/auth.js expects:
+//
+// Authorization: Bearer <Firebase ID token>
+//
 // ============================================================
 
-if (!bookingId) {
+async function getAuthToken(
+  currentUser
+) {
+  if (!currentUser) {
+    throw new Error(
+      "You must be signed in to submit payment."
+    );
+  }
 
-  showError(
-    "No booking to pay for — please start your booking from the fleet page."
+
+  try {
+    const token =
+      await currentUser.getIdToken(
+        true
+      );
+
+
+    if (!token) {
+      throw new Error(
+        "Could not obtain your authentication token."
+      );
+    }
+
+
+    return token;
+
+  } catch (error) {
+    console.error(
+      "AUTH TOKEN ERROR:",
+      error
+    );
+
+    throw new Error(
+      "Your login session could not be verified. Please sign in again."
+    );
+  }
+}
+
+
+// ============================================================
+// UPLOAD PAYMENT SCREENSHOT TO NODE + SQLITE
+// ============================================================
+//
+// POST /api/media/upload
+//
+// multipart/form-data:
+//
+// file       = screenshot
+// category   = payment_screenshot
+// relatedId  = bookingId
+//
+// Authorization:
+// Bearer <Firebase ID token>
+//
+// ============================================================
+
+async function uploadPaymentScreenshot(
+  file,
+  currentUser,
+  reference
+) {
+  console.log(
+    "Starting local SQL media upload..."
   );
 
-} else {
+
+  // ----------------------------------------------------------
+  // GET AUTH TOKEN
+  // ----------------------------------------------------------
+
+  const token =
+    await getAuthToken(
+      currentUser
+    );
+
+
+  // ----------------------------------------------------------
+  // FORM DATA
+  // ----------------------------------------------------------
+
+  const formData =
+    new FormData();
+
+
+  formData.append(
+    "file",
+    file
+  );
+
+
+  formData.append(
+    "category",
+    "payment_screenshot"
+  );
+
+
+  formData.append(
+    "relatedId",
+    String(bookingId)
+  );
+
+
+  // ----------------------------------------------------------
+  // REQUEST
+  // ----------------------------------------------------------
+
+  const response =
+    await fetch(
+      getMediaApiUrl(
+        "/api/media/upload"
+      ),
+      {
+        method: "POST",
+
+        headers: {
+          Authorization:
+            `Bearer ${token}`,
+        },
+
+        body: formData,
+      }
+    );
+
+
+  // ----------------------------------------------------------
+  // RESPONSE
+  // ----------------------------------------------------------
+
+  let data = null;
+
+  try {
+    data =
+      await response.json();
+  } catch {
+    data = null;
+  }
+
+
+  if (!response.ok) {
+    console.error(
+      "MEDIA SERVER ERROR:",
+      response.status,
+      data
+    );
+
+
+    const message =
+      data?.error ||
+      `Media server returned HTTP ${response.status}.`;
+
+
+    throw new Error(
+      message
+    );
+  }
+
+
+  if (
+    !data ||
+    !data.id
+  ) {
+    console.error(
+      "Invalid media server response:",
+      data
+    );
+
+    throw new Error(
+      "The screenshot uploaded, but the media server did not return a file ID."
+    );
+  }
+
+
+  console.log(
+    "LOCAL SQL MEDIA UPLOAD COMPLETE:",
+    data
+  );
+
+
+  return data;
+}
+
+
+// ============================================================
+// DELETE MEDIA FILE IF FIRESTORE UPDATE FAILS
+// ============================================================
+//
+// This prevents an orphan screenshot from staying in uploads/
+// if the Firestore booking update fails.
+//
+// ============================================================
+
+async function deleteUploadedMedia(
+  mediaId,
+  currentUser
+) {
+  if (!mediaId) {
+    return;
+  }
+
+
+  try {
+    const token =
+      await getAuthToken(
+        currentUser
+      );
+
+
+    const response =
+      await fetch(
+        getMediaApiUrl(
+          `/api/media/${encodeURIComponent(
+            mediaId
+          )}`
+        ),
+        {
+          method:
+            "DELETE",
+
+          headers: {
+            Authorization:
+              `Bearer ${token}`,
+          },
+        }
+      );
+
+
+    if (!response.ok) {
+      console.warn(
+        "Could not clean up uploaded payment screenshot:",
+        response.status
+      );
+    } else {
+      console.log(
+        "Uploaded screenshot cleaned up."
+      );
+    }
+
+  } catch (error) {
+    console.warn(
+      "Media cleanup failed:",
+      error
+    );
+  }
+}
+
+
+// ============================================================
+// SUBMIT PAYMENT
+// ============================================================
+
+async function submitPayment(
+  event,
+  booking,
+  currentUser
+) {
+  event.preventDefault();
+  event.stopPropagation();
+
+
+  console.log(
+    "========================================"
+  );
+
+  console.log(
+    "PAYMENT SUBMISSION STARTED"
+  );
+
+  console.log(
+    "Booking:",
+    bookingId
+  );
+
+  console.log(
+    "Payment method:",
+    activeMethod
+  );
+
+  console.log(
+    "Media API:",
+    MEDIA_API_URL
+  );
+
+  console.log(
+    "========================================"
+  );
+
+
+  const refInput =
+    $("upiReference");
+
+  const fileInput =
+    $("paymentScreenshot");
+
+
+  // ----------------------------------------------------------
+  // CHECK INPUTS
+  // ----------------------------------------------------------
+
+  if (!refInput) {
+    console.error(
+      "Missing #upiReference"
+    );
+
+    setStatus(
+      "Payment reference field is missing from the page.",
+      "form-status--error"
+    );
+
+    return;
+  }
+
+
+  if (!fileInput) {
+    console.error(
+      "Missing #paymentScreenshot"
+    );
+
+    setStatus(
+      "Payment screenshot field is missing from the page.",
+      "form-status--error"
+    );
+
+    return;
+  }
+
+
+  const reference =
+    refInput.value.trim();
+
+  const file =
+    fileInput.files?.[0];
+
+
+  // ----------------------------------------------------------
+  // REFERENCE VALIDATION
+  // ----------------------------------------------------------
+
+  if (!reference) {
+    setStatus(
+      "Enter your UTR / transaction ID first.",
+      "form-status--error"
+    );
+
+    refInput.focus();
+
+    return;
+  }
+
+
+  if (
+    reference.length < 4
+  ) {
+    setStatus(
+      "Please enter a valid payment reference / transaction ID.",
+      "form-status--error"
+    );
+
+    refInput.focus();
+
+    return;
+  }
+
+
+  if (
+    reference.length > 200
+  ) {
+    setStatus(
+      "Payment reference is too long.",
+      "form-status--error"
+    );
+
+    refInput.focus();
+
+    return;
+  }
+
+
+  // ----------------------------------------------------------
+  // FILE REQUIRED
+  // ----------------------------------------------------------
+
+  if (!file) {
+    setStatus(
+      "Please upload a screenshot of the successful payment.",
+      "form-status--error"
+    );
+
+    return;
+  }
+
+
+  // ----------------------------------------------------------
+  // FILE TYPE
+  // ----------------------------------------------------------
+
+  if (
+    !ALLOWED_SCREENSHOT_TYPES.includes(
+      file.type
+    )
+  ) {
+    setStatus(
+      "Please upload a JPG, PNG, or WebP screenshot.",
+      "form-status--error"
+    );
+
+    return;
+  }
+
+
+  // ----------------------------------------------------------
+  // FILE SIZE
+  // ----------------------------------------------------------
+
+  if (
+    file.size >
+    PAYMENT_SCREENSHOT_MAX_SIZE
+  ) {
+    setStatus(
+      "Payment screenshot must be smaller than 5 MB.",
+      "form-status--error"
+    );
+
+    return;
+  }
+
+
+  // ----------------------------------------------------------
+  // AUTHORIZATION
+  // ----------------------------------------------------------
+
+  if (
+    !booking ||
+    !booking.userId ||
+    booking.userId !==
+      currentUser.uid
+  ) {
+    setStatus(
+      "You are not authorized to submit payment for this booking.",
+      "form-status--error"
+    );
+
+    return;
+  }
+
+
+  // ----------------------------------------------------------
+  // DISABLE SUBMIT
+  // ----------------------------------------------------------
+
+  setButtonState(
+    true,
+    "Uploading screenshot..."
+  );
+
+
+  setStatus(
+    "Uploading your payment screenshot..."
+  );
+
+
+  let uploadedMediaId =
+    null;
+
+
+  try {
+
+    // ========================================================
+    // STEP 1 — UPLOAD TO NODE + SQLITE
+    // ========================================================
+
+    const media =
+      await uploadPaymentScreenshot(
+        file,
+        currentUser,
+        reference
+      );
+
+
+    uploadedMediaId =
+      media.id;
+
+
+    console.log(
+      "Payment screenshot media ID:",
+      uploadedMediaId
+    );
+
+
+    // ========================================================
+    // STEP 2 — UPDATE FIRESTORE BOOKING
+    // ========================================================
+
+    setButtonState(
+      true,
+      "Saving payment..."
+    );
+
+
+    setStatus(
+      "Screenshot uploaded. Saving your payment reference..."
+    );
+
+
+    await updateDoc(
+      doc(
+        db,
+        "bookings",
+        bookingId
+      ),
+      {
+        paymentMethod:
+          activeMethod,
+
+        paymentRef:
+          reference,
+
+        // IMPORTANT:
+        // This is NOT a Firebase Storage URL.
+        //
+        // It is the SQLite media row ID.
+        paymentScreenshotMediaId:
+          String(
+            uploadedMediaId
+          ),
+
+        // Keep this useful metadata in Firestore.
+        paymentScreenshotCategory:
+          "payment_screenshot",
+
+        paymentStatus:
+          "pending_verification",
+
+        paymentSubmittedAt:
+          serverTimestamp(),
+
+        paymentSubmittedBy:
+          currentUser.uid,
+      }
+    );
+
+
+    console.log(
+      "FIRESTORE PAYMENT UPDATE COMPLETE"
+    );
+
+
+    // ========================================================
+    // STEP 3 — SUCCESS
+    // ========================================================
+
+    setButtonState(
+      true,
+      "Payment Submitted ✓"
+    );
+
+
+    setStatus(
+      "Payment submitted successfully. Your booking is now pending verification.",
+      "form-status--success"
+    );
+
+
+    // ========================================================
+    // STEP 4 — REDIRECT
+    // ========================================================
+
+    setTimeout(
+      () => {
+        window.location.href =
+          "bookings.html";
+      },
+      1500
+    );
+
+
+  } catch (error) {
+
+    console.error(
+      "========================================"
+    );
+
+    console.error(
+      "PAYMENT SUBMISSION ERROR"
+    );
+
+    console.error(
+      error
+    );
+
+    console.error(
+      "Message:",
+      error?.message
+    );
+
+    console.error(
+      "========================================"
+    );
+
+
+    // --------------------------------------------------------
+    // CLEANUP
+    // --------------------------------------------------------
+    //
+    // If the screenshot successfully reached SQLite but
+    // Firestore failed afterward, delete the media row/file.
+    //
+    // --------------------------------------------------------
+
+    if (
+      uploadedMediaId
+    ) {
+      await deleteUploadedMedia(
+        uploadedMediaId,
+        currentUser
+      );
+    }
+
+
+    // --------------------------------------------------------
+    // USER MESSAGE
+    // --------------------------------------------------------
+
+    let message =
+      "Couldn't submit your payment. Please try again.";
+
+
+    if (
+      error?.message
+    ) {
+      message =
+        error.message;
+    }
+
+
+    // --------------------------------------------------------
+    // NETWORK ERRORS
+    // --------------------------------------------------------
+
+    if (
+      error instanceof
+      TypeError
+    ) {
+      message =
+        `Could not connect to the payment upload server at ${MEDIA_API_URL}. Make sure your Node.js server is running.`;
+    }
+
+
+    setStatus(
+      message,
+      "form-status--error"
+    );
+
+
+    setButtonState(
+      false,
+      "Submit Payment Reference"
+    );
+  }
+}
+
+
+// ============================================================
+// FORM INITIALISATION
+// ============================================================
+
+function initialisePaymentForm(
+  booking,
+  currentUser
+) {
+  if (!paymentForm) {
+    console.error(
+      "CRITICAL: #paymentForm does not exist."
+    );
+
+    return;
+  }
+
+
+  // ----------------------------------------------------------
+  // PREVENT DUPLICATE LISTENER
+  // ----------------------------------------------------------
+
+  if (
+    paymentForm.dataset.paymentHandlerAttached ===
+    "true"
+  ) {
+    console.warn(
+      "Payment submit handler already attached."
+    );
+
+    return;
+  }
+
+
+  paymentForm.dataset.paymentHandlerAttached =
+    "true";
+
+
+  // ----------------------------------------------------------
+  // FORM SUBMIT
+  // ----------------------------------------------------------
+
+  paymentForm.addEventListener(
+    "submit",
+    (event) => {
+      submitPayment(
+        event,
+        booking,
+        currentUser
+      );
+    }
+  );
+
+
+  console.log(
+    "Payment form listener attached."
+  );
+}
+
+
+// ============================================================
+// START PAYMENT PAGE
+// ============================================================
+
+async function startPaymentPage() {
+  console.log(
+    "========================================"
+  );
+
+  console.log(
+    "CARRENTPE PAYMENT PAGE STARTING"
+  );
+
+  console.log(
+    "Booking ID:",
+    bookingId
+  );
+
+  console.log(
+    "Media API:",
+    MEDIA_API_URL
+  );
+
+  console.log(
+    "========================================"
+  );
+
+
+  // ----------------------------------------------------------
+  // BOOKING ID
+  // ----------------------------------------------------------
+
+  if (!bookingId) {
+    showError(
+      "No booking to pay for. Please start your booking from the fleet page."
+    );
+
+    return;
+  }
+
+
+  // ----------------------------------------------------------
+  // AUTH
+  // ----------------------------------------------------------
 
   onAuthStateChanged(
     auth,
-    async function (user) {
+    async (user) => {
+      console.log(
+        "AUTH STATE:",
+        user
+          ? user.uid
+          : "NOT LOGGED IN"
+      );
 
-      // ======================================================
+
+      // --------------------------------------------------------
       // NOT LOGGED IN
-      // ======================================================
+      // --------------------------------------------------------
 
       if (!user) {
-
         const next =
           `payment.html?booking=${encodeURIComponent(
             bookingId
@@ -1285,16 +1868,20 @@ if (!bookingId) {
       }
 
 
-      // ======================================================
+      // --------------------------------------------------------
       // LOAD BOOKING
-      // ======================================================
+      // --------------------------------------------------------
 
-      let snap;
+      let bookingSnapshot;
 
 
       try {
+        console.log(
+          "Loading booking..."
+        );
 
-        snap =
+
+        bookingSnapshot =
           await getDoc(
             doc(
               db,
@@ -1304,15 +1891,14 @@ if (!bookingId) {
           );
 
       } catch (error) {
-
         console.error(
-          "Failed to load booking:",
+          "BOOKING LOAD ERROR:",
           error
         );
 
 
         showError(
-          "Couldn't load that booking. Please try again."
+          "Couldn't load this booking. Please try again."
         );
 
 
@@ -1320,46 +1906,50 @@ if (!bookingId) {
       }
 
 
-      // ======================================================
+      // --------------------------------------------------------
       // BOOKING DOES NOT EXIST
-      // ======================================================
+      // --------------------------------------------------------
 
-      if (!snap.exists()) {
-
+      if (
+        !bookingSnapshot.exists()
+      ) {
         showError(
-          "That booking doesn't exist anymore."
+          "That booking does not exist."
         );
-
 
         return;
       }
 
 
       const booking =
-        snap.data();
+        bookingSnapshot.data();
 
 
-      // ======================================================
+      console.log(
+        "BOOKING LOADED:",
+        booking
+      );
+
+
+      // --------------------------------------------------------
       // SECURITY
-      // ======================================================
+      // --------------------------------------------------------
 
       if (
         booking.userId !==
         user.uid
       ) {
-
         showError(
-          "This booking doesn't belong to your account."
+          "This booking does not belong to your account."
         );
-
 
         return;
       }
 
 
-      // ======================================================
+      // --------------------------------------------------------
       // ALREADY PAID
-      // ======================================================
+      // --------------------------------------------------------
 
       if (
         booking.paymentStatus ===
@@ -1367,20 +1957,16 @@ if (!bookingId) {
         booking.paymentStatus ===
           "pay_at_pickup"
       ) {
-
         if (paymentVehicleName) {
-
           paymentVehicleName.textContent =
             booking.vehicleName ||
             "Your vehicle";
         }
 
 
-        if (paymentStatus) {
-
-          paymentStatus.textContent =
-            "This booking is already confirmed. Check My Bookings for details.";
-        }
+        setStatus(
+          "This booking is already confirmed. Check My Bookings for details."
+        );
 
 
         hidePaymentInterface();
@@ -1389,28 +1975,24 @@ if (!bookingId) {
       }
 
 
-      // ======================================================
-      // PAYMENT ALREADY SUBMITTED
-      // ======================================================
+      // --------------------------------------------------------
+      // ALREADY SUBMITTED
+      // --------------------------------------------------------
 
       if (
         booking.paymentStatus ===
         "pending_verification"
       ) {
-
         if (paymentVehicleName) {
-
           paymentVehicleName.textContent =
             booking.vehicleName ||
             "Your vehicle";
         }
 
 
-        if (paymentStatus) {
-
-          paymentStatus.textContent =
-            "We've received your payment reference and are verifying it. Check My Bookings for the latest status.";
-        }
+        setStatus(
+          "We've received your payment reference and are verifying it. Check My Bookings for the latest status."
+        );
 
 
         hidePaymentInterface();
@@ -1419,13 +2001,62 @@ if (!bookingId) {
       }
 
 
-      // ======================================================
-      // INITIALIZE
-      // ======================================================
+      // --------------------------------------------------------
+      // INITIALISE UI
+      // --------------------------------------------------------
 
-      await initPaymentForm(
+      await initialisePaymentUI(
         booking
+      );
+
+
+      // --------------------------------------------------------
+      // TABS
+      // --------------------------------------------------------
+
+      initialisePaymentTabs();
+
+
+      // --------------------------------------------------------
+      // SCREENSHOT PREVIEW
+      // --------------------------------------------------------
+
+      initialiseScreenshotPreview();
+
+
+      // --------------------------------------------------------
+      // FORM
+      // --------------------------------------------------------
+
+      initialisePaymentForm(
+        booking,
+        user
+      );
+
+
+      console.log(
+        "========================================"
+      );
+
+      console.log(
+        "CARRENTPE PAYMENT PAGE READY"
+      );
+
+      console.log(
+        "Local media API:",
+        MEDIA_API_URL
+      );
+
+      console.log(
+        "========================================"
       );
     }
   );
 }
+
+
+// ============================================================
+// RUN
+// ============================================================
+
+startPaymentPage();

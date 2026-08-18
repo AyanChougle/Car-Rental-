@@ -1,23 +1,24 @@
 // routes/media.js
+
 const express = require("express");
 const multer = require("multer");
 const crypto = require("crypto");
 const path = require("path");
 const fs = require("fs");
+const rateLimit = require("express-rate-limit");
+const { fileTypeFromFile } = require("file-type");
 
 const db = require("../db");
-const { requireAuth, requireRole } = require("../middleware/auth");
+const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
 const UPLOAD_ROOT = path.join(__dirname, "..", "uploads");
-fs.mkdirSync(UPLOAD_ROOT, { recursive: true });
 
-// Categories mirror what the site already uploads (per README / js files):
-// profile docs (license/aadhar), partner car photos/videos, payment
-// verification screenshots, return-inspection photos. Keeping this list
-// explicit (instead of accepting any string) stops the disk from filling up
-// with junk from a typo'd or malicious category field.
+fs.mkdirSync(UPLOAD_ROOT, {
+  recursive: true,
+});
+
 const ALLOWED_CATEGORIES = new Set([
   "profile_photo",
   "license_doc",
@@ -26,137 +27,441 @@ const ALLOWED_CATEGORIES = new Set([
   "partner_car_video",
   "payment_screenshot",
   "inspection_photo",
-  "personal_media", // Profile > My Media — user's own photo/video gallery
+  "personal_media",
 ]);
 
-const ALLOWED_MIME = new Set([
-  "image/jpeg", "image/png", "image/webp", "image/heic",
-  "video/mp4", "video/quicktime", "video/webm",
+const ALLOWED_MIME = new Map([
+  ["image/jpeg", ["jpg", "jpeg"]],
+  ["image/png", ["png"]],
+  ["image/webp", ["webp"]],
+  ["image/heic", ["heic"]],
+  ["video/mp4", ["mp4"]],
+  ["video/quicktime", ["mov"]],
+  ["video/webm", ["webm"]],
 ]);
 
-const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB — covers phone photos and short videos
+const MAX_FILE_BYTES = 50 * 1024 * 1024;
+
+const PAYMENT_SCREENSHOT_MAX_BYTES = 5 * 1024 * 1024;
+
+// ------------------------------------------------------------
+// STORAGE
+// ------------------------------------------------------------
 
 const storage = multer.diskStorage({
   destination(req, file, cb) {
-    // One folder per user keeps things sane to browse/back up and means a
-    // filename collision between two users literally can't happen.
-    const dir = path.join(UPLOAD_ROOT, req.user.uid);
-    fs.mkdirSync(dir, { recursive: true });
+    const dir = path.join(
+      UPLOAD_ROOT,
+      req.user.uid
+    );
+
+    fs.mkdirSync(dir, {
+      recursive: true,
+    });
+
     cb(null, dir);
   },
+
   filename(req, file, cb) {
-    // Never trust the original filename — a random name kills path
-    // traversal tricks and duplicate-name overwrites in one move. Original
-    // name is preserved separately in the DB row for display purposes.
-    const randomName = crypto.randomBytes(16).toString("hex");
-    cb(null, randomName + path.extname(file.originalname).toLowerCase());
+    const randomName =
+      crypto.randomBytes(16).toString("hex");
+
+    const ext =
+      path.extname(file.originalname).toLowerCase();
+
+    cb(null, `${randomName}${ext}`);
   },
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: MAX_FILE_BYTES },
+
+  limits: {
+    fileSize: MAX_FILE_BYTES,
+  },
+
   fileFilter(req, file, cb) {
     if (!ALLOWED_MIME.has(file.mimetype)) {
-      return cb(new Error(`Unsupported file type: ${file.mimetype}`));
+      return cb(
+        new Error(
+          `Unsupported file type: ${file.mimetype}`
+        )
+      );
     }
+
     cb(null, true);
   },
 });
 
-// POST /api/media/upload
-// multipart/form-data: file=<the file>, category=<string>, relatedId=<optional string>
-router.post("/upload", requireAuth, (req, res) => {
-  upload.single("file")(req, res, (err) => {
-    if (err) return res.status(400).json({ error: err.message });
-    if (!req.file) return res.status(400).json({ error: "No file received." });
+const uploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
 
-    const category = req.body.category;
-    if (!ALLOWED_CATEGORIES.has(category)) {
-      fs.unlink(req.file.path, () => {}); // clean up the orphaned file on disk
+  standardHeaders: true,
+  legacyHeaders: false,
+
+  message: {
+    error:
+      "Too many uploads. Please slow down and try again shortly.",
+  },
+});
+
+// ------------------------------------------------------------
+// POST /api/media/upload
+// ------------------------------------------------------------
+
+router.post(
+  "/upload",
+  requireAuth,
+  uploadLimiter,
+  (req, res) => {
+    upload.single("file")(
+      req,
+      res,
+      async (err) => {
+        if (err) {
+          if (
+            err.code === "LIMIT_FILE_SIZE"
+          ) {
+            return res.status(413).json({
+              error:
+                "File is too large. Maximum size is 50 MB.",
+            });
+          }
+
+          return res.status(400).json({
+            error: err.message,
+          });
+        }
+
+        if (!req.file) {
+          return res.status(400).json({
+            error: "No file received.",
+          });
+        }
+
+        const cleanup = () => {
+          fs.unlink(req.file.path, () => {});
+        };
+
+        const category = req.body.category;
+
+        if (!ALLOWED_CATEGORIES.has(category)) {
+          cleanup();
+
+          return res.status(400).json({
+            error: "Invalid upload category.",
+          });
+        }
+
+        // Payment screenshots have their own smaller limit.
+        if (
+          category === "payment_screenshot" &&
+          req.file.size > PAYMENT_SCREENSHOT_MAX_BYTES
+        ) {
+          cleanup();
+
+          return res.status(413).json({
+            error:
+              "Payment screenshot must be 5 MB or smaller.",
+          });
+        }
+
+        // ----------------------------------------------------
+        // MAGIC BYTE VALIDATION
+        // ----------------------------------------------------
+
+        let detected = null;
+
+        try {
+          detected = await fileTypeFromFile(
+            req.file.path
+          );
+        } catch {
+          detected = null;
+        }
+
+        const allowedExts =
+          ALLOWED_MIME.get(req.file.mimetype) || [];
+
+        const contentMatches =
+          detected &&
+          allowedExts.includes(detected.ext);
+
+        if (!contentMatches) {
+          cleanup();
+
+          return res.status(400).json({
+            error:
+              "File content does not match its declared type.",
+          });
+        }
+
+        // ----------------------------------------------------
+        // DATABASE
+        // ----------------------------------------------------
+
+        const relatedId =
+          typeof req.body.relatedId === "string" &&
+          req.body.relatedId.trim()
+            ? req.body.relatedId.trim().slice(0, 200)
+            : null;
+
+        try {
+          const result = db
+            .prepare(`
+              INSERT INTO media (
+                user_id,
+                category,
+                related_id,
+                original_name,
+                stored_name,
+                mime_type,
+                size_bytes
+              )
+              VALUES (?, ?, ?, ?, ?, ?, ?)
+            `)
+            .run(
+              req.user.uid,
+              category,
+              relatedId,
+              req.file.originalname.slice(0, 255),
+              req.file.filename,
+              req.file.mimetype,
+              req.file.size
+            );
+
+          const row = db
+            .prepare(
+              "SELECT * FROM media WHERE id = ?"
+            )
+            .get(result.lastInsertRowid);
+
+          return res.status(201).json(
+            toPublicMedia(row)
+          );
+        } catch (dbError) {
+          cleanup();
+
+          console.error(
+            "[media upload]",
+            dbError
+          );
+
+          return res.status(500).json({
+            error:
+              "Unable to save uploaded file.",
+          });
+        }
+      }
+    );
+  }
+);
+
+// ------------------------------------------------------------
+// GET /api/media
+// ------------------------------------------------------------
+
+router.get(
+  "/",
+  requireAuth,
+  (req, res) => {
+    const isStaff =
+      req.user.role === "admin" ||
+      req.user.role === "manager";
+
+    const targetUser =
+      isStaff && req.query.userId
+        ? String(req.query.userId)
+        : req.user.uid;
+
+    let query = `
+      SELECT *
+      FROM media
+      WHERE user_id = ?
+      AND deleted_at IS NULL
+    `;
+
+    const params = [targetUser];
+
+    if (req.query.category) {
+      query += " AND category = ?";
+      params.push(String(req.query.category));
+    }
+
+    if (req.query.relatedId) {
+      query += " AND related_id = ?";
+      params.push(String(req.query.relatedId));
+    }
+
+    query += " ORDER BY uploaded_at DESC";
+
+    const rows = db
+      .prepare(query)
+      .all(...params);
+
+    res.json(
+      rows.map(toPublicMedia)
+    );
+  }
+);
+
+// ------------------------------------------------------------
+// GET /api/media/file/:id
+// ------------------------------------------------------------
+
+router.get(
+  "/file/:id",
+  requireAuth,
+  (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id)) {
       return res.status(400).json({
-        error: `Invalid category. Must be one of: ${[...ALLOWED_CATEGORIES].join(", ")}`,
+        error: "Invalid media ID.",
       });
     }
 
-    const relatedId = req.body.relatedId || null;
+    const row = db
+      .prepare(`
+        SELECT *
+        FROM media
+        WHERE id = ?
+        AND deleted_at IS NULL
+      `)
+      .get(id);
 
-    const result = db.prepare(`
-      INSERT INTO media (user_id, category, related_id, original_name, stored_name, mime_type, size_bytes)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(
-      req.user.uid, category, relatedId,
-      req.file.originalname, req.file.filename,
-      req.file.mimetype, req.file.size
+    if (!row) {
+      return res.status(404).json({
+        error: "File not found.",
+      });
+    }
+
+    const isOwner =
+      row.user_id === req.user.uid;
+
+    const isStaff =
+      req.user.role === "admin" ||
+      req.user.role === "manager";
+
+    if (!isOwner && !isStaff) {
+      return res.status(403).json({
+        error: "You do not have permission to access this file.",
+      });
+    }
+
+    const filePath = path.join(
+      UPLOAD_ROOT,
+      row.user_id,
+      row.stored_name
     );
 
-    const row = db.prepare("SELECT * FROM media WHERE id = ?").get(result.lastInsertRowid);
-    res.status(201).json(toPublicMedia(row));
-  });
-});
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        error: "File missing on disk.",
+      });
+    }
 
-// GET /api/media?category=&relatedId=&userId=
-// Regular users only ever see their own files. Staff (admin/manager) can
-// pass userId to review someone else's uploads (e.g. a license doc pending
-// verification) — same trust boundary Firestore rules already use elsewhere
-// in this app.
-router.get("/", requireAuth, (req, res) => {
-  const isStaff = req.user.role === "admin" || req.user.role === "manager";
-  const targetUser = isStaff && req.query.userId ? req.query.userId : req.user.uid;
+    res.setHeader(
+      "Content-Type",
+      row.mime_type
+    );
 
-  let query = "SELECT * FROM media WHERE user_id = ? AND deleted_at IS NULL";
-  const params = [targetUser];
+    res.setHeader(
+      "X-Content-Type-Options",
+      "nosniff"
+    );
 
-  if (req.query.category) {
-    query += " AND category = ?";
-    params.push(req.query.category);
+    const disposition =
+      row.mime_type.startsWith("image/")
+        ? "inline"
+        : "attachment";
+
+    res.setHeader(
+      "Content-Disposition",
+      `${disposition}; filename="${sanitizeFilename(
+        row.original_name
+      )}"`
+    );
+
+    fs.createReadStream(filePath).pipe(res);
   }
-  if (req.query.relatedId) {
-    query += " AND related_id = ?";
-    params.push(req.query.relatedId);
+);
+
+// ------------------------------------------------------------
+// DELETE /api/media/:id
+// ------------------------------------------------------------
+
+router.delete(
+  "/:id",
+  requireAuth,
+  (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id)) {
+      return res.status(400).json({
+        error: "Invalid media ID.",
+      });
+    }
+
+    const row = db
+      .prepare(`
+        SELECT *
+        FROM media
+        WHERE id = ?
+        AND deleted_at IS NULL
+      `)
+      .get(id);
+
+    if (!row) {
+      return res.status(404).json({
+        error: "File not found.",
+      });
+    }
+
+    const isOwner =
+      row.user_id === req.user.uid;
+
+    const isStaff =
+      req.user.role === "admin" ||
+      req.user.role === "manager";
+
+    if (!isOwner && !isStaff) {
+      return res.status(403).json({
+        error: "You do not have permission to delete this file.",
+      });
+    }
+
+    db.prepare(`
+      UPDATE media
+      SET deleted_at = datetime('now')
+      WHERE id = ?
+    `).run(row.id);
+
+    const filePath = path.join(
+      UPLOAD_ROOT,
+      row.user_id,
+      row.stored_name
+    );
+
+    fs.unlink(filePath, () => {});
+
+    res.json({
+      success: true,
+    });
   }
-  query += " ORDER BY uploaded_at DESC";
+);
 
-  const rows = db.prepare(query).all(...params);
-  res.json(rows.map(toPublicMedia));
-});
+// ------------------------------------------------------------
+// Helpers
+// ------------------------------------------------------------
 
-// GET /api/media/file/:id — streams the actual file back, after an
-// ownership/role check. Files are NOT served as static/public; this is the
-// only path that returns bytes, and it's gated the same way the rest of the
-// app gates access (owner, or staff).
-router.get("/file/:id", requireAuth, (req, res) => {
-  const row = db.prepare("SELECT * FROM media WHERE id = ? AND deleted_at IS NULL").get(req.params.id);
-  if (!row) return res.status(404).json({ error: "Not found." });
-
-  const isOwner = row.user_id === req.user.uid;
-  const isStaff = req.user.role === "admin" || req.user.role === "manager";
-  if (!isOwner && !isStaff) return res.status(403).json({ error: "Not your file." });
-
-  const filePath = path.join(UPLOAD_ROOT, row.user_id, row.stored_name);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: "File missing on disk." });
-
-  res.setHeader("Content-Type", row.mime_type);
-  res.setHeader("Content-Disposition", `inline; filename="${row.original_name}"`);
-  fs.createReadStream(filePath).pipe(res);
-});
-
-// DELETE /api/media/:id — owner or staff. Soft delete: row stays for audit
-// trail, file is removed from disk to actually free space.
-router.delete("/:id", requireAuth, (req, res) => {
-  const row = db.prepare("SELECT * FROM media WHERE id = ? AND deleted_at IS NULL").get(req.params.id);
-  if (!row) return res.status(404).json({ error: "Not found." });
-
-  const isOwner = row.user_id === req.user.uid;
-  const isStaff = req.user.role === "admin" || req.user.role === "manager";
-  if (!isOwner && !isStaff) return res.status(403).json({ error: "Not your file." });
-
-  db.prepare("UPDATE media SET deleted_at = datetime('now') WHERE id = ?").run(row.id);
-  const filePath = path.join(UPLOAD_ROOT, row.user_id, row.stored_name);
-  fs.unlink(filePath, () => {}); // best-effort; row is already marked deleted either way
-
-  res.json({ success: true });
-});
+function sanitizeFilename(filename) {
+  return String(filename)
+    .replace(/[\r\n"]/g, "")
+    .replace(/[^\w.\- ]/g, "_")
+    .slice(0, 120);
+}
 
 function toPublicMedia(row) {
   return {
@@ -168,7 +473,7 @@ function toPublicMedia(row) {
     mimeType: row.mime_type,
     sizeBytes: row.size_bytes,
     uploadedAt: row.uploaded_at,
-    url: `/api/media/file/${row.id}`, // frontend fetches this with the auth header, not a public URL
+    url: `/api/media/file/${row.id}`,
   };
 }
 

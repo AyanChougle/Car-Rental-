@@ -275,6 +275,22 @@ function getEndOdometer(booking) {
   );
 }
 
+function getStartFastag(booking) {
+  return (
+    booking.fastagStart ??
+    booking.startFastag ??
+    ""
+  );
+}
+
+function getReturnFastag(booking) {
+  return (
+    booking.fastagReturn ??
+    booking.returnFastag ??
+    ""
+  );
+}
+
 function calculateDistance(start, end) {
   const startNumber = Number(start);
   const endNumber = Number(end);
@@ -1769,7 +1785,7 @@ async function loadBookings() {
 // ============================================================================
 // BOOKINGS TABLE
 //
-// Date and odometer are deliberately handled as follows:
+// Date, odometer, and FASTag are deliberately handled as follows:
 //
 // MAIN TABLE:
 // Date | Ref | Customer | Vehicle | Amount | Status | Details
@@ -1779,6 +1795,8 @@ async function loadBookings() {
 // Start odometer
 // End odometer
 // Distance
+// FASTag at start
+// FASTag at return
 // Payment
 // Status
 // Return Report / Process Return
@@ -1935,6 +1953,16 @@ function renderBookingsTable(
         calculateDistance(
           startOdo,
           endOdo
+        );
+
+      const startFastag =
+        getStartFastag(
+          booking
+        );
+
+      const returnFastag =
+        getReturnFastag(
+          booking
         );
 
       let returnButton = "";
@@ -2325,6 +2353,80 @@ function renderBookingsTable(
                 />
               </div>
 
+              <!-- FASTAG AT START -->
+
+              <div>
+                <label
+                  style="
+                    display:block;
+                    color:var(--sub);
+                    font-size:.75rem;
+                    margin-bottom:5px;
+                  "
+                >
+                  FASTag at Start (₹)
+                </label>
+
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="booking-start-fastag"
+                  data-bid="${escapeHtml(
+                    id
+                  )}"
+                  value="${escapeHtml(
+                    startFastag
+                  )}"
+                  placeholder="Start balance"
+                  style="
+                    width:100%;
+                    padding:8px 10px;
+                    background:rgba(0,0,0,.45);
+                    color:var(--text);
+                    border:1px solid var(--line);
+                    border-radius:6px;
+                  "
+                />
+              </div>
+
+              <!-- FASTAG AT RETURN -->
+
+              <div>
+                <label
+                  style="
+                    display:block;
+                    color:var(--sub);
+                    font-size:.75rem;
+                    margin-bottom:5px;
+                  "
+                >
+                  FASTag at Return (₹)
+                </label>
+
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  class="booking-return-fastag"
+                  data-bid="${escapeHtml(
+                    id
+                  )}"
+                  value="${escapeHtml(
+                    returnFastag
+                  )}"
+                  placeholder="Return balance"
+                  style="
+                    width:100%;
+                    padding:8px 10px;
+                    background:rgba(0,0,0,.45);
+                    color:var(--text);
+                    border:1px solid var(--line);
+                    border-radius:6px;
+                  "
+                />
+              </div>
+
               <!-- DISTANCE -->
 
               <div>
@@ -2386,6 +2488,20 @@ function renderBookingsTable(
                 "
               >
                 Save Odometer
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-dark save-booking-fastag-btn"
+                data-bid="${escapeHtml(
+                  id
+                )}"
+                style="
+                  padding:7px 14px;
+                  font-size:.8rem;
+                "
+              >
+                Save FASTag
               </button>
 
               ${
@@ -2546,6 +2662,23 @@ function attachBookingEvents() {
         "click",
         async () => {
           await saveBookingOdometer(
+            button.dataset.bid,
+            button
+          );
+        }
+      );
+    });
+
+  // FASTAG SAVE
+  bookingsTableWrap
+    .querySelectorAll(
+      ".save-booking-fastag-btn"
+    )
+    .forEach((button) => {
+      button.addEventListener(
+        "click",
+        async () => {
+          await saveBookingFastag(
             button.dataset.bid,
             button
           );
@@ -2945,6 +3078,130 @@ async function saveBookingOdometer(
 }
 
 // ============================================================================
+// SAVE FASTAG BALANCES
+// ============================================================================
+
+async function saveBookingFastag(
+  bookingId,
+  button
+) {
+  const startInput =
+    bookingsTableWrap.querySelector(
+      `.booking-start-fastag[data-bid="${bookingId}"]`
+    );
+
+  const returnInput =
+    bookingsTableWrap.querySelector(
+      `.booking-return-fastag[data-bid="${bookingId}"]`
+    );
+
+  if (!startInput || !returnInput) {
+    alert(
+      "FASTag fields could not be found."
+    );
+
+    return;
+  }
+
+  const startText =
+    startInput.value.trim();
+
+  const returnText =
+    returnInput.value.trim();
+
+  const start =
+    startText === ""
+      ? null
+      : Number(startText);
+
+  const returned =
+    returnText === ""
+      ? null
+      : Number(returnText);
+
+  if (
+    start !== null &&
+    (!Number.isFinite(start) || start < 0)
+  ) {
+    alert(
+      "Enter a valid FASTag balance at start."
+    );
+
+    return;
+  }
+
+  if (
+    returned !== null &&
+    (!Number.isFinite(returned) || returned < 0)
+  ) {
+    alert(
+      "Enter a valid FASTag balance at return."
+    );
+
+    return;
+  }
+
+  const oldText =
+    button.textContent;
+
+  button.disabled = true;
+  button.textContent = "Saving...";
+
+  try {
+    await updateDoc(
+      doc(db, "bookings", bookingId),
+      {
+        fastagStart: start,
+        fastagReturn: returned,
+        startFastag: start,
+        returnFastag: returned,
+        fastagUpdatedAt:
+          serverTimestamp(),
+        fastagUpdatedBy:
+          currentUser
+            ? currentUser.uid
+            : null,
+      }
+    );
+
+    const booking =
+      bookingsData.find(
+        (item) => item.id === bookingId
+      );
+
+    if (booking) {
+      booking.fastagStart = start;
+      booking.fastagReturn = returned;
+      booking.startFastag = start;
+      booking.returnFastag = returned;
+    }
+
+    button.textContent = "Saved ✓";
+
+    setTimeout(
+      () => {
+        button.textContent = oldText;
+        button.disabled = false;
+      },
+      1200
+    );
+  } catch (error) {
+    console.error(
+      "FASTAG SAVE ERROR:",
+      error
+    );
+
+    button.textContent = oldText;
+    button.disabled = false;
+
+    alert(
+      "Could not save FASTag balances.\n\n" +
+      error.message
+    );
+  }
+}
+
+// ============================================================================
 // RETURN REPORT
 //
 // This is intentionally separate from Process Return.
@@ -3037,6 +3294,16 @@ function openReturnReport(
     calculateDistance(
       startOdo,
       endOdo
+    );
+
+  const startFastag =
+    getStartFastag(
+      booking
+    );
+
+  const returnFastag =
+    getReturnFastag(
+      booking
     );
 
   let deductionHtml = "";
@@ -3294,6 +3561,62 @@ function openReturnReport(
                 ? `${escapeHtml(
                     endOdo
                   )} KM`
+                : "—"
+            }
+          </strong>
+        </div>
+
+        <div
+          style="
+            padding:14px;
+            border:1px solid var(--line);
+            border-radius:10px;
+          "
+        >
+          <span
+            style="
+              display:block;
+              color:var(--sub);
+              font-size:.75rem;
+            "
+          >
+            FASTag at Start
+          </span>
+
+          <strong>
+            ${
+              startFastag !== ""
+                ? `₹${escapeHtml(
+                    startFastag
+                  )}`
+                : "—"
+            }
+          </strong>
+        </div>
+
+        <div
+          style="
+            padding:14px;
+            border:1px solid var(--line);
+            border-radius:10px;
+          "
+        >
+          <span
+            style="
+              display:block;
+              color:var(--sub);
+              font-size:.75rem;
+            "
+          >
+            FASTag at Return
+          </span>
+
+          <strong>
+            ${
+              returnFastag !== ""
+                ? `₹${escapeHtml(
+                    returnFastag
+                  )}`
                 : "—"
             }
           </strong>
@@ -4130,6 +4453,151 @@ function updateRevenueStats() {
 }
 
 // ============================================================================
+// HOST CAR MEDIA (Node/SQLite media server)
+//
+// Host car photos now live in the local media server (SQLite metadata +
+// disk storage) instead of Firebase Storage, uploaded with:
+//   category   = "partner_car_photo"
+//   related_id = the host car's Firestore doc id
+//
+// /api/media requires a Firebase ID token on every request (server verifies
+// it the same way profile.js does) — so every call below attaches
+// Authorization: Bearer <token> from the signed-in admin.
+//
+// A partner_cars document may still have an old `photos` array from before
+// this migration (public Firebase Storage URLs) — those are rendered
+// directly, no auth needed. New, server-hosted photos are private, so each
+// one is fetched as a Blob and turned into a temporary object URL, same
+// pattern as profile.js's getPrivateMediaBlobUrl().
+// ============================================================================
+
+const MEDIA_SERVER_URL = "http://localhost:4000"; // same server profile.js talks to — point this at your real host before deploying
+
+const hostPhotoCache = new Map(); // carId -> loaded [{ id, mimeType, originalName, blobUrl }]
+
+async function mediaAuthHeaders() {
+  if (!currentUser) return {};
+  const token = await currentUser.getIdToken();
+  return { Authorization: `Bearer ${token}` };
+}
+
+// The uploader of a given photo could be the host who submitted the car
+// (their own Firebase uid) or an admin who added/replaced a photo from this
+// dashboard (the admin's own uid) — the media server only lets you filter by
+// one user_id per request, so we query both and merge by media id.
+//
+// If your partner_cars documents store the owner's Firebase uid under a
+// different field name than the ones checked here, add it to this list.
+function getHostCarOwnerUid(car) {
+  return (
+    car.ownerUid ||
+    car.ownerId ||
+    car.uid ||
+    car.userId ||
+    car.partnerUid ||
+    car.hostUid ||
+    null
+  );
+}
+
+async function fetchHostCarMedia(car) {
+  const relatedId = car.id;
+  const ownerUid = getHostCarOwnerUid(car);
+  const headers = await mediaAuthHeaders();
+
+  const urls = [
+    `${MEDIA_SERVER_URL}/api/media?category=partner_car_photo&relatedId=${encodeURIComponent(relatedId)}`,
+  ];
+
+  if (ownerUid && ownerUid !== currentUser?.uid) {
+    urls.push(
+      `${MEDIA_SERVER_URL}/api/media?category=partner_car_photo&relatedId=${encodeURIComponent(
+        relatedId
+      )}&userId=${encodeURIComponent(ownerUid)}`
+    );
+  }
+
+  const seen = new Map();
+
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, { headers });
+
+      if (!response.ok) {
+        console.warn(`HOST CAR MEDIA FETCH FAILED (${response.status}):`, url);
+        continue;
+      }
+
+      const rows = await response.json();
+
+      (Array.isArray(rows) ? rows : []).forEach((row) => seen.set(row.id, row));
+    } catch (error) {
+      console.warn("HOST CAR MEDIA FETCH ERROR:", error);
+    }
+  }
+
+  return [...seen.values()];
+}
+
+async function fetchMediaBlobUrl(mediaId) {
+  const headers = await mediaAuthHeaders();
+
+  const response = await fetch(
+    `${MEDIA_SERVER_URL}/api/media/file/${encodeURIComponent(mediaId)}`,
+    { headers }
+  );
+
+  if (!response.ok) {
+    throw new Error(`Could not load photo (${response.status}).`);
+  }
+
+  const blob = await response.blob();
+
+  return URL.createObjectURL(blob);
+}
+
+// Loads + caches the server-hosted photos for one car. Cheap on repeat
+// toggles — only hits the network the first time a car's photo row is
+// opened, or after invalidateHostPhotoCache() runs post upload/delete.
+async function loadHostPhotosIntoCache(car) {
+  if (hostPhotoCache.has(car.id)) {
+    return hostPhotoCache.get(car.id);
+  }
+
+  const records = await fetchHostCarMedia(car);
+
+  const withBlobUrls = await Promise.all(
+    records.map(async (record) => {
+      try {
+        const blobUrl = await fetchMediaBlobUrl(record.id);
+        return { ...record, blobUrl };
+      } catch (error) {
+        console.warn(`Could not load photo ${record.id}:`, error);
+        return null;
+      }
+    })
+  );
+
+  const loaded = withBlobUrls.filter(Boolean);
+
+  hostPhotoCache.set(car.id, loaded);
+
+  return loaded;
+}
+
+function invalidateHostPhotoCache(carId) {
+  const cached = hostPhotoCache.get(carId);
+
+  if (cached) {
+    cached.forEach((item) => {
+      if (item.blobUrl) URL.revokeObjectURL(item.blobUrl);
+    });
+  }
+
+  hostPhotoCache.delete(carId);
+}
+
+// ============================================================================
 // HOST CARS
 // ============================================================================
 
@@ -4198,6 +4666,10 @@ async function loadHostCars() {
   }
 }
 
+// Server-hosted photos are private and fetched lazily (only once a car's
+// photo row is actually opened), so the row starts out showing just the
+// legacy Firestore `photos` array (if any) plus a loading line, and the
+// toggle button's count is a "so far" hint until it's been opened once.
 function renderHostCarsTable(
   cars
 ) {
@@ -4272,12 +4744,21 @@ function renderHostCarsTable(
 
   cars.forEach(
     (car) => {
-      const photoCount =
+      const legacyPhotos =
         Array.isArray(
           car.photos
         )
-          ? car.photos.length
-          : 0;
+          ? car.photos
+          : [];
+
+      const cachedServerPhotos =
+        hostPhotoCache.get(
+          car.id
+        ) || [];
+
+      const knownPhotoCount =
+        legacyPhotos.length +
+        cachedServerPhotos.length;
 
       const photoRow =
         `host-photo-${car.id}`;
@@ -4439,8 +4920,8 @@ function renderHostCarsTable(
                       "
                     >
                       ${
-                        photoCount
-                          ? `${photoCount} Photos`
+                        knownPhotoCount
+                          ? `${knownPhotoCount} Photos`
                           : "Photos"
                       }
                       ▾
@@ -4494,6 +4975,10 @@ function renderHostCarsTable(
                 >
 
                   <div
+                    class="host-photo-grid"
+                    data-hid="${escapeHtml(
+                      car.id
+                    )}"
                     style="
                       display:flex;
                       gap:12px;
@@ -4501,75 +4986,15 @@ function renderHostCarsTable(
                     "
                   >
 
-                    ${
-                      photoCount
-                        ? car.photos
-                            .map(
-                              (
-                                url,
-                                index
-                              ) => `
-                                <div
-                                  style="
-                                    position:relative;
-                                    width:120px;
-                                    height:90px;
-                                  "
-                                >
+                    ${renderLegacyHostPhotos(
+                      car.id,
+                      legacyPhotos
+                    )}
 
-                                  <img
-                                    src="${escapeHtml(
-                                      url
-                                    )}"
-                                    alt="Host car photo ${index + 1}"
-                                    style="
-                                      width:100%;
-                                      height:100%;
-                                      object-fit:cover;
-                                      border-radius:8px;
-                                      border:1px solid var(--line);
-                                    "
-                                  />
-
-                                  <button
-                                    type="button"
-                                    class="remove-host-photo-btn"
-                                    data-hid="${escapeHtml(
-                                      car.id
-                                    )}"
-                                    data-url="${encodeURIComponent(
-                                      url
-                                    )}"
-                                    style="
-                                      position:absolute;
-                                      top:-7px;
-                                      right:-7px;
-                                      width:24px;
-                                      height:24px;
-                                      border:none;
-                                      border-radius:50%;
-                                      background:#ef476f;
-                                      color:white;
-                                      cursor:pointer;
-                                    "
-                                  >
-                                    ×
-                                  </button>
-
-                                </div>
-                              `
-                            )
-                            .join("")
-                        : `
-                          <span
-                            style="
-                              color:var(--sub);
-                            "
-                          >
-                            No photos uploaded.
-                          </span>
-                        `
-                    }
+                    ${renderServerHostPhotos(
+                      car.id,
+                      cachedServerPhotos
+                    )}
 
                   </div>
 
@@ -4593,6 +5018,83 @@ function renderHostCarsTable(
     html;
 
   attachHostCarEvents();
+}
+
+// Old Firebase Storage photos: public URL, no fetch needed, plain <img>.
+function renderLegacyHostPhotos(carId, urls) {
+  if (!urls.length) return "";
+
+  return urls
+    .map(
+      (url, index) => `
+        <div
+          class="host-photo-tile"
+          style="position:relative;width:120px;height:90px;"
+        >
+          <img
+            src="${escapeHtml(url)}"
+            alt="Host car photo ${index + 1}"
+            style="
+              width:100%;height:100%;object-fit:cover;
+              border-radius:8px;border:1px solid var(--line);
+            "
+          />
+          <button
+            type="button"
+            class="remove-host-photo-btn"
+            data-hid="${escapeHtml(carId)}"
+            data-source="legacy"
+            data-url="${encodeURIComponent(url)}"
+            style="
+              position:absolute;top:-7px;right:-7px;width:24px;height:24px;
+              border:none;border-radius:50%;background:#ef476f;color:white;
+              cursor:pointer;
+            "
+          >×</button>
+        </div>
+      `
+    )
+    .join("");
+}
+
+// New media-server photos: private, so these only render once
+// loadHostPhotosIntoCache() has actually fetched blob URLs for them —
+// before that, cachedServerPhotos is empty and this renders nothing (the
+// toggle handler fills it in and re-renders once the fetch completes).
+function renderServerHostPhotos(carId, photos) {
+  if (!photos.length) return "";
+
+  return photos
+    .map(
+      (photo) => `
+        <div
+          class="host-photo-tile"
+          style="position:relative;width:120px;height:90px;"
+        >
+          <img
+            src="${escapeHtml(photo.blobUrl)}"
+            alt="${escapeHtml(photo.originalName || "Host car photo")}"
+            style="
+              width:100%;height:100%;object-fit:cover;
+              border-radius:8px;border:1px solid var(--line);
+            "
+          />
+          <button
+            type="button"
+            class="remove-host-photo-btn"
+            data-hid="${escapeHtml(carId)}"
+            data-source="server"
+            data-media-id="${escapeHtml(photo.id)}"
+            style="
+              position:absolute;top:-7px;right:-7px;width:24px;height:24px;
+              border:none;border-radius:50%;background:#ef476f;color:white;
+              cursor:pointer;
+            "
+          >×</button>
+        </div>
+      `
+    )
+    .join("");
 }
 
 // ============================================================================
@@ -4770,7 +5272,8 @@ function attachHostCarEvents() {
       );
     });
 
-  // PHOTOS TOGGLE
+  // PHOTOS TOGGLE — lazily fetches server-hosted photos the first time a
+  // given car's row is opened, then just shows/hides on subsequent clicks.
   hostCarsTableWrap
     .querySelectorAll(
       ".host-photo-toggle-btn"
@@ -4778,23 +5281,57 @@ function attachHostCarEvents() {
     .forEach((button) => {
       button.addEventListener(
         "click",
-        () => {
-          const row =
-            document.getElementById(
-              button.dataset.target
-            );
+        async () => {
+          const carId = button.dataset.hid;
+          const row = document.getElementById(button.dataset.target);
 
-          if (!row) {
+          if (!row) return;
+
+          const wasHidden = row.hidden;
+          row.hidden = !wasHidden;
+
+          if (!wasHidden) {
+            // just closed — nothing to fetch
             return;
           }
 
-          row.hidden =
-            !row.hidden;
+          if (hostPhotoCache.has(carId)) {
+            // already loaded on a previous open — nothing to do
+            return;
+          }
+
+          const grid = row.querySelector(".host-photo-grid");
+
+          if (grid) {
+            grid.insertAdjacentHTML(
+              "beforeend",
+              `<span class="host-photo-loading" style="color:var(--sub);">Loading photos…</span>`
+            );
+          }
+
+          const car = hostCarsData.find((item) => item.id === carId);
+
+          if (!car) return;
+
+          try {
+            await loadHostPhotosIntoCache(car);
+          } catch (error) {
+            console.warn("HOST PHOTO LOAD ERROR:", error);
+          }
+
+          // Re-render so the newly loaded photos (and the accurate count on
+          // the toggle button) show up. The row stays open across the
+          // re-render since renderHostCarsTable rebuilds `hidden` from
+          // scratch — reopen it here.
+          renderHostCarsTable(hostCarsData);
+
+          const reopenedRow = document.getElementById(`host-photo-${carId}`);
+          if (reopenedRow) reopenedRow.hidden = false;
         }
       );
     });
 
-  // PHOTO UPLOAD
+  // PHOTO UPLOAD trigger
   hostCarsTableWrap
     .querySelectorAll(
       ".host-photo-upload-btn"
@@ -4815,7 +5352,7 @@ function attachHostCarEvents() {
       );
     });
 
-  // FILE INPUT
+  // FILE INPUT — uploads to the media server, not Firebase Storage
   hostCarsTableWrap
     .querySelectorAll(
       ".host-photo-input"
@@ -4845,7 +5382,8 @@ function attachHostCarEvents() {
       );
     });
 
-  // REMOVE PHOTO
+  // REMOVE PHOTO — legacy Firestore-array photos vs. server-hosted photos
+  // are removed through two different paths (see data-source).
   hostCarsTableWrap
     .querySelectorAll(
       ".remove-host-photo-btn"
@@ -4863,65 +5401,33 @@ function attachHostCarEvents() {
             return;
           }
 
-          const id =
-            button.dataset.hid;
+          const carId = button.dataset.hid;
+          const source = button.dataset.source;
 
-          const url =
-            decodeURIComponent(
-              button.dataset.url
-            );
-
-          const car =
-            hostCarsData.find(
-              (item) =>
-                item.id === id
-            );
-
-          if (!car) {
-            return;
-          }
-
-          const photos =
-            Array.isArray(
-              car.photos
-            )
-              ? car.photos
-              : [];
-
-          const remaining =
-            photos.filter(
-              (photo) =>
-                photo !== url
-            );
+          button.disabled = true;
 
           try {
-            await updateDoc(
-              doc(
-                db,
-                "partner_cars",
-                id
-              ),
-              {
-                photos:
-                  remaining,
-              }
-            );
+            if (source === "server") {
+              await removeServerHostPhoto(carId, button.dataset.mediaId);
+            } else {
+              await removeLegacyHostPhoto(
+                carId,
+                decodeURIComponent(button.dataset.url)
+              );
+            }
 
-            car.photos =
-              remaining;
+            renderHostCarsTable(hostCarsData);
 
-            expandedHostPhotoId =
-              id;
-
-            renderHostCarsTable(
-              hostCarsData
-            );
+            const row = document.getElementById(`host-photo-${carId}`);
+            if (row) row.hidden = false;
 
           } catch (error) {
             console.error(
               "PHOTO REMOVE ERROR:",
               error
             );
+
+            button.disabled = false;
 
             alert(
               "Could not remove photo.\n\n" +
@@ -4931,6 +5437,34 @@ function attachHostCarEvents() {
         }
       );
     });
+}
+
+async function removeLegacyHostPhoto(carId, url) {
+  const car = hostCarsData.find((item) => item.id === carId);
+  if (!car) return;
+
+  const photos = Array.isArray(car.photos) ? car.photos : [];
+  const remaining = photos.filter((photo) => photo !== url);
+
+  await updateDoc(doc(db, "partner_cars", carId), { photos: remaining });
+
+  car.photos = remaining;
+}
+
+async function removeServerHostPhoto(carId, mediaId) {
+  const headers = await mediaAuthHeaders();
+
+  const response = await fetch(
+    `${MEDIA_SERVER_URL}/api/media/${encodeURIComponent(mediaId)}`,
+    { method: "DELETE", headers }
+  );
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.error || `Delete failed (${response.status}).`);
+  }
+
+  invalidateHostPhotoCache(carId);
 }
 
 function updateHostCount() {
@@ -4950,6 +5484,10 @@ function updateHostCount() {
   }
 }
 
+// Uploads to the local media server (category=partner_car_photo,
+// relatedId=<car id>) instead of Firebase Storage — the admin's own ID
+// token is attached, so these uploads land under the admin's uid on the
+// server side (see the merge logic in fetchHostCarMedia).
 async function uploadHostPhotos(
   hostId,
   files
@@ -4964,86 +5502,55 @@ async function uploadHostPhotos(
     return;
   }
 
-  try {
-    const urls = [];
+  if (!currentUser) {
+    alert("You must be signed in to upload photos.");
+    return;
+  }
 
-    for (
-      let i = 0;
-      i < files.length;
-      i++
-    ) {
-      const file =
-        files[i];
+  const headers = await mediaAuthHeaders();
+  const failures = [];
 
-      const safeName =
-        file.name.replace(
-          /[^a-zA-Z0-9._-]/g,
-          "_"
-        );
+  for (const file of files) {
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("category", "partner_car_photo");
+      formData.append("relatedId", hostId);
 
-      const path =
-        `host_car_photos/${hostId}/${Date.now()}-${safeName}`;
-
-      const storageRef =
-        ref(
-          storage,
-          path
-        );
-
-      await uploadBytes(
-        storageRef,
-        file
+      const response = await fetch(
+        `${MEDIA_SERVER_URL}/api/media/upload`,
+        { method: "POST", headers, body: formData }
       );
 
-      const url =
-        await getDownloadURL(
-          storageRef
-        );
+      const data = await response.json().catch(() => ({}));
 
-      urls.push(url);
-    }
-
-    const oldPhotos =
-      Array.isArray(
-        car.photos
-      )
-        ? car.photos
-        : [];
-
-    const allPhotos =
-      [
-        ...oldPhotos,
-        ...urls,
-      ];
-
-    await updateDoc(
-      doc(
-        db,
-        "partner_cars",
-        hostId
-      ),
-      {
-        photos:
-          allPhotos,
+      if (!response.ok) {
+        throw new Error(data.error || `Upload failed (${response.status}).`);
       }
-    );
+    } catch (error) {
+      console.error("HOST PHOTO UPLOAD ERROR:", error);
+      failures.push(`${file.name}: ${error.message}`);
+    }
+  }
 
-    car.photos =
-      allPhotos;
+  invalidateHostPhotoCache(hostId);
 
-    renderHostCarsTable(
-      hostCarsData
-    );
-
+  // Immediately reload so the new photos show up rather than waiting for
+  // the next toggle-open.
+  try {
+    await loadHostPhotosIntoCache(car);
   } catch (error) {
-    console.error(
-      "HOST PHOTO UPLOAD ERROR:",
-      error
-    );
+    console.warn("HOST PHOTO RELOAD ERROR:", error);
+  }
 
+  renderHostCarsTable(hostCarsData);
+
+  const row = document.getElementById(`host-photo-${hostId}`);
+  if (row) row.hidden = false;
+
+  if (failures.length) {
     alert(
-      "Could not upload host car photos.\n\n" +
-      error.message
+      "Some photos could not be uploaded:\n\n" + failures.join("\n")
     );
   }
 }

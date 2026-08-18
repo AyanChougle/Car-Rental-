@@ -6,3 +6,5 @@ db/media.sqlite-shm
 db/media.sqlite-wal
 uploads/*
 !uploads/.gitkeep
+carrentpeweb-firebase-adminsdk-fbsvc-8ba735be6c.json
+backups/

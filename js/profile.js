@@ -1,9 +1,10 @@
 /* ============================================================
    KRUZLY — PROFILE PAGE
-   Firebase profile + bookings + ID verification
+   Firebase Auth + Firestore
+   Local Node Media Server for documents
    ============================================================ */
 
-import { auth, db, storage } from "./firebase-init.js";
+import { auth, db } from "./firebase-init.js";
 
 import {
   onAuthStateChanged,
@@ -21,16 +22,12 @@ import {
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-storage.js";
-
 
 /* ============================================================
    CONFIG
    ============================================================ */
+
+const MEDIA_SERVER_URL = "http://localhost:4000";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
@@ -61,7 +58,6 @@ function escapeHtml(value) {
 
 
 function initials(name) {
-
   const parts = String(name || "")
     .trim()
     .split(/\s+/)
@@ -79,7 +75,6 @@ function initials(name) {
 
 
 function toMillis(value) {
-
   if (!value) {
     return 0;
   }
@@ -111,7 +106,6 @@ function toMillis(value) {
 
 
 function formatDate(value) {
-
   const millis = toMillis(value);
 
   if (!millis) {
@@ -130,42 +124,185 @@ function formatDate(value) {
 
 
 function formatINR(value) {
-
   const amount = Number(value || 0);
 
   return `₹${Math.round(amount).toLocaleString("en-IN")}`;
 }
 
 
-/* ============================================================
-   FIRESTORE TIMEOUT
-   ------------------------------------------------------------
-   Prevents the page from sitting on "Loading profile..."
-   forever when Firestore/network/rules are the problem.
-   ============================================================ */
-
 function withTimeout(promise, milliseconds = 10000) {
-
   return Promise.race([
-
     promise,
 
     new Promise((_, reject) => {
-
       setTimeout(() => {
-
         reject(
           new Error(
-            "Firestore request timed out. Check your Firebase connection and Firestore rules."
+            "Request timed out. Please check your connection."
           )
         );
-
       }, milliseconds);
-
     })
-
   ]);
+}
 
+
+/* ============================================================
+   LOCAL MEDIA SERVER
+   ============================================================ */
+
+/*
+   Uploads a document to:
+
+   POST http://localhost:4000/api/media/upload
+
+   The Firebase ID token proves who the user is.
+*/
+
+async function uploadDocumentToServer(
+  user,
+  file,
+  category
+) {
+  if (!user) {
+    throw new Error("You are not signed in.");
+  }
+
+  if (!file) {
+    throw new Error("No file selected.");
+  }
+
+  const token = await user.getIdToken();
+
+  const formData = new FormData();
+
+  formData.append(
+    "file",
+    file
+  );
+
+  formData.append(
+    "category",
+    category
+  );
+
+  const response = await fetch(
+    `${MEDIA_SERVER_URL}/api/media/upload`,
+    {
+      method: "POST",
+
+      headers: {
+        Authorization: `Bearer ${token}`
+      },
+
+      body: formData
+    }
+  );
+
+  const data =
+    await response
+      .json()
+      .catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data.error ||
+      `Upload failed (${response.status}).`
+    );
+  }
+
+  return data;
+}
+
+
+/*
+   The media server protects files with Firebase Auth.
+
+   Therefore <img src="..."> cannot directly load the image
+   because an <img> element cannot attach our Authorization header.
+
+   We fetch the file ourselves with the Firebase token and
+   convert it into a temporary browser URL.
+*/
+
+async function loadProtectedMediaPreview(
+  user,
+  mediaUrl,
+  imageElement
+) {
+  if (
+    !user ||
+    !mediaUrl ||
+    !imageElement
+  ) {
+    return;
+  }
+
+  try {
+    const token =
+      await user.getIdToken();
+
+    let url = mediaUrl;
+
+    if (!url.startsWith("http")) {
+      url =
+        `${MEDIA_SERVER_URL}${mediaUrl}`;
+    }
+
+    const response =
+      await fetch(
+        url,
+        {
+          headers: {
+            Authorization:
+              `Bearer ${token}`
+          }
+        }
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        `Media request failed (${response.status})`
+      );
+    }
+
+    const blob =
+      await response.blob();
+
+    const objectUrl =
+      URL.createObjectURL(blob);
+
+    /*
+       Revoke the previous object URL if this
+       image had one.
+    */
+
+    if (
+      imageElement.dataset.objectUrl
+    ) {
+      URL.revokeObjectURL(
+        imageElement.dataset.objectUrl
+      );
+    }
+
+    imageElement.dataset.objectUrl =
+      objectUrl;
+
+    imageElement.src =
+      objectUrl;
+
+    imageElement.hidden =
+      false;
+
+  } catch (error) {
+    console.error(
+      "Protected media preview failed:",
+      error
+    );
+
+    imageElement.hidden =
+      true;
+  }
 }
 
 
@@ -198,23 +335,29 @@ const STATUS = {
 };
 
 
-function setStatusPill(id, status) {
-
-  const element = $(id);
+function setStatusPill(
+  id,
+  status
+) {
+  const element =
+    $(id);
 
   if (!element) {
     return;
   }
 
   const normalized =
-    String(status || "not_submitted")
-      .toLowerCase();
+    String(
+      status ||
+      "not_submitted"
+    ).toLowerCase();
 
   const info =
     STATUS[normalized] ||
     STATUS.not_submitted;
 
-  element.textContent = info.label;
+  element.textContent =
+    info.label;
 
   element.className =
     "status-pill" +
@@ -231,49 +374,53 @@ function setStatusPill(id, status) {
    ============================================================ */
 
 function initTabs() {
-
   const buttons =
-    document.querySelectorAll(".prof-tab-btn");
+    document.querySelectorAll(
+      ".prof-tab-btn"
+    );
 
   const panels =
-    document.querySelectorAll(".prof-panel");
+    document.querySelectorAll(
+      ".prof-panel"
+    );
 
   buttons.forEach(button => {
 
-    button.addEventListener("click", () => {
+    button.addEventListener(
+      "click",
+      () => {
 
-      const target =
-        button.dataset.tab;
+        const target =
+          button.dataset.tab;
 
-      buttons.forEach(btn => {
+        buttons.forEach(btn => {
 
-        const active =
-          btn === button;
+          const active =
+            btn === button;
 
-        btn.classList.toggle(
-          "active",
-          active
-        );
+          btn.classList.toggle(
+            "active",
+            active
+          );
 
-        btn.setAttribute(
-          "aria-selected",
-          String(active)
-        );
+          btn.setAttribute(
+            "aria-selected",
+            String(active)
+          );
 
-      });
+        });
 
+        panels.forEach(panel => {
 
-      panels.forEach(panel => {
+          panel.hidden =
+            panel.id !== target;
 
-        panel.hidden =
-          panel.id !== target;
+        });
 
-      });
-
-    });
+      }
+    );
 
   });
-
 }
 
 
@@ -283,39 +430,24 @@ function initTabs() {
 
 async function loadProfile(user) {
 
-  /* Always show authenticated Firebase email */
   const emailElement =
     $("profileEmail");
 
   if (emailElement) {
-
     emailElement.textContent =
       user.email || "—";
-
   }
 
 
-  /*
-     IMPORTANT:
-     Profile document is expected here:
-
-     users
-       └── AUTH USER UID
-            ├── name
-            ├── phone
-            ├── age
-            ├── licenseStatus
-            ├── aadharStatus
-            ├── licenseURL
-            └── aadharURL
-  */
-
   const userRef =
-    doc(db, "users", user.uid);
+    doc(
+      db,
+      "users",
+      user.uid
+    );
 
 
   let snapshot;
-
 
   try {
 
@@ -332,29 +464,17 @@ async function loadProfile(user) {
       error
     );
 
-    /*
-       Do NOT leave the page stuck on
-       "Loading profile..."
-    */
-
     renderProfileError(error);
 
-    return null;
-
+    return {};
   }
 
 
   /* ==========================================================
-     PROFILE DOES NOT EXIST
+     CREATE PROFILE IF MISSING
      ========================================================== */
 
   if (!snapshot.exists()) {
-
-    console.warn(
-      "No users document found for UID:",
-      user.uid
-    );
-
 
     const fallbackData = {
 
@@ -388,14 +508,12 @@ async function loadProfile(user) {
 
       createdAt:
         serverTimestamp()
-
     };
 
 
     try {
 
       await withTimeout(
-
         setDoc(
           userRef,
           fallbackData,
@@ -403,9 +521,7 @@ async function loadProfile(user) {
             merge: true
           }
         ),
-
         10000
-
       );
 
     } catch (error) {
@@ -424,7 +540,6 @@ async function loadProfile(user) {
     );
 
     return fallbackData;
-
   }
 
 
@@ -434,7 +549,6 @@ async function loadProfile(user) {
 
   const data =
     snapshot.data() || {};
-
 
   console.log(
     "KRUZLY profile loaded:",
@@ -449,7 +563,6 @@ async function loadProfile(user) {
 
 
   return data;
-
 }
 
 
@@ -457,7 +570,10 @@ async function loadProfile(user) {
    RENDER PROFILE
    ============================================================ */
 
-function renderProfileData(data, user) {
+async function renderProfileData(
+  data,
+  user
+) {
 
   const name =
     data.name ||
@@ -491,69 +607,69 @@ function renderProfileData(data, user) {
     ).toLowerCase();
 
 
-  /* Name */
+  /* ==========================================================
+     NAME
+     ========================================================== */
 
   if ($("profileName")) {
-
     $("profileName").textContent =
       name;
-
   }
 
 
-  /* Avatar */
+  /* ==========================================================
+     AVATAR
+     ========================================================== */
 
   if ($("profileAvatar")) {
-
     $("profileAvatar").textContent =
       initials(name);
-
   }
 
 
-  /* Phone */
+  /* ==========================================================
+     PHONE
+     ========================================================== */
 
   if ($("profilePhone")) {
-
     $("profilePhone").textContent =
-      phone || "Phone not added";
-
+      phone ||
+      "Phone not added";
   }
 
 
-  /* Age */
+  /* ==========================================================
+     AGE
+     ========================================================== */
 
   if ($("profileAge")) {
-
     $("profileAge").textContent =
       age
         ? `${age} yrs`
         : "Not added";
-
   }
 
 
-  /* Email */
+  /* ==========================================================
+     EMAIL
+     ========================================================== */
 
   if ($("profileEmail")) {
-
     $("profileEmail").textContent =
       data.email ||
       user.email ||
       "—";
-
   }
 
 
-  /* License */
+  /* ==========================================================
+     DOCUMENT STATUS
+     ========================================================== */
 
   setStatusPill(
     "licenseStatusPill",
     licenseStatus
   );
-
-
-  /* Aadhaar */
 
   setStatusPill(
     "aadharStatusPill",
@@ -562,12 +678,11 @@ function renderProfileData(data, user) {
 
 
   /* ==========================================================
-     ACCOUNT VERIFICATION BADGE
+     VERIFICATION BADGE
      ========================================================== */
 
   const badge =
     $("verificationBadge");
-
 
   if (badge) {
 
@@ -587,9 +702,7 @@ function renderProfileData(data, user) {
         "verified"
       );
 
-    }
-
-    else if (
+    } else if (
       licenseStatus === "rejected" ||
       aadharStatus === "rejected"
     ) {
@@ -601,9 +714,7 @@ function renderProfileData(data, user) {
         "rejected"
       );
 
-    }
-
-    else if (
+    } else if (
       licenseStatus === "pending" ||
       aadharStatus === "pending"
     ) {
@@ -615,57 +726,36 @@ function renderProfileData(data, user) {
         "pending"
       );
 
-    }
-
-    else {
+    } else {
 
       badge.textContent =
         "Unverified Account";
-
     }
-
   }
 
 
   /* ==========================================================
-     EXISTING DOCUMENT PREVIEWS
+     PROTECTED DOCUMENT PREVIEWS
      ========================================================== */
 
   if (data.licenseURL) {
 
-    const preview =
-      $("licensePreview");
-
-    if (preview) {
-
-      preview.src =
-        data.licenseURL;
-
-      preview.hidden =
-        false;
-
-    }
-
+    await loadProtectedMediaPreview(
+      user,
+      data.licenseURL,
+      $("licensePreview")
+    );
   }
 
 
   if (data.aadharURL) {
 
-    const preview =
-      $("aadharPreview");
-
-    if (preview) {
-
-      preview.src =
-        data.aadharURL;
-
-      preview.hidden =
-        false;
-
-    }
-
+    await loadProtectedMediaPreview(
+      user,
+      data.aadharURL,
+      $("aadharPreview")
+    );
   }
-
 }
 
 
@@ -673,68 +763,39 @@ function renderProfileData(data, user) {
    PROFILE ERROR
    ============================================================ */
 
-function renderProfileError(error) {
+function renderProfileError(
+  error
+) {
 
-  const name =
-    $("profileName");
-
-  if (name) {
-
-    name.textContent =
+  if ($("profileName")) {
+    $("profileName").textContent =
       "Unable to load profile";
-
   }
 
-
-  const avatar =
-    $("profileAvatar");
-
-  if (avatar) {
-
-    avatar.textContent =
+  if ($("profileAvatar")) {
+    $("profileAvatar").textContent =
       "!";
-
   }
 
-
-  const phone =
-    $("profilePhone");
-
-  if (phone) {
-
-    phone.textContent =
+  if ($("profilePhone")) {
+    $("profilePhone").textContent =
       "Unavailable";
-
   }
 
-
-  const age =
-    $("profileAge");
-
-  if (age) {
-
-    age.textContent =
+  if ($("profileAge")) {
+    $("profileAge").textContent =
       "Unavailable";
-
   }
 
-
-  const badge =
-    $("verificationBadge");
-
-  if (badge) {
-
-    badge.textContent =
+  if ($("verificationBadge")) {
+    $("verificationBadge").textContent =
       "Profile Error";
-
   }
-
 
   console.error(
     "KRUZLY profile error:",
     error
   );
-
 }
 
 
@@ -787,7 +848,6 @@ function initEditProfile(
     );
 
     return;
-
   }
 
 
@@ -797,29 +857,32 @@ function initEditProfile(
 
       event.preventDefault();
 
+      if (nameInput) {
+        nameInput.value =
+          profileData?.name ||
+          user.displayName ||
+          "";
+      }
 
-      nameInput.value =
-        profileData?.name ||
-        user.displayName ||
-        "";
+      if (ageInput) {
+        ageInput.value =
+          profileData?.age ||
+          "";
+      }
 
+      if (phoneInput) {
+        phoneInput.value =
+          profileData?.phone ||
+          "";
+      }
 
-      ageInput.value =
-        profileData?.age ||
-        "";
+      if (status) {
+        status.textContent =
+          "";
 
-
-      phoneInput.value =
-        profileData?.phone ||
-        "";
-
-
-      status.textContent =
-        "";
-
-      status.className =
-        "form-status";
-
+        status.className =
+          "form-status";
+      }
 
       view.hidden =
         true;
@@ -827,9 +890,7 @@ function initEditProfile(
       form.hidden =
         false;
 
-
-      nameInput.focus();
-
+      nameInput?.focus();
     }
   );
 
@@ -845,7 +906,6 @@ function initEditProfile(
 
       view.hidden =
         false;
-
     }
   );
 
@@ -858,15 +918,15 @@ function initEditProfile(
 
 
       const name =
-        nameInput.value.trim();
+        nameInput?.value.trim() || "";
 
 
       const phone =
-        phoneInput.value.trim();
+        phoneInput?.value.trim() || "";
 
 
       const ageRaw =
-        ageInput.value.trim();
+        ageInput?.value.trim() || "";
 
 
       const age =
@@ -877,14 +937,15 @@ function initEditProfile(
 
       if (!name) {
 
-        status.textContent =
-          "Please enter your full name.";
+        if (status) {
+          status.textContent =
+            "Please enter your full name.";
 
-        status.className =
-          "form-status error";
+          status.className =
+            "form-status error";
+        }
 
         return;
-
       }
 
 
@@ -897,23 +958,31 @@ function initEditProfile(
         )
       ) {
 
-        status.textContent =
-          "Age must be between 18 and 100.";
+        if (status) {
+          status.textContent =
+            "Age must be between 18 and 100.";
 
-        status.className =
-          "form-status error";
+          status.className =
+            "form-status error";
+        }
 
         return;
-
       }
 
 
-      saveButton.disabled =
-        true;
+      if (saveButton) {
+        saveButton.disabled =
+          true;
+      }
 
 
-      status.textContent =
-        "Saving changes...";
+      if (status) {
+        status.textContent =
+          "Saving changes...";
+
+        status.className =
+          "form-status";
+      }
 
 
       try {
@@ -949,37 +1018,36 @@ function initEditProfile(
             {
               merge: true
             }
-
           ),
 
           10000
-
         );
 
 
-        /* Update UI immediately */
+        /* Update UI */
 
-        $("profileName")
-          .textContent =
-          name;
+        if ($("profileName")) {
+          $("profileName").textContent =
+            name;
+        }
 
+        if ($("profileAvatar")) {
+          $("profileAvatar").textContent =
+            initials(name);
+        }
 
-        $("profileAvatar")
-          .textContent =
-          initials(name);
+        if ($("profilePhone")) {
+          $("profilePhone").textContent =
+            phone ||
+            "Phone not added";
+        }
 
-
-        $("profilePhone")
-          .textContent =
-          phone ||
-          "Phone not added";
-
-
-        $("profileAge")
-          .textContent =
-          age
-            ? `${age} yrs`
-            : "Not added";
+        if ($("profileAge")) {
+          $("profileAge").textContent =
+            age
+              ? `${age} yrs`
+              : "Not added";
+        }
 
 
         profileData.name =
@@ -992,11 +1060,13 @@ function initEditProfile(
           age || null;
 
 
-        status.textContent =
-          "Profile saved successfully.";
+        if (status) {
+          status.textContent =
+            "Profile saved successfully.";
 
-        status.className =
-          "form-status success";
+          status.className =
+            "form-status success";
+        }
 
 
         setTimeout(() => {
@@ -1018,22 +1088,24 @@ function initEditProfile(
         );
 
 
-        status.textContent =
-          error?.message ||
-          "Could not save your profile.";
+        if (status) {
+          status.textContent =
+            error?.message ||
+            "Could not save your profile.";
 
-        status.className =
-          "form-status error";
+          status.className =
+            "form-status error";
+        }
 
       }
 
 
-      saveButton.disabled =
-        false;
-
+      if (saveButton) {
+        saveButton.disabled =
+          false;
+      }
     }
   );
-
 }
 
 
@@ -1041,7 +1113,9 @@ function initEditProfile(
    BOOKINGS
    ============================================================ */
 
-async function loadBookings(userId) {
+async function loadBookings(
+  userId
+) {
 
   const container =
     $("profLiveBookings");
@@ -1063,7 +1137,11 @@ async function loadBookings(userId) {
 
     const bookingsQuery =
       query(
-        collection(db, "bookings"),
+        collection(
+          db,
+          "bookings"
+        ),
+
         where(
           "userId",
           "==",
@@ -1080,10 +1158,12 @@ async function loadBookings(userId) {
 
 
     const bookings =
-      snapshot.docs.map(item => ({
-        id: item.id,
-        ...item.data()
-      }));
+      snapshot.docs.map(
+        item => ({
+          id: item.id,
+          ...item.data()
+        })
+      );
 
 
     bookings.sort(
@@ -1102,7 +1182,6 @@ async function loadBookings(userId) {
           );
 
         return dateB - dateA;
-
       }
     );
 
@@ -1133,7 +1212,6 @@ async function loadBookings(userId) {
       `;
 
       return;
-
     }
 
 
@@ -1171,9 +1249,7 @@ async function loadBookings(userId) {
       </div>
 
     `;
-
   }
-
 }
 
 
@@ -1181,7 +1257,9 @@ async function loadBookings(userId) {
    BOOKING CARD
    ============================================================ */
 
-function renderBooking(booking) {
+function renderBooking(
+  booking
+) {
 
   const status =
     String(
@@ -1190,7 +1268,8 @@ function renderBooking(booking) {
     ).toLowerCase();
 
 
-  let statusClass = "";
+  let statusClass =
+    "";
 
 
   if (
@@ -1201,9 +1280,7 @@ function renderBooking(booking) {
     statusClass =
       "verified";
 
-  }
-
-  else if (
+  } else if (
     status === "pending_payment" ||
     status === "pending"
   ) {
@@ -1211,16 +1288,13 @@ function renderBooking(booking) {
     statusClass =
       "pending";
 
-  }
-
-  else if (
+  } else if (
     status === "cancelled" ||
     status === "rejected"
   ) {
 
     statusClass =
       "rejected";
-
   }
 
 
@@ -1255,7 +1329,8 @@ function renderBooking(booking) {
     0;
 
 
-  let paymentButton = "";
+  let paymentButton =
+    "";
 
 
   if (
@@ -1275,9 +1350,7 @@ function renderBooking(booking) {
 
       `;
 
-    }
-
-    else {
+    } else {
 
       paymentButton = `
 
@@ -1296,9 +1369,7 @@ function renderBooking(booking) {
         </a>
 
       `;
-
     }
-
   }
 
 
@@ -1427,7 +1498,6 @@ function renderBooking(booking) {
     </article>
 
   `;
-
 }
 
 
@@ -1466,7 +1536,6 @@ function initDocumentUpload(
     );
 
     return;
-
   }
 
 
@@ -1487,6 +1556,9 @@ function initDocumentUpload(
       status.textContent =
         "";
 
+      status.className =
+        "form-status";
+
 
       const file =
         input.files?.[0];
@@ -1496,6 +1568,10 @@ function initDocumentUpload(
         return;
       }
 
+
+      /* ======================================================
+         TYPE CHECK
+         ====================================================== */
 
       if (
         !ALLOWED_TYPES.includes(
@@ -1513,9 +1589,12 @@ function initDocumentUpload(
           "";
 
         return;
-
       }
 
+
+      /* ======================================================
+         SIZE CHECK
+         ====================================================== */
 
       if (
         file.size >
@@ -1532,18 +1611,40 @@ function initDocumentUpload(
           "";
 
         return;
-
       }
 
+
+      /* ======================================================
+         PREVIEW SELECTED FILE
+         ====================================================== */
 
       selectedFile =
         file;
 
 
-      preview.src =
+      if (
+        preview.dataset.objectUrl
+      ) {
+
+        URL.revokeObjectURL(
+          preview.dataset.objectUrl
+        );
+
+        delete preview.dataset.objectUrl;
+      }
+
+
+      const objectUrl =
         URL.createObjectURL(
           file
         );
+
+
+      preview.dataset.objectUrl =
+        objectUrl;
+
+      preview.src =
+        objectUrl;
 
       preview.hidden =
         false;
@@ -1556,9 +1657,15 @@ function initDocumentUpload(
       status.textContent =
         file.name;
 
+      status.className =
+        "form-status";
     }
   );
 
+
+  /* ==========================================================
+     UPLOAD BUTTON
+     ========================================================== */
 
   button.addEventListener(
     "click",
@@ -1576,69 +1683,103 @@ function initDocumentUpload(
       status.textContent =
         "Uploading...";
 
+      status.className =
+        "form-status";
+
 
       try {
 
-        const extension =
-          selectedFile.type ===
-          "image/png"
-            ? "png"
-            : selectedFile.type ===
-              "image/webp"
-                ? "webp"
-                : "jpg";
+        /*
+           IMPORTANT:
 
+           We are NOT using Firebase Storage anymore.
 
-        const storagePath =
-          `${config.folder}/${user.uid}/${config.folder}.${extension}`;
+           License:
+             licenses path -> license_doc
 
+           Aadhaar:
+             aadhar path -> aadhar_doc
+        */
 
-        const storageRef =
-          ref(
-            storage,
-            storagePath
+        const result =
+          await uploadDocumentToServer(
+            user,
+            selectedFile,
+            config.serverCategory
           );
 
 
-        await uploadBytes(
-          storageRef,
-          selectedFile
+        console.log(
+          "Media server upload:",
+          result
         );
 
 
-        const downloadURL =
-          await getDownloadURL(
-            storageRef
+        /*
+           Server returns:
+
+           {
+             id,
+             userId,
+             category,
+             originalName,
+             mimeType,
+             sizeBytes,
+             uploadedAt,
+             url
+           }
+        */
+
+        const mediaUrl =
+          result.url;
+
+
+        if (!mediaUrl) {
+          throw new Error(
+            "Upload succeeded but the server did not return a file URL."
           );
+        }
 
 
-        await setDoc(
+        /* ====================================================
+           SAVE SERVER FILE URL IN FIRESTORE
+           ==================================================== */
 
-          doc(
-            db,
-            "users",
-            user.uid
+        await withTimeout(
+
+          setDoc(
+
+            doc(
+              db,
+              "users",
+              user.uid
+            ),
+
+            {
+
+              [config.urlField]:
+                mediaUrl,
+
+              [config.statusField]:
+                "pending",
+
+              documentsUpdatedAt:
+                serverTimestamp()
+
+            },
+
+            {
+              merge: true
+            }
           ),
 
-          {
-
-            [config.urlField]:
-              downloadURL,
-
-            [config.statusField]:
-              "pending",
-
-            documentsUpdatedAt:
-              serverTimestamp()
-
-          },
-
-          {
-            merge: true
-          }
-
+          10000
         );
 
+
+        /* ====================================================
+           UPDATE STATUS
+           ==================================================== */
 
         setStatusPill(
           config.pillId,
@@ -1653,11 +1794,27 @@ function initDocumentUpload(
           "form-status success";
 
 
+        /* ====================================================
+           CLEAR SELECTED FILE
+           ==================================================== */
+
         selectedFile =
           null;
 
         input.value =
           "";
+
+
+        /*
+           Keep the uploaded preview visible.
+
+           The current preview is already showing the
+           selected file, so there is no need to download
+           it again immediately.
+        */
+
+        button.disabled =
+          true;
 
 
       } catch (error) {
@@ -1670,7 +1827,7 @@ function initDocumentUpload(
 
         status.textContent =
           error?.message ||
-          "Upload failed. Check Firebase Storage rules.";
+          "Upload failed. Check that the media server is running.";
 
         status.className =
           "form-status error";
@@ -1678,12 +1835,10 @@ function initDocumentUpload(
 
         button.disabled =
           false;
-
       }
 
     }
   );
-
 }
 
 
@@ -1714,9 +1869,7 @@ function initLogout() {
           "Are you sure you want to logout?"
         )
       ) {
-
         return;
-
       }
 
 
@@ -1737,17 +1890,15 @@ function initLogout() {
         alert(
           "Could not logout. Please try again."
         );
-
       }
 
     }
   );
-
 }
 
 
 /* ============================================================
-   AUTH
+   AUTH INITIALIZATION
    ============================================================ */
 
 onAuthStateChanged(
@@ -1765,35 +1916,39 @@ onAuthStateChanged(
     );
 
 
+    /* ========================================================
+       NOT LOGGED IN
+       ======================================================== */
+
     if (!user) {
 
       window.location.href =
         "index.html?next=profile.html";
 
       return;
-
     }
 
 
     try {
 
-      /* Tabs */
+      /* ======================================================
+         TABS
+         ====================================================== */
 
       initTabs();
 
 
-      /* Profile */
+      /* ======================================================
+         PROFILE
+         ====================================================== */
 
       const profileData =
         await loadProfile(user);
 
 
-      /*
-         IMPORTANT:
-         Bookings are intentionally started separately.
-         A profile Firestore problem will no longer prevent
-         the rest of the page from initializing.
-      */
+      /* ======================================================
+         EDIT PROFILE
+         ====================================================== */
 
       initEditProfile(
         user,
@@ -1801,12 +1956,18 @@ onAuthStateChanged(
       );
 
 
+      /* ======================================================
+         BOOKINGS
+         ====================================================== */
+
       loadBookings(
         user.uid
       );
 
 
-      /* License */
+      /* ======================================================
+         LICENSE
+         ====================================================== */
 
       initDocumentUpload(
         user,
@@ -1827,8 +1988,14 @@ onAuthStateChanged(
           pillId:
             "licenseStatusPill",
 
-          folder:
-            "licenses",
+          /*
+             This is the category accepted by:
+
+             server/routes/media.js
+          */
+
+          serverCategory:
+            "license_doc",
 
           urlField:
             "licenseURL",
@@ -1840,7 +2007,9 @@ onAuthStateChanged(
       );
 
 
-      /* Aadhaar */
+      /* ======================================================
+         AADHAAR
+         ====================================================== */
 
       initDocumentUpload(
         user,
@@ -1861,8 +2030,8 @@ onAuthStateChanged(
           pillId:
             "aadharStatusPill",
 
-          folder:
-            "aadhar",
+          serverCategory:
+            "aadhar_doc",
 
           urlField:
             "aadharURL",
@@ -1874,7 +2043,9 @@ onAuthStateChanged(
       );
 
 
-      /* Logout */
+      /* ======================================================
+         LOGOUT
+         ====================================================== */
 
       initLogout();
 

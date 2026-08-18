@@ -143,6 +143,24 @@
       flex-wrap: wrap;
     }
 
+    .manager-date-sort {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      color: var(--sub);
+      font-size: .78rem;
+      flex: 0 0 auto;
+    }
+
+    .manager-date-sort select {
+      min-height: 42px;
+      padding: 8px 36px 8px 12px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(0, 0, 0, .4);
+      color: var(--text);
+    }
+
     .manager-panel-title {
       margin: 0;
       font-size: 1.2rem;
@@ -616,6 +634,14 @@
                 Monitor confirmed rentals and process vehicle returns.
               </p>
             </div>
+
+            <label class="manager-date-sort" for="mgrBookingSortOrder">
+              Sort by pickup date
+              <select id="mgrBookingSortOrder">
+                <option value="desc">Newest first</option>
+                <option value="asc">Oldest first</option>
+              </select>
+            </label>
 
           </div>
 

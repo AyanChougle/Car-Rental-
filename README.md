@@ -11,6 +11,7 @@ It features a 35-car fleet, a single-car 360° scroll gallery, a booking + reser
 This codebase had several bugs that made core pages non-functional, plus one serious security hole. Everything below is fixed in this copy. If you're comparing against an older copy of the repo, this section tells you what to look for.
 
 **Site-breaking bugs (fixed):**
+
 - `js/ip-fetcher.js` had invalid, Node-style import paths (`"firebase/firestore"`, `"./firebase"`) and a stray line calling an undefined variable. Because `js/auth.js` and `js/profile.js` both depend on it, **this broke login, signup, and the entire profile page** on every browser. Rewritten with correct browser-compatible imports.
 - `js/profile.js` imported named exports (`vehicles`, `fleetImagePath`) from `js/vehicles.js` that don't exist there (it's a classic script, not a module with exports) — this threw immediately and stopped the whole file from running. Fixed to use `window.fleetVehicles` / `window.fleetImagePath` instead, which is what `js/vehicles.js` actually sets.
 - `profile.js` called `renderFleetGallery()` for the profile page's "Fleet Showcase" tab, but the function was entirely commented out. Restored.
@@ -19,18 +20,21 @@ This codebase had several bugs that made core pages non-functional, plus one ser
 - `about.html`, `terms.html`, `privacy.html`, and `refund.html` loaded **no scripts at all**, so the header nav never reflected login state or highlighted the active page on those four pages. Added `js/nav-helper.js` to all four.
 
 **Security fixes (important — read this one):**
+
 - `firestore.rules` let any signed-in user write anything to their own `users/{uid}` document, **including the `role` field**. Combined with a "Grant Admin Role to My Account" button that used to sit on `admin.html`/`manager.html`, any registered customer could make themselves an admin with one click. Rules now block a user from changing their own `role`, `licenseStatus`, or `aadharStatus` — those can only be changed by an admin (role) or manager/admin (verification status). The self-service grant buttons and the "Enable Demo Mode" buttons/backdoors have been removed entirely from `admin.html`, `manager.html`, `admin.js`, and `manager.js`.
 - `storage.rules` let **any signed-in user read any other user's uploaded license or Aadhar photo** by guessing their UID — it only checked "is someone logged in," not "is this their own file or a staff member's." Fixed so only the file's owner, or a manager/admin, can read it.
 - `admin.js` and `manager.js` showed fabricated sample data (fake customers "Rahul Sharma," "Priya Patel," fake bookings and fake host cars) whenever a Firestore query came back empty or failed — meaning a real admin could easily mistake fake data for real records, or a broken connection for an empty database. Removed; the dashboards now show a genuine "couldn't load — check your connection" message on failure and a real empty state when there's simply no data yet.
 
 **Honesty fix (no backend exists for this yet):**
+
 - `payment.html` was an explicit, self-labeled demo checkout — UPI/Card fields that accepted any input and always "succeeded," writing a fake `DEMO-xxxxx` reference. There is no real payment gateway wired up. This was fixed in two stages: first to an honest "Reserve Now, Pay at Pickup" flow, then upgraded again to a **UPI manual-verification checkout** — see below.
 - `js/contact.js` only opened `mailto:`, which does nothing visible on many phones and browsers with no mail app configured — meaning a real customer's message could vanish silently. It now saves every submission to a `contact_messages` collection in Firestore first (so it's never lost), then opens `mailto:` as a bonus for visitors who do have one configured. There's no inbox UI for these yet — read them in **Firebase Console → Firestore → contact_messages** for now, or add one to `admin.html` later.
 
 **Added in this pass:**
+
 - **Google Sign-In** on `index.html`, alongside the existing email/password login — see **Homepage login/quick-book swap** below for exactly how it behaves.
 - Fixed a real UI bug: `.fleet-card__image img` had two contradicting CSS rules (`object-fit: cover` vs `object-fit: contain` with padding) defined in different parts of `css/style.css`, silently fighting each other in the cascade. Consolidated into one rule so fleet card images render consistently.
-- **UPI manual-verification checkout** replacing the old "Pay at Pickup" flow — see **UPI Checkout & Payment Verification** below. Also caught and fixed a real gap while wiring this up: `firestore.rules` let a customer update *any* field on their own booking, including `paymentStatus` — meaning under the old model a customer could have opened devtools and set `paymentStatus: "paid"` on their own booking directly. Now field-restricted: an owner can only ever move their own booking to `paymentStatus: "pending_verification"` or `status: "cancelled"`; only staff can mark a payment `"paid"`/`"rejected"` or a booking `"confirmed"`.
+- **UPI manual-verification checkout** replacing the old "Pay at Pickup" flow — see **UPI Checkout & Payment Verification** below. Also caught and fixed a real gap while wiring this up: `firestore.rules` let a customer update _any_ field on their own booking, including `paymentStatus` — meaning under the old model a customer could have opened devtools and set `paymentStatus: "paid"` on their own booking directly. Now field-restricted: an owner can only ever move their own booking to `paymentStatus: "pending_verification"` or `status: "cancelled"`; only staff can mark a payment `"paid"`/`"rejected"` or a booking `"confirmed"`.
 - Admin **Revenue & Sales KPIs** and a **Payments** review tab on `admin.html` — see below.
 - Also fixed, while in `admin.js`: `loadHostCars()` still had a fake fallback listing ("Vikram Malhotra" / Tata Safari) shown whenever Firestore had no host-car submissions yet — missed in the earlier demo-data cleanup pass. Removed; it now shows a real empty state.
 
@@ -70,6 +74,7 @@ Then open the printed `localhost` URL in your browser.
 ## Connecting Your Own Firebase Project
 
 ### Step 1 — Create the Firebase project
+
 1. Go to the [Firebase Console](https://console.firebase.google.com/) → **Add project**.
 2. Add a Web app (`</>`) to it, and copy the `firebaseConfig` object it gives you.
 3. Paste those values into `js/firebase-init.js`, replacing the existing config:
@@ -81,19 +86,22 @@ const firebaseConfig = {
   projectId: "YOUR_PROJECT_ID",
   storageBucket: "YOUR_PROJECT.firebasestorage.app",
   messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  appId: "YOUR_APP_ID",
 };
 ```
 
 ### Step 2 — Enable Authentication
+
 Firebase Console → **Build → Authentication → Get Started → Sign-in method → Email/Password → Enable → Save**.
 
 Also enable Google sign-in, since it's the primary login method on the homepage:
+
 1. Same **Sign-in method** tab → **Google → Enable**.
 2. Set a support email (required by Google) → **Save**.
 3. No extra config needed in code — `js/auth.js` already calls `signInWithPopup` with `GoogleAuthProvider`, and `authDomain` in `js/firebase-init.js` is already correct for popup sign-in to work once this is turned on.
 
 ### Step 3 — Enable Firestore and deploy its rules
+
 1. Firebase Console → **Build → Firestore Database → Create database** (Native mode; pick a region close to your users, e.g. `asia-south1` for India).
 2. Deploy the rules in this repo — **do this before you go live**, the app is not safe to run on default/open rules:
    ```bash
@@ -103,6 +111,7 @@ Also enable Google sign-in, since it's the primary login method on the homepage:
    ```
 
 ### Step 4 — Enable Storage and deploy its rules
+
 1. Firebase Console → **Build → Storage → Get Started** (default options).
 2. Deploy:
    ```bash
@@ -110,38 +119,43 @@ Also enable Google sign-in, since it's the primary login method on the homepage:
    ```
 
 ### Step 5 — Create your first admin account
+
 Self-service role granting was removed for security (see above), so the first admin has to be set manually, once:
+
 1. Open your site, sign up a normal account (e.g. `admin@yourcompany.com`).
 2. Firebase Console → **Firestore Database → `users` collection** → find the document with your account's UID.
 3. Edit the `role` field (string) from `customer` to `admin`.
 4. Refresh the site — the **Admin** link appears in the nav and `admin.html` unlocks. From there, use the Users tab to promote other accounts to `manager` or `admin` without touching the console again.
 
 ### Step 6 — Deploy hosting
+
 ```bash
 npx -y firebase-tools@latest deploy --only hosting
 ```
+
 (Requires `firebase init hosting` once, pointed at this folder as the public directory — or deploy this static folder to any static host: Netlify, Vercel, Cloudflare Pages, GitHub Pages, etc. There's no server/build step required anywhere in this app.)
 
 ---
 
 ## Page & Function Guide
 
-| Page | What it does | Key script |
-|---|---|---|
-| `index.html` | Landing page with hero video. Signed-out visitors see Google sign-in + login/signup forms; signed-in visitors see a pickup/drop date-time quick-book widget in the same spot instead. | `js/auth.js` — `wireLoginForm()`, `wireSignupForm()`, `wireForgotPassword()`, `wirePasswordToggles()`, `wireGoogleAuth()`, `wireHomepageAuthSwap()`. Handles Firebase Auth sign-in/sign-up (email/password and Google), creates the initial Firestore `users/{uid}` doc on first sign-in, and redirects back to wherever the user was headed (`?next=`) after login. |
-| `fleet.html` | Full 35-car catalog with search, category filter, chips, and sorting. | `js/fleet.js` — reads the static catalog from `js/vehicles.js`, filters/sorts it client-side, and renders the grid. |
-| `vehicle.html` | Single-car detail page with a scroll-driven 360° gallery. | `js/vehicle-gallery.js` — reads the car by `?reg=` from the fleet catalog, renders specs, and drives the sticky-scroll image sequence. |
-| `booking.html` | Pickup/drop date picker, optional driver, live price breakdown, creates the booking. | `js/booking.js` — validates dates, computes total (day rate × days + optional driver rate + deposit), writes a `bookings/{id}` doc with `status: "pending_payment"`, then sends the user to `payment.html`. |
-| `payment.html` | UPI/bank-transfer checkout — see **UPI Checkout & Payment Verification** above. | `js/payment.js` + `js/payment-config.js` — loads the pending booking, generates the UPI QR/deep link, and on submit sets `paymentStatus: "pending_verification"` (never `"paid"` — only staff can set that). |
-| `bookings.html` | "My Bookings" — a customer's full booking history and live status. | `js/bookings.js` |
-| `partner.html` | "Host Your Car" — vehicle owners submit a car for the fleet via a full brand→model cascading dropdown (`js/carModels.js`), registration number, and insurance validity dates alongside category, transmission, fuel, seats, and rate. | `js/partner.js` — writes a `partner_cars/{id}` doc with `status: "pending_approval"` for admin review. |
-| `profile.html` | User dashboard, exactly 3 tabs: Profile Details, My Bookings, ID Verification (license/Aadhar upload + status). | `js/profile.js` |
-| `contact.html` | Contact form. | `js/contact.js` — saves the message to Firestore `contact_messages`, then opens `mailto:` as a bonus. |
-| `admin.html` | Admin Control Panel — Revenue & Sales KPIs, a Payments tab to approve/reject submitted UPI/bank-transfer references, manage users and roles, approve/reject license & Aadhar submissions, manage all bookings, approve/reject partner-listed host cars. | `js/admin.js` — restricted to accounts with `role: "admin"` in Firestore. |
-| `manager.html` | Operations console — active trips, today's pickups, pending document verifications. | `js/manager.js` — restricted to `role: "manager"` or `"admin"`. |
-| `about.html`, `terms.html`, `privacy.html`, `refund.html` | Static informational pages. | `js/nav-helper.js` only (keeps the header nav in sync). |
+| Page                                                      | What it does                                                                                                                                                                                                                                            | Key script                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `index.html`                                              | Landing page with hero video. Signed-out visitors see Google sign-in + login/signup forms; signed-in visitors see a pickup/drop date-time quick-book widget in the same spot instead.                                                                   | `js/auth.js` — `wireLoginForm()`, `wireSignupForm()`, `wireForgotPassword()`, `wirePasswordToggles()`, `wireGoogleAuth()`, `wireHomepageAuthSwap()`. Handles Firebase Auth sign-in/sign-up (email/password and Google), creates the initial Firestore `users/{uid}` doc on first sign-in, and redirects back to wherever the user was headed (`?next=`) after login. |
+| `fleet.html`                                              | Full 35-car catalog with search, category filter, chips, and sorting.                                                                                                                                                                                   | `js/fleet.js` — reads the static catalog from `js/vehicles.js`, filters/sorts it client-side, and renders the grid.                                                                                                                                                                                                                                                  |
+| `vehicle.html`                                            | Single-car detail page with a scroll-driven 360° gallery.                                                                                                                                                                                               | `js/vehicle-gallery.js` — reads the car by `?reg=` from the fleet catalog, renders specs, and drives the sticky-scroll image sequence.                                                                                                                                                                                                                               |
+| `booking.html`                                            | Pickup/drop date picker, optional driver, live price breakdown, creates the booking.                                                                                                                                                                    | `js/booking.js` — validates dates, computes total (day rate × days + optional driver rate + deposit), writes a `bookings/{id}` doc with `status: "pending_payment"`, then sends the user to `payment.html`.                                                                                                                                                          |
+| `payment.html`                                            | UPI/bank-transfer checkout — see **UPI Checkout & Payment Verification** above.                                                                                                                                                                         | `js/payment.js` + `js/payment-config.js` — loads the pending booking, generates the UPI QR/deep link, and on submit sets `paymentStatus: "pending_verification"` (never `"paid"` — only staff can set that).                                                                                                                                                         |
+| `bookings.html`                                           | "My Bookings" — a customer's full booking history and live status.                                                                                                                                                                                      | `js/bookings.js`                                                                                                                                                                                                                                                                                                                                                     |
+| `partner.html`                                            | "Host Your Car" — vehicle owners submit a car for the fleet via a full brand→model cascading dropdown (`js/carModels.js`), registration number, and insurance validity dates alongside category, transmission, fuel, seats, and rate.                   | `js/partner.js` — writes a `partner_cars/{id}` doc with `status: "pending_approval"` for admin review.                                                                                                                                                                                                                                                               |
+| `profile.html`                                            | User dashboard, exactly 3 tabs: Profile Details, My Bookings, ID Verification (license/Aadhar upload + status).                                                                                                                                         | `js/profile.js`                                                                                                                                                                                                                                                                                                                                                      |
+| `contact.html`                                            | Contact form.                                                                                                                                                                                                                                           | `js/contact.js` — saves the message to Firestore `contact_messages`, then opens `mailto:` as a bonus.                                                                                                                                                                                                                                                                |
+| `admin.html`                                              | Admin Control Panel — Revenue & Sales KPIs, a Payments tab to approve/reject submitted UPI/bank-transfer references, manage users and roles, approve/reject license & Aadhar submissions, manage all bookings, approve/reject partner-listed host cars. | `js/admin.js` — restricted to accounts with `role: "admin"` in Firestore.                                                                                                                                                                                                                                                                                            |
+| `manager.html`                                            | Operations console — active trips, today's pickups, pending document verifications.                                                                                                                                                                     | `js/manager.js` — restricted to `role: "manager"` or `"admin"`.                                                                                                                                                                                                                                                                                                      |
+| `about.html`, `terms.html`, `privacy.html`, `refund.html` | Static informational pages.                                                                                                                                                                                                                             | `js/nav-helper.js` only (keeps the header nav in sync).                                                                                                                                                                                                                                                                                                              |
 
 **Shared scripts (not tied to one page):**
+
 - `js/firebase-init.js` — initializes the Firebase app, exports `auth`, `db`, `storage`. Every other module imports from here; this is the only file with your project's config in it.
 - `js/vehicles.js` — the static 35-car fleet catalog (brand, model, year, category, transmission, fuel, seats, pricing, image filename mapping). Loaded as a classic script (not a module) and exposes `window.fleetVehicles` and `window.fleetImagePath()` for every other page to use.
 - `js/nav-helper.js` — runs on every page; shows/hides the Admin/Manager nav links and the Login/Logout state based on the current Firebase Auth user and their Firestore role.
@@ -163,7 +177,7 @@ Google sign-in creates the `users/{uid}` doc (role `customer`) only the first ti
 ## Firestore Schema
 
 - **`users/{uid}`** — `name`, `email`, `phone`, `age`, `role` (`customer` / `manager` / `admin`), `licenseURL`, `licenseStatus` (`not_submitted` / `pending` / `verified` / `rejected`), `aadharURL`, `aadharStatus`, `ipAddress`, `ipUpdatedAt`, `createdAt`.
-- **`bookings/{id}`** — `userId`, `userName`, `userEmail`, `userPhone`, `vehicleReg`, `vehicleName`, `vehicleCategory`, `vehicleIcon`, `pickupDate`, `dropDate`, `days`, `withDriver`, `dayRate`, `driverRate`, `securityDeposit`, `totalAmount`, `status` (`pending_payment` / `confirmed` / `completed` / `cancelled`), `paymentStatus` (`unpaid` / `pending_verification` / `paid` / `rejected` / legacy `pay_at_pickup`), `paymentMethod` (`upi` / `bank_transfer`), `paymentRef`, `paymentScreenshotURL`, `paymentSubmittedAt`, `paymentVerifiedAt`, `paymentVerifiedBy`, `paymentRejectionReason`, `odometerKm`, `odometerUpdatedAt`, `returnInspection` (see below), `createdAt`.
+- **`bookings/{id}`** — `userId`, `userName`, `userEmail`, `userPhone`, `vehicleReg`, `vehicleName`, `vehicleCategory`, `vehicleIcon`, `pickupDate`, `dropDate`, `days`, `withDriver`, `dayRate`, `driverRate`, `securityDeposit`, `totalAmount`, `status` (`pending_payment` / `confirmed` / `completed` / `cancelled`), `paymentStatus` (`unpaid` / `pending_verification` / `paid` / `rejected` / legacy `pay_at_pickup`), `paymentMethod` (`upi` / `bank_transfer`), `paymentRef`, `paymentScreenshotURL`, `paymentSubmittedAt`, `paymentVerifiedAt`, `paymentVerifiedBy`, `paymentRejectionReason`, `odometerStart`, `odometerEnd`, `odometerUpdatedAt`, `fastagStart`, `fastagReturn`, `fastagUpdatedAt`, `returnInspection` (see below), `createdAt`.
 - **`bookings/{id}.returnInspection`** — set once, when staff process the car's return via **Manager → Process Return** or **Admin → Bookings → Process Return**: `items` (array of `{ key, label, checked, amount }` — one entry per damage checklist item, e.g. scratch/dent/broken part/accident/interior/fuel/late return/other), `deductionTotal`, `depositRefund` (`securityDeposit - deductionTotal`, floored at 0), `notes` (free-text, shown to the customer on `bookings.html`), `processedAt`, `processedByUid`, `processedByName`. Saving this always sets `status: "completed"` at the same time — there's no separate "just mark completed" action anymore, so every completed booking has a return record. Whoever processes it (admin or manager), both panels show the same **View Return Report** action afterward — it's read from the booking doc, not scoped to whichever role wrote it — and reopening it shows who processed it and when.
 - **`partner_cars/{id}`** — `userId`, `userEmail`, `brand`, `model`, `year`, `category`, `transmission`, `fuel`, `seats`, `priceDay`, `regNumber`, `insuranceStart`, `insuranceEnd`, `location`, `imageUrl`, `photos` (array of URLs, staff-uploaded — see below), `ownerName`, `ownerPhone`, `status` (`pending_approval` / `approved` / `rejected`), `createdAt`. The Admin Host Car Listings tab flags an expired `insuranceEnd` in red so it's caught before approval.
 - **`contact_messages/{id}`** — `name`, `email`, `phone`, `subject`, `message`, `resolved`, `createdAt`. No UI to browse these yet — read them in the Firebase Console for now.
@@ -172,7 +186,9 @@ Google sign-in creates the `users/{uid}` doc (role `customer`) only the first ti
 
 ## Odometer Tracking
 
-Admin's Bookings tab has an **Odometer (km)** field in each booking's expandable details panel — enter a reading and hit Save to record it on `bookings/{id}.odometerKm` / `odometerUpdatedAt`. This is separate from the static `odometer` spec shown on a vehicle's own detail page (`vehicle.html`, sourced from `js/vehicles.js`) — that one describes the car in general; this one is a per-booking reading staff record (e.g. at pickup or return) for mileage/usage tracking.
+Admin's Bookings tab has **Start Odometer (km)** and **End Odometer (km)** fields in each booking's expandable details panel. **Save Odometer** records them on `bookings/{id}.odometerStart` / `odometerEnd` with `odometerUpdatedAt`. This is separate from the static `odometer` spec shown on a vehicle's own detail page (`vehicle.html`, sourced from `js/vehicles.js`).
+
+The same panel also has **FASTag at Start (₹)** and **FASTag at Return (₹)** fields. **Save FASTag** stores them on `bookings/{id}.fastagStart` / `fastagReturn` with `fastagUpdatedAt` and the staff user ID in `fastagUpdatedBy`. Blank values are saved as `null`.
 
 ---
 

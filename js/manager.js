@@ -29,9 +29,19 @@ const pendingDocCountEl = document.getElementById("mgrPendingDocCount");
 
 const bookingsWrap = document.getElementById("mgrBookingsWrap");
 const docsWrap = document.getElementById("mgrDocsWrap");
+const bookingSortOrder = document.getElementById("mgrBookingSortOrder");
 
 let currentUser = null;
 let currentManagerBookings = [];
+let managerBookingSortDirection = "desc";
+
+if (bookingSortOrder) {
+  bookingSortOrder.value = managerBookingSortDirection;
+  bookingSortOrder.addEventListener("change", () => {
+    managerBookingSortDirection = bookingSortOrder.value;
+    renderManagerBookingsTable(getSortedManagerBookings());
+  });
+}
 
 /* =========================================================
    FORCE HIDDEN STATE
@@ -180,7 +190,7 @@ async function loadManagerBookings() {
         pickupsToday.length;
     }
 
-    renderManagerBookingsTable(bookings);
+    renderManagerBookingsTable(getSortedManagerBookings());
 
   } catch (error) {
     console.error(
@@ -211,6 +221,46 @@ async function loadManagerBookings() {
       </div>
     `;
   }
+}
+
+function getManagerBookingDateMillis(booking) {
+  const value =
+    booking.pickupDate ||
+    booking.startDate ||
+    booking.bookingDate ||
+    booking.createdAt;
+
+  if (!value) return 0;
+
+  if (typeof value.toMillis === "function") {
+    return value.toMillis();
+  }
+
+  if (typeof value === "number") {
+    return value;
+  }
+
+  const dateValue = /^\d{4}-\d{2}-\d{2}$/.test(String(value))
+    ? `${value}T00:00:00`
+    : value;
+  const parsed = new Date(dateValue).getTime();
+
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getSortedManagerBookings() {
+  const direction = managerBookingSortDirection === "asc" ? 1 : -1;
+
+  return [...currentManagerBookings].sort((a, b) => {
+    const dateDifference =
+      getManagerBookingDateMillis(a) - getManagerBookingDateMillis(b);
+
+    if (dateDifference !== 0) {
+      return dateDifference * direction;
+    }
+
+    return String(a.id).localeCompare(String(b.id)) * direction;
+  });
 }
 
 /* =========================================================
