@@ -1,0 +1,267 @@
+/* Shared premium shell for Admin, Manager, and Executive workspaces. */
+.staff-page {
+  position: relative;
+  min-height: 100vh;
+  padding: 54px 0 82px;
+  overflow: hidden;
+}
+
+.staff-page::before {
+  content: "";
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  width: min(980px, 92vw);
+  height: 420px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: rgba(0, 209, 255, 0.055);
+  filter: blur(120px);
+  pointer-events: none;
+}
+
+.staff-page > .container,
+.staff-page .manager-container {
+  position: relative;
+  z-index: 1;
+  width: min(1180px, calc(100% - 40px));
+  margin-inline: auto;
+}
+
+.staff-page .section-header.centered,
+.staff-page .manager-hero {
+  position: relative;
+  width: 100%;
+  margin: 0 auto 30px;
+  padding: clamp(34px, 5vw, 50px) clamp(22px, 5vw, 48px);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 50% 0, rgba(0, 209, 255, 0.12), transparent 45%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.018));
+  box-shadow: 0 28px 76px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+
+.staff-page .section-header.centered::before,
+.staff-page .manager-hero::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 150px;
+  height: 2px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  box-shadow: 0 0 22px rgba(0, 209, 255, 0.65);
+}
+
+.staff-page .section-label {
+  margin-bottom: 10px;
+  letter-spacing: 0.16em;
+}
+
+.staff-page .section-header .section-title,
+.staff-page .manager-hero .section-title {
+  max-width: none;
+  margin: 8px auto 12px;
+  font-size: clamp(2.1rem, 4vw, 3.35rem);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.staff-page .manager-hero-text {
+  max-width: 700px;
+  margin: 0 auto;
+  color: var(--sub);
+  line-height: 1.75;
+}
+
+.staff-page .admin-wrapper,
+.staff-page .manager-dashboard {
+  width: 100%;
+}
+
+.staff-page .admin-stats-grid,
+.staff-page .manager-stats {
+  gap: 16px !important;
+}
+
+.staff-page .stat-card,
+.staff-page .manager-stat-card {
+  min-height: 124px;
+  padding: 22px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 19px;
+  background: linear-gradient(145deg, rgba(27, 27, 27, 0.96), rgba(11, 11, 11, 0.96));
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: border-color 180ms ease, transform 180ms ease, box-shadow 180ms ease;
+}
+
+.staff-page .stat-card:hover,
+.staff-page .manager-stat-card:hover {
+  transform: translateY(-3px);
+  border-color: rgba(0, 209, 255, 0.22);
+  box-shadow: 0 24px 52px rgba(0, 0, 0, 0.3);
+}
+
+.staff-page .manager-stat-label,
+.staff-page .stat-card > span {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 0.78rem !important;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+
+.staff-page .manager-stat-value,
+.staff-page .stat-card > div {
+  font-size: clamp(1.75rem, 3vw, 2.15rem) !important;
+  font-weight: 800 !important;
+  line-height: 1.1;
+}
+
+.admin-export-card {
+  display: grid !important;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
+  align-items: center !important;
+  gap: 18px !important;
+  margin-bottom: 22px !important;
+  padding: 20px 22px !important;
+  overflow: hidden;
+  border: 1px solid rgba(0, 209, 255, 0.2) !important;
+  border-radius: 19px !important;
+  background:
+    linear-gradient(135deg, rgba(0, 209, 255, 0.09), rgba(255, 255, 255, 0.025)) !important;
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.24) !important;
+}
+
+.admin-export-mark {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  border: 1px solid rgba(0, 209, 255, 0.28);
+  border-radius: 15px;
+  background: rgba(0, 209, 255, 0.1);
+  color: var(--accent);
+  font-size: 1.45rem;
+  font-weight: 800;
+}
+
+.admin-export-copy {
+  min-width: 0;
+}
+
+.admin-export-title {
+  display: block;
+  margin: 0 0 5px;
+  color: var(--white);
+  font-size: 1.02rem;
+}
+
+.admin-export-description {
+  display: block;
+  color: var(--sub);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.admin-export-card .btn {
+  min-width: 158px;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.staff-page .admin-tabs {
+  margin-bottom: 22px !important;
+  border-radius: 18px;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.2);
+}
+
+.staff-page .admin-tabs .tab-btn {
+  border-radius: 12px;
+  font-size: 0.82rem;
+}
+
+.staff-page .admin-panel-card,
+.staff-page .manager-panel,
+.staff-page .manager-access-denied,
+.staff-page #adminAccessDenied {
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 20px !important;
+  background: linear-gradient(145deg, rgba(24, 24, 24, 0.96), rgba(11, 11, 11, 0.96)) !important;
+  box-shadow: 0 22px 58px rgba(0, 0, 0, 0.25) !important;
+}
+
+.staff-page .manager-panel {
+  padding: 26px;
+}
+
+.staff-page .manager-panel-header {
+  padding-bottom: 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.075);
+}
+
+.staff-page .manager-panel-title {
+  font-size: 1.25rem;
+  letter-spacing: -0.02em;
+}
+
+.staff-page .manager-table-wrap,
+.staff-page .admin-table-wrap {
+  border-radius: 13px;
+}
+
+.staff-page table thead {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.staff-page table tbody tr {
+  transition: background 160ms ease;
+}
+
+.staff-page table tbody tr:hover {
+  background: rgba(0, 209, 255, 0.045);
+}
+
+@media (max-width: 760px) {
+  .staff-page {
+    padding: 34px 0 58px;
+  }
+
+  .staff-page > .container,
+  .staff-page .manager-container {
+    width: calc(100% - 24px);
+  }
+
+  .staff-page .section-header.centered,
+  .staff-page .manager-hero {
+    margin-bottom: 22px;
+    padding: 30px 18px;
+    border-radius: 21px;
+  }
+
+  .admin-export-card {
+    grid-template-columns: 46px minmax(0, 1fr);
+    padding: 17px !important;
+  }
+
+  .admin-export-mark {
+    width: 46px;
+    height: 46px;
+    border-radius: 13px;
+  }
+
+  .admin-export-card .btn {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .staff-page .manager-panel {
+    padding: 18px 14px;
+  }
+}

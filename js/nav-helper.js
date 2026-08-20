@@ -1,4 +1,4 @@
-// Shared navigation helper to render dynamic role links (Admin, Manager, Partner)
+// Shared navigation helper to render dynamic staff and customer links.
 import { auth, db } from "./firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
@@ -17,8 +17,18 @@ export function initDynamicNav() {
   });
 
   const renderNavLinks = (role) => {
+    const normalizedRole = String(role || "customer")
+      .trim()
+      .toLowerCase();
+
     const navs = document.querySelectorAll("header .nav");
     navs.forEach((nav) => {
+      // Rebuild privileged links only after the account role has been
+      // verified. This also removes legacy links hard-coded in a page.
+      nav.querySelectorAll(
+        'a[href="executive.html"], a[href="manager.html"], a[href="admin.html"]'
+      ).forEach((link) => link.remove());
+
       // Ensure Host Car link
       if (!nav.querySelector('a[href="partner.html"]')) {
         const link = document.createElement("a");
@@ -29,12 +39,22 @@ export function initDynamicNav() {
         prof ? nav.insertBefore(link, prof) : nav.appendChild(link);
       }
 
-      // Ensure Manager link for manager/admin roles
-      if (role === "manager" || role === "admin") {
+      // Executive operations are separate from the Manager summary.
+      if (normalizedRole === "executive" || normalizedRole === "admin") {
+        const link = document.createElement("a");
+        link.href = "executive.html";
+        link.textContent = "Executive";
+        if (currentPath === "executive.html") link.classList.add("active");
+        const prof = nav.querySelector('a[href="profile.html"]');
+        prof ? nav.insertBefore(link, prof) : nav.appendChild(link);
+      }
+
+      // Manager summary is available to manager and admin accounts.
+      if (normalizedRole === "manager" || normalizedRole === "admin") {
         if (!nav.querySelector('a[href="manager.html"]')) {
           const link = document.createElement("a");
           link.href = "manager.html";
-          link.textContent = "Manager";
+          link.textContent = "Manager Panel";
           if (currentPath === "manager.html") link.classList.add("active");
           const prof = nav.querySelector('a[href="profile.html"]');
           prof ? nav.insertBefore(link, prof) : nav.appendChild(link);
@@ -42,7 +62,7 @@ export function initDynamicNav() {
       }
 
       // Ensure Admin link for admin role
-      if (role === "admin") {
+      if (normalizedRole === "admin") {
         if (!nav.querySelector('a[href="admin.html"]')) {
           const link = document.createElement("a");
           link.href = "admin.html";
@@ -59,13 +79,18 @@ export function initDynamicNav() {
   renderNavLinks("customer");
 
   onAuthStateChanged(auth, async (user) => {
-    if (!user) return;
+    if (!user) {
+      renderNavLinks("customer");
+      return;
+    }
 
     let role = "customer";
     try {
       const snap = await getDoc(doc(db, "users", user.uid));
       if (snap.exists()) {
-        role = snap.data().role || "customer";
+        role = String(snap.data().role || "customer")
+          .trim()
+          .toLowerCase();
       }
     } catch (e) {
       // Quiet fallback — default to customer

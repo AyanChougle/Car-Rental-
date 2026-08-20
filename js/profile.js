@@ -5,6 +5,8 @@
    ============================================================ */
 
 import { auth, db } from "./firebase-init.js";
+import "./nav-helper.js";
+import { formatBookingNumber } from "./booking-reference.js";
 
 import {
   onAuthStateChanged,
@@ -27,7 +29,7 @@ import {
    CONFIG
    ============================================================ */
 
-const MEDIA_SERVER_URL = "http://localhost:4000";
+const MEDIA_SERVER_URL = "http://localhost:4001";
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
@@ -154,7 +156,7 @@ function withTimeout(promise, milliseconds = 10000) {
 /*
    Uploads a document to:
 
-   POST http://localhost:4000/api/media/upload
+   POST http://localhost:4001/api/media/upload
 
    The Firebase ID token proves who the user is.
 */
@@ -384,43 +386,194 @@ function initTabs() {
       ".prof-panel"
     );
 
+  const activateTab = target => {
+    const selectedButton =
+      Array.from(buttons).find(
+        button =>
+          button.dataset.tab === target
+      );
+
+    if (!selectedButton) {
+      return;
+    }
+
+    buttons.forEach(button => {
+      const active =
+        button === selectedButton;
+
+      button.classList.toggle(
+        "active",
+        active
+      );
+
+      button.setAttribute(
+        "aria-selected",
+        String(active)
+      );
+    });
+
+    panels.forEach(panel => {
+      panel.hidden =
+        panel.id !== target;
+    });
+
+    const tabName =
+      target.replace("prof-tab-", "");
+
+    const url = new URL(window.location.href);
+
+    if (tabName === "info") {
+      url.searchParams.delete("tab");
+    } else {
+      url.searchParams.set("tab", tabName);
+    }
+
+    window.history.replaceState({}, "", url);
+  };
+
   buttons.forEach(button => {
 
     button.addEventListener(
       "click",
       () => {
-
-        const target =
-          button.dataset.tab;
-
-        buttons.forEach(btn => {
-
-          const active =
-            btn === button;
-
-          btn.classList.toggle(
-            "active",
-            active
-          );
-
-          btn.setAttribute(
-            "aria-selected",
-            String(active)
-          );
-
-        });
-
-        panels.forEach(panel => {
-
-          panel.hidden =
-            panel.id !== target;
-
-        });
-
+        activateTab(
+          button.dataset.tab
+        );
       }
     );
 
   });
+
+  const requestedTab =
+    new URLSearchParams(
+      window.location.search
+    ).get("tab");
+
+  activateTab(
+    requestedTab
+      ? `prof-tab-${requestedTab}`
+      : "prof-tab-info"
+  );
+}
+
+
+/* ============================================================
+   MY VEHICLE LISTINGS
+   ============================================================ */
+
+const LISTING_STATUS = {
+  pending_approval: { label: "Pending review", className: "pending" },
+  approved: { label: "Approved", className: "approved" },
+  rejected: { label: "Needs attention", className: "rejected" }
+};
+
+
+async function loadMyListings(uid) {
+  const grid = $("profListingsGrid");
+  const summary = $("profListingsSummary");
+
+  if (!grid || !summary) return;
+
+  try {
+    const listingsQuery = query(
+      collection(db, "partner_cars"),
+      where("userId", "==", uid)
+    );
+    const snapshot = await withTimeout(getDocs(listingsQuery));
+    const listings = snapshot.docs
+      .map(document => ({ id: document.id, ...document.data() }))
+      .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+    const approvedCount = listings.filter(
+      listing => listing.status === "approved"
+    ).length;
+
+    summary.innerHTML = `
+      <div><strong>${listings.length}</strong><span>Total listings</span></div>
+      <div><strong>${approvedCount}</strong><span>Approved</span></div>
+      <div><strong>${listings.length - approvedCount}</strong><span>In review / action</span></div>
+    `;
+
+    if (!listings.length) {
+      grid.innerHTML = `
+        <div class="profile-listing-state empty">
+          <span class="profile-listing-state__icon" aria-hidden="true">+</span>
+          <h3>No vehicle listings yet</h3>
+          <p>List your car to start the verification and onboarding process.</p>
+          <a class="profile-action primary" href="partner.html">List Your Car</a>
+        </div>`;
+      return;
+    }
+
+    grid.innerHTML = listings.map(listing => {
+      const status = LISTING_STATUS[listing.status] || {
+        label: listing.status || "Submitted",
+        className: "pending"
+      };
+      const vehicleName =
+        `${listing.brand || "Vehicle"} ${listing.model || ""}`.trim();
+      const imageUrl =
+        typeof listing.imageUrl === "string" ? listing.imageUrl.trim() : "";
+      const firstPhotoMediaId =
+        Array.isArray(listing.photoMediaIds) && listing.photoMediaIds.length
+          ? listing.photoMediaIds[0]
+          : null;
+      const rejectionNote =
+        listing.rejectionReason || listing.adminNote || listing.reviewNote || "";
+
+      return `
+        <article class="profile-listing-card">
+          <div class="profile-listing-card__media">
+            ${firstPhotoMediaId
+              ? `<img data-listing-photo-media="${escapeHtml(firstPhotoMediaId)}" alt="${escapeHtml(vehicleName)}" loading="lazy" hidden /><div class="profile-listing-card__placeholder" aria-hidden="true">CAR</div>`
+              : imageUrl
+              ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(vehicleName)}" loading="lazy" />`
+              : `<div class="profile-listing-card__placeholder" aria-hidden="true">CAR</div>`}
+          </div>
+          <div class="profile-listing-card__body">
+            <div class="profile-listing-card__top">
+              <div>
+                <p class="profile-listing-card__eyebrow">Hosted vehicle</p>
+                <h3>${escapeHtml(vehicleName)}</h3>
+              </div>
+              <span class="profile-listing-status ${status.className}">${escapeHtml(status.label)}</span>
+            </div>
+            <dl class="profile-listing-meta">
+              <div><dt>Registration</dt><dd>${escapeHtml(listing.regNumber || "Not provided")}</dd></div>
+              <div><dt>Location</dt><dd>${escapeHtml(listing.location || "Not provided")}</dd></div>
+              <div><dt>Transmission</dt><dd>${escapeHtml(listing.transmission || "—")}</dd></div>
+              <div><dt>Odometer</dt><dd>${listing.odometer != null ? `${Number(listing.odometer).toLocaleString("en-IN")} KM` : "—"}</dd></div>
+              <div><dt>Submitted</dt><dd>${escapeHtml(formatDate(listing.createdAt))}</dd></div>
+            </dl>
+            ${rejectionNote
+              ? `<p class="profile-listing-note"><strong>Review note:</strong> ${escapeHtml(rejectionNote)}</p>`
+              : ""}
+            <div class="profile-listing-card__footer">
+              <span>Listing ID ${escapeHtml(listing.id.slice(0, 8).toUpperCase())}</span>
+              <a href="partner.html">Manage listing</a>
+            </div>
+          </div>
+        </article>`;
+    }).join("");
+
+    grid.querySelectorAll("[data-listing-photo-media]").forEach(async (image) => {
+      await loadProtectedMediaPreview(
+        auth.currentUser,
+        `/api/media/file/${encodeURIComponent(image.dataset.listingPhotoMedia)}`,
+        image
+      );
+      if (!image.hidden && image.nextElementSibling) {
+        image.nextElementSibling.hidden = true;
+      }
+    });
+  } catch (error) {
+    console.error("Could not load profile listings:", error);
+    summary.innerHTML = "";
+    grid.innerHTML = `
+      <div class="profile-listing-state error">
+        <h3>Listings could not be loaded</h3>
+        <p>Please refresh the page or try again in a moment.</p>
+      </div>`;
+  }
 }
 
 
@@ -500,7 +653,18 @@ async function loadProfile(user) {
 
       aadharURL: null,
 
+      aadharFrontURL: null,
+
+      aadharBackURL: null,
+
       aadharStatus:
+        "not_submitted",
+
+      panFrontURL: null,
+
+      panBackURL: null,
+
+      panStatus:
         "not_submitted",
 
       role:
@@ -606,6 +770,12 @@ async function renderProfileData(
       "not_submitted"
     ).toLowerCase();
 
+  const panStatus =
+    String(
+      data.panStatus ||
+      "not_submitted"
+    ).toLowerCase();
+
 
   /* ==========================================================
      NAME
@@ -676,6 +846,11 @@ async function renderProfileData(
     aadharStatus
   );
 
+  setStatusPill(
+    "panStatusPill",
+    panStatus
+  );
+
 
   /* ==========================================================
      VERIFICATION BADGE
@@ -692,7 +867,8 @@ async function renderProfileData(
 
     if (
       licenseStatus === "verified" &&
-      aadharStatus === "verified"
+      aadharStatus === "verified" &&
+      panStatus === "verified"
     ) {
 
       badge.textContent =
@@ -704,7 +880,8 @@ async function renderProfileData(
 
     } else if (
       licenseStatus === "rejected" ||
-      aadharStatus === "rejected"
+      aadharStatus === "rejected" ||
+      panStatus === "rejected"
     ) {
 
       badge.textContent =
@@ -716,7 +893,8 @@ async function renderProfileData(
 
     } else if (
       licenseStatus === "pending" ||
-      aadharStatus === "pending"
+      aadharStatus === "pending" ||
+      panStatus === "pending"
     ) {
 
       badge.textContent =
@@ -748,13 +926,25 @@ async function renderProfileData(
   }
 
 
-  if (data.aadharURL) {
+  if (data.aadharFrontURL || data.aadharURL) {
 
     await loadProtectedMediaPreview(
       user,
-      data.aadharURL,
-      $("aadharPreview")
+      data.aadharFrontURL || data.aadharURL,
+      $("aadharFrontPreview")
     );
+  }
+
+  if (data.aadharBackURL) {
+    await loadProtectedMediaPreview(user, data.aadharBackURL, $("aadharBackPreview"));
+  }
+
+  if (data.panFrontURL) {
+    await loadProtectedMediaPreview(user, data.panFrontURL, $("panFrontPreview"));
+  }
+
+  if (data.panBackURL) {
+    await loadProtectedMediaPreview(user, data.panBackURL, $("panBackPreview"));
   }
 }
 
@@ -1113,6 +1303,68 @@ function initEditProfile(
    BOOKINGS
    ============================================================ */
 
+const PROFILE_BOOKINGS_PER_PAGE = 6;
+let profileBookingPage = 1;
+let profileBookings = [];
+
+
+function renderProfileBookings() {
+  const container = $("profLiveBookings");
+
+  if (!container || !profileBookings.length) return;
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(profileBookings.length / PROFILE_BOOKINGS_PER_PAGE)
+  );
+
+  profileBookingPage = Math.min(profileBookingPage, totalPages);
+
+  const start =
+    (profileBookingPage - 1) * PROFILE_BOOKINGS_PER_PAGE;
+  const visibleBookings = profileBookings.slice(
+    start,
+    start + PROFILE_BOOKINGS_PER_PAGE
+  );
+
+  container.innerHTML = `
+    ${visibleBookings.map(renderBooking).join("")}
+    ${renderPaginationBar({
+      page: profileBookingPage,
+      totalPages,
+      totalItems: profileBookings.length,
+      label: "bookings"
+    })}
+  `;
+
+  container
+    .querySelectorAll("[data-page-action]")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        profileBookingPage +=
+          button.dataset.pageAction === "next" ? 1 : -1;
+        renderProfileBookings();
+        container.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+}
+
+
+function renderPaginationBar({ page, totalPages, totalItems, label }) {
+  if (totalPages <= 1) return "";
+
+  return `
+    <nav class="data-pagination" aria-label="${escapeHtml(label)} pages">
+      <span class="data-pagination__summary">
+        Page ${page} of ${totalPages} · ${totalItems} ${escapeHtml(label)}
+      </span>
+      <div class="data-pagination__actions">
+        <button type="button" data-page-action="previous" ${page === 1 ? "disabled" : ""}>Previous</button>
+        <button type="button" data-page-action="next" ${page === totalPages ? "disabled" : ""}>Next</button>
+      </div>
+    </nav>`;
+}
+
 async function loadBookings(
   userId
 ) {
@@ -1215,10 +1467,9 @@ async function loadBookings(
     }
 
 
-    container.innerHTML =
-      bookings
-        .map(renderBooking)
-        .join("");
+    profileBookings = bookings;
+    profileBookingPage = 1;
+    renderProfileBookings();
 
 
   } catch (error) {
@@ -1305,9 +1556,7 @@ function renderBooking(
 
 
   const bookingRef =
-    booking.bookingRef ||
-    booking.reference ||
-    booking.id;
+    formatBookingNumber(booking);
 
 
   const pickup =
@@ -1462,21 +1711,6 @@ function renderBooking(
 
         </div>
 
-
-        <div class="booking-detail">
-
-          <span>
-            Vehicle
-          </span>
-
-          <strong>
-            ${escapeHtml(
-              booking.vehicleReg ||
-              "—"
-            )}
-          </strong>
-
-        </div>
 
       </div>
 
@@ -1966,6 +2200,15 @@ onAuthStateChanged(
 
 
       /* ======================================================
+         VEHICLE LISTINGS
+         ====================================================== */
+
+      loadMyListings(
+        user.uid
+      );
+
+
+      /* ======================================================
          LICENSE
          ====================================================== */
 
@@ -2011,36 +2254,48 @@ onAuthStateChanged(
          AADHAAR
          ====================================================== */
 
-      initDocumentUpload(
-        user,
+      [
         {
-
-          inputId:
-            "aadharFile",
-
-          buttonId:
-            "aadharUploadBtn",
-
-          previewId:
-            "aadharPreview",
-
-          statusId:
-            "aadharUploadStatus",
-
-          pillId:
-            "aadharStatusPill",
-
-          serverCategory:
-            "aadhar_doc",
-
-          urlField:
-            "aadharURL",
-
-          statusField:
-            "aadharStatus"
-
+          inputId: "aadharFrontFile",
+          buttonId: "aadharFrontUploadBtn",
+          previewId: "aadharFrontPreview",
+          statusId: "aadharFrontUploadStatus",
+          pillId: "aadharStatusPill",
+          serverCategory: "aadhar_doc",
+          urlField: "aadharFrontURL",
+          statusField: "aadharStatus"
+        },
+        {
+          inputId: "aadharBackFile",
+          buttonId: "aadharBackUploadBtn",
+          previewId: "aadharBackPreview",
+          statusId: "aadharBackUploadStatus",
+          pillId: "aadharStatusPill",
+          serverCategory: "aadhar_doc",
+          urlField: "aadharBackURL",
+          statusField: "aadharStatus"
+        },
+        {
+          inputId: "panFrontFile",
+          buttonId: "panFrontUploadBtn",
+          previewId: "panFrontPreview",
+          statusId: "panFrontUploadStatus",
+          pillId: "panStatusPill",
+          serverCategory: "pan_doc",
+          urlField: "panFrontURL",
+          statusField: "panStatus"
+        },
+        {
+          inputId: "panBackFile",
+          buttonId: "panBackUploadBtn",
+          previewId: "panBackPreview",
+          statusId: "panBackUploadStatus",
+          pillId: "panStatusPill",
+          serverCategory: "pan_doc",
+          urlField: "panBackURL",
+          statusField: "panStatus"
         }
-      );
+      ].forEach((config) => initDocumentUpload(user, config));
 
 
       /* ======================================================

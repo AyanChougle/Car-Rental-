@@ -65,7 +65,7 @@ if (form && status) {
 
       // Bonus: also open the visitor's mail client if they have one set up.
       // Not required for delivery — the message above is already saved.
-      const mailtoLink = `mailto:support@CARRENTPE.com?subject=${encodeURIComponent(
+      const mailtoLink = `mailto:support@KRUIZLY.com?subject=${encodeURIComponent(
         subject
       )}&body=${encodeURIComponent(
         `Name: ${name}\nEmail: ${email}\nPhone: ${phone}\n\nMessage:\n${message}`

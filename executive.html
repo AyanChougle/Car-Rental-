@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Executive Operations | KRUIZLY</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/executive.css" />
+  <link rel="stylesheet" href="css/staff-dashboard.css" />
+    <link rel="stylesheet" href="css/premium.css" />
+  </head>
+<body>
+  <div class="background-video-wrap" aria-hidden="true">
+    <video autoplay muted loop playsinline><source src="assets/background%20video.mp4" type="video/mp4" /></video>
+  </div>
+
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="logo">KRUIZLY</a>
+      <nav class="nav">
+        <a href="fleet.html">Fleet</a><a href="about.html">About</a><a href="contact.html">Contact</a>
+        <a href="partner.html">Host Car</a><a href="profile.html">Profile</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="section staff-page manager-page executive-page">
+    <div class="manager-container">
+      <div class="manager-hero">
+        <span class="section-label">Control Console</span>
+        <h1 class="section-title">Executive Operations</h1>
+        <p class="manager-hero-text">Handle booking details, customer handovers, pickup evidence, and vehicle returns.</p>
+      </div>
+
+      <div id="managerAccessDenied" class="card manager-access-denied" hidden>
+        <h3>Executive Access Required</h3>
+        <p>This page is available only to Executive and Admin accounts.</p>
+        <a href="profile.html" class="btn btn-light">Go to Profile</a>
+      </div>
+
+      <div id="managerContent" class="manager-dashboard" hidden>
+        <section class="manager-stats">
+          <div class="card manager-stat-card"><span class="manager-stat-label">Active Ongoing Trips</span><div id="mgrActiveCount" class="manager-stat-value">—</div></div>
+          <div class="card manager-stat-card pickups"><span class="manager-stat-label">Pending Pickups Today</span><div id="mgrPickupCount" class="manager-stat-value">—</div></div>
+          <div class="card manager-stat-card documents"><span class="manager-stat-label">Returns Due Today</span><div id="mgrReturnCount" class="manager-stat-value">—</div></div>
+        </section>
+
+        <section class="card manager-panel">
+          <div class="manager-panel-header">
+            <div><h2 class="manager-panel-title">Booking, Pickup &amp; Drop Queue</h2><p class="manager-panel-subtitle">Review customer details, upload pickup photos, and process returns.</p></div>
+            <label class="manager-date-sort" for="mgrBookingSortOrder">Sort by pickup date
+              <select id="mgrBookingSortOrder"><option value="desc">Newest first</option><option value="asc">Oldest first</option></select>
+            </label>
+          </div>
+          <div id="mgrBookingsWrap" class="manager-table-wrap"><div class="manager-state">Loading bookings...</div></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <div id="executivePickupModal" class="manager-modal" hidden>
+    <div class="card manager-modal-card">
+      <button id="closeExecutivePickupModal" class="manager-modal-close" type="button" aria-label="Close">&times;</button>
+      <h3 id="executivePickupModalTitle" class="manager-modal-title">Record Vehicle Pickup</h3>
+      <p class="manager-modal-subtitle">Upload at least one condition photo before confirming the handover.</p>
+      <div class="field"><label for="executivePickupPhotos">Pickup condition photos</label><input id="executivePickupPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple /></div>
+      <div class="field" style="margin-top:16px"><label for="executivePickupNotes">Pickup notes</label><textarea id="executivePickupNotes" rows="4" placeholder="Fuel level, visible marks, handover notes..."></textarea></div>
+      <div id="executivePickupPreview" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:16px"></div>
+      <p id="executivePickupStatus" style="color:var(--sub);margin:14px 0 0"></p>
+      <div class="manager-modal-actions"><button id="saveExecutivePickupBtn" class="btn btn-dark" type="button">Upload Photos &amp; Confirm Pickup</button></div>
+    </div>
+  </div>
+
+  <div id="returnModal" class="manager-modal" hidden>
+    <div class="card manager-modal-card">
+      <button id="closeReturnModal" class="manager-modal-close" type="button" aria-label="Close">&times;</button>
+      <h3 id="returnModalTitle" class="manager-modal-title">Process Return</h3>
+      <p id="returnModalSubtitle" class="manager-modal-subtitle">Complete the vehicle return inspection.</p>
+      <div id="returnItemsList"></div>
+
+      <div class="return-upload">
+        <div class="return-upload__head">
+          <span>Return photos</span>
+          <p>Upload clear photos of the vehicle condition after the return inspection.</p>
+        </div>
+        <input id="returnInspectionPhotos" type="file" accept="image/jpeg,image/png,image/webp" multiple />
+        <div id="returnInspectionPreview" class="return-upload__preview"></div>
+        <p id="returnInspectionStatus" class="return-upload__status"></p>
+      </div>
+      <div class="manager-summary">
+        <div class="manager-summary-row"><span>Original Security Deposit</span><strong id="returnDepositOriginal">₹0</strong></div>
+        <div class="manager-summary-row"><span>Total Deductions</span><strong id="returnDeductionTotal">₹0</strong></div>
+        <div class="manager-summary-row"><span>Refundable to Customer</span><strong id="returnDepositRefund">₹0</strong></div>
+      </div>
+      <div class="manager-notes"><div class="field"><label for="returnInvoiceNotes">Invoice notes</label><textarea id="returnInvoiceNotes" rows="4"></textarea></div></div>
+      <div class="manager-modal-actions"><button id="saveReturnBtn" class="btn btn-dark" type="button">Save &amp; Mark Completed</button></div>
+    </div>
+  </div>
+
+  <script type="module" src="js/manager.js"></script>
+</body>
+</html>

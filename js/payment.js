@@ -1,5 +1,5 @@
 // ============================================================
-// CARRENTPE - PAYMENT / CHECKOUT
+// KRUIZLY - PAYMENT / CHECKOUT
 // COMPLETE REPLACEMENT - LOCAL SQL MEDIA SERVER
 // ============================================================
 //
@@ -50,6 +50,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 
 import { PAYMENT_CONFIG } from "./payment-config.js";
+import { formatBookingNumber } from "./booking-reference.js";
 
 import "./nav-helper.js";
 
@@ -196,6 +197,40 @@ function getMediaApiUrl(path) {
 }
 
 
+let bookingsRedirectTimer = null;
+
+
+function redirectToBookings(
+  delay = 0
+) {
+  if (bookingsRedirectTimer) {
+    clearTimeout(
+      bookingsRedirectTimer
+    );
+  }
+
+  const redirect = () => {
+    // replace() prevents the Back button from returning to a payment
+    // form that has already been submitted.
+    window.location.replace(
+      "profile.html?tab=bookings"
+    );
+  };
+
+  if (delay > 0) {
+    bookingsRedirectTimer =
+      setTimeout(
+        redirect,
+        delay
+      );
+
+    return;
+  }
+
+  redirect();
+}
+
+
 // ============================================================
 // BOOKING ID
 // ============================================================
@@ -278,18 +313,16 @@ function buildUpiUri(
 
   const payeeName =
     PAYMENT_CONFIG?.upi?.payeeName ||
-    "CARRENTPE";
+    "KRUIZLY";
 
   const safeAmount =
     Number(amount || 0)
       .toFixed(2);
 
   const transactionNote =
-    `CARRENTPE Booking ${String(
-      currentBookingId
-    )
-      .slice(-6)
-      .toUpperCase()}`;
+    `KRUIZLY Booking ${String(
+      formatBookingNumber(currentBookingId)
+    )}`;
 
   const params =
     new URLSearchParams({
@@ -845,17 +878,16 @@ function displayBooking(
 
 
   if (paymentVehicleIcon) {
-    paymentVehicleIcon.textContent =
-      booking.vehicleIcon ||
-      "🚗";
+    paymentVehicleIcon.textContent = "";
   }
 
 
   if ($("paymentBookingId")) {
     $("paymentBookingId").textContent =
-      String(bookingId)
-        .slice(-6)
-        .toUpperCase();
+      formatBookingNumber({
+        ...booking,
+        id: bookingId,
+      });
   }
 
 
@@ -1623,7 +1655,7 @@ async function submitPayment(
 
     setButtonState(
       true,
-      "Payment Submitted ✓"
+      "Payment Submitted"
     );
 
 
@@ -1637,12 +1669,8 @@ async function submitPayment(
     // STEP 4 — REDIRECT
     // ========================================================
 
-    setTimeout(
-      () => {
-        window.location.href =
-          "bookings.html";
-      },
-      1500
+    redirectToBookings(
+      700
     );
 
 
@@ -1801,7 +1829,7 @@ async function startPaymentPage() {
   );
 
   console.log(
-    "CARRENTPE PAYMENT PAGE STARTING"
+    "KRUIZLY PAYMENT PAGE STARTING"
   );
 
   console.log(
@@ -1971,6 +1999,10 @@ async function startPaymentPage() {
 
         hidePaymentInterface();
 
+        redirectToBookings(
+          900
+        );
+
         return;
       }
 
@@ -1996,6 +2028,10 @@ async function startPaymentPage() {
 
 
         hidePaymentInterface();
+
+        redirectToBookings(
+          900
+        );
 
         return;
       }
@@ -2039,7 +2075,7 @@ async function startPaymentPage() {
       );
 
       console.log(
-        "CARRENTPE PAYMENT PAGE READY"
+        "KRUIZLY PAYMENT PAGE READY"
       );
 
       console.log(

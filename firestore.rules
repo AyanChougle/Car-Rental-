@@ -20,12 +20,18 @@ service cloud.firestore {
     function isManagerOrAdmin() {
       return isSignedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["admin", "manager"];
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in ["admin", "manager", "executive"];
+    }
+
+    function isExecutive() {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "executive";
     }
 
     // users/{uid}
-    // - Owner can read their own doc; managers/admins can read all (needed for
-    //   the Admin/Manager dashboards and verification queues).
+    // - Owner can read their own doc; staff can read all (needed for
+    //   Manager summaries and Executive operations).
     // - Owner can create their own doc on signup (role is forced to
     //   "customer" here so a crafted direct write can't self-signup as
     //   staff), and can update their own profile fields (name, phone, age,
@@ -42,17 +48,26 @@ service cloud.firestore {
 
       allow update: if isOwner(uid)
         && request.resource.data.role == resource.data.role
-        && request.resource.data.licenseStatus == resource.data.licenseStatus
-        && request.resource.data.aadharStatus == resource.data.aadharStatus;
-
-      allow update: if isManagerOrAdmin()
-        && request.resource.data.role == resource.data.role;
+        && (
+          request.resource.data.licenseStatus == resource.data.licenseStatus
+          || request.resource.data.licenseStatus == "pending"
+        )
+        && (
+          request.resource.data.aadharStatus == resource.data.aadharStatus
+          || request.resource.data.aadharStatus == "pending"
+        )
+        && (
+          request.resource.data.get("panStatus", "not_submitted")
+            == resource.data.get("panStatus", "not_submitted")
+          || request.resource.data.get("panStatus", "not_submitted") == "pending"
+        );
 
       allow update: if isAdmin();
     }
 
     // bookings/{bookingId} — owner can create their own booking and cancel
-    // it later; admins/managers can read/update all for operations.
+    // it later; staff can read all, while Executive operational updates are
+    // field-limited below and Admin retains full control.
     // Payment fields are field-restricted: the owner can submit a UPI
     // reference/screenshot (which only ever moves paymentStatus to
     // "pending_verification") and can cancel their own booking (status ->
@@ -78,8 +93,36 @@ service cloud.firestore {
         && request.resource.data.get("totalAmount", null) == resource.data.get("totalAmount", null)
         && request.resource.data.get("securityDeposit", null) == resource.data.get("securityDeposit", null);
 
-      allow update: if isManagerOrAdmin();
-      allow delete: if isManagerOrAdmin();
+      // Executives handle physical operations only. They cannot modify
+      // payment, pricing, ownership, or customer identity fields.
+      allow update: if isExecutive()
+        && (
+          request.resource.data.status == resource.data.status
+          || request.resource.data.status == "cancelled"
+          || (
+            resource.data.status == "confirmed"
+            && request.resource.data.status == "completed"
+          )
+        )
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "status",
+          "pickupStatus",
+          "pickupAt",
+          "pickupHandledBy",
+          "pickupNotes",
+          "pickupPhotoMediaIds",
+          "returnInspection",
+          "odometerStart",
+          "odometerEnd",
+          "odometerUpdatedAt",
+          "fastagStart",
+          "fastagReturn",
+          "fastagUpdatedAt",
+          "fastagUpdatedBy",
+          "updatedAt"
+        ]);
+
+      allow update, delete: if isAdmin();
     }
 
     // partner_cars/{carId} — signed-in users can list their own car and
@@ -91,27 +134,28 @@ service cloud.firestore {
     // Host Car Listings tab, not something the host writes directly).
     match /partner_cars/{carId} {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow read: if isSignedIn();
+      allow read: if isAdmin()
+        || (isSignedIn() && resource.data.userId == request.auth.uid);
 
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid
         && request.resource.data.status == resource.data.status
-        && request.resource.data.get("photos", null) == resource.data.get("photos", null);
+        && request.resource.data.get("photos", null) == resource.data.get("photos", null)
+        && request.resource.data.get("photoMediaIds", null) == resource.data.get("photoMediaIds", null);
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
 
-      allow update, delete: if isManagerOrAdmin();
+      allow update, delete: if isAdmin();
     }
 
     // contact_messages/{id} — public contact form, no login required to send;
     // only staff can read the inbox.
     match /contact_messages/{id} {
       allow create: if true;
-      allow read, update, delete: if isManagerOrAdmin();
+      allow read, update, delete: if isAdmin();
     }
 
-    // vehicles/{regNo} — reserved for a future Firestore-backed fleet catalog.
-    // The live fleet catalog today is the static list in js/vehicles.js;
-    // this collection isn't read by the app yet, kept here so admins can
-    // start migrating fleet data without a rules change.
+    // vehicles/{regNo} stores Admin-controlled availability overrides for
+    // the static catalog. Public reads keep fleet/booking availability live;
+    // only Admin can change an override.
     match /vehicles/{regNo} {
       allow read: if true;
       allow write: if isAdmin();

@@ -7,13 +7,13 @@
     content="width=device-width, initial-scale=1.0"
   />
 
-  <title>Checkout | CARRENTPE</title>
+  <title>Checkout | KRUIZLY</title>
 
   <link rel="stylesheet" href="css/style.css" />
 
   <style>
     /* =========================================================
-       CARRENTPE — PRODUCTION CHECKOUT PAGE
+       KRUIZLY — PRODUCTION CHECKOUT PAGE
        Scoped only to payment.html
        ========================================================= */
 
@@ -779,7 +779,7 @@
     }
 
     .checkout-security::before {
-      content: "✓";
+      content: "";
 
       width: 22px;
       height: 22px;
@@ -882,7 +882,8 @@
       }
     }
   </style>
-</head>
+    <link rel="stylesheet" href="css/premium.css" />
+  </head>
 
 <body>
 
@@ -907,7 +908,7 @@
     <div class="container header-inner">
 
       <a href="index.html" class="logo">
-        CARRENTPE
+        KRUIZLY
       </a>
 
       <nav class="nav" aria-label="Main navigation">
@@ -934,15 +935,15 @@
       <div class="checkout-hero-inner">
 
         <div class="checkout-step">
-          Secure checkout
+          Step 2 of 2
         </div>
 
         <h1 class="checkout-title">
-          Complete your payment
+          Secure checkout
         </h1>
 
         <p class="checkout-subtitle">
-          Review your reservation, pay securely using UPI,
+          Review your reservation, choose a secure payment method,
           and submit your transaction reference for verification.
         </p>
 
@@ -967,12 +968,11 @@
 
           <div class="checkout-card-inner">
 
-            <span class="checkout-label">
-              Payment summary
-            </span>
+            <!-- <span class="checkout-label">
+            </span> -->
 
             <h2 class="checkout-card-title">
-              Your reservation
+              Payment summary
             </h2>
 
             <p class="checkout-card-copy">
@@ -988,7 +988,7 @@
                 class="payment-vehicle-image"
                 id="paymentVehicleImage"
               >
-                <span id="paymentVehicleIcon">🚗</span>
+                <span id="paymentVehicleIcon" aria-hidden="true"></span>
               </div>
 
               <div>
@@ -1082,7 +1082,7 @@
 
 
             <div class="checkout-security">
-              Your payment is reviewed by CARRENTPE before the
+              Your payment is reviewed by KRUIZLY before the
               booking is confirmed.
             </div>
 
@@ -1104,12 +1104,12 @@
             </span>
 
             <h2 class="checkout-card-title">
-              Pay by UPI
+             Use any payment method to complete
+              your payment.
             </h2>
 
             <p class="checkout-card-copy">
-              Use any supported UPI application to complete
-              your payment.
+              Pay By UPI
             </p>
 
 
@@ -1377,7 +1377,7 @@
                 </h3>
 
                 <p class="section-sub">
-                  Contact CARRENTPE for bank transfer instructions.
+                  Contact KRUIZLY for bank transfer instructions.
                   Your booking will remain pending until an
                   administrator verifies the payment.
                 </p>
@@ -1386,7 +1386,7 @@
                   href="contact.html"
                   class="btn btn-dark"
                 >
-                  Contact CARRENTPE
+                  Contact KRUIZLY
                 </a>
 
               </div>
@@ -1417,7 +1417,7 @@
         <div class="footer-brand footer-section">
 
           <a href="index.html" class="logo">
-            CARRENTPE
+            KRUIZLY
           </a>
 
           <p>
@@ -1500,7 +1500,7 @@
           </p>
 
           <p>
-            Mon – Sat: 9:00 AM – 8:00 PM
+            <a href="mailto:support@kruizly.com">support@kruizly.com</a>
           </p>
 
           <p>
@@ -1527,13 +1527,6 @@
               Facebook
             </a>
 
-            <a
-              href="#"
-              class="social-link twitter"
-              aria-label="Twitter"
-            >
-              Twitter
-            </a>
 
           </div>
 
@@ -1543,7 +1536,7 @@
 
 
       <div class="footer-copy">
-        © 2026 CARRENTPE. All rights reserved.
+        © 2026 KRUIZLY. All rights reserved.
       </div>
 
     </div>
@@ -1561,7 +1554,7 @@
 
   <script
     type="module"
-    src="js/payment.js"
+    src="js/payment.js?v=20260818-redirect"
   ></script>
 
 </body>

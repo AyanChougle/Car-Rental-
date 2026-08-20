@@ -99,7 +99,7 @@ function bookingCard(booking, isLive) {
 		<article class="booking-card">
 			<div class="booking-card__image">
 				${imgPath ? `<img src="${imgPath}" alt="${booking.vehicleName}" onload="this.nextElementSibling.style.display='none'" onerror="this.remove()" />` : ""}
-				<span>${booking.vehicleIcon || "🚗"}</span>
+				<span aria-hidden="true"></span>
 			</div>
 			<div class="booking-card__body">
 				<div class="booking-card__top">

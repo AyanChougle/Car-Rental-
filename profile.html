@@ -7,7 +7,7 @@
     content="width=device-width, initial-scale=1.0"
   />
 
-  <title>Profile | CARRENTPE</title>
+  <title>Profile | KRUIZLY</title>
 
   <!-- Existing global styles -->
   <link rel="stylesheet" href="css/style.css" />
@@ -15,7 +15,8 @@
 
   <!-- NEW profile-specific styles -->
   <link rel="stylesheet" href="css/profile.css" />
-</head>
+    <link rel="stylesheet" href="css/premium.css" />
+  </head>
 
 <body>
 
@@ -53,7 +54,7 @@
         href="index.html"
         class="logo"
       >
-        CARRENTPE
+        KRUIZLY
       </a>
 
       <nav class="nav">
@@ -72,16 +73,6 @@
 
         <a href="partner.html">
           Host Car
-        </a>
-        <nav class="nav">
-
-        <a href="manager.html">
-          Manager
-        </a>
-        <nav class="nav">
-
-        <a href="admin.html">
-          Admin
         </a>
 
         <a
@@ -156,6 +147,16 @@
           aria-selected="false"
         >
           My Bookings
+        </button>
+
+        <button
+          type="button"
+          class="prof-tab-btn"
+          data-tab="prof-tab-listings"
+          role="tab"
+          aria-selected="false"
+        >
+          My Listings
         </button>
 
         <button
@@ -299,6 +300,11 @@
                   Not submitted
                 </span>
 
+              </div>
+
+              <div class="profile-info-item">
+                <span class="profile-info-label">PAN</span>
+                <span class="fleet-status" id="panStatusPill">Not submitted</span>
               </div>
 
             </div>
@@ -506,6 +512,35 @@
         ==================================================== -->
 
         <section
+          id="prof-tab-listings"
+          class="prof-panel"
+          hidden
+        >
+          <div class="listings-header">
+            <div>
+              <span class="section-label">HOST DASHBOARD</span>
+              <h2>My Vehicle Listings</h2>
+              <p>Track vehicles you have submitted and their approval status.</p>
+            </div>
+
+            <a href="partner.html" class="btn btn-light listing-add-btn">
+              + List Another Car
+            </a>
+          </div>
+
+          <div
+            id="profListingsSummary"
+            class="profile-listing-summary"
+            aria-live="polite"
+          ></div>
+
+          <div id="profListingsGrid" class="profile-listings-grid">
+            <div class="profile-listing-state">Loading your listings...</div>
+          </div>
+        </section>
+
+
+        <section
           id="prof-tab-docs"
           class="prof-panel"
           hidden
@@ -627,8 +662,7 @@
                 </h3>
 
                 <p>
-                  Upload a clear photo of your Aadhaar card
-                  for identity verification.
+                  Upload clear photos of both sides of your Aadhaar card.
                 </p>
 
               </div>
@@ -646,9 +680,9 @@
             <div class="doc-upload__row">
 
               <img
-                id="aadharPreview"
+                id="aadharFrontPreview"
                 class="doc-upload__preview"
-                alt="Aadhaar card preview"
+                alt="Aadhaar front preview"
                 hidden
               />
 
@@ -657,14 +691,14 @@
 
                 <label
                   class="profile-action primary"
-                  for="aadharFile"
+                  for="aadharFrontFile"
                 >
-                  Choose File
+                  Choose Front
                 </label>
 
                 <input
                   type="file"
-                  id="aadharFile"
+                  id="aadharFrontFile"
                   accept="image/jpeg,image/png,image/webp"
                   hidden
                 />
@@ -672,11 +706,11 @@
 
                 <button
                   type="button"
-                  id="aadharUploadBtn"
+                  id="aadharFrontUploadBtn"
                   class="profile-action primary"
                   disabled
                 >
-                  Upload Aadhaar
+                  Upload Front
                 </button>
 
               </div>
@@ -686,11 +720,51 @@
 
             <p
               class="form-status"
-              id="aadharUploadStatus"
+              id="aadharFrontUploadStatus"
               role="status"
               aria-live="polite"
             ></p>
 
+            <div class="doc-upload__row" style="margin-top:16px;">
+              <img id="aadharBackPreview" class="doc-upload__preview" alt="Aadhaar back preview" hidden />
+              <div class="doc-upload__controls">
+                <label class="profile-action primary" for="aadharBackFile">Choose Back</label>
+                <input type="file" id="aadharBackFile" accept="image/jpeg,image/png,image/webp" hidden />
+                <button type="button" id="aadharBackUploadBtn" class="profile-action primary" disabled>Upload Back</button>
+              </div>
+            </div>
+            <p class="form-status" id="aadharBackUploadStatus" role="status" aria-live="polite"></p>
+
+          </div>
+
+          <div class="document-card">
+            <div class="document-card-header">
+              <div>
+                <h3>PAN Card</h3>
+                <p>Upload clear photos of the front and back of your PAN card.</p>
+              </div>
+              <span class="document-icon" aria-hidden="true">PAN</span>
+            </div>
+
+            <div class="doc-upload__row">
+              <img id="panFrontPreview" class="doc-upload__preview" alt="PAN front preview" hidden />
+              <div class="doc-upload__controls">
+                <label class="profile-action primary" for="panFrontFile">Choose Front</label>
+                <input type="file" id="panFrontFile" accept="image/jpeg,image/png,image/webp" hidden />
+                <button type="button" id="panFrontUploadBtn" class="profile-action primary" disabled>Upload Front</button>
+              </div>
+            </div>
+            <p class="form-status" id="panFrontUploadStatus" role="status" aria-live="polite"></p>
+
+            <div class="doc-upload__row" style="margin-top:16px;">
+              <img id="panBackPreview" class="doc-upload__preview" alt="PAN back preview" hidden />
+              <div class="doc-upload__controls">
+                <label class="profile-action primary" for="panBackFile">Choose Back</label>
+                <input type="file" id="panBackFile" accept="image/jpeg,image/png,image/webp" hidden />
+                <button type="button" id="panBackUploadBtn" class="profile-action primary" disabled>Upload Back</button>
+              </div>
+            </div>
+            <p class="form-status" id="panBackUploadStatus" role="status" aria-live="polite"></p>
           </div>
 
           </div>
@@ -757,6 +831,32 @@
 
           </div>
 
+          <div
+            class="media-selection-preview"
+            id="mediaSelectionPreview"
+            hidden
+          >
+            <div
+              class="media-selection-preview__frame"
+              id="mediaSelectionFrame"
+            ></div>
+
+            <div class="media-selection-preview__details">
+              <span class="section-label">Selected file</span>
+              <strong id="mediaSelectionName"></strong>
+              <span id="mediaSelectionSize"></span>
+            </div>
+
+            <button
+              type="button"
+              class="media-selection-preview__remove"
+              id="mediaSelectionRemove"
+              aria-label="Remove selected file"
+            >
+              Remove
+            </button>
+          </div>
+
           <p
             class="form-status"
             id="mediaUploadStatus"
@@ -809,7 +909,7 @@
             href="index.html"
             class="logo"
           >
-            CARRENTPE
+            KRUIZLY
           </a>
 
           <p>
@@ -917,7 +1017,7 @@
 
 
       <div class="footer-copy">
-        © 2026 CARRENTPE. All rights reserved.
+        © 2026 KRUIZLY. All rights reserved.
       </div>
 
     </div>

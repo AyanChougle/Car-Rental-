@@ -1,7 +1,7 @@
 {
-  "name": "carrentpe-media-server",
+  "name": "KRUIZLY-media-server",
   "version": "1.0.0",
-  "description": "Local media upload/storage backend for CARRENTPE (photos, videos, docs) — SQLite metadata + disk storage.",
+  "description": "Local media upload/storage backend for KRUIZLY (photos, videos, docs) — SQLite metadata + disk storage.",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
@@ -17,7 +17,8 @@
     "file-type": "^22.0.2",
     "firebase-admin": "^10.3.0",
     "helmet": "^8.3.0",
-    "multer": "^2.2.0"
+    "multer": "^2.2.0",
+    "xlsx": "^0.18.5"
   },
   "allowScripts": {
     "better-sqlite3@12.11.1": true

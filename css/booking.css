@@ -1,5 +1,5 @@
 /* =========================================================
-   CARRENTPE — BOOKING PAGE
+   KRUIZLY — BOOKING PAGE
    Production layout
    Scoped to .booking-page
 ========================================================= */
@@ -24,10 +24,10 @@
 .booking-background {
   position: fixed;
   inset: 0;
-  z-index: -10;
+  z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  background: #050708;
+  background: transparent;
 }
 
 .booking-background video {
@@ -39,12 +39,12 @@
 
   object-fit: cover;
 
-  opacity: 0.30;
+  opacity: 1;
 
   filter:
-    brightness(0.42)
-    contrast(1.08)
-    saturate(0.75);
+    brightness(1)
+    contrast(1.02)
+    saturate(1.04);
 }
 
 .booking-background-overlay {
@@ -52,13 +52,7 @@
   inset: 0;
 
   background:
-    linear-gradient(
-      180deg,
-      rgba(3, 5, 6, 0.90) 0%,
-      rgba(3, 5, 6, 0.60) 25%,
-      rgba(3, 5, 6, 0.82) 70%,
-      rgba(3, 5, 6, 0.98) 100%
-    );
+    transparent;
 }
 
 
@@ -68,15 +62,15 @@
 
 .booking-page .booking-header {
   position: relative;
-  z-index: 20;
+  z-index: 2;
 
   height: 76px;
 
-  background: rgba(5, 7, 8, 0.88);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(5, 7, 8, 0.84);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .booking-page .booking-header .header-inner {
@@ -134,11 +128,14 @@
 
   width: 100%;
   padding: 0 0 90px;
+  z-index: 1;
 }
 
 .booking-container {
   width: min(1280px, calc(100% - 64px));
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 
@@ -149,6 +146,8 @@
 .booking-hero {
   padding-top: 48px;
   padding-bottom: 42px;
+  position: relative;
+  z-index: 1;
 }
 
 .booking-back {
@@ -227,6 +226,8 @@
   gap: 24px;
 
   align-items: start;
+  position: relative;
+  z-index: 1;
 }
 
 
@@ -248,10 +249,11 @@
     );
 
   box-shadow:
-    0 30px 80px rgba(0, 0, 0, 0.30),
-    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+    0 30px 80px rgba(0, 0, 0, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
 
   overflow: hidden;
+  z-index: 1;
 }
 
 .booking-page .booking-card::before {
@@ -837,8 +839,8 @@
 
   margin-top: 0;
 
-  background: rgba(3, 5, 6, 0.96);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(3, 5, 6, 0.86);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 

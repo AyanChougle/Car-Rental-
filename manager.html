@@ -7,7 +7,7 @@
     content="width=device-width, initial-scale=1.0"
   />
 
-  <title>Manager Operations | CARRENTPE</title>
+  <title>Manager Summary | KRUIZLY</title>
 
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/animations.css" />
@@ -31,6 +31,7 @@
     .manager-hero {
       text-align: center;
       margin-bottom: 38px;
+      padding-top: 14px;
     }
 
     .manager-hero .section-label {
@@ -98,8 +99,24 @@
     }
 
     .manager-stat-card {
+      --manager-stat-accent: var(--accent);
       padding: 22px;
       min-width: 0;
+      position: relative;
+      overflow: hidden;
+      border-color: rgba(255, 255, 255, .1);
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(27, 27, 27, .96), rgba(12, 12, 12, .96));
+      box-shadow: 0 16px 36px rgba(0, 0, 0, .18);
+    }
+
+    .manager-stat-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 3px;
+      background: var(--manager-stat-accent);
+      opacity: .7;
     }
 
     .manager-stat-label {
@@ -121,8 +138,16 @@
       color: #ffd166;
     }
 
+    .manager-stat-card.pickups {
+      --manager-stat-accent: #ffd166;
+    }
+
     .manager-stat-card.documents .manager-stat-value {
       color: #ef476f;
+    }
+
+    .manager-stat-card.documents {
+      --manager-stat-accent: #ef476f;
     }
 
     /* Content cards */
@@ -132,6 +157,10 @@
       margin-bottom: 24px;
       width: 100%;
       box-sizing: border-box;
+      border-color: rgba(255, 255, 255, .1);
+      border-radius: 18px;
+      background: linear-gradient(145deg, rgba(24, 24, 24, .95), rgba(12, 12, 12, .96));
+      box-shadow: 0 18px 44px rgba(0, 0, 0, .2);
     }
 
     .manager-panel-header {
@@ -212,7 +241,7 @@
     }
 
     .manager-table tbody tr:hover {
-      background: rgba(255, 255, 255, 0.025);
+      background: rgba(0, 190, 240, .045);
     }
 
     .manager-table .customer-name {
@@ -466,7 +495,9 @@
       }
     }
   </style>
-</head>
+  <link rel="stylesheet" href="css/staff-dashboard.css" />
+    <link rel="stylesheet" href="css/premium.css" />
+  </head>
 
 <body>
 
@@ -485,7 +516,7 @@
     <div class="container header-inner">
 
       <a href="index.html" class="logo">
-        CARRENTPE
+        KRUIZLY
       </a>
 
       <nav class="nav">
@@ -500,7 +531,7 @@
   </header>
 
   <!-- Main -->
-  <main class="section manager-page">
+  <main class="section staff-page manager-page">
 
     <div class="manager-container">
 
@@ -508,17 +539,16 @@
       <div class="manager-hero">
 
         <span class="section-label">
-          Operations Console
+          Business Overview
         </span>
 
         <h1 class="section-title">
-          Fleet & Booking Management
+          Manager Summary
         </h1>
 
         <p class="manager-hero-text">
-          Manage active rentals, today's vehicle pickups,
-          customer documents, and vehicle returns from one
-          operations dashboard.
+          Monitor revenue, booking performance, earnings, and trip activity
+          from one read-only management dashboard.
         </p>
 
       </div>
@@ -531,16 +561,14 @@
         hidden
       >
 
-        <div class="manager-access-icon">
-          👔
-        </div>
+        <div class="manager-access-icon" aria-hidden="true">M</div>
 
         <h3>
           Manager Access Required
         </h3>
 
         <p>
-          This operations console is restricted to managers
+          This summary dashboard is restricted to managers
           and administrators. If you believe your account
           should have manager access, ask an administrator
           to grant it from the Admin panel's Users tab.
@@ -605,11 +633,11 @@
           <div class="card manager-stat-card documents">
 
             <span class="manager-stat-label">
-              Unverified Driver Licenses
+              Returns Due Today
             </span>
 
             <div
-              id="mgrPendingDocCount"
+              id="mgrReturnCount"
               class="manager-stat-value"
             >
               —
@@ -627,11 +655,11 @@
 
             <div>
               <h2 class="manager-panel-title">
-                Live Booking Queue
+                Booking, Pickup &amp; Drop Queue
               </h2>
 
               <p class="manager-panel-subtitle">
-                Monitor confirmed rentals and process vehicle returns.
+                Review customer details, record pickup photos, and process vehicle returns.
               </p>
             </div>
 
@@ -659,36 +687,6 @@
         </section>
 
 
-        <!-- Documents -->
-        <section class="card manager-panel">
-
-          <div class="manager-panel-header">
-
-            <div>
-              <h2 class="manager-panel-title">
-                Pending Driver Document Checks
-              </h2>
-
-              <p class="manager-panel-subtitle">
-                Review and verify customer driving documents.
-              </p>
-            </div>
-
-          </div>
-
-          <div
-            id="mgrDocsWrap"
-            class="manager-table-wrap"
-          >
-
-            <div class="manager-state">
-              Loading pending document verifications...
-            </div>
-
-          </div>
-
-        </section>
-
       </div>
 
     </div>
@@ -706,13 +704,12 @@
         <div class="footer-brand footer-section">
 
           <a href="index.html" class="logo">
-            CARRENTPE
+            KRUIZLY
           </a>
 
           <p>
-            Operations & Fleet Dispatch Console.
-            Track active trips, process daily pickups,
-            and verify driver credentials.
+            Manager reporting console for booking performance,
+            verified revenue, earnings, and trip activity.
           </p>
 
         </div>
@@ -729,10 +726,6 @@
 
             <li>
               <a href="partner.html">Host Car</a>
-            </li>
-
-            <li>
-              <a href="manager.html">Manager Console</a>
             </li>
 
             <li>
@@ -793,13 +786,73 @@
 
 
       <div class="footer-copy">
-        © 2026 CARRENTPE Operations.
+        © 2026 KRUIZLY Operations.
         All rights reserved.
       </div>
 
     </div>
 
   </footer>
+
+
+  <!-- Pickup Handover Modal -->
+  <div
+    id="executivePickupModal"
+    class="manager-modal"
+    hidden
+  >
+
+    <div class="card manager-modal-card">
+      <button
+        id="closeExecutivePickupModal"
+        class="manager-modal-close"
+        type="button"
+        aria-label="Close pickup handover"
+      >
+        &times;
+      </button>
+
+      <h3 id="executivePickupModalTitle" class="manager-modal-title">
+        Record Vehicle Pickup
+      </h3>
+
+      <p class="manager-modal-subtitle">
+        Upload at least one condition photo before confirming that the vehicle was handed over.
+      </p>
+
+      <div class="field full">
+        <label for="executivePickupPhotos">Pickup condition photos</label>
+        <input
+          id="executivePickupPhotos"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+        />
+      </div>
+
+      <div class="field full" style="margin-top:16px;">
+        <label for="executivePickupNotes">Pickup notes</label>
+        <textarea
+          id="executivePickupNotes"
+          rows="4"
+          placeholder="Fuel level, visible marks, customer handover notes..."
+        ></textarea>
+      </div>
+
+      <div
+        id="executivePickupPreview"
+        style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:16px;"
+      ></div>
+
+      <p id="executivePickupStatus" style="color:var(--sub);margin:14px 0 0;"></p>
+
+      <div class="manager-modal-actions">
+        <button id="saveExecutivePickupBtn" class="btn btn-dark" type="button">
+          Upload Photos &amp; Confirm Pickup
+        </button>
+      </div>
+    </div>
+  </div>
 
 
   <!-- Return Inspection Modal -->
@@ -839,6 +892,21 @@
 
 
       <div id="returnItemsList"></div>
+
+      <div class="return-upload">
+        <div class="return-upload__head">
+          <span>Return photos</span>
+          <p>Upload clear photos of the vehicle condition after the return inspection.</p>
+        </div>
+        <input
+          id="returnInspectionPhotos"
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+        />
+        <div id="returnInspectionPreview" class="return-upload__preview"></div>
+        <p id="returnInspectionStatus" class="return-upload__status"></p>
+      </div>
 
 
       <div class="manager-summary">
@@ -937,7 +1005,7 @@
 
   <script
     type="module"
-    src="js/manager.js"
+    src="js/manager-summary.js"
   ></script>
 
 </body>

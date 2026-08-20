@@ -553,7 +553,7 @@ router.post(
 router.get(
   "/admin/pending",
   requireAuth,
-  requireRole("admin", "manager"),
+  requireRole("admin"),
   async (req, res) => {
     try {
       const rows =
@@ -591,7 +591,7 @@ router.get(
 router.post(
   "/admin/:id/verify",
   requireAuth,
-  requireRole("admin", "manager"),
+  requireRole("admin"),
   async (req, res) => {
     const paymentId =
       Number(req.params.id);
@@ -706,7 +706,7 @@ router.post(
 router.post(
   "/admin/:id/reject",
   requireAuth,
-  requireRole("admin", "manager"),
+  requireRole("admin"),
   async (req, res) => {
     const paymentId =
       Number(req.params.id);

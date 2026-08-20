@@ -1,6 +1,6 @@
-# CARRENTPE — Premium Self-Drive Car Rental Platform
+# KRUIZLY — Premium Self-Drive Car Rental Platform
 
-CARRENTPE is a self-drive car rental web app built with plain HTML5, CSS3, and JavaScript (ES Modules) — no build step, no framework — backed by real Firebase Authentication, Cloud Firestore, and Cloud Storage.
+KRUIZLY is a self-drive car rental web app built with plain HTML5, CSS3, and JavaScript (ES Modules) — no build step, no framework — backed by real Firebase Authentication, Cloud Firestore, and Cloud Storage.
 
 It features a 35-car fleet, a single-car 360° scroll gallery, a booking + reservation flow, profile document uploads (license/Aadhar), client-IP logging, an Admin Control Panel, a Manager Operations Console, and a Host/Partner car-listing workflow.
 
@@ -181,6 +181,12 @@ Google sign-in creates the `users/{uid}` doc (role `customer`) only the first ti
 - **`bookings/{id}.returnInspection`** — set once, when staff process the car's return via **Manager → Process Return** or **Admin → Bookings → Process Return**: `items` (array of `{ key, label, checked, amount }` — one entry per damage checklist item, e.g. scratch/dent/broken part/accident/interior/fuel/late return/other), `deductionTotal`, `depositRefund` (`securityDeposit - deductionTotal`, floored at 0), `notes` (free-text, shown to the customer on `bookings.html`), `processedAt`, `processedByUid`, `processedByName`. Saving this always sets `status: "completed"` at the same time — there's no separate "just mark completed" action anymore, so every completed booking has a return record. Whoever processes it (admin or manager), both panels show the same **View Return Report** action afterward — it's read from the booking doc, not scoped to whichever role wrote it — and reopening it shows who processed it and when.
 - **`partner_cars/{id}`** — `userId`, `userEmail`, `brand`, `model`, `year`, `category`, `transmission`, `fuel`, `seats`, `priceDay`, `regNumber`, `insuranceStart`, `insuranceEnd`, `location`, `imageUrl`, `photos` (array of URLs, staff-uploaded — see below), `ownerName`, `ownerPhone`, `status` (`pending_approval` / `approved` / `rejected`), `createdAt`. The Admin Host Car Listings tab flags an expired `insuranceEnd` in red so it's caught before approval.
 - **`contact_messages/{id}`** — `name`, `email`, `phone`, `subject`, `message`, `resolved`, `createdAt`. No UI to browse these yet — read them in the Firebase Console for now.
+
+---
+
+## Firebase Excel Export
+
+The Admin dashboard includes an **Export to Excel** action. It reads the latest Firestore data and downloads `CARRENTPE_Firebase_YYYY-MM-DD.xlsx` with separate Summary, Users, Bookings, Partner Cars, Contact Messages, and Vehicles worksheets. Nested Firestore maps are flattened into dot-separated columns, arrays are stored as JSON text, and timestamps are exported in ISO format. If the deployed Firestore rules deny access to an optional collection, the workbook still downloads the authorized dashboard data and records the skipped collection in the Summary sheet.
 
 ---
 

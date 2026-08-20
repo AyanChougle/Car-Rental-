@@ -5,10 +5,10 @@
 export const PAYMENT_CONFIG = {
   upi: {
     id: "svcmerc00314092@svcbank",
-    payeeName: "CARRENTPE",
+    payeeName: "KRUIZLY",
   },
   bank: {
-    accountName: "CARRENTPE",
+    accountName: "KRUIZLY",
     accountNumber: "0000000000000", // TODO: replace with your real account number
     ifsc: "XXXX0000000", // TODO: replace with your real IFSC code
     bankName: "Bank Name", // TODO

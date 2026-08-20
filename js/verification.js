@@ -1,5 +1,5 @@
 /* ============================================================
-   CARRENTPE - STANDALONE ID VERIFICATION
+   KRUIZLY - STANDALONE ID VERIFICATION
    Uses the same Firebase initialization as profile.js.
    ============================================================ */
 

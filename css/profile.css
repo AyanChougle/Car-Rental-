@@ -1,5 +1,5 @@
 /* ============================================================
-   CARRENTPE PROFILE PAGE
+   KRUIZLY PROFILE PAGE
    FINAL UI FIX
    Keeps existing HTML + JS intact
    ============================================================ */
@@ -757,14 +757,14 @@
 
 /* ============================================================
    BOOKING DETAILS
-   Clean 4-column row
+   Clean 3-column row (registration remains admin-only)
    ============================================================ */
 
 .profile-page .profile-bookings-list .booking-grid {
     display: grid !important;
 
     grid-template-columns:
-        repeat(4, minmax(0, 1fr)) !important;
+        repeat(3, minmax(0, 1fr)) !important;
 
     gap: 10px;
 
@@ -1137,6 +1137,356 @@
     margin-top: 22px;
 }
 
+.profile-page .media-selection-preview {
+    display: grid;
+    grid-template-columns: minmax(180px, 260px) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 22px;
+    width: min(100%, 760px);
+    margin-top: 20px;
+    padding: 14px;
+    border: 1px solid rgba(0, 209, 255, .24);
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(0, 209, 255, .09), rgba(255, 255, 255, .035));
+    box-shadow: 0 18px 44px rgba(0, 0, 0, .24);
+}
+
+.profile-page .media-selection-preview[hidden] {
+    display: none;
+}
+
+.profile-page .media-selection-preview__frame {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .1);
+    border-radius: 13px;
+    background: #080808;
+}
+
+.profile-page .media-selection-preview__frame img,
+.profile-page .media-selection-preview__frame video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.profile-page .media-selection-preview__details {
+    display: grid;
+    min-width: 0;
+    gap: 7px;
+}
+
+.profile-page .media-selection-preview__details strong {
+    overflow: hidden;
+    color: rgba(255, 255, 255, .92);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.profile-page .media-selection-preview__details > span:last-child {
+    color: rgba(255, 255, 255, .5);
+    font-size: 12px;
+}
+
+.profile-page .media-selection-preview__remove {
+    padding: 9px 13px;
+    border: 1px solid rgba(255, 119, 119, .3);
+    border-radius: 999px;
+    background: rgba(255, 119, 119, .06);
+    color: #ff9d9d;
+    font: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.profile-page .media-selection-preview__remove:hover {
+    background: rgba(255, 119, 119, .13);
+}
+
+/* ============================================================
+   MY LISTINGS + PROFILE POLISH
+   ============================================================ */
+
+.profile-page .profile-tabs {
+    width: fit-content;
+    max-width: 100%;
+    padding: 6px;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 999px;
+    background: rgba(8,8,8,.72);
+    box-shadow: 0 16px 44px rgba(0,0,0,.24);
+    overflow-x: auto;
+    justify-content: flex-start;
+    scrollbar-width: none;
+}
+
+.profile-page .profile-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.profile-page .prof-tab-btn {
+    flex: 0 0 auto;
+    min-height: 42px;
+    padding-inline: 18px;
+    border-color: transparent;
+    background: transparent;
+}
+
+.profile-page .prof-panel {
+    min-height: 390px;
+}
+
+.profile-page .listings-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.profile-page .listings-header h2 {
+    margin: 8px 0 6px;
+}
+
+.profile-page .listings-header p {
+    margin: 0;
+    color: rgba(255,255,255,.64);
+}
+
+.profile-page .listing-add-btn {
+    flex: 0 0 auto;
+}
+
+.profile-page .profile-listing-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 18px;
+}
+
+.profile-page .profile-listing-summary:empty {
+    display: none;
+}
+
+.profile-page .profile-listing-summary > div {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 17px 18px;
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 15px;
+    background: rgba(255,255,255,.035);
+}
+
+.profile-page .profile-listing-summary strong {
+    color: #fff;
+    font-size: 1.6rem;
+    line-height: 1;
+}
+
+.profile-page .profile-listing-summary span {
+    color: rgba(255,255,255,.58);
+    font-size: .78rem;
+}
+
+.profile-page .profile-listings-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+}
+
+.profile-page .profile-listing-card {
+    min-width: 0;
+    border: 1px solid rgba(255,255,255,.11);
+    border-radius: 18px;
+    background: rgba(255,255,255,.035);
+    overflow: hidden;
+    transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+
+.profile-page .profile-listing-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(0,190,240,.42);
+    box-shadow: 0 16px 36px rgba(0,0,0,.2);
+}
+
+.profile-page .profile-listing-card__media {
+    height: 180px;
+    padding: 14px;
+    background: radial-gradient(circle at 50% 85%, rgba(0,190,240,.16), transparent 58%), #0c0c0c;
+}
+
+.profile-page .profile-listing-card__media img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 10px;
+}
+
+.profile-page .profile-listing-card__placeholder {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    color: rgba(255,255,255,.2);
+    border: 1px dashed rgba(255,255,255,.14);
+    border-radius: 11px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: .18em;
+}
+
+.profile-page .profile-listing-card__body {
+    padding: 18px;
+}
+
+.profile-page .profile-listing-card__top,
+.profile-page .profile-listing-card__footer {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.profile-page .profile-listing-card__eyebrow {
+    margin: 0 0 4px;
+    color: #00bef0;
+    font-size: .68rem;
+    font-weight: 800;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+.profile-page .profile-listing-card h3 {
+    margin: 0;
+    color: #fff;
+    font-size: 1.08rem;
+}
+
+.profile-page .profile-listing-status {
+    flex: 0 0 auto;
+    padding: 6px 9px;
+    border-radius: 999px;
+    font-size: .68rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.profile-page .profile-listing-status.pending {
+    color: #ffd166;
+    background: rgba(255,209,102,.12);
+}
+
+.profile-page .profile-listing-status.approved {
+    color: #67e8a5;
+    background: rgba(103,232,165,.12);
+}
+
+.profile-page .profile-listing-status.rejected {
+    color: #ff8b9d;
+    background: rgba(255,99,123,.12);
+}
+
+.profile-page .profile-listing-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin: 18px 0;
+}
+
+.profile-page .profile-listing-meta div {
+    min-width: 0;
+}
+
+.profile-page .profile-listing-meta dt {
+    margin-bottom: 3px;
+    color: rgba(255,255,255,.46);
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+}
+
+.profile-page .profile-listing-meta dd {
+    margin: 0;
+    color: rgba(255,255,255,.86);
+    font-size: .82rem;
+    overflow-wrap: anywhere;
+}
+
+.profile-page .profile-listing-note {
+    margin: 0 0 16px;
+    padding: 11px 12px;
+    border-left: 3px solid #ff637b;
+    border-radius: 7px;
+    background: rgba(255,99,123,.08);
+    color: rgba(255,255,255,.72);
+    font-size: .78rem;
+    line-height: 1.5;
+}
+
+.profile-page .profile-listing-card__footer {
+    align-items: center;
+    padding-top: 14px;
+    border-top: 1px solid rgba(255,255,255,.08);
+    color: rgba(255,255,255,.42);
+    font-size: .72rem;
+}
+
+.profile-page .profile-listing-card__footer a {
+    color: #00bef0;
+    font-weight: 700;
+}
+
+.profile-page .profile-listing-state {
+    grid-column: 1 / -1;
+    padding: 48px 24px;
+    border: 1px dashed rgba(255,255,255,.14);
+    border-radius: 17px;
+    color: rgba(255,255,255,.62);
+    text-align: center;
+}
+
+.profile-page .profile-listing-state h3 {
+    margin: 10px 0 7px;
+    color: #fff;
+}
+
+.profile-page .profile-listing-state p {
+    margin: 0 auto 18px;
+}
+
+.profile-page .profile-listing-state__icon {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: rgba(0,190,240,.12);
+    color: #00bef0;
+    font-size: 1.5rem;
+}
+
+@media (max-width: 760px) {
+    .profile-page .profile-tabs {
+        width: 100%;
+        flex-wrap: nowrap;
+    }
+
+    .profile-page .listings-header {
+        flex-direction: column;
+    }
+
+    .profile-page .profile-listing-summary,
+    .profile-page .profile-listings-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .profile-page .media-error-state {
     margin: 14px 0 0;
 
@@ -1304,6 +1654,19 @@
 }
 
 @media (max-width: 640px) {
+
+    .profile-page .media-selection-preview {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .profile-page .media-selection-preview__frame {
+        max-height: 280px;
+    }
+
+    .profile-page .media-selection-preview__remove {
+        width: 100%;
+    }
 
     .profile-page .media-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));

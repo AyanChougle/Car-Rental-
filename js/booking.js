@@ -1,5 +1,5 @@
 // ============================================================
-// CARRENTPE — BOOKING PAGE
+// KRUIZLY — BOOKING PAGE
 // ============================================================
 
 import { auth, db } from "./firebase-init.js";
@@ -12,11 +12,12 @@ import {
   doc,
   getDoc,
   collection,
-  addDoc,
+  setDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 
 import "./nav-helper.js";
+import { generateNumericBookingId } from "./booking-reference.js";
 
 // ------------------------------------------------------------
 // Helpers
@@ -34,6 +35,30 @@ function formatCurrency(value) {
 // It uses UTC and can cause the date to shift around midnight.
 function todayISO() {
   const date = new Date();
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function padDatePart(value) {
+  return String(value).padStart(2, "0");
+}
+
+function toLocalDateTime(date) {
+  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}T${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
+}
+
+function nextDayISO(value) {
+  const date = new Date(`${value}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  date.setDate(date.getDate() + 1);
 
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -183,7 +208,7 @@ function initBooking(vehicle) {
 
 
   location.textContent =
-    vehicle.location || "Gavson Business Park, Ghansoli";
+    vehicle.location || "Gavson Business Park, Ghansoli, Navi Mumbai.";
 
 
   // ----------------------------------------------------------
@@ -251,15 +276,15 @@ function initBooking(vehicle) {
     document.getElementById("withDriver");
 
 
-  const today =
-    todayISO();
+  const now = new Date();
+  const pickupDefault = new Date(now.getTime() + 60 * 60 * 1000);
+  const dropDefault = new Date(pickupDefault);
+  dropDefault.setDate(dropDefault.getDate() + 1);
 
-
-  pickupInput.min = today;
-
-  dropInput.min = today;
-
-  pickupInput.value = today;
+  pickupInput.min = toLocalDateTime(now);
+  pickupInput.value = toLocalDateTime(pickupDefault);
+  dropInput.min = toLocalDateTime(pickupDefault);
+  dropInput.value = toLocalDateTime(dropDefault);
 
 
   // ----------------------------------------------------------
@@ -289,24 +314,40 @@ function initBooking(vehicle) {
 
   if (
     prefillPickup &&
-    prefillPickup >= today
+    prefillPickup.length >= 10
   ) {
 
+    const pickupValue =
+      prefillPickup.length > 10
+        ? prefillPickup
+        : `${prefillPickup}T12:00`;
+
     pickupInput.value =
-      prefillPickup;
+      pickupValue;
 
     dropInput.min =
-      prefillPickup;
+      toLocalDateTime(new Date(`${pickupValue}`));
+
+    dropInput.value =
+      (() => {
+        const valueDate = new Date(pickupValue);
+        if (Number.isNaN(valueDate.getTime())) return "";
+        const nextDay = new Date(valueDate);
+        nextDay.setDate(nextDay.getDate() + 1);
+        return toLocalDateTime(nextDay);
+      })();
   }
 
 
   if (
     prefillDrop &&
-    prefillDrop > pickupInput.value
+    prefillDrop.length >= 10
   ) {
 
     dropInput.value =
-      prefillDrop;
+      prefillDrop.length > 10
+        ? prefillDrop
+        : `${prefillDrop}T12:00`;
   }
 
 
@@ -332,10 +373,10 @@ function initBooking(vehicle) {
 
 
     const pickupDate =
-      new Date(`${pickup}T00:00:00`);
+      new Date(pickup);
 
     const dropDate =
-      new Date(`${drop}T00:00:00`);
+      new Date(drop);
 
 
     const millisecondsPerDay =
@@ -432,7 +473,7 @@ function initBooking(vehicle) {
 
         <span>
           Security deposit
-          <small>Refundable</small>
+          <small>(Refundable T&C*)</small>
         </span>
 
         <strong>
@@ -474,17 +515,12 @@ function initBooking(vehicle) {
     "change",
     () => {
 
-      dropInput.min =
-        pickupInput.value;
+      const nextDay =
+        nextDayISO(pickupInput.value);
 
-      if (
-        dropInput.value &&
-        dropInput.value <= pickupInput.value
-      ) {
+      dropInput.min = nextDay;
 
-        dropInput.value = "";
-
-      }
+      dropInput.value = nextDay;
 
       calculateBooking();
     }
@@ -534,6 +570,19 @@ function initBooking(vehicle) {
 
       try {
 
+        const vehicleOverride = await getDoc(
+          doc(db, "vehicles", vehicle.regNo)
+        );
+
+        if (
+          vehicleOverride.exists() &&
+          vehicleOverride.data().available === false
+        ) {
+          throw new Error(
+            "This vehicle was just marked unavailable. Please choose another car."
+          );
+        }
+
         const userSnapshot =
           await getDoc(
             doc(
@@ -556,7 +605,7 @@ function initBooking(vehicle) {
         ) {
 
           licenseNote.innerHTML = `
-            <strong>Driving licence</strong>
+            <strong>Please Note</strong>
 
             <span>
               Your licence is not verified yet.
@@ -684,10 +733,32 @@ function initBooking(vehicle) {
             : {};
 
 
-        const bookingRef =
-          await addDoc(
+        let bookingRef;
+
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          const numericBookingId = generateNumericBookingId();
+          const candidateRef = doc(
             collection(db, "bookings"),
-            {
+            numericBookingId
+          );
+          const candidateSnapshot = await getDoc(candidateRef);
+
+          if (!candidateSnapshot.exists()) {
+            bookingRef = candidateRef;
+            break;
+          }
+        }
+
+        if (!bookingRef) {
+          throw new Error("Could not generate a unique booking number. Please try again.");
+        }
+
+        await setDoc(
+          bookingRef,
+          {
+
+              bookingNumber:
+                bookingRef.id,
 
               userId:
                 currentUser.uid,
@@ -713,9 +784,7 @@ function initBooking(vehicle) {
               vehicleCategory:
                 vehicle.category,
 
-              vehicleIcon:
-                vehicle.icon ||
-                "🚗",
+              vehicleIcon: "",
 
               pickupDate:
                 pickupInput.value,
@@ -755,8 +824,8 @@ function initBooking(vehicle) {
 
               createdAt:
                 serverTimestamp(),
-            }
-          );
+          }
+        );
 
 
         // Preserve booking dates when moving to payment.
@@ -782,6 +851,7 @@ function initBooking(vehicle) {
 
 
         statusEl.textContent =
+          error?.message ||
           "Couldn't create the booking. Please try again.";
 
 

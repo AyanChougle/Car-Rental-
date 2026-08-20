@@ -1,8 +1,8 @@
 {
-  "name": "carrentpe-backend",
+  "name": "KRUIZLY-backend",
   "version": "1.0.0",
   "private": true,
-  "description": "CARRENTPE secure media and payment verification backend",
+  "description": "KRUIZLY secure media and payment verification backend",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

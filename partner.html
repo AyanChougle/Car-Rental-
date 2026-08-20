@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>Host Your Car | CARRENTPE</title>
+  <title>Host Your Car | KRUIZLY</title>
 
   <link rel="stylesheet" href="css/style.css" />
   <link rel="stylesheet" href="css/animations.css" />
@@ -356,7 +356,8 @@
       }
     }
   </style>
-</head>
+    <link rel="stylesheet" href="css/premium.css" />
+  </head>
 
 <body>
 
@@ -375,7 +376,7 @@
     <div class="container header-inner">
 
       <a href="index.html" class="logo">
-        CARRENTPE
+        KRUIZLY
       </a>
 
       <nav class="nav">
@@ -402,7 +403,7 @@
       <div class="section-header centered">
 
         <span class="section-label">
-          Earn With CARRENTPE
+          Earn With KRUIZLY
         </span>
 
         <h1 class="section-title">
@@ -414,7 +415,7 @@
           style="max-width: 680px; margin: 12px auto 0;"
         >
           Turn your idle car into passive income. Partner with
-          CARRENTPE for verified renters, insured trips, and smooth
+          KRUIZLY for verified renters, insured trips, and smooth
           payouts.
         </p>
 
@@ -549,35 +550,18 @@
 
               </div>
 
-
-              <!-- Category -->
-              <!-- <div class="partner-field">
-
-                <label for="carCategory">
-                  Category *
-                </label>
-
-                <select id="carCategory" required>
-
-                  <option value="economy">
-                    Economy / Hatchback
-                  </option>
-
-                  <option value="suv">
-                    SUV / MUV
-                  </option>
-
-                  <option value="luxury">
-                    Luxury / Premium
-                  </option>
-
-                  <option value="van">
-                    Van / 7-Seater
-                  </option>
-
-                </select>
-
-              </div> -->
+              <!-- Current odometer -->
+              <div class="partner-field">
+                <label for="carOdometer">Current Odometer (KM) *</label>
+                <input
+                  type="number"
+                  id="carOdometer"
+                  min="0"
+                  max="999999"
+                  placeholder="42000"
+                  required
+                />
+              </div>
 
 
               <!-- Transmission -->
@@ -783,23 +767,30 @@
               </div>
 
 
-              <!-- Vehicle photo -->
+              <!-- Vehicle photos -->
               <div class="partner-field full">
 
-                <label for="carImageUrl">
-                  Vehicle Photo Link
+                <label for="carPhotos">
+                  Vehicle Photos *
                 </label>
 
                 <input
-                  type="url"
-                  id="carImageUrl"
-                  placeholder="https://..."
+                  type="file"
+                  id="carPhotos"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  required
                 />
 
                 <small class="partner-help">
-                  Optional. Paste an image URL or cloud
-                  storage link of your vehicle.
+                  Upload 1–6 clear JPG, PNG, or WebP photos. Maximum 10 MB per photo.
                 </small>
+
+                <div
+                  id="carPhotoPreview"
+                  style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:12px;"
+                  aria-live="polite"
+                ></div>
 
               </div>
 
@@ -895,9 +886,7 @@
 
         <!-- <div id="partnerSuccessMsg" hidden>
 
-          <div class="success-icon">
-            🎉
-          </div>
+          <div class="success-icon" aria-hidden="true"></div>
 
           <h3>
             Submission Received!
@@ -958,7 +947,7 @@
         <div class="footer-brand footer-section">
 
           <a href="index.html" class="logo">
-            CARRENTPE
+            KRUIZLY
           </a>
 
           <p>
@@ -1046,7 +1035,7 @@
 
 
       <div class="footer-copy">
-        © 2026 CARRENTPE. All rights reserved.
+        © 2026 KRUIZLY. All rights reserved.
       </div>
 
     </div>

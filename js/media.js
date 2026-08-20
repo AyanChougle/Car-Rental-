@@ -1,5 +1,5 @@
 /* ============================================================
-   CARRENTPE — PROFILE "MY MEDIA" TAB
+   KRUIZLY — PROFILE "MY MEDIA" TAB
    ------------------------------------------------------------
    Personal photo/video gallery backed by the local Node/Express
    + SQLite media server in /server (NOT Firebase Storage — this
@@ -223,10 +223,45 @@ function initUploadWidget() {
   const fileInput = $("mediaFile");
   const uploadBtn = $("mediaUploadBtn");
   const status = $("mediaUploadStatus");
+  const selectionPreview = $("mediaSelectionPreview");
+  const selectionFrame = $("mediaSelectionFrame");
+  const selectionName = $("mediaSelectionName");
+  const selectionSize = $("mediaSelectionSize");
+  const selectionRemove = $("mediaSelectionRemove");
+  let selectionObjectUrl = null;
 
   if (!fileInput || !uploadBtn) return;
 
+  function clearSelectionPreview({ clearInput = true } = {}) {
+    if (selectionObjectUrl) {
+      URL.revokeObjectURL(selectionObjectUrl);
+      selectionObjectUrl = null;
+    }
+
+    if (selectionFrame) selectionFrame.innerHTML = "";
+    if (selectionName) selectionName.textContent = "";
+    if (selectionSize) selectionSize.textContent = "";
+    if (selectionPreview) selectionPreview.hidden = true;
+    if (clearInput) fileInput.value = "";
+
+    uploadBtn.disabled = true;
+  }
+
+  function showSelectionPreview(file) {
+    if (!selectionPreview || !selectionFrame) return;
+
+    selectionObjectUrl = URL.createObjectURL(file);
+    selectionFrame.innerHTML = file.type.startsWith("video/")
+      ? `<video src="${selectionObjectUrl}" controls preload="metadata"></video>`
+      : `<img src="${selectionObjectUrl}" alt="Preview of ${escapeHtml(file.name)}" />`;
+
+    if (selectionName) selectionName.textContent = file.name;
+    if (selectionSize) selectionSize.textContent = formatBytes(file.size);
+    selectionPreview.hidden = false;
+  }
+
   fileInput.addEventListener("change", () => {
+    clearSelectionPreview({ clearInput: false });
     const file = fileInput.files[0];
     status.textContent = "";
 
@@ -236,15 +271,21 @@ function initUploadWidget() {
     }
     if (!ALLOWED_TYPES.includes(file.type)) {
       status.textContent = "Unsupported file type. Use JPG, PNG, WEBP, GIF, MP4, WEBM, or MOV.";
-      uploadBtn.disabled = true;
+      clearSelectionPreview();
       return;
     }
     if (file.size > MAX_FILE_BYTES) {
       status.textContent = "File is too large — 50MB max.";
-      uploadBtn.disabled = true;
+      clearSelectionPreview();
       return;
     }
+    showSelectionPreview(file);
     uploadBtn.disabled = false;
+  });
+
+  selectionRemove?.addEventListener("click", () => {
+    clearSelectionPreview();
+    status.textContent = "";
   });
 
   uploadBtn.addEventListener("click", async () => {
@@ -258,7 +299,7 @@ function initUploadWidget() {
     try {
       await uploadFile(file);
       status.textContent = "Uploaded.";
-      fileInput.value = "";
+      clearSelectionPreview();
       uploadBtn.textContent = "Upload";
       await renderGallery();
     } catch (err) {
@@ -269,6 +310,10 @@ function initUploadWidget() {
       uploadBtn.disabled = false;
     }
   });
+
+  window.addEventListener("beforeunload", () => {
+    if (selectionObjectUrl) URL.revokeObjectURL(selectionObjectUrl);
+  }, { once: true });
 }
 
 /* ------------------------------------------------------------

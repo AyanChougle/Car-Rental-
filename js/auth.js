@@ -157,6 +157,11 @@ function wireSignupForm() {
         licenseStatus: "not_submitted",
         aadharURL: null,
         aadharStatus: "not_submitted",
+        aadharFrontURL: null,
+        aadharBackURL: null,
+        panFrontURL: null,
+        panBackURL: null,
+        panStatus: "not_submitted",
         role: "customer",
         createdAt: serverTimestamp(),
       }, { merge: true });
@@ -198,7 +203,7 @@ function wireForgotPassword() {
 
 // ---- Google Sign-In ----
 // Only writes a fresh users/{uid} doc the first time this account signs in.
-// On every later sign-in it deliberately leaves role/licenseStatus/aadharStatus
+// On every later sign-in it deliberately leaves role and document statuses
 // untouched — firestore.rules blocks an owner from changing those fields on
 // an *update*, by design (see README's security notes), so re-sending them
 // here on a returning user would just fail the write and could break login.
@@ -231,6 +236,11 @@ function wireGoogleAuth() {
           licenseStatus: "not_submitted",
           aadharURL: null,
           aadharStatus: "not_submitted",
+          aadharFrontURL: null,
+          aadharBackURL: null,
+          panFrontURL: null,
+          panBackURL: null,
+          panStatus: "not_submitted",
           role: "customer",
           createdAt: serverTimestamp(),
         });
@@ -275,21 +285,42 @@ function wireHomepageAuthSwap() {
   const quickBookStatus = document.getElementById("quickBookStatus");
   const quickLogoutBtn = document.getElementById("quickLogoutBtn");
   const authUserName = document.getElementById("authUserName");
+  const padDatePart = (value) => String(value).padStart(2, "0");
+  const toLocalInput = (date) =>
+    `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}T${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
 
   function setSensibleDefaultDates() {
     if (!quickPickup || !quickDrop) return;
     const now = new Date();
-    const pad = (n) => String(n).padStart(2, "0");
-    const toLocalInput = (d) =>
-      `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 
     const pickup = new Date(now.getTime() + 60 * 60 * 1000); // +1 hour
-    const drop = new Date(now.getTime() + 24 * 60 * 60 * 1000); // +1 day
+    const drop = new Date(pickup);
+    drop.setDate(drop.getDate() + 1);
 
     quickPickup.min = toLocalInput(now);
     quickDrop.min = toLocalInput(pickup);
     if (!quickPickup.value) quickPickup.value = toLocalInput(pickup);
     if (!quickDrop.value) quickDrop.value = toLocalInput(drop);
+  }
+
+  if (quickPickup && quickDrop) {
+    quickPickup.addEventListener("change", () => {
+      if (!quickPickup.value) return;
+
+      const selectedPickup = new Date(quickPickup.value);
+      if (Number.isNaN(selectedPickup.getTime())) return;
+
+      const nextDayDrop = new Date(selectedPickup);
+      nextDayDrop.setDate(nextDayDrop.getDate() + 1);
+
+      quickDrop.min = toLocalInput(selectedPickup);
+      quickDrop.value = toLocalInput(nextDayDrop);
+
+      if (quickBookStatus) {
+        quickBookStatus.textContent = "";
+        quickBookStatus.classList.remove("form-status--error");
+      }
+    });
   }
 
   if (quickBookBtn) {

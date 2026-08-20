@@ -9,6 +9,7 @@ const rateLimit = require("express-rate-limit");
 
 const mediaRoutes = require("./routes/media");
 const paymentRoutes = require("./routes/payments");
+const adminExportRoutes = require("./routes/adminExport");
 
 const app = express();
 
@@ -18,14 +19,6 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 app.disable("x-powered-by");
 
 app.set("trust proxy", 1);
-
-app.use(
-  helmet({
-    crossOriginResourcePolicy: {
-      policy: "cross-origin",
-    },
-  })
-);
 
 // ------------------------------------------------------------
 // CORS
@@ -120,7 +113,7 @@ app.use("/api", apiLimiter);
 app.get("/api/health", (req, res) => {
   res.json({
     ok: true,
-    service: "CARRENTPE API",
+    service: "KRUIZLY API",
     environment: NODE_ENV,
     time: new Date().toISOString(),
   });
@@ -133,6 +126,8 @@ app.get("/api/health", (req, res) => {
 app.use("/api/media", mediaRoutes);
 
 app.use("/api/payments", paymentRoutes);
+
+app.use("/api/admin", adminExportRoutes);
 
 // ------------------------------------------------------------
 // 404
@@ -169,7 +164,7 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   console.log("");
   console.log("========================================");
-  console.log("       CARRENTPE BACKEND");
+  console.log("       KRUIZLY BACKEND");
   console.log("========================================");
   console.log(`Environment : ${NODE_ENV}`);
   console.log(`Port        : ${PORT}`);

@@ -1,5 +1,5 @@
 // ============================================================
-// CARRENTPE - Partner / Host Car
+// KRUIZLY - Partner / Host Car
 // Handles vehicle submissions to Firestore
 // Collection: partner_cars
 // ============================================================
@@ -12,7 +12,7 @@ import {
 
 import {
   collection,
-  addDoc,
+  setDoc,
   serverTimestamp,
   doc,
   getDoc,
@@ -22,6 +22,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 
 import "./nav-helper.js";
+import { MEDIA_SERVER_URL } from "./media-config.js";
 
 
 // ============================================================
@@ -33,6 +34,65 @@ const statusEl = document.getElementById("partnerStatus");
 const successBox = document.getElementById("partnerSuccessMsg");
 
 const submitBtn = document.getElementById("submitPartnerBtn");
+const carPhotosInput = document.getElementById("carPhotos");
+const carPhotoPreview = document.getElementById("carPhotoPreview");
+
+const MAX_HOST_PHOTOS = 6;
+const MAX_HOST_PHOTO_BYTES = 10 * 1024 * 1024;
+const HOST_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+let hostPhotoPreviewUrls = [];
+
+function clearHostPhotoPreviews() {
+  hostPhotoPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
+  hostPhotoPreviewUrls = [];
+  if (carPhotoPreview) carPhotoPreview.innerHTML = "";
+}
+
+carPhotosInput?.addEventListener("change", () => {
+  clearHostPhotoPreviews();
+  const files = Array.from(carPhotosInput.files || []).slice(0, MAX_HOST_PHOTOS);
+
+  files.forEach((file) => {
+    const url = URL.createObjectURL(file);
+    hostPhotoPreviewUrls.push(url);
+    carPhotoPreview?.insertAdjacentHTML(
+      "beforeend",
+      `<img src="${url}" alt="Vehicle photo preview" style="width:100%;height:105px;object-fit:cover;border:1px solid var(--line);border-radius:9px;" />`
+    );
+  });
+});
+
+async function uploadHostPhoto(file, listingId) {
+  const token = await currentUser.getIdToken();
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("category", "partner_car_photo");
+  formData.append("relatedId", listingId);
+
+  const response = await fetch(`${MEDIA_SERVER_URL}/api/media/upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || `Photo upload failed (${response.status}).`);
+  }
+  return payload;
+}
+
+async function removeUploadedHostPhoto(mediaId) {
+  try {
+    const token = await currentUser.getIdToken();
+    await fetch(`${MEDIA_SERVER_URL}/api/media/${encodeURIComponent(mediaId)}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+  } catch {
+    // Best-effort cleanup if the listing write fails.
+  }
+}
 
 const myListingsSection =
   document.getElementById("myListingsSection");
@@ -464,8 +524,8 @@ if (form) {
           document.getElementById("carYear").value
         );
 
-      // const category =
-      //   getValue("carCategory");
+      const odometer =
+        Number(document.getElementById("carOdometer").value);
 
       const transmission =
         getValue("carTransmission");
@@ -503,12 +563,7 @@ if (form) {
         getValue("PUCEndDate");
 
 
-      // ------------------------------------------------------
-      // Photo
-      // ------------------------------------------------------
-
-      const imageUrl =
-        getValue("carImageUrl");
+      const photoFiles = Array.from(carPhotosInput?.files || []);
 
 
       // ------------------------------------------------------
@@ -599,6 +654,25 @@ if (form) {
 
       }
 
+      if (!Number.isInteger(odometer) || odometer < 0 || odometer > 999999) {
+        showError("Please enter a valid current odometer reading.");
+        return;
+      }
+
+      if (!photoFiles.length || photoFiles.length > MAX_HOST_PHOTOS) {
+        showError(`Please upload between 1 and ${MAX_HOST_PHOTOS} vehicle photos.`);
+        return;
+      }
+
+      const invalidPhoto = photoFiles.find(
+        (file) => !HOST_PHOTO_TYPES.has(file.type) || file.size > MAX_HOST_PHOTO_BYTES
+      );
+
+      if (invalidPhoto) {
+        showError("Each vehicle photo must be JPG, PNG, or WebP and 10 MB or smaller.");
+        return;
+      }
+
 
       // ------------------------------------------------------
       // Disable button
@@ -622,15 +696,20 @@ if (form) {
       // Firestore
       // ------------------------------------------------------
 
+      const listingRef = doc(collection(db, "partner_cars"));
+      const uploadedPhotoIds = [];
+
       try {
+        for (let index = 0; index < photoFiles.length; index += 1) {
+          if (statusEl) {
+            statusEl.textContent = `Uploading vehicle photo ${index + 1} of ${photoFiles.length}...`;
+          }
+          const uploaded = await uploadHostPhoto(photoFiles[index], listingRef.id);
+          uploadedPhotoIds.push(uploaded.id);
+        }
 
-        await addDoc(
-
-          collection(
-            db,
-            "partner_cars"
-          ),
-
+        await setDoc(
+          listingRef,
           {
 
             // User
@@ -645,7 +724,7 @@ if (form) {
             brand,
             model,
             year,
-            category,
+            odometer,
             transmission,
             fuel,
             seats,
@@ -661,9 +740,8 @@ if (form) {
             pucEnd,
 
 
-            // Photo
-            imageUrl:
-              imageUrl || null,
+            // Photos stored on the authenticated media server
+            photoMediaIds: uploadedPhotoIds,
 
 
             // Owner
@@ -696,13 +774,18 @@ if (form) {
         }
 
 
-        // Refresh listings
-        await loadMyListings(
-          currentUser.uid
+        // Continue directly to the customer's listing dashboard.
+        // The profile query parameter opens the My Listings tab.
+        window.location.assign(
+          "profile.html?tab=listings"
         );
 
 
       } catch (error) {
+
+        await Promise.all(
+          uploadedPhotoIds.map((id) => removeUploadedHostPhoto(id))
+        );
 
         console.error(
           "Partner submission error:",

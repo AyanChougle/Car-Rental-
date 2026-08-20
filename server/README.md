@@ -1,4 +1,4 @@
-# CARRENTPE Media Server
+# KRUIZLY Media Server
 
 Local file storage backend for user photos/videos/docs (profile photos, license
 & Aadhar docs, partner car photos/videos, payment screenshots, return-inspection
@@ -16,7 +16,7 @@ Firebase, this just handles the media files.
    as `server/serviceAccountKey.json` (already gitignored — never commit it).
 3. `cp .env.example .env` and set `ALLOWED_ORIGIN` to wherever your frontend
    is actually served from.
-4. `npm start` — runs on `http://localhost:4000` by default.
+4. `npm start` — runs on `http://localhost:4001` by default.
 
 The SQLite file and `uploads/` folder are created automatically on first run.
 
@@ -45,7 +45,7 @@ const formData = new FormData();
 formData.append("file", fileInput.files[0]);
 formData.append("category", "license_doc");
 
-const res = await fetch("http://localhost:4000/api/media/upload", {
+const res = await fetch("http://localhost:4001/api/media/upload", {
   method: "POST",
   headers: { Authorization: `Bearer ${token}` },
   body: formData,
@@ -53,7 +53,7 @@ const res = await fetch("http://localhost:4000/api/media/upload", {
 const media = await res.json(); // { id, url, originalName, ... }
 
 // Display it later:
-const fileRes = await fetch(`http://localhost:4000${media.url}`, {
+const fileRes = await fetch(`http://localhost:4001${media.url}`, {
   headers: { Authorization: `Bearer ${token}` },
 });
 const blob = await fileRes.blob();
@@ -65,4 +65,4 @@ imgElement.src = URL.createObjectURL(blob);
 This is a plain Node process — deploy it anywhere that runs Node (Render,
 Railway, a VPS, etc.) with a persistent disk for `server/db/` and
 `server/uploads/`. Point the frontend's fetch calls at that server's real URL
-instead of `localhost:4000`.
+instead of `localhost:4001`.

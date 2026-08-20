@@ -1,5 +1,12 @@
 "use strict";
 
+import { db } from "./firebase-init.js";
+import {
+  collection,
+  getDocs,
+} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
+import "./nav-helper.js";
+
 // Fleet page: card rendering, searching, filtering,
 // sorting, expandable specifications and navigation.
 
@@ -36,12 +43,7 @@ function renderFleetCards(records) {
   grid.innerHTML = records
     .map((vehicle, index) => {
       const vehicleName = `${vehicle.brand} ${vehicle.model}`;
-      const imagePath = fleetImagePath(vehicle);
-      const imageIcon =
-        vehicle.icon ||
-        categoryIcons?.[vehicle.category] ||
-        "🚗";
-
+      const imagePath = window.fleetImagePath(vehicle);
       const isAvailable = Boolean(vehicle.available);
       const availabilityLabel = isAvailable
         ? "Available"
@@ -78,7 +80,6 @@ function renderFleetCards(records) {
               class="fleet-card__icon"
               aria-hidden="true"
             >
-              ${imageIcon}
             </span>
 
             <span
@@ -108,10 +109,10 @@ function renderFleetCards(records) {
 
               <div class="fleet-card__main-price">
                 <strong>
-                  ₹${formatCurrency(vehicle.priceDay)}
+                  ₹${formatCurrency(vehicle.priceHour)}
                 </strong>
 
-                <span>/day</span>
+                <span>/Hour</span>
               </div>
             </div>
 
@@ -178,16 +179,16 @@ function renderFleetCards(records) {
             >
               <div class="fleet-specs">
                 <div>
-                  <strong>Per Day</strong>
+                  <strong>Per Hour</strong>
                   <span>
-                    ₹${formatCurrency(vehicle.priceDay)}
+                    ₹${formatCurrency(vehicle.priceHour)}
                   </span>
                 </div>
 
                 <div>
-                  <strong>Per Hour</strong>
+                  <strong>Per Day</strong>
                   <span>
-                    ₹${formatCurrency(vehicle.priceHour)}
+                    ₹${formatCurrency(vehicle.priceDay)}
                   </span>
                 </div>
 
@@ -478,5 +479,27 @@ function bookingDateParams() {
   return `&pickup=${encodeURIComponent(pickup)}&drop=${encodeURIComponent(drop)}`;
 }
 
-renderFleetCards(fleetVehicles);
+async function applyFleetAvailabilityOverrides() {
+  try {
+    const snapshot = await getDocs(
+      collection(db, "vehicles")
+    );
+    const overrides = new Map(
+      snapshot.docs.map((item) => [item.id, item.data()])
+    );
+
+    (window.fleetVehicles || []).forEach((vehicle) => {
+      const override = overrides.get(vehicle.regNo);
+      if (override && typeof override.available === "boolean") {
+        vehicle.available = override.available ? 1 : 0;
+        vehicle.status = override.available ? "available" : "unavailable";
+      }
+    });
+  } catch (error) {
+    console.warn("Could not load fleet availability overrides:", error);
+  }
+}
+
+await applyFleetAvailabilityOverrides();
+renderFleetCards(window.fleetVehicles || []);
 applyFilters();

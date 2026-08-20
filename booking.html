@@ -7,13 +7,14 @@
     content="width=device-width, initial-scale=1.0"
   />
 
-  <title>Book Your Ride | CARRENTPE</title>
+  <title>Book Your Ride | KRUIZLY</title>
 
   <!-- Main site CSS -->
   <link rel="stylesheet" href="css/style.css" />
 
   <!-- Booking page CSS -->
   <link rel="stylesheet" href="css/booking.css" />
+  <link rel="stylesheet" href="css/premium.css" />
 </head>
 
 <body class="booking-page">
@@ -40,7 +41,7 @@
     <div class="container header-inner">
 
       <a href="index.html" class="logo">
-        CARRENTPE
+        KRUIZLY
       </a>
 
       <nav class="nav">
@@ -48,8 +49,6 @@
         <a href="about.html">About</a>
         <a href="contact.html">Contact</a>
         <a href="partner.html">Host Car</a>
-        <a href="manager.html">Manager</a>
-        <a href="admin.html">Admin</a>
         <a href="profile.html">Profile</a>
       </nav>
 
@@ -90,7 +89,6 @@
 
         <p class="booking-subtitle">
           Choose your pickup and drop dates.
-          We'll calculate your total before payment.
         </p>
 
       </section>
@@ -106,19 +104,17 @@
         ========================== -->
         <section class="booking-card booking-trip-card">
 
-          <div class="booking-card-heading">
+            <div class="booking-card-heading">
 
-            <div class="booking-eyebrow">
-              YOUR TRIP
-            </div>
+              <div class="booking-eyebrow">
+              </div>
 
             <h2>
               Trip Details
             </h2>
 
             <p>
-              Select your dates and customize
-              your rental.
+              Select your dates and time.
             </p>
 
           </div>
@@ -134,11 +130,11 @@
 
               <div class="booking-field">
                 <label for="pickupDate">
-                  Pickup Date
+                  Pickup Date &amp; Time
                 </label>
 
                 <input
-                  type="date"
+                  type="datetime-local"
                   id="pickupDate"
                   required
                 />
@@ -147,11 +143,11 @@
 
               <div class="booking-field">
                 <label for="dropDate">
-                  Drop Date
+                  Drop Date &amp; Time
                 </label>
 
                 <input
-                  type="date"
+                  type="datetime-local"
                   id="dropDate"
                   required
                 />
@@ -242,9 +238,7 @@
               class="booking-vehicle-image"
               id="bookingVehicleImage"
             >
-              <span id="bookingVehicleIcon">
-                🚗
-              </span>
+              <span id="bookingVehicleIcon" aria-hidden="true"></span>
             </div>
 
             <div class="booking-vehicle-info">
@@ -350,7 +344,7 @@
             href="index.html"
             class="logo"
           >
-            CARRENTPE
+            KRUIZLY
           </a>
 
           <p>
@@ -440,7 +434,7 @@
           </p>
 
           <p>
-            Mon – Sat: 9:00 AM – 8:00 PM
+            <a href="mailto:support@kruizly.com">support@kruizly.com</a>
           </p>
 
           <p>
@@ -455,7 +449,7 @@
 
 
       <div class="footer-copy">
-        © 2026 CARRENTPE. All rights reserved.
+        © 2026 KRUIZLY. All rights reserved.
       </div>
 
     </div>

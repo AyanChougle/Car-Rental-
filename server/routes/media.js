@@ -13,7 +13,13 @@ const { requireAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
-const UPLOAD_ROOT = path.join(__dirname, "..", "uploads");
+const UPLOAD_ROOT =
+  process.env.MEDIA_UPLOAD_DIR ||
+  path.join(__dirname, "..", "uploads");
+
+fs.mkdirSync(UPLOAD_ROOT, { recursive: true });
+
+console.log(`[media] Upload directory: ${UPLOAD_ROOT}`);
 
 fs.mkdirSync(UPLOAD_ROOT, {
   recursive: true,
@@ -23,6 +29,7 @@ const ALLOWED_CATEGORIES = new Set([
   "profile_photo",
   "license_doc",
   "aadhar_doc",
+  "pan_doc",
   "partner_car_photo",
   "partner_car_video",
   "payment_screenshot",
@@ -266,9 +273,20 @@ router.get(
   "/",
   requireAuth,
   (req, res) => {
-    const isStaff =
-      req.user.role === "admin" ||
-      req.user.role === "manager";
+    const isAdmin = req.user.role === "admin";
+    const isExecutive = req.user.role === "executive";
+    const isStaff = isAdmin || isExecutive;
+
+    if (
+      isExecutive &&
+      req.query.userId &&
+      String(req.query.userId) !== req.user.uid &&
+      req.query.category !== "inspection_photo"
+    ) {
+      return res.status(403).json({
+        error: "Executives may only access operational inspection photos.",
+      });
+    }
 
     const targetUser =
       isStaff && req.query.userId
@@ -340,11 +358,12 @@ router.get(
     const isOwner =
       row.user_id === req.user.uid;
 
-    const isStaff =
-      req.user.role === "admin" ||
-      req.user.role === "manager";
+    const isAdmin = req.user.role === "admin";
+    const isExecutiveInspection =
+      req.user.role === "executive" &&
+      row.category === "inspection_photo";
 
-    if (!isOwner && !isStaff) {
+    if (!isOwner && !isAdmin && !isExecutiveInspection) {
       return res.status(403).json({
         error: "You do not have permission to access this file.",
       });
@@ -422,11 +441,12 @@ router.delete(
     const isOwner =
       row.user_id === req.user.uid;
 
-    const isStaff =
-      req.user.role === "admin" ||
-      req.user.role === "manager";
+    const isAdmin = req.user.role === "admin";
+    const isExecutiveInspection =
+      req.user.role === "executive" &&
+      row.category === "inspection_photo";
 
-    if (!isOwner && !isStaff) {
+    if (!isOwner && !isAdmin && !isExecutiveInspection) {
       return res.status(403).json({
         error: "You do not have permission to delete this file.",
       });

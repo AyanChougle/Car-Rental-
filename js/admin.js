@@ -1,5 +1,5 @@
 // ============================================================================
-// CARRENTPE ADMIN DASHBOARD
+// KRUIZLY ADMIN DASHBOARD
 // Complete admin controller
 // ============================================================================
 
@@ -28,6 +28,7 @@ import {
 import "./nav-helper.js";
 
 import { openReturnModal } from "./return-inspection.js";
+import { formatBookingNumber } from "./booking-reference.js";
 
 // ============================================================================
 // DOM
@@ -42,6 +43,9 @@ const usersTableWrap = $("usersTableWrap");
 const paymentsTableWrap = $("paymentsTableWrap");
 const bookingsTableWrap = $("bookingsTableWrap");
 const hostCarsTableWrap = $("hostCarsTableWrap");
+const fleetManagementWrap = $("fleetManagementWrap");
+const exportFirebaseExcelBtn = $("exportFirebaseExcelBtn");
+const firebaseExportStatus = $("firebaseExportStatus");
 
 // ============================================================================
 // STATE
@@ -55,12 +59,18 @@ let hostCarsData = [];
 
 let activeDocUser = null;
 let activeDocType = null;
+let activeDocObjectUrls = [];
 let activePaymentBooking = null;
+let activePaymentScreenshotObjectUrl = null;
 
 let bookingSortDirection = "desc";
 let bookingStatus = "all";
 let bookingDateFrom = "";
 let bookingDateTo = "";
+const ADMIN_BOOKINGS_PER_PAGE = 10;
+const ADMIN_PAYMENTS_PER_PAGE = 10;
+let adminBookingPage = 1;
+let adminPaymentPage = 1;
 
 let expandedBookingId = null;
 let expandedHostPhotoId = null;
@@ -340,6 +350,30 @@ function hideModal(id) {
 
   modal.style.display = "none";
   modal.hidden = true;
+
+  if (id === "docModal" && activeDocObjectUrls.length) {
+    activeDocObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+    activeDocObjectUrls = [];
+  }
+
+  if (id === "docModal") {
+    activeDocUser = null;
+    activeDocType = null;
+  }
+
+  if (
+    id === "paymentModal" &&
+    activePaymentScreenshotObjectUrl
+  ) {
+    URL.revokeObjectURL(
+      activePaymentScreenshotObjectUrl
+    );
+    activePaymentScreenshotObjectUrl = null;
+  }
+
+  if (id === "paymentModal") {
+    activePaymentBooking = null;
+  }
 }
 
 // ============================================================================
@@ -410,6 +444,7 @@ function initialiseAdmin() {
   initialiseDocumentModal();
   initialisePaymentModal();
   initialiseReturnModal();
+  initialiseFirebaseExport();
 
   loadAllAdminData();
 }
@@ -509,6 +544,8 @@ function initialiseBookingFilters() {
         bookingStatus =
           statusFilter.value;
 
+        adminBookingPage = 1;
+
         renderBookingsTable(
           getFilteredBookings()
         );
@@ -531,6 +568,8 @@ function initialiseBookingFilters() {
 
         sortBookings();
 
+        adminBookingPage = 1;
+
         renderBookingsTable(
           getFilteredBookings()
         );
@@ -547,6 +586,8 @@ function initialiseBookingFilters() {
       () => {
         bookingDateFrom =
           dateFrom.value;
+
+        adminBookingPage = 1;
 
         renderBookingsTable(
           getFilteredBookings()
@@ -565,6 +606,8 @@ function initialiseBookingFilters() {
         bookingDateTo =
           dateTo.value;
 
+        adminBookingPage = 1;
+
         renderBookingsTable(
           getFilteredBookings()
         );
@@ -581,6 +624,7 @@ function initialiseBookingFilters() {
       () => {
         bookingDateFrom = "";
         bookingDateTo = "";
+        adminBookingPage = 1;
 
         if (dateFrom) {
           dateFrom.value = "";
@@ -705,9 +749,501 @@ async function loadAllAdminData() {
     loadUsers(),
     loadBookings(),
     loadHostCars(),
+    loadFleetManagement(),
   ]);
 }
 
+async function loadFleetManagement() {
+  if (!fleetManagementWrap) return;
+
+  try {
+    const catalog = Array.isArray(window.fleetVehicles)
+      ? window.fleetVehicles
+      : [];
+    const snapshot = await getDocs(collection(db, "vehicles"));
+    const overrides = new Map(
+      snapshot.docs.map((item) => [item.id, item.data()])
+    );
+    const vehicles = catalog.map((vehicle) => ({
+      ...vehicle,
+      ...(overrides.get(vehicle.regNo) || {}),
+      regNo: vehicle.regNo,
+    }));
+
+    if (!vehicles.length) {
+      fleetManagementWrap.innerHTML =
+        `<p style="color:var(--sub);">No catalog vehicles found.</p>`;
+      return;
+    }
+
+    fleetManagementWrap.innerHTML = `
+      <div style="width:100%;overflow-x:auto;">
+        <table class="admin-table" style="width:100%;min-width:820px;border-collapse:collapse;text-align:left;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--line);color:var(--sub);">
+              <th style="padding:12px;">Vehicle</th>
+              <th style="padding:12px;">Registration</th>
+              <th style="padding:12px;">Category</th>
+              <th style="padding:12px;">Daily Rate</th>
+              <th style="padding:12px;">Availability</th>
+              <th style="padding:12px;text-align:right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${vehicles.map((vehicle) => {
+              const available = Boolean(vehicle.available);
+              return `
+                <tr style="border-bottom:1px solid rgba(255,255,255,.06);">
+                  <td style="padding:12px;"><strong>${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}</strong></td>
+                  <td style="padding:12px;font-family:monospace;">${escapeHtml(vehicle.regNo)}</td>
+                  <td style="padding:12px;">${escapeHtml(vehicle.category || "—")}</td>
+                  <td style="padding:12px;">${formatINR(vehicle.priceDay)}</td>
+                  <td style="padding:12px;">
+                    <span class="status-pill ${available ? "verified" : "rejected"}">
+                      ${available ? "Available" : "Unavailable"}
+                    </span>
+                  </td>
+                  <td style="padding:12px;text-align:right;">
+                    <button
+                      type="button"
+                      class="btn ${available ? "btn-outline" : "btn-dark"} admin-fleet-toggle"
+                      data-reg="${escapeHtml(vehicle.regNo)}"
+                      data-available="${String(available)}"
+                    >
+                      ${available ? "Mark Unavailable" : "Make Available"}
+                    </button>
+                  </td>
+                </tr>
+              `;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    fleetManagementWrap
+      .querySelectorAll(".admin-fleet-toggle")
+      .forEach((button) => {
+        button.addEventListener("click", async () => {
+          const regNo = button.dataset.reg;
+          const vehicle = vehicles.find((item) => item.regNo === regNo);
+          if (!vehicle) return;
+
+          const nextAvailable = button.dataset.available !== "true";
+          button.disabled = true;
+          button.textContent = "Saving...";
+
+          try {
+            await setDoc(
+              doc(db, "vehicles", regNo),
+              {
+                regNo,
+                brand: vehicle.brand,
+                model: vehicle.model,
+                category: vehicle.category,
+                available: nextAvailable,
+                status: nextAvailable ? "available" : "unavailable",
+                updatedAt: serverTimestamp(),
+                updatedBy: currentUser?.uid || null,
+              },
+              { merge: true }
+            );
+
+            const sourceVehicle = catalog.find((item) => item.regNo === regNo);
+            if (sourceVehicle) sourceVehicle.available = nextAvailable ? 1 : 0;
+            await loadFleetManagement();
+          } catch (error) {
+            console.error("FLEET AVAILABILITY ERROR:", error);
+            alert("Could not update vehicle availability.\n\n" + error.message);
+            button.disabled = false;
+          }
+        });
+      });
+  } catch (error) {
+    console.error("FLEET MANAGEMENT LOAD ERROR:", error);
+    fleetManagementWrap.innerHTML = `
+      <p style="color:#ef476f;">
+        Could not load fleet management. ${escapeHtml(error.message)}
+      </p>
+    `;
+  }
+}
+
+// ============================================================================
+// FIREBASE EXCEL EXPORT
+// ============================================================================
+
+const FIRESTORE_EXPORT_COLLECTIONS = [
+  {
+    collectionName: "users",
+    sheetName: "Users",
+  },
+  {
+    collectionName: "bookings",
+    sheetName: "Bookings",
+  },
+  {
+    collectionName: "partner_cars",
+    sheetName: "Partner Cars",
+  },
+  {
+    collectionName: "contact_messages",
+    sheetName: "Contact Messages",
+  },
+  {
+    collectionName: "vehicles",
+    sheetName: "Vehicles",
+  },
+];
+
+function initialiseFirebaseExport() {
+  if (!exportFirebaseExcelBtn) {
+    return;
+  }
+
+  exportFirebaseExcelBtn.addEventListener(
+    "click",
+    exportFirebaseToExcel
+  );
+}
+
+function normaliseFirestoreValue(value) {
+  if (value === null || value === undefined) {
+    return "";
+  }
+
+  if (
+    value &&
+    typeof value.toDate === "function"
+  ) {
+    return value.toDate().toISOString();
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (
+    value &&
+    typeof value.latitude === "number" &&
+    typeof value.longitude === "number"
+  ) {
+    return `${value.latitude}, ${value.longitude}`;
+  }
+
+  if (
+    value &&
+    typeof value.path === "string"
+  ) {
+    return value.path;
+  }
+
+  if (Array.isArray(value)) {
+    return JSON.stringify(
+      value.map(
+        normaliseNestedFirestoreValue
+      )
+    );
+  }
+
+  return value;
+}
+
+function normaliseNestedFirestoreValue(value) {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (
+    value &&
+    typeof value.toDate === "function"
+  ) {
+    return value.toDate().toISOString();
+  }
+
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(
+      normaliseNestedFirestoreValue
+    );
+  }
+
+  if (
+    value &&
+    typeof value === "object"
+  ) {
+    if (
+      typeof value.latitude === "number" &&
+      typeof value.longitude === "number"
+    ) {
+      return {
+        latitude: value.latitude,
+        longitude: value.longitude,
+      };
+    }
+
+    if (typeof value.path === "string") {
+      return value.path;
+    }
+
+    return Object.fromEntries(
+      Object.entries(value).map(
+        ([key, nestedValue]) => [
+          key,
+          normaliseNestedFirestoreValue(
+            nestedValue
+          ),
+        ]
+      )
+    );
+  }
+
+  return value;
+}
+
+function flattenFirestoreRecord(
+  value,
+  prefix = "",
+  result = {}
+) {
+  Object.entries(value || {}).forEach(
+    ([key, fieldValue]) => {
+      const columnName = prefix
+        ? `${prefix}.${key}`
+        : key;
+
+      const isNestedObject =
+        fieldValue &&
+        typeof fieldValue === "object" &&
+        !Array.isArray(fieldValue) &&
+        !(fieldValue instanceof Date) &&
+        typeof fieldValue.toDate !== "function" &&
+        typeof fieldValue.latitude !== "number" &&
+        typeof fieldValue.path !== "string";
+
+      if (isNestedObject) {
+        flattenFirestoreRecord(
+          fieldValue,
+          columnName,
+          result
+        );
+
+        return;
+      }
+
+      result[columnName] =
+        normaliseFirestoreValue(
+          fieldValue
+        );
+    }
+  );
+
+  return result;
+}
+
+async function getFirestoreExportRows(
+  collectionName
+) {
+  const snapshot = await getDocs(
+    collection(db, collectionName)
+  );
+
+  return snapshot.docs.map(
+    (item) =>
+      flattenFirestoreRecord({
+        documentId: item.id,
+        ...item.data(),
+      })
+  );
+}
+
+function getCachedExportRows(
+  collectionName
+) {
+  let records = null;
+
+  if (collectionName === "users") {
+    records = usersData;
+  } else if (collectionName === "bookings") {
+    records = bookingsData;
+  } else if (
+    collectionName === "partner_cars"
+  ) {
+    records = hostCarsData;
+  }
+
+  if (!records) {
+    return null;
+  }
+
+  return records.map(
+    (item) =>
+      flattenFirestoreRecord({
+        documentId: item.id,
+        ...item,
+      })
+  );
+}
+
+function createExportWorksheet(rows) {
+  const XLSX = window.XLSX;
+  const worksheetRows = rows.length
+    ? rows
+    : [{ Message: "No records" }];
+
+  const headers = Array.from(
+    new Set(
+      worksheetRows.flatMap(
+        (row) => Object.keys(row)
+      )
+    )
+  );
+
+  const worksheet =
+    XLSX.utils.json_to_sheet(
+      worksheetRows,
+      { header: headers }
+    );
+
+  worksheet["!autofilter"] = {
+    ref: worksheet["!ref"],
+  };
+
+  worksheet["!cols"] = headers.map(
+    (header) => {
+      const longest = Math.max(
+        header.length,
+        ...worksheetRows.map(
+          (row) =>
+            String(row[header] ?? "").length
+        )
+      );
+
+      return {
+        wch: Math.min(
+          Math.max(longest + 2, 12),
+          45
+        ),
+      };
+    }
+  );
+
+  return worksheet;
+}
+async function exportFirebaseToExcel() {
+  if (!exportFirebaseExcelBtn) {
+    return;
+  }
+
+  if (!currentUser) {
+    alert("You must be signed in as an administrator.");
+    return;
+  }
+
+  const originalText =
+    exportFirebaseExcelBtn.textContent;
+
+  try {
+    exportFirebaseExcelBtn.disabled = true;
+    exportFirebaseExcelBtn.textContent =
+      "Preparing Excel...";
+
+    if (firebaseExportStatus) {
+      firebaseExportStatus.textContent =
+        "Generating Excel from Firebase...";
+    }
+
+    const token =
+      await currentUser.getIdToken();
+
+    const response = await fetch(
+      `${MEDIA_SERVER_URL}/api/admin/export/excel`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      let message =
+        `Export failed (${response.status}).`;
+
+      try {
+        const data =
+          await response.json();
+
+        if (data.error) {
+          message = data.error;
+        }
+      } catch (_) {
+        // Response wasn't JSON.
+      }
+
+      throw new Error(message);
+    }
+
+    const blob =
+      await response.blob();
+
+    const downloadUrl =
+      URL.createObjectURL(blob);
+
+    const link =
+      document.createElement("a");
+
+    link.href = downloadUrl;
+
+    const date =
+      new Date()
+        .toISOString()
+        .slice(0, 10);
+
+    link.download =
+      `CARRENTPE_Firebase_${date}.xlsx`;
+
+    document.body.appendChild(link);
+
+    link.click();
+
+    link.remove();
+
+    URL.revokeObjectURL(
+      downloadUrl
+    );
+
+    if (firebaseExportStatus) {
+      firebaseExportStatus.textContent =
+        "Excel export completed successfully.";
+    }
+
+  } catch (error) {
+    console.error(
+      "FIREBASE EXCEL EXPORT ERROR:",
+      error
+    );
+
+    if (firebaseExportStatus) {
+      firebaseExportStatus.textContent =
+        "Excel export failed.";
+    }
+
+    alert(
+      "Could not create export.\n\n" +
+      error.message
+    );
+
+  } finally {
+    exportFirebaseExcelBtn.disabled = false;
+
+    exportFirebaseExcelBtn.textContent =
+      originalText;
+  }
+}
 // ============================================================================
 // USERS
 // ============================================================================
@@ -778,6 +1314,8 @@ function updateUserStats() {
         user.licenseStatus ===
           "pending" ||
         user.aadharStatus ===
+          "pending" ||
+        user.panStatus ===
           "pending"
     ).length;
 
@@ -852,7 +1390,7 @@ function renderUsersTable(
         class="admin-table"
         style="
           width:100%;
-          min-width:1000px;
+          min-width:940px;
           border-collapse:collapse;
           text-align:left;
         "
@@ -884,6 +1422,10 @@ function renderUsersTable(
               Aadhaar
             </th>
 
+            <th style="padding:12px;">
+              PAN
+            </th>
+
             <th style="padding:12px;text-align:right;">
               Actions
             </th>
@@ -901,6 +1443,10 @@ function renderUsersTable(
 
       const aadhaar =
         user.aadharStatus ||
+        "not_submitted";
+
+      const pan =
+        user.panStatus ||
         "not_submitted";
 
       html += `
@@ -981,6 +1527,18 @@ function renderUsersTable(
               </option>
 
               <option
+                value="executive"
+                ${
+                  user.role ===
+                  "executive"
+                    ? "selected"
+                    : ""
+                }
+              >
+                Executive
+              </option>
+
+              <option
                 value="admin"
                 ${
                   user.role ===
@@ -1055,6 +1613,22 @@ function renderUsersTable(
             </button>
           </td>
 
+          <td style="padding:12px;">
+            <span class="fleet-status ${documentStatusClass(pan)}">
+              ${documentStatusLabel(pan)}
+            </span>
+            <br>
+            <button
+              type="button"
+              class="btn btn-outline inspect-document-btn"
+              data-uid="${escapeHtml(user.id)}"
+              data-type="pan"
+              style="margin-top:6px;padding:4px 8px;font-size:.75rem;"
+            >
+              Inspect
+            </button>
+          </td>
+
           <td
             style="
               padding:12px;
@@ -1062,26 +1636,11 @@ function renderUsersTable(
             "
           >
 
-            <button
-              type="button"
-              class="btn btn-dark approve-all-docs-btn"
-              data-uid="${escapeHtml(
-                user.id
-              )}"
-              style="
-                padding:6px 12px;
-                font-size:.8rem;
-              "
-            >
-              ${
-                license ===
-                  "verified" &&
-                aadhaar ===
-                  "verified"
-                  ? "Verified"
-                  : "Approve Account"
-              }
-            </button>
+            <span style="color:${license === "verified" && aadhaar === "verified" && pan === "verified" ? "#06d6a0" : "var(--sub)"};font-size:.8rem;">
+              ${license === "verified" && aadhaar === "verified" && pan === "verified"
+                ? "Identity verified"
+                : "Review each ID"}
+            </span>
 
           </td>
 
@@ -1235,6 +1794,9 @@ function renderUsersTable(
                 aadharStatus:
                   "verified",
 
+                panStatus:
+                  "verified",
+
                 documentsVerifiedAt:
                   serverTimestamp(),
 
@@ -1259,6 +1821,9 @@ function renderUsersTable(
                 "verified";
 
               user.aadharStatus =
+                "verified";
+
+              user.panStatus =
                 "verified";
             }
 
@@ -1407,36 +1972,79 @@ function initialiseDocumentModal() {
   }
 }
 
-function openDocumentModal(
+async function fetchAdminDocumentPreview(mediaUrl) {
+  if (!currentUser) {
+    throw new Error("Admin authentication is required.");
+  }
+
+  const token = await currentUser.getIdToken();
+  const url = String(mediaUrl).startsWith("http")
+    ? String(mediaUrl)
+    : `${MEDIA_SERVER_URL}${mediaUrl}`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Could not load document (${response.status}).`);
+  }
+
+  return URL.createObjectURL(await response.blob());
+}
+
+async function openDocumentModal(
   user,
   type
 ) {
+  activeDocObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+  activeDocObjectUrls = [];
+
   activeDocUser =
     user;
 
   activeDocType =
     type;
 
-  const url =
-    type === "license"
-      ? user.licenseURL
-      : user.aadharURL;
+  const configs = {
+    license: {
+      title: "Driving Licence",
+      front: user.licenseURL,
+      back: null,
+      requiresBack: false
+    },
+    aadhar: {
+      title: "Aadhaar Card",
+      front: user.aadharFrontURL || user.aadharURL,
+      back: user.aadharBackURL,
+      requiresBack: true
+    },
+    pan: {
+      title: "PAN Card",
+      front: user.panFrontURL,
+      back: user.panBackURL,
+      requiresBack: true
+    }
+  };
 
-  const title =
-    type === "license"
-      ? "Driving Licence"
-      : "Aadhaar Card";
+  const config = configs[type] || configs.license;
+  const urls = [config.front, config.back];
 
   const titleEl =
     $("modalTitle");
 
   if (titleEl) {
     titleEl.textContent =
-      `${user.name || "User"} — ${title}`;
+      `${user.name || "User"} — ${config.title}`;
   }
 
   const img =
     $("modalImg");
+  const backImg = $("modalBackImg");
+  const frontFigure = $("modalFrontFigure");
+  const backFigure = $("modalBackFigure");
+  const previewGrid = $("documentPreviewGrid");
 
   const approve =
     $("approveDocBtn");
@@ -1445,28 +2053,29 @@ function openDocumentModal(
     $("rejectDocBtn");
 
   if (img) {
-    if (url) {
-      img.src = url;
-      img.style.display =
-        "block";
-    } else {
-      img.removeAttribute(
-        "src"
-      );
+    img.removeAttribute("src");
+    img.style.display = "none";
+  }
 
-      img.style.display =
-        "none";
-    }
+  if (backImg) {
+    backImg.removeAttribute("src");
+    backImg.style.display = "none";
+  }
+
+  if (frontFigure) frontFigure.style.display = "block";
+  if (backFigure) backFigure.style.display = config.requiresBack ? "block" : "none";
+  if (previewGrid) {
+    previewGrid.style.gridTemplateColumns = config.requiresBack
+      ? "repeat(2,minmax(0,1fr))"
+      : "1fr";
   }
 
   if (approve) {
-    approve.disabled =
-      !url;
+    approve.disabled = true;
   }
 
   if (reject) {
-    reject.disabled =
-      !url;
+    reject.disabled = true;
   }
 
   const status =
@@ -1474,14 +2083,45 @@ function openDocumentModal(
 
   if (status) {
     status.textContent =
-      url
-        ? "Document available for review."
-        : "No document uploaded. You can upload one below.";
+      config.front
+        ? "Loading protected document preview..."
+        : "No document uploaded.";
   }
 
   showModal(
     "docModal"
   );
+
+  if (!config.front || !img) return;
+
+  const targets = [img, backImg];
+  let loadedCount = 0;
+
+  await Promise.all(urls.map(async (url, index) => {
+    if (!url || !targets[index]) return;
+    try {
+      const objectUrl = await fetchAdminDocumentPreview(url);
+      if (activeDocUser !== user || activeDocType !== type || !targets[index].isConnected) {
+        URL.revokeObjectURL(objectUrl);
+        return;
+      }
+      activeDocObjectUrls.push(objectUrl);
+      targets[index].src = objectUrl;
+      targets[index].style.display = "block";
+      loadedCount += 1;
+    } catch (error) {
+      console.error("DOCUMENT PREVIEW ERROR:", error);
+    }
+  }));
+
+  const requiredCount = config.requiresBack ? 2 : 1;
+  if (approve) approve.disabled = loadedCount !== requiredCount;
+  if (reject) reject.disabled = loadedCount === 0;
+  if (status) {
+    status.textContent = loadedCount === requiredCount
+      ? "All required sides are loaded and ready for review."
+      : `Missing ${config.requiresBack && !config.back ? "back-side upload" : "required document preview"}. Approval is disabled.`;
+  }
 }
 
 async function updateDocumentStatus(
@@ -1513,6 +2153,13 @@ async function updateDocumentStatus(
   ) {
     updates.aadharStatus =
       status;
+  }
+
+  if (
+    type === "pan" ||
+    type === "both"
+  ) {
+    updates.panStatus = status;
   }
 
   try {
@@ -1809,6 +2456,18 @@ function renderBookingsTable(
     return;
   }
 
+  const totalPages = Math.max(
+    1,
+    Math.ceil(bookings.length / ADMIN_BOOKINGS_PER_PAGE)
+  );
+  adminBookingPage = Math.min(adminBookingPage, totalPages);
+  const pageStart =
+    (adminBookingPage - 1) * ADMIN_BOOKINGS_PER_PAGE;
+  const pageBookings = bookings.slice(
+    pageStart,
+    pageStart + ADMIN_BOOKINGS_PER_PAGE
+  );
+
   if (!bookings.length) {
     bookingsTableWrap.innerHTML =
       `<div
@@ -1824,7 +2483,7 @@ function renderBookingsTable(
             margin-bottom:10px;
           "
         >
-          📋
+          No results
         </div>
 
         <strong>
@@ -1907,7 +2566,7 @@ function renderBookingsTable(
         <tbody>
   `;
 
-  bookings.forEach(
+  pageBookings.forEach(
     (booking) => {
       const id =
         booking.id;
@@ -2245,6 +2904,17 @@ function renderBookingsTable(
               <!-- RETURN -->
 
               <div>
+                <span style="display:block;color:var(--sub);font-size:.75rem;margin-bottom:4px;">
+                  Pickup Handover
+                </span>
+                ${escapeHtml(
+                  String(booking.pickupStatus || "awaiting pickup")
+                    .replaceAll("_", " ")
+                    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+                )}
+              </div>
+
+              <div>
                 <span
                   style="
                     display:block;
@@ -2580,6 +3250,19 @@ function renderBookingsTable(
 
               ${returnButton}
 
+              ${Array.isArray(booking.pickupPhotoMediaIds) && booking.pickupPhotoMediaIds.length
+                ? `
+                  <button
+                    type="button"
+                    class="btn btn-outline admin-view-pickup-photos-btn"
+                    data-bid="${escapeHtml(id)}"
+                    style="padding:7px 14px;font-size:.8rem;"
+                  >
+                    Pickup Photos (${booking.pickupPhotoMediaIds.length})
+                  </button>
+                `
+                : ""}
+
             </div>
 
           </td>
@@ -2594,19 +3277,131 @@ function renderBookingsTable(
       </table>
 
     </div>
+    ${renderAdminPagination({
+      page: adminBookingPage,
+      totalPages,
+      totalItems: bookings.length,
+      type: "bookings"
+    })}
   `;
 
   bookingsTableWrap.innerHTML =
     html;
 
   attachBookingEvents();
+
+  bookingsTableWrap
+    .querySelectorAll("[data-admin-page-action]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        adminBookingPage +=
+          button.dataset.adminPageAction === "next" ? 1 : -1;
+        renderBookingsTable(getFilteredBookings());
+        bookingsTableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+}
+
+function renderAdminPagination({ page, totalPages, totalItems, type }) {
+  if (totalPages <= 1) return "";
+
+  const attribute =
+    type === "payments"
+      ? "data-admin-payment-page-action"
+      : "data-admin-page-action";
+
+  return `
+    <nav class="data-pagination" aria-label="${escapeHtml(type)} pages">
+      <span class="data-pagination__summary">
+        Page ${page} of ${totalPages} · ${totalItems} ${escapeHtml(type)}
+      </span>
+      <div class="data-pagination__actions">
+        <button type="button" ${attribute}="previous" ${page === 1 ? "disabled" : ""}>Previous</button>
+        <button type="button" ${attribute}="next" ${page === totalPages ? "disabled" : ""}>Next</button>
+      </div>
+    </nav>`;
 }
 
 // ============================================================================
 // BOOKING EVENTS
 // ============================================================================
 
+async function openAdminPickupPhotos(booking) {
+  document.getElementById("adminPickupPhotosModal")?.remove();
+
+  const mediaIds = Array.isArray(booking.pickupPhotoMediaIds)
+    ? booking.pickupPhotoMediaIds
+    : [];
+  const modal = document.createElement("div");
+  modal.id = "adminPickupPhotosModal";
+  modal.style.cssText = `
+    position:fixed;inset:0;z-index:99999;display:flex;align-items:center;
+    justify-content:center;padding:20px;background:rgba(0,0,0,.88);
+    backdrop-filter:blur(10px);
+  `;
+  modal.innerHTML = `
+    <div class="card" style="width:min(820px,100%);max-height:90vh;overflow:auto;padding:26px;position:relative;">
+      <button id="closeAdminPickupPhotos" type="button" style="position:absolute;top:14px;right:16px;border:0;background:transparent;color:var(--text);font-size:1.7rem;cursor:pointer;">&times;</button>
+      <h3 style="margin:0 40px 6px 0;">Pickup Condition Photos</h3>
+      <p style="margin:0 0 18px;color:var(--sub);">
+        ${escapeHtml(booking.vehicleName || "Vehicle")} · Booking #${escapeHtml(formatBookingNumber(booking))}
+      </p>
+      <div id="adminPickupPhotosGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;">
+        Loading protected pickup photos...
+      </div>
+      ${booking.pickupNotes ? `<div style="margin-top:18px;padding:14px;border:1px solid var(--line);border-radius:10px;"><strong>Pickup notes</strong><p style="margin:6px 0 0;color:var(--sub);">${escapeHtml(booking.pickupNotes)}</p></div>` : ""}
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  const objectUrls = [];
+  let closed = false;
+  const close = () => {
+    closed = true;
+    objectUrls.forEach((url) => URL.revokeObjectURL(url));
+    modal.remove();
+  };
+  modal.querySelector("#closeAdminPickupPhotos")?.addEventListener("click", close);
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) close();
+  });
+
+  const photos = await Promise.all(
+    mediaIds.map(async (mediaId) => {
+      try {
+        const url = await fetchMediaBlobUrl(mediaId);
+        if (closed) {
+          URL.revokeObjectURL(url);
+          return "";
+        }
+        objectUrls.push(url);
+        return `<img src="${escapeHtml(url)}" alt="Pickup condition" style="width:100%;height:210px;object-fit:cover;border-radius:10px;border:1px solid var(--line);" />`;
+      } catch (error) {
+        console.error("PICKUP PHOTO LOAD ERROR:", error);
+        return `<div style="padding:18px;color:#ef476f;border:1px solid var(--line);border-radius:10px;">Photo unavailable</div>`;
+      }
+    })
+  );
+
+  const grid = modal.querySelector("#adminPickupPhotosGrid");
+  if (grid?.isConnected) {
+    grid.innerHTML = photos.filter(Boolean).join("") ||
+      `<p style="color:var(--sub);">No pickup photos available.</p>`;
+  }
+}
+
 function attachBookingEvents() {
+  bookingsTableWrap
+    .querySelectorAll(".admin-view-pickup-photos-btn")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        const booking = bookingsData.find(
+          (item) => item.id === button.dataset.bid
+        );
+        if (booking) openAdminPickupPhotos(booking);
+      });
+    });
+
   // DETAILS
   bookingsTableWrap
     .querySelectorAll(
@@ -3045,7 +3840,7 @@ async function saveBookingOdometer(
     }
 
     button.textContent =
-      "Saved ✓";
+      "Saved";
 
     setTimeout(
       () => {
@@ -3176,7 +3971,7 @@ async function saveBookingFastag(
       booking.returnFastag = returned;
     }
 
-    button.textContent = "Saved ✓";
+    button.textContent = "Saved";
 
     setTimeout(
       () => {
@@ -3279,6 +4074,18 @@ function openReturnReport(
     inspection.notes ||
     booking.returnNotes ||
     "No inspection notes.";
+
+  const returnPhotoRefs =
+    Array.isArray(inspection.returnPhotoMediaIds) && inspection.returnPhotoMediaIds.length
+      ? inspection.returnPhotoMediaIds.map((mediaId, index) => ({
+          mediaId,
+          name: `Photo ${index + 1}`,
+        }))
+      : Array.isArray(inspection.photos)
+        ? inspection.photos
+        : Array.isArray(inspection.returnPhotos)
+          ? inspection.returnPhotos
+          : [];
 
   const startOdo =
     getStartOdometer(
@@ -3437,11 +4244,7 @@ function openReturnReport(
             margin:0;
           "
         >
-          Booking #${escapeHtml(
-            booking.id.slice(
-              -8
-            )
-          )}
+          Booking #${escapeHtml(formatBookingNumber(booking))}
         </p>
       </div>
 
@@ -3664,6 +4467,36 @@ function openReturnReport(
 
       ${deductionHtml}
 
+      ${
+        returnPhotoRefs.length
+          ? `
+            <div
+              style="
+                margin-top:20px;
+              "
+            >
+              <h3
+                style="
+                  margin-bottom:12px;
+                "
+              >
+                Return Photos
+              </h3>
+
+              <div id="adminReturnPhotosGrid"
+                style="
+                  display:grid;
+                  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+                  gap:12px;
+                "
+              >
+                <div class="manager-state">Loading return photos...</div>
+              </div>
+            </div>
+          `
+          : ""
+      }
+
       <div
         style="
           margin-top:20px;
@@ -3791,6 +4624,73 @@ function openReturnReport(
     modal
   );
 
+  if (returnPhotoRefs.length) {
+    (async () => {
+      const grid = modal.querySelector("#adminReturnPhotosGrid");
+      if (!grid) return;
+
+      const photos = await Promise.all(
+        returnPhotoRefs.map(async (photo, index) => {
+          try {
+            if (photo.mediaId) {
+              const url = await fetchMediaBlobUrl(photo.mediaId);
+              return { url, name: photo.name || `Photo ${index + 1}` };
+            }
+
+            const url =
+              typeof photo === "string"
+                ? photo
+                : photo?.url || photo?.downloadURL || photo?.src || "";
+
+            if (!url) return null;
+
+            return { url, name: photo?.name || `Photo ${index + 1}` };
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      if (!grid.isConnected) return;
+
+      const rendered = photos
+        .filter(Boolean)
+        .map(
+          (photo, index) => `
+            <figure
+              style="
+                margin:0;
+                overflow:hidden;
+                border:1px solid var(--line);
+                border-radius:12px;
+                background:rgba(255,255,255,.02);
+              "
+            >
+              <img
+                src="${escapeHtml(photo.url)}"
+                alt="${escapeHtml(photo.name || `Photo ${index + 1}`)}"
+                style="display:block;width:100%;height:170px;object-fit:cover;background:#080808;"
+              />
+              <figcaption
+                style="
+                  padding:8px 10px;
+                  color:var(--sub);
+                  font-size:.74rem;
+                  letter-spacing:.03em;
+                  text-transform:uppercase;
+                "
+              >
+                ${escapeHtml(photo.name || `Photo ${index + 1}`)}
+              </figcaption>
+            </figure>
+          `
+        )
+        .join("");
+
+      grid.innerHTML = rendered || `<div class="manager-state">No return photos available.</div>`;
+    })();
+  }
+
   const close = () => {
     modal.remove();
   };
@@ -3833,21 +4733,36 @@ function renderPaymentsTable() {
     return;
   }
 
-  const pending =
-    bookingsData.filter(
-      (booking) =>
-        booking.paymentStatus ===
-        "pending_verification"
+  const paymentRecords = bookingsData
+    .filter((booking) =>
+      booking.paymentStatus === "pending_verification" ||
+      booking.paymentStatus === "paid"
+    )
+    .sort((a, b) =>
+      toMillis(b.paymentVerifiedAt || b.paymentSubmittedAt || b.createdAt) -
+      toMillis(a.paymentVerifiedAt || a.paymentSubmittedAt || a.createdAt)
     );
 
-  if (!pending.length) {
+  if (!paymentRecords.length) {
     paymentsTableWrap.innerHTML =
       `<p style="color:var(--sub);">
-        No payments awaiting verification.
+        No submitted or verified payment records.
       </p>`;
 
     return;
   }
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(paymentRecords.length / ADMIN_PAYMENTS_PER_PAGE)
+  );
+  adminPaymentPage = Math.min(adminPaymentPage, totalPages);
+  const pageStart =
+    (adminPaymentPage - 1) * ADMIN_PAYMENTS_PER_PAGE;
+  const pagePayments = paymentRecords.slice(
+    pageStart,
+    pageStart + ADMIN_PAYMENTS_PER_PAGE
+  );
 
   let html = `
     <div style="width:100%;overflow-x:auto;">
@@ -3890,6 +4805,10 @@ function renderPaymentsTable() {
               Reference
             </th>
 
+            <th style="padding:12px;">
+              Status
+            </th>
+
             <th
               style="
                 padding:12px;
@@ -3905,7 +4824,7 @@ function renderPaymentsTable() {
         <tbody>
   `;
 
-  pending.forEach(
+  pagePayments.forEach(
     (booking) => {
       html += `
         <tr
@@ -3966,25 +4885,21 @@ function renderPaymentsTable() {
             )}
           </td>
 
+          <td style="padding:12px;">
+            <span class="fleet-status ${booking.paymentStatus === "paid" ? "verified" : "pending"}">
+              ${booking.paymentStatus === "paid" ? "Paid / Verified" : "Pending Review"}
+            </span>
+          </td>
+
           <td
             style="
               padding:12px;
               text-align:right;
             "
           >
-            <button
-              type="button"
-              class="btn btn-dark review-payment-btn"
-              data-bid="${escapeHtml(
-                booking.id
-              )}"
-              style="
-                padding:6px 12px;
-                font-size:.8rem;
-              "
-            >
-              Review
-            </button>
+            ${booking.paymentStatus === "pending_verification"
+              ? `<button type="button" class="btn btn-dark review-payment-btn" data-bid="${escapeHtml(booking.id)}" style="padding:6px 12px;font-size:.8rem;">Review</button>`
+              : `<span style="color:#06d6a0;font-size:.8rem;font-weight:700;">Verified</span>`}
           </td>
 
         </tr>
@@ -3997,6 +4912,12 @@ function renderPaymentsTable() {
       </table>
 
     </div>
+    ${renderAdminPagination({
+      page: adminPaymentPage,
+      totalPages,
+      totalItems: paymentRecords.length,
+      type: "payments"
+    })}
   `;
 
   paymentsTableWrap.innerHTML =
@@ -4024,6 +4945,17 @@ function renderPaymentsTable() {
           }
         }
       );
+    });
+
+  paymentsTableWrap
+    .querySelectorAll("[data-admin-payment-page-action]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        adminPaymentPage +=
+          button.dataset.adminPaymentPageAction === "next" ? 1 : -1;
+        renderPaymentsTable();
+        paymentsTableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     });
 }
 
@@ -4196,9 +5128,16 @@ function initialisePaymentModal() {
   }
 }
 
-function openPaymentModal(
+async function openPaymentModal(
   booking
 ) {
+  if (activePaymentScreenshotObjectUrl) {
+    URL.revokeObjectURL(
+      activePaymentScreenshotObjectUrl
+    );
+    activePaymentScreenshotObjectUrl = null;
+  }
+
   activePaymentBooking =
     booking;
 
@@ -4207,9 +5146,7 @@ function openPaymentModal(
 
   if (title) {
     title.textContent =
-      `Booking #${booking.id.slice(
-        -8
-      )}`;
+      `Booking #${formatBookingNumber(booking)}`;
   }
 
   const body =
@@ -4291,10 +5228,27 @@ function openPaymentModal(
                   object-fit:contain;
                   border-radius:10px;
                   background:#000;
-                  margin-top:10px;
+                margin-top:10px;
                 "
               />
             `
+            : booking.paymentScreenshotMediaId
+              ? `
+                <div
+                  id="paymentScreenshotPreview"
+                  style="
+                    min-height:120px;
+                    display:grid;
+                    place-items:center;
+                    color:var(--sub);
+                    border:1px solid var(--line);
+                    border-radius:10px;
+                    margin-top:10px;
+                  "
+                >
+                  Loading payment screenshot...
+                </div>
+              `
             : `
               <p
                 style="
@@ -4313,6 +5267,59 @@ function openPaymentModal(
   showModal(
     "paymentModal"
   );
+
+  if (
+    booking.paymentScreenshotMediaId &&
+    !booking.paymentScreenshotURL
+  ) {
+    const preview =
+      $("paymentScreenshotPreview");
+
+    try {
+      const objectUrl =
+        await fetchMediaBlobUrl(
+          booking.paymentScreenshotMediaId
+        );
+
+      if (
+        activePaymentBooking !== booking ||
+        !preview?.isConnected
+      ) {
+        URL.revokeObjectURL(objectUrl);
+        return;
+      }
+
+      activePaymentScreenshotObjectUrl =
+        objectUrl;
+
+      preview.innerHTML = `
+        <img
+          src="${escapeHtml(objectUrl)}"
+          alt="Payment screenshot"
+          style="
+            width:100%;
+            max-height:400px;
+            object-fit:contain;
+            border-radius:10px;
+            background:#000;
+          "
+        />
+      `;
+    } catch (error) {
+      console.error(
+        "PAYMENT SCREENSHOT LOAD ERROR:",
+        error
+      );
+
+      if (preview?.isConnected) {
+        preview.innerHTML = `
+          <p style="color:#ef476f;padding:16px;text-align:center;">
+            The screenshot was uploaded, but its preview could not be loaded.
+          </p>
+        `;
+      }
+    }
+  }
 }
 
 // ============================================================================
@@ -4380,18 +5387,11 @@ function updateRevenueStats() {
         "pending_verification"
     ).length;
 
+  // Keep the average aligned with the verified revenue cards.
+  // Pending, rejected and unpaid bookings must not dilute this KPI.
   const average =
-    bookingsData.length
-      ? bookingsData.reduce(
-          (sum, booking) =>
-            sum +
-            Number(
-              booking.totalAmount ||
-                0
-            ),
-          0
-        ) /
-        bookingsData.length
+    paid.length
+      ? totalRevenue / paid.length
       : 0;
 
   const totalRevenueEl =
@@ -4420,6 +5420,14 @@ function updateRevenueStats() {
   if (pendingEl) {
     pendingEl.textContent =
       pendingPayments;
+  }
+
+  const paidBookingsEl =
+    $("statPaidBookings");
+
+  if (paidBookingsEl) {
+    paidBookingsEl.textContent =
+      paid.length;
   }
 
   const averageEl =
@@ -4471,7 +5479,7 @@ function updateRevenueStats() {
 // pattern as profile.js's getPrivateMediaBlobUrl().
 // ============================================================================
 
-const MEDIA_SERVER_URL = "http://localhost:4000"; // same server profile.js talks to — point this at your real host before deploying
+const MEDIA_SERVER_URL = "http://localhost:4001"; // same server profile.js talks to — point this at your real host before deploying
 
 const hostPhotoCache = new Map(); // carId -> loaded [{ id, mimeType, originalName, blobUrl }]
 
@@ -4693,7 +5701,7 @@ function renderHostCarsTable(
         class="admin-table"
         style="
           width:100%;
-          min-width:1000px;
+          min-width:820px;
           border-collapse:collapse;
           text-align:left;
         "
@@ -4709,14 +5717,6 @@ function renderHostCarsTable(
 
             <th style="padding:12px;">
               Vehicle
-            </th>
-
-            <th style="padding:12px;">
-              Specs
-            </th>
-
-            <th style="padding:12px;">
-              Daily Rate
             </th>
 
             <th style="padding:12px;">
@@ -4758,10 +5758,13 @@ function renderHostCarsTable(
 
       const knownPhotoCount =
         legacyPhotos.length +
-        cachedServerPhotos.length;
+        Math.max(
+          cachedServerPhotos.length,
+          Array.isArray(car.photoMediaIds) ? car.photoMediaIds.length : 0
+        );
 
-      const photoRow =
-        `host-photo-${car.id}`;
+      const detailsRow =
+        `host-details-${car.id}`;
 
       html += `
         <tr
@@ -4796,35 +5799,6 @@ function renderHostCarsTable(
                   "—"
               )}
             </span>
-          </td>
-
-          <td style="padding:12px;">
-            ${escapeHtml(
-              car.category ||
-                "—"
-            )}
-            •
-            ${escapeHtml(
-              car.transmission ||
-                "—"
-            )}
-            •
-            ${escapeHtml(
-              car.fuel ||
-                "—"
-            )}
-          </td>
-
-          <td
-            style="
-              padding:12px;
-              color:var(--accent);
-              font-weight:700;
-            "
-          >
-            ${formatINR(
-              car.priceDay
-            )}
           </td>
 
           <td style="padding:12px;">
@@ -4868,6 +5842,16 @@ function renderHostCarsTable(
             "
           >
 
+            <button
+              type="button"
+              class="btn btn-outline host-details-toggle-btn"
+              data-hid="${escapeHtml(car.id)}"
+              data-target="${escapeHtml(detailsRow)}"
+              style="padding:5px 9px;font-size:.78rem;"
+            >
+              Show Details ▾
+            </button>
+
             ${
               car.status ===
               "pending_approval"
@@ -4907,28 +5891,6 @@ function renderHostCarsTable(
                   ? `
                     <button
                       type="button"
-                      class="btn btn-outline host-photo-toggle-btn"
-                      data-hid="${escapeHtml(
-                        car.id
-                      )}"
-                      data-target="${escapeHtml(
-                        photoRow
-                      )}"
-                      style="
-                        padding:5px 9px;
-                        font-size:.78rem;
-                      "
-                    >
-                      ${
-                        knownPhotoCount
-                          ? `${knownPhotoCount} Photos`
-                          : "Photos"
-                      }
-                      ▾
-                    </button>
-
-                    <button
-                      type="button"
                       class="btn btn-outline host-photo-upload-btn"
                       data-hid="${escapeHtml(
                         car.id
@@ -4959,50 +5921,42 @@ function renderHostCarsTable(
 
         </tr>
 
-        ${
-          car.status ===
-          "approved"
-            ? `
-              <tr
-                id="${escapeHtml(
-                  photoRow
-                )}"
-                hidden
-              >
-                <td
-                  colspan="6"
-                  style="padding:18px;"
-                >
+        <tr id="${escapeHtml(detailsRow)}" hidden>
+          <td colspan="4" style="padding:18px;">
+            <div class="host-document-grid host-acquisition-detail-grid">
+              ${renderHostDetail("Brand", car.brand)}
+              ${renderHostDetail("Model", car.model)}
+              ${renderHostDetail("Manufacturing Year", car.year)}
+              ${renderHostDetail("Current Odometer", car.odometer != null ? `${Number(car.odometer).toLocaleString("en-IN")} KM` : null)}
+              ${renderHostDetail("Transmission", car.transmission)}
+              ${renderHostDetail("Fuel Type", car.fuel)}
+              ${renderHostDetail("Seats", car.seats)}
+              ${renderHostDetail("Registration", car.regNumber)}
+              ${renderHostDetail("Pickup Location", car.location)}
+              ${renderHostDetail("Insurance Start", car.insuranceStart)}
+              ${renderHostDetail("Insurance End", car.insuranceEnd)}
+              ${renderHostDetail("PUC Start", car.pucStart)}
+              ${renderHostDetail("PUC End", car.pucEnd)}
+              ${renderHostDetail("Owner Name", car.ownerName)}
+              ${renderHostDetail("Owner Phone", car.ownerPhone)}
+              ${renderHostDetail("Owner Email", car.userEmail)}
+              ${renderHostDetail("Submitted", formatDate(car.createdAt))}
+              ${renderHostDetail("Photo Count", knownPhotoCount)}
+            </div>
 
-                  <div
-                    class="host-photo-grid"
-                    data-hid="${escapeHtml(
-                      car.id
-                    )}"
-                    style="
-                      display:flex;
-                      gap:12px;
-                      flex-wrap:wrap;
-                    "
-                  >
+            ${car.rejectionReason ? `<p style="margin:14px 0 0;padding:12px;border-left:3px solid #ef476f;background:rgba(239,71,111,.08);color:var(--sub);"><strong style="color:#ef476f;">Rejection reason:</strong> ${escapeHtml(car.rejectionReason)}</p>` : ""}
 
-                    ${renderLegacyHostPhotos(
-                      car.id,
-                      legacyPhotos
-                    )}
+            <div style="margin-top:18px;">
+              <strong style="display:block;margin-bottom:10px;">Submitted Vehicle Photos</strong>
+              <div class="host-details-photo-grid" data-hid="${escapeHtml(car.id)}" style="display:flex;gap:12px;flex-wrap:wrap;">
+                ${renderLegacyHostPhotos(car.id, legacyPhotos)}
+                ${renderServerHostPhotos(car.id, cachedServerPhotos)}
+                ${!legacyPhotos.length && !cachedServerPhotos.length ? `<span class="host-photo-loading" style="color:var(--sub);">Loading protected photos when details are opened...</span>` : ""}
+              </div>
+            </div>
+          </td>
+        </tr>
 
-                    ${renderServerHostPhotos(
-                      car.id,
-                      cachedServerPhotos
-                    )}
-
-                  </div>
-
-                </td>
-              </tr>
-            `
-            : ""
-        }
       `;
     }
   );
@@ -5018,6 +5972,18 @@ function renderHostCarsTable(
     html;
 
   attachHostCarEvents();
+}
+
+function renderHostDetail(label, value) {
+  const display = value === undefined || value === null || value === ""
+    ? "—"
+    : value;
+
+  return `
+    <div class="host-document-item">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(display)}</strong>
+    </div>`;
 }
 
 // Old Firebase Storage photos: public URL, no fetch needed, plain <img>.
@@ -5102,6 +6068,40 @@ function renderServerHostPhotos(carId, photos) {
 // ============================================================================
 
 function attachHostCarEvents() {
+  // SHOW DETAILS — every field submitted by the host plus protected photos.
+  hostCarsTableWrap
+    .querySelectorAll(".host-details-toggle-btn")
+    .forEach((button) => {
+      button.addEventListener("click", async () => {
+        const carId = button.dataset.hid;
+        const row = document.getElementById(button.dataset.target);
+        if (!row) return;
+
+        const opening = row.hidden;
+        row.hidden = !opening;
+        button.textContent = opening ? "Hide Details ▴" : "Show Details ▾";
+
+        if (!opening || hostPhotoCache.has(carId)) return;
+
+        const car = hostCarsData.find((item) => item.id === carId);
+        if (!car) return;
+
+        try {
+          await loadHostPhotosIntoCache(car);
+        } catch (error) {
+          console.warn("HOST DETAIL PHOTO LOAD ERROR:", error);
+        }
+
+        renderHostCarsTable(hostCarsData);
+        const reopened = document.getElementById(`host-details-${carId}`);
+        if (reopened) reopened.hidden = false;
+        const reopenedButton = hostCarsTableWrap.querySelector(
+          `.host-details-toggle-btn[data-hid="${carId}"]`
+        );
+        if (reopenedButton) reopenedButton.textContent = "Hide Details ▴";
+      });
+    });
+
   // APPROVE
   hostCarsTableWrap
     .querySelectorAll(
@@ -5620,5 +6620,5 @@ window.addEventListener(
 );
 
 console.log(
-  "CARRENTPE Admin JS loaded successfully."
+  "KRUIZLY Admin JS loaded successfully."
 );

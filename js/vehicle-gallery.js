@@ -101,7 +101,7 @@
 			img.remove();
 			const icon = document.createElement("span");
 			icon.className = "vehicle-gallery__icon";
-			icon.textContent = vehicle.icon || "🚗";
+			icon.textContent = "KR";
 			const tag = document.createElement("span");
 			tag.className = "vehicle-gallery__tag";
 			tag.textContent = slot.angle;

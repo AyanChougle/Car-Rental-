@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Dashboard | CARRENTPE</title>
+    <title>Admin Dashboard | KRUIZLY</title>
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/animations.css" />
     <style id="admin-panel-overrides">
@@ -23,14 +23,30 @@
         display: flex;
         flex-direction: column;
         justify-content: center;
+        position: relative;
+        overflow: hidden;
+        border-color: rgba(255, 255, 255, 0.1);
+        background: linear-gradient(145deg, rgba(27, 27, 27, 0.96), rgba(12, 12, 12, 0.96));
+        box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+      }
+      .admin-stats-grid .stat-card::before {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 3px;
+        background: var(--accent);
+        opacity: 0.72;
       }
       .admin-tabs {
         width: 100%;
         display: grid !important;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
         gap: 10px !important;
         border-bottom: 0 !important;
-        padding-bottom: 0 !important;
+        padding: 6px !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 16px;
+        background: rgba(8, 8, 8, 0.72);
       }
       .admin-tabs .tab-btn {
         width: 100%;
@@ -48,6 +64,10 @@
         width: 100%;
         min-width: 0;
         overflow: hidden;
+        border-color: rgba(255, 255, 255, 0.1);
+        border-radius: 18px;
+        background: linear-gradient(145deg, rgba(24, 24, 24, 0.95), rgba(12, 12, 12, 0.96));
+        box-shadow: 0 18px 44px rgba(0, 0, 0, 0.2);
       }
       .admin-table-wrap {
         width: 100%;
@@ -77,7 +97,7 @@
         font-size: 0.88rem;
       }
       .admin-table tbody tr:hover {
-        background: rgba(255, 255, 255, 0.025);
+        background: rgba(0, 190, 240, 0.045);
       }
       .admin-table .admin-actions {
         display: flex;
@@ -128,6 +148,9 @@
         gap: 10px;
         margin-top: 10px;
       }
+      .host-acquisition-detail-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
       .host-document-item {
         padding: 10px 12px;
         border: 1px solid var(--line);
@@ -155,6 +178,9 @@
         .admin-table {
           min-width: 860px;
         }
+        .host-acquisition-detail-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
       }
       @media (max-width: 600px) {
         .admin-tabs {
@@ -172,8 +198,13 @@
         .admin-modal__card {
           padding: 20px 16px;
         }
+        #documentPreviewGrid {
+          grid-template-columns: 1fr !important;
+        }
       }
     </style>
+    <link rel="stylesheet" href="css/staff-dashboard.css" />
+    <link rel="stylesheet" href="css/premium.css" />
   </head>
   <body>
     <div class="background-video-wrap" aria-hidden="true">
@@ -183,7 +214,7 @@
     </div>
     <header class="site-header">
       <div class="container header-inner">
-        <a href="index.html" class="logo">CARRENTPE</a>
+        <a href="index.html" class="logo">KRUIZLY</a>
         <nav class="nav">
           <a href="fleet.html">Fleet</a>
           <a href="about.html">About</a>
@@ -194,11 +225,11 @@
       </div>
     </header>
 
-    <main class="section">
+    <main class="section staff-page admin-page">
       <div class="container">
         <div class="section-header centered">
           <span class="section-label">Administration</span>
-          <h2 class="section-title">Control Panel & Verification</h2>
+          <h1 class="section-title">Admin Control Center</h1>
         </div>
 
         <div
@@ -212,16 +243,14 @@
             padding: 40px 24px;
           "
         >
-          <div style="font-size: 2.5rem; margin-bottom: 12px">🛡️</div>
+          <div class="access-denied-mark" aria-hidden="true">A</div>
           <h3 style="color: var(--accent); margin-bottom: 12px">
             Administrator Access Required
           </h3>
           <p style="color: var(--muted); margin-bottom: 24px; line-height: 1.7">
-            This page is restricted to CARRENTPE administrators. If you believe
+            This page is restricted to KRUIZLY administrators. If you believe
             your account should have admin access, ask an existing administrator
-            to grant it from the Users tab, or set it directly in Firebase
-            Console → Firestore → users → your account → role: "admin" (see
-            README, Step 5).
+            to grant it from the Users tab.
           </p>
           <div
             style="
@@ -301,7 +330,7 @@
             </div>
             <div class="card stat-card" style="padding: 20px">
               <span style="color: var(--sub); font-size: 0.85rem"
-                >Pending Host Approvals</span
+                >Pending Acquisition Reviews</span
               >
               <div
                 id="statPendingHosts"
@@ -383,7 +412,18 @@
             </div>
             <div class="card stat-card" style="padding: 20px">
               <span style="color: var(--sub); font-size: 0.85rem"
-                >Avg. Booking Value</span
+                >Paid Bookings</span
+              >
+              <div
+                id="statPaidBookings"
+                style="font-size:1.8rem;font-weight:700;color:#06d6a0;margin-top:4px;"
+              >
+                —
+              </div>
+            </div>
+            <div class="card stat-card" style="padding: 20px">
+              <span style="color: var(--sub); font-size: 0.85rem"
+                >Avg. Verified Booking Value</span
               >
               <div
                 id="statAvgBooking"
@@ -397,6 +437,19 @@
                 —
               </div>
             </div>
+          </div>
+
+          <div class="card admin-export-card">
+            <span class="admin-export-mark" aria-hidden="true">↓</span>
+            <div class="admin-export-copy">
+              <strong class="admin-export-title">Firebase Data Export</strong>
+              <span id="firebaseExportStatus" class="admin-export-description">
+                Download all Firestore collections as an Excel workbook.
+              </span>
+            </div>
+            <button id="exportFirebaseExcelBtn" type="button" class="btn btn-dark">
+              Export to Excel
+            </button>
           </div>
 
           <!-- Admin Tabs -->
@@ -422,7 +475,10 @@
               All Bookings
             </button>
             <button class="btn btn-outline tab-btn" data-tab="tab-hosts">
-              Host Car Listings
+              Vehicle Acquisition
+            </button>
+            <button class="btn btn-outline tab-btn" data-tab="tab-fleet">
+              Fleet Management
             </button>
           </div>
 
@@ -590,10 +646,28 @@
               style="padding: 24px; overflow-x: auto"
             >
               <h3 style="margin-bottom: 20px; font-size: 1.2rem">
-                Host Car Listing Requests
+                Vehicle Acquisition Requests
               </h3>
               <div id="hostCarsTableWrap">
                 <p style="color: var(--sub)">Loading host listings...</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- TAB 5: FLEET MANAGEMENT -->
+          <section id="tab-fleet" class="tab-panel" hidden>
+            <div class="card admin-panel-card" style="padding:24px;overflow-x:auto;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:20px;">
+                <div>
+                  <h3 style="margin:0;font-size:1.2rem;">Fleet Availability Management</h3>
+                  <p style="margin:6px 0 0;color:var(--sub);font-size:.88rem;">
+                    Control which catalog vehicles customers can book.
+                  </p>
+                </div>
+                <a class="btn btn-outline" href="fleet.html">Open Public Fleet</a>
+              </div>
+              <div id="fleetManagementWrap">
+                <p style="color:var(--sub);">Loading fleet...</p>
               </div>
             </div>
           </section>
@@ -644,19 +718,17 @@
           &times;
         </button>
         <h3 id="modalTitle" style="margin-top: 0">Document Preview</h3>
-        <img
-          id="modalImg"
-          src=""
-          alt="Document Preview"
-          style="
-            width: 100%;
-            max-height: 400px;
-            object-fit: contain;
-            border-radius: var(--radius);
-            margin: 16px 0;
-            background: #000;
-          "
-        />
+        <div id="documentPreviewGrid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:16px 0;">
+          <figure id="modalFrontFigure" style="margin:0;">
+            <figcaption style="color:var(--sub);font-size:.75rem;margin-bottom:6px;">Front</figcaption>
+            <img id="modalImg" src="" alt="Document front preview" style="width:100%;height:280px;object-fit:contain;border-radius:var(--radius);background:#000;" />
+          </figure>
+          <figure id="modalBackFigure" style="margin:0;">
+            <figcaption style="color:var(--sub);font-size:.75rem;margin-bottom:6px;">Back</figcaption>
+            <img id="modalBackImg" src="" alt="Document back preview" style="width:100%;height:280px;object-fit:contain;border-radius:var(--radius);background:#000;" />
+          </figure>
+        </div>
+        <p id="docUploadStatus" style="color:var(--sub);font-size:.82rem;margin:0 0 14px;"></p>
         <div style="display: flex; gap: 12px; justify-content: flex-end">
           <button id="approveDocBtn" class="btn btn-dark">
             Approve Verification
@@ -792,6 +864,21 @@
 
         <div id="returnItemsList"></div>
 
+        <div class="return-upload" style="margin-top:16px;">
+          <div class="return-upload__head">
+            <span>Return photos</span>
+            <p>Upload clear photos of the vehicle condition after the return inspection.</p>
+          </div>
+          <input
+            id="returnInspectionPhotos"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+          />
+          <div id="returnInspectionPreview" class="return-upload__preview"></div>
+          <p id="returnInspectionStatus" class="return-upload__status"></p>
+        </div>
+
         <div class="booking-summary__row" style="margin-top: 12px">
           <span>Original Security Deposit</span>
           <strong id="returnDepositOriginal">₹0</strong>
@@ -851,7 +938,7 @@
       <div class="container">
         <div class="footer-grid">
           <div class="footer-brand footer-section">
-            <a href="index.html" class="logo">CARRENTPE</a>
+            <a href="index.html" class="logo">KRUIZLY</a>
             <p>
               Admin Operations & Fleet Verification Console. Control, manage,
               and verify system operations in real time.
@@ -862,8 +949,6 @@
             <ul class="footer-list">
               <li><a href="fleet.html">Fleet Catalog</a></li>
               <li><a href="partner.html">Host Car</a></li>
-              <li><a href="manager.html">Manager Console</a></li>
-              <li><a href="admin.html">Admin Dashboard</a></li>
               <li><a href="profile.html">Member Profile</a></li>
             </ul>
           </div>
@@ -882,11 +967,13 @@
           </div>
         </div>
         <div class="footer-copy">
-          © 2026 CARRENTPE Admin Console. All rights reserved.
+          © 2026 KRUIZLY Admin Console. All rights reserved.
         </div>
       </div>
     </footer>
 
-    <script type="module" src="js/admin.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="js/vehicles.js"></script>
+    <script type="module" src="js/admin.js?v=20260818-excel-export-2"></script>
   </body>
 </html>
