@@ -37,7 +37,6 @@ import { formatBookingNumber } from "./booking-reference.js";
 const $ = (id) => document.getElementById(id);
 
 const adminContent = $("adminContent");
-const accessDenied = $("adminAccessDenied");
 
 const usersTableWrap = $("usersTableWrap");
 const paymentsTableWrap = $("paymentsTableWrap");
@@ -383,56 +382,12 @@ function hideModal(id) {
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
 
-  if (!user) {
-    showAccessDenied();
-    return;
-  }
-
-  try {
-    const userSnap = await getDoc(
-      doc(db, "users", user.uid)
-    );
-
-    if (!userSnap.exists()) {
-      showAccessDenied();
-      return;
-    }
-
-    const userData = userSnap.data();
-
-    const role = String(
-      userData.role || ""
-    ).toLowerCase();
-
-    if (role !== "admin") {
-      showAccessDenied();
-      return;
-    }
-
-    accessDenied.hidden = true;
-    adminContent.hidden = false;
-
-    initialiseAdmin();
-
-  } catch (error) {
-    console.error(
-      "ADMIN AUTH ERROR:",
-      error
-    );
-
-    showAccessDenied();
-  }
-});
-
-function showAccessDenied() {
-  if (accessDenied) {
-    accessDenied.hidden = false;
-  }
-
   if (adminContent) {
-    adminContent.hidden = true;
+    adminContent.hidden = false;
   }
-}
+
+  initialiseAdmin();
+});
 
 // ============================================================================
 // INITIALISE
