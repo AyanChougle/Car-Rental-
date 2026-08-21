@@ -244,6 +244,9 @@ function paymentStatusText(booking) {
           : ""
       }`;
 
+    case "advance_paid":
+      return `Advance paid • ${formatINR(booking.paymentAmountPaid || booking.paymentAmount || 500)} received • ${formatINR(booking.remainingBalance || 0)} due at pickup`;
+
     case "pending_verification":
       return `Verification Pending${
         booking.paymentRef
@@ -1965,9 +1968,9 @@ async function openDocumentModal(
   const configs = {
     license: {
       title: "Driving Licence",
-      front: user.licenseURL,
-      back: null,
-      requiresBack: false
+      front: user.licenseFrontURL || user.licenseURL,
+      back: user.licenseBackURL,
+      requiresBack: true
     },
     aadhar: {
       title: "Aadhaar Card",
@@ -2752,6 +2755,10 @@ function renderBookingsTable(
               }
             </button>
 
+            ${["paid", "advance_paid"].includes(booking.paymentStatus)
+              ? `<button type="button" class="btn btn-dark send-booking-invoice-btn" data-bid="${escapeHtml(id)}" style="padding:6px 12px;font-size:.8rem;margin-left:6px;">Send Invoice</button>`
+              : ""}
+
           </td>
 
         </tr>
@@ -3346,6 +3353,10 @@ async function openAdminPickupPhotos(booking) {
 }
 
 function attachBookingEvents() {
+  bookingsTableWrap.querySelectorAll(".send-booking-invoice-btn").forEach((button) => {
+    button.addEventListener("click", () => sendBookingInvoice(button.dataset.bid, button));
+  });
+
   bookingsTableWrap
     .querySelectorAll(".admin-view-pickup-photos-btn")
     .forEach((button) => {
@@ -4691,7 +4702,8 @@ function renderPaymentsTable() {
   const paymentRecords = bookingsData
     .filter((booking) =>
       booking.paymentStatus === "pending_verification" ||
-      booking.paymentStatus === "paid"
+      booking.paymentStatus === "paid" ||
+      booking.paymentStatus === "advance_paid"
     )
     .sort((a, b) =>
       toMillis(b.paymentVerifiedAt || b.paymentSubmittedAt || b.createdAt) -
@@ -4823,9 +4835,8 @@ function renderPaymentsTable() {
               font-weight:700;
             "
           >
-            ${formatINR(
-              booking.totalAmount
-            )}
+            ${formatINR(booking.paymentAmountPaid || booking.paymentAmount || booking.totalAmount)}
+            ${booking.paymentPlan === "advance" ? `<small style="display:block;color:var(--sub);font-weight:500;margin-top:3px;">Balance: ${formatINR(booking.remainingBalance || 0)}</small>` : ""}
           </td>
 
           <td
@@ -4841,8 +4852,8 @@ function renderPaymentsTable() {
           </td>
 
           <td style="padding:12px;">
-            <span class="fleet-status ${booking.paymentStatus === "paid" ? "verified" : "pending"}">
-              ${booking.paymentStatus === "paid" ? "Paid / Verified" : "Pending Review"}
+            <span class="fleet-status ${booking.paymentStatus === "paid" || booking.paymentStatus === "advance_paid" ? "verified" : "pending"}">
+              ${booking.paymentStatus === "paid" ? "Paid in Full" : booking.paymentStatus === "advance_paid" ? "Advance Paid" : "Pending Review"}
             </span>
           </td>
 
@@ -4854,7 +4865,7 @@ function renderPaymentsTable() {
           >
             ${booking.paymentStatus === "pending_verification"
               ? `<button type="button" class="btn btn-dark review-payment-btn" data-bid="${escapeHtml(booking.id)}" style="padding:6px 12px;font-size:.8rem;">Review</button>`
-              : `<span style="color:#06d6a0;font-size:.8rem;font-weight:700;">Verified</span>`}
+              : `<button type="button" class="btn btn-outline send-invoice-btn" data-bid="${escapeHtml(booking.id)}" style="padding:6px 12px;font-size:.8rem;">Send Invoice</button>`}
           </td>
 
         </tr>
@@ -4902,6 +4913,10 @@ function renderPaymentsTable() {
       );
     });
 
+  paymentsTableWrap.querySelectorAll(".send-invoice-btn").forEach((button) => {
+    button.addEventListener("click", () => sendBookingInvoice(button.dataset.bid, button));
+  });
+
   paymentsTableWrap
     .querySelectorAll("[data-admin-payment-page-action]")
     .forEach((button) => {
@@ -4912,6 +4927,27 @@ function renderPaymentsTable() {
         paymentsTableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     });
+}
+
+async function sendBookingInvoice(bookingId, button) {
+  const originalText = button.textContent;
+  button.disabled = true;
+  button.textContent = "Sending…";
+
+  try {
+    const apiBase = window.MEDIA_API_URL || "http://localhost:4001";
+    const response = await fetch(`${apiBase}/api/invoices/payment-approved/${encodeURIComponent(bookingId)}`, {
+      method: "POST",
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.message || data.error || "Invoice could not be sent.");
+    button.textContent = "Invoice Sent";
+  } catch (error) {
+    console.error("INVOICE SEND ERROR:", error);
+    alert(`Could not send the invoice. ${error.message}`);
+    button.textContent = originalText;
+    button.disabled = false;
+  }
 }
 
 function initialisePaymentModal() {
@@ -4949,6 +4985,8 @@ function initialisePaymentModal() {
           approve.textContent =
             "Approving...";
 
+          const isAdvancePayment = activePaymentBooking.paymentPlan === "advance";
+
           await updateDoc(
             doc(
               db,
@@ -4957,7 +4995,7 @@ function initialisePaymentModal() {
             ),
             {
               paymentStatus:
-                "paid",
+                isAdvancePayment ? "advance_paid" : "paid",
 
               status:
                 "confirmed",
@@ -4973,7 +5011,7 @@ function initialisePaymentModal() {
           );
 
           activePaymentBooking.paymentStatus =
-            "paid";
+            isAdvancePayment ? "advance_paid" : "paid";
 
           activePaymentBooking.status =
             "confirmed";
@@ -5285,8 +5323,8 @@ function updateRevenueStats() {
   const paid =
     bookingsData.filter(
       (booking) =>
-        booking.paymentStatus ===
-        "paid"
+        booking.paymentStatus === "paid" ||
+        booking.paymentStatus === "advance_paid"
     );
 
   const totalRevenue =
@@ -5294,7 +5332,7 @@ function updateRevenueStats() {
       (sum, booking) =>
         sum +
         Number(
-          booking.totalAmount ||
+          booking.paymentAmountPaid || booking.paymentAmount || booking.totalAmount ||
             0
         ),
       0
@@ -5329,7 +5367,7 @@ function updateRevenueStats() {
         (sum, booking) =>
           sum +
           Number(
-            booking.totalAmount ||
+            booking.paymentAmountPaid || booking.paymentAmount || booking.totalAmount ||
               0
           ),
         0

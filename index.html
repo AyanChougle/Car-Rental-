@@ -10,8 +10,8 @@
 
   <body>
     <div class="background-video-wrap" aria-hidden="true">
-      <video autoplay muted loop playsinline>
-        <source src="assets/background%20video.mp4" type="video/mp4" />
+      <video autoplay muted loop playsinline preload="auto">
+        <source src="assets/background-video.mp4" type="video/mp4" />
       </video>
     </div>
     <header class="site-header">
@@ -224,7 +224,7 @@
               </button>
               <p class="form-status" id="quickBookStatus" role="status" aria-live="polite"></p>
 
-              <button type="button" id="quickLogoutBtn" class="btn btn-outline btn-full" style="margin-top: 10px;">
+              <button type="button" id="quickLogoutBtn" class="btn btn-outline btn-full quick-logout-btn">
                 Logout
               </button>
             </div>

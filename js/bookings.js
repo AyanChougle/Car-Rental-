@@ -34,6 +34,8 @@ function paymentStatusLabel(booking) {
   switch (booking.paymentStatus) {
     case "paid":
       return `Paid • ${booking.paymentRef || ""}`;
+    case "advance_paid":
+      return `₹${formatCurrency(booking.paymentAmountPaid || booking.paymentAmount || 500)} advance paid — ₹${formatCurrency(booking.remainingBalance || 0)} due at pickup`;
     case "pay_at_pickup":
       return "Pay at pickup";
     case "pending_verification":

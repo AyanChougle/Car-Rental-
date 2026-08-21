@@ -355,6 +355,29 @@
       box-sizing: border-box;
     }
 
+    /* Keep the pickup handover as a true, viewport-safe popup. */
+    #executivePickupModal.manager-modal {
+      position: fixed !important;
+      inset: 0 !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)) !important;
+      overflow-y: auto;
+    }
+
+    #executivePickupModal.manager-modal[hidden] {
+      display: none !important;
+    }
+
+    #executivePickupModal .manager-modal-card {
+      width: min(620px, calc(100vw - 32px)) !important;
+      max-height: calc(100dvh - 32px) !important;
+      margin: auto !important;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+
     .manager-modal-close {
       position: absolute;
       top: 14px;
@@ -503,9 +526,9 @@
 
   <!-- Background -->
   <div class="background-video-wrap" aria-hidden="true">
-    <video autoplay muted loop playsinline>
+    <video autoplay muted loop playsinline preload="auto">
       <source
-        src="assets/background%20video.mp4"
+        src="assets/background-video.mp4"
         type="video/mp4"
       />
     </video>
@@ -817,7 +840,7 @@
       </h3>
 
       <p class="manager-modal-subtitle">
-        Upload at least one condition photo before confirming that the vehicle was handed over.
+        Upload at least one condition photo before confirming the vehicle handover.
       </p>
 
       <div class="field full">

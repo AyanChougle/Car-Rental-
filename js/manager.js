@@ -45,6 +45,7 @@ let activeManagerPaymentBooking = null;
 let managerPaymentScreenshotObjectUrl = null;
 let activeManagerDocument = null;
 let managerDocumentObjectUrl = null;
+let managerDocumentObjectUrls = [];
 
 if (bookingSortOrder) {
   bookingSortOrder.value = managerBookingSortDirection;
@@ -408,10 +409,12 @@ function initialiseManagerPaymentModal() {
     approveButton.textContent = "Approving...";
 
     try {
+      const isAdvancePayment = booking.paymentPlan === "advance";
+
       await updateDoc(
         doc(db, "bookings", booking.id),
         {
-          paymentStatus: "paid",
+          paymentStatus: isAdvancePayment ? "advance_paid" : "paid",
           status: "confirmed",
           paymentVerifiedAt: serverTimestamp(),
           paymentVerifiedBy: currentUser?.uid || null,
@@ -480,7 +483,10 @@ function closeExecutivePickupModal() {
   const status =
     document.getElementById("executivePickupStatus");
 
-  if (modal) modal.hidden = true;
+  if (modal) {
+    modal.hidden = true;
+    modal.style.display = "";
+  }
   if (input) input.value = "";
   if (preview) preview.innerHTML = "";
   if (status) status.textContent = "";
@@ -499,7 +505,10 @@ function openExecutivePickupModal(booking) {
   const notes =
     document.getElementById("executivePickupNotes");
 
-  if (!modal) return;
+  if (!modal) {
+    alert("Pickup handover is unavailable on this page. Please refresh and try again.");
+    return;
+  }
 
   if (title) {
     title.textContent =
@@ -508,6 +517,7 @@ function openExecutivePickupModal(booking) {
 
   if (notes) notes.value = booking.pickupNotes || "";
   modal.hidden = false;
+  modal.style.display = "flex";
 }
 
 async function uploadExecutivePickupPhoto(file, bookingId) {
@@ -622,9 +632,10 @@ function initialiseExecutivePickupModal() {
 
     if (!files.length) {
       if (status) {
-        status.textContent = "Upload at least one pickup-condition photo.";
+        status.textContent = "Upload at least one pickup-condition photo before confirming.";
         status.style.color = "#ef476f";
       }
+      input?.focus();
       return;
     }
 
@@ -2307,6 +2318,9 @@ function closeManagerDocumentModal() {
     managerDocumentObjectUrl = null;
   }
 
+  managerDocumentObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+  managerDocumentObjectUrls = [];
+
   activeManagerDocument = null;
 }
 
@@ -2356,9 +2370,10 @@ async function openManagerDocumentModal(user, type) {
   const documentLabel = isLicense
     ? "Driving Licence"
     : "Aadhaar Card";
-  const mediaUrl = isLicense
-    ? user.licenseURL
-    : user.aadharURL;
+  const mediaUrls = isLicense
+    ? [user.licenseFrontURL || user.licenseURL, user.licenseBackURL].filter(Boolean)
+    : [user.aadharFrontURL || user.aadharURL, user.aadharBackURL].filter(Boolean);
+  const mediaUrl = mediaUrls[0];
   const status = isLicense
     ? user.licenseStatus
     : user.aadharStatus;
@@ -2368,7 +2383,8 @@ async function openManagerDocumentModal(user, type) {
       `${user.name || "Customer"} — ${documentLabel}`;
   }
 
-  if (approveButton) approveButton.disabled = !mediaUrl;
+  const isComplete = isLicense ? mediaUrls.length === 2 : mediaUrls.length > 0;
+  if (approveButton) approveButton.disabled = !isComplete;
   if (rejectButton) rejectButton.disabled = !mediaUrl;
 
   body.innerHTML = `
@@ -2422,6 +2438,14 @@ async function openManagerDocumentModal(user, type) {
         style="display:block;width:100%;max-height:520px;object-fit:contain;background:#080909;"
       />
     `;
+
+    if (isLicense && mediaUrls[1]) {
+      const backObjectUrl = await fetchManagerDocumentPreview(mediaUrls[1]);
+      managerDocumentObjectUrls.push(backObjectUrl);
+      preview.insertAdjacentHTML("beforeend", `
+        <img src="${escapeHtml(backObjectUrl)}" alt="Driving licence back uploaded by ${escapeHtml(user.name || "customer")}" style="display:block;width:100%;max-height:520px;object-fit:contain;background:#080909;border-top:1px solid var(--line);" />
+      `);
+    }
   } catch (error) {
     console.error("Manager document preview error:", error);
 

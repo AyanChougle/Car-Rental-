@@ -1013,16 +1013,23 @@ async function initialisePaymentUI(
     );
 
 
-  console.log(
-    "Booking amount:",
-    totalAmount
+  const paymentAmount = Number(
+    booking.paymentAmount ??
+    (booking.paymentPlan === "advance" ? 500 : totalAmount)
   );
+
+  const remainingBalance = Math.max(
+    0,
+    Number(booking.remainingBalance ?? totalAmount - paymentAmount)
+  );
+
+  console.log("Booking total:", totalAmount, "Payment due:", paymentAmount);
 
 
   if ($("paymentAmount")) {
     $("paymentAmount").textContent =
       `₹${formatCurrency(
-        totalAmount
+        paymentAmount
       )}`;
   }
 
@@ -1030,7 +1037,7 @@ async function initialisePaymentUI(
   if ($("upiAmount")) {
     $("upiAmount").textContent =
       formatCurrency(
-        totalAmount
+        paymentAmount
       );
   }
 
@@ -1053,13 +1060,13 @@ async function initialisePaymentUI(
 
   const upiUri =
     buildUpiUri(
-      totalAmount,
+      paymentAmount,
       bookingId
     );
 
 
   if (
-    totalAmount > 0 &&
+    paymentAmount > 0 &&
     upiId
   ) {
     generateQRCode(
@@ -1088,6 +1095,13 @@ async function initialisePaymentUI(
   setActiveMethod(
     "upi"
   );
+
+  if ($("paymentPlanNote")) {
+    $("paymentPlanNote").textContent =
+      booking.paymentPlan === "advance"
+        ? `₹${formatCurrency(remainingBalance)} will remain payable at pickup.`
+        : "Your booking is being paid in full today.";
+  }
 }
 
 
@@ -1616,6 +1630,18 @@ async function submitPayment(
         paymentMethod:
           activeMethod,
 
+        paymentPlan:
+          booking.paymentPlan || "full",
+
+        paymentAmount:
+          Number(booking.paymentAmount ?? booking.totalAmount ?? 0),
+
+        paymentAmountPaid:
+          Number(booking.paymentAmount ?? booking.totalAmount ?? 0),
+
+        remainingBalance:
+          Number(booking.remainingBalance ?? 0),
+
         paymentRef:
           reference,
 
@@ -1982,6 +2008,8 @@ async function startPaymentPage() {
       if (
         booking.paymentStatus ===
           "paid" ||
+        booking.paymentStatus ===
+          "advance_paid" ||
         booking.paymentStatus ===
           "pay_at_pickup"
       ) {

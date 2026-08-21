@@ -874,8 +874,8 @@
        ========================================================= -->
 
   <div class="background-video-wrap" aria-hidden="true">
-    <video autoplay muted loop playsinline>
-      <source src="assets/background%20video.mp4" type="video/mp4" />
+    <video autoplay muted loop playsinline preload="auto">
+      <source src="assets/background-video.mp4" type="video/mp4" />
     </video>
   </div>
 
@@ -1039,7 +1039,7 @@
               <div class="booking-detail booking-detail--amount">
 
                 <span>
-                  Amount to pay
+                  Pay today
                 </span>
 
                 <strong id="paymentAmount">
@@ -1047,6 +1047,8 @@
                 </strong>
 
               </div>
+
+              <p class="payment-plan-note" id="paymentPlanNote"></p>
 
             </div>
 
@@ -1126,7 +1128,7 @@
               <div class="payment-amount-card">
 
                 <span>
-                  Amount to pay
+                  Pay today
                 </span>
 
                 <strong>

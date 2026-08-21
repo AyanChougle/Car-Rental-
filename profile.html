@@ -33,9 +33,10 @@
       muted
       loop
       playsinline
+      preload="auto"
     >
       <source
-        src="assets/background%20video.mp4"
+        src="assets/background-video.mp4"
         type="video/mp4"
       />
     </video>
@@ -580,8 +581,8 @@
                 </h3>
 
                 <p>
-                  Upload a clear photo of your driving license.
-                  It is required before vehicle pickup.
+                  Upload clear photos of both sides of your driving licence.
+                  Both sides are required before vehicle pickup.
                 </p>
 
               </div>
@@ -596,53 +597,28 @@
             </div>
 
 
-            <div class="doc-upload__row">
-
-              <img
-                id="licensePreview"
-                class="doc-upload__preview"
-                alt="Driving license preview"
-                hidden
-              />
-
-
-              <div class="doc-upload__controls">
-
-                <label
-                  class="profile-action primary"
-                  for="licenseFile"
-                >
-                  Choose File
-                </label>
-
-                <input
-                  type="file"
-                  id="licenseFile"
-                  accept="image/jpeg,image/png,image/webp"
-                  hidden
-                />
-
-
-                <button
-                  type="button"
-                  id="licenseUploadBtn"
-                  class="profile-action primary"
-                  disabled
-                >
-                  Upload License
-                </button>
-
+            <div class="license-upload-grid">
+              <div class="doc-upload__side">
+                <strong>Front</strong>
+                <img id="licenseFrontPreview" class="doc-upload__preview" alt="Driving licence front preview" hidden />
+                <div class="doc-upload__controls">
+                  <label class="profile-action primary" for="licenseFrontFile">Choose front</label>
+                  <input type="file" id="licenseFrontFile" accept="image/jpeg,image/png,image/webp" hidden />
+                  <button type="button" id="licenseFrontUploadBtn" class="profile-action primary" disabled>Upload front</button>
+                </div>
+                <p class="form-status" id="licenseFrontUploadStatus" role="status" aria-live="polite"></p>
               </div>
-
+              <div class="doc-upload__side">
+                <strong>Back</strong>
+                <img id="licenseBackPreview" class="doc-upload__preview" alt="Driving licence back preview" hidden />
+                <div class="doc-upload__controls">
+                  <label class="profile-action primary" for="licenseBackFile">Choose back</label>
+                  <input type="file" id="licenseBackFile" accept="image/jpeg,image/png,image/webp" hidden />
+                  <button type="button" id="licenseBackUploadBtn" class="profile-action primary" disabled>Upload back</button>
+                </div>
+                <p class="form-status" id="licenseBackUploadStatus" role="status" aria-live="polite"></p>
+              </div>
             </div>
-
-
-            <p
-              class="form-status"
-              id="licenseUploadStatus"
-              role="status"
-              aria-live="polite"
-            ></p>
 
           </div>
 

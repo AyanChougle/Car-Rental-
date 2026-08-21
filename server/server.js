@@ -10,6 +10,7 @@ const rateLimit = require("express-rate-limit");
 const mediaRoutes = require("./routes/media");
 const paymentRoutes = require("./routes/payments");
 const adminExportRoutes = require("./routes/adminExport");
+const invoiceRoutes = require("./routes/invoice");
 
 const app = express();
 
@@ -17,8 +18,13 @@ const PORT = Number(process.env.PORT || 4001);
 const NODE_ENV = process.env.NODE_ENV || "development";
 
 app.disable("x-powered-by");
-
 app.set("trust proxy", 1);
+
+// ------------------------------------------------------------
+// SECURITY
+// ------------------------------------------------------------
+
+app.use(helmet());
 
 // ------------------------------------------------------------
 // CORS
@@ -37,7 +43,6 @@ if (NODE_ENV === "production" && configuredOrigins.length === 0) {
   console.error(
     "[server] ALLOWED_ORIGINS must be configured in production."
   );
-
   process.exit(1);
 }
 
@@ -45,9 +50,7 @@ app.use(
   cors({
     origin(origin, callback) {
       // Allow non-browser requests such as curl/Postman.
-      if (!origin) {
-        return callback(null, true);
-      }
+      if (!origin) return callback(null, true);
 
       if (configuredOrigins.includes(origin)) {
         return callback(null, true);
@@ -58,7 +61,14 @@ app.use(
       );
     },
 
-    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    methods: [
+      "GET",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+      "OPTIONS",
+    ],
 
     allowedHeaders: [
       "Content-Type",
@@ -66,7 +76,6 @@ app.use(
     ],
 
     credentials: false,
-
     maxAge: 600,
   })
 );
@@ -129,6 +138,11 @@ app.use("/api/payments", paymentRoutes);
 
 app.use("/api/admin", adminExportRoutes);
 
+// IMPORTANT:
+// Frontend uses /api/invoices/...
+// Therefore this must be plural: /api/invoices
+app.use("/api/invoices", invoiceRoutes);
+
 // ------------------------------------------------------------
 // 404
 // ------------------------------------------------------------
@@ -136,6 +150,8 @@ app.use("/api/admin", adminExportRoutes);
 app.use((req, res) => {
   res.status(404).json({
     error: "API endpoint not found.",
+    path: req.originalUrl,
+    method: req.method,
   });
 });
 
@@ -146,14 +162,26 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error("[server error]", err);
 
-  if (err.message && err.message.startsWith("CORS blocked")) {
+  if (
+    err.message &&
+    err.message.startsWith("CORS blocked")
+  ) {
     return res.status(403).json({
       error: "Origin not allowed.",
     });
   }
 
-  return res.status(500).json({
-    error: "Something went wrong on the server.",
+  const status =
+    Number(err.statusCode) >= 400 &&
+    Number(err.statusCode) < 600
+      ? Number(err.statusCode)
+      : 500;
+
+  return res.status(status).json({
+    error:
+      status === 500
+        ? "Something went wrong on the server."
+        : err.message || "Request failed.",
   });
 });
 
@@ -169,6 +197,23 @@ app.listen(PORT, () => {
   console.log(`Environment : ${NODE_ENV}`);
   console.log(`Port        : ${PORT}`);
   console.log(`API         : http://localhost:${PORT}`);
+  console.log("");
+  console.log("Invoice API :");
+  console.log(
+    `  POST http://localhost:${PORT}/api/invoices/payment-approved/:bookingId`
+  );
+  console.log(
+    `  GET  http://localhost:${PORT}/api/invoices/:invoiceId`
+  );
+  console.log(
+    `  PUT  http://localhost:${PORT}/api/invoices/:invoiceId`
+  );
+  console.log(
+    `  POST http://localhost:${PORT}/api/invoices/:invoiceId/send`
+  );
+  console.log(
+    `  GET  http://localhost:${PORT}/api/invoices/:invoiceId/pdf`
+  );
   console.log("");
   console.log("Allowed origins:");
 

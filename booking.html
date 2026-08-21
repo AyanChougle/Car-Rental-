@@ -23,9 +23,9 @@
        BACKGROUND
   ========================== -->
   <div class="booking-background" aria-hidden="true">
-    <video autoplay muted loop playsinline>
+    <video autoplay muted loop playsinline preload="auto">
       <source
-        src="assets/background%20video.mp4"
+        src="assets/background-video.mp4"
         type="video/mp4"
       />
     </video>
@@ -128,6 +128,13 @@
             <!-- DATE ROW -->
             <div class="booking-date-grid">
 
+              <div class="booking-date-heading">
+                <span>Rental schedule</span>
+                <button type="button" class="booking-time-reset" id="resetBookingTimes" aria-label="Reset pickup and drop times" title="Reset dates and times">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8 8 0 1 1-2.34-5.66M20 4v7h-7"/></svg>
+                </button>
+              </div>
+
               <div class="booking-field">
                 <label for="pickupDate">
                   Pickup Date &amp; Time
@@ -184,6 +191,24 @@
               </label>
 
             </div>
+
+            <fieldset class="booking-payment-options">
+              <legend>Choose how you would like to pay</legend>
+              <label class="booking-payment-option booking-payment-option--selected">
+                <input type="radio" name="paymentPlan" value="advance" checked />
+                <span>
+                  <strong>Pay ₹500 advance</strong>
+                  <small>Reserve your ride now and pay the remaining balance at pickup.</small>
+                </span>
+              </label>
+              <label class="booking-payment-option">
+                <input type="radio" name="paymentPlan" value="full" />
+                <span>
+                  <strong>Pay the full amount</strong>
+                  <small>Complete your booking payment today.</small>
+                </span>
+              </label>
+            </fieldset>
 
 
             <!-- TOTALS -->

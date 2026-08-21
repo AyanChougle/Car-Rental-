@@ -225,6 +225,14 @@ function renderFleetCards(records) {
     })
     .join("");
 
+  grid.querySelectorAll(".fleet-card").forEach((card) => {
+    const vehicle = records.find((item) => item.regNo === card.dataset.reg);
+    const driverSpec = card.querySelector(".fleet-specs > div:nth-child(3)");
+    if (!vehicle || !driverSpec) return;
+    driverSpec.querySelector("strong").textContent = "Driver / Hour";
+    driverSpec.querySelector("span").textContent = `₹${formatCurrency(vehicle.driverPriceHour || Number(vehicle.driverPrice || 0) / 24)}`;
+  });
+
   grid.setAttribute("aria-busy", "false");
 }
 

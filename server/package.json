@@ -1,26 +1,22 @@
 {
-  "name": "KRUIZLY-media-server",
-  "version": "1.0.0",
-  "description": "Local media upload/storage backend for KRUIZLY (photos, videos, docs) — SQLite metadata + disk storage.",
-  "main": "server.js",
-  "type": "commonjs",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
-  },
+  "private": true,
   "dependencies": {
     "better-sqlite3": "^13.0.3",
     "cors": "^2.8.6",
-    "dotenv": "^16.6.1",
+    "dotenv": "^17.4.2",
     "express": "^4.22.2",
     "express-rate-limit": "^8.6.2",
     "file-type": "^22.0.2",
     "firebase-admin": "^10.3.0",
     "helmet": "^8.3.0",
-    "multer": "^2.2.0",
+    "nodemailer": "^7.0.13",
+    "puppeteer": "^24.43.1",
     "xlsx": "^0.18.5"
   },
   "allowScripts": {
-    "better-sqlite3@12.11.1": true
+    "puppeteer@24.43.1": true,
+    "protobufjs@7.6.5": true,
+    "protobufjs@6.11.3": true,
+    "protobufjs@6.11.6": true
   }
 }

@@ -199,9 +199,15 @@ function initBooking(vehicle) {
     `₹${formatCurrency(vehicle.priceDay)}`;
 
 
+  dayRate.textContent =
+    `₹${formatCurrency(vehicle.priceHour || Number(vehicle.priceDay || 0) / 24)}`;
+
   driverRate.textContent =
     `₹${formatCurrency(vehicle.driverPrice)}`;
 
+
+  driverRate.textContent =
+    `₹${formatCurrency(vehicle.driverPriceHour || Number(vehicle.driverPrice || 0) / 24)}`;
 
   deposit.textContent =
     `₹${formatCurrency(vehicle.securityDeposit)}`;
@@ -274,6 +280,12 @@ function initBooking(vehicle) {
 
   const driverInput =
     document.getElementById("withDriver");
+
+  const paymentPlanInputs =
+    Array.from(document.querySelectorAll('input[name="paymentPlan"]'));
+
+  const resetBookingTimes =
+    document.getElementById("resetBookingTimes");
 
 
   const now = new Date();
@@ -379,18 +391,9 @@ function initBooking(vehicle) {
       new Date(drop);
 
 
-    const millisecondsPerDay =
-      1000 * 60 * 60 * 24;
+    const durationMs = dropDate - pickupDate;
 
-
-    const days =
-      Math.round(
-        (dropDate - pickupDate) /
-        millisecondsPerDay
-      );
-
-
-    if (days <= 0) {
+    if (durationMs <= 0) {
 
       totalsEl.innerHTML = `
         <div class="booking-error">
@@ -402,18 +405,13 @@ function initBooking(vehicle) {
     }
 
 
-    const withDriver =
-      driverInput.checked;
-
-
-    const rentalTotal =
-      days * Number(vehicle.priceDay || 0);
-
-
-    const driverTotal =
-      withDriver
-        ? days * Number(vehicle.driverPrice || 0)
-        : 0;
+    const hours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)));
+    const days = Math.max(1, Math.ceil(hours / 24));
+    const withDriver = driverInput.checked;
+    const hourlyRate = Number(vehicle.priceHour || Number(vehicle.priceDay || 0) / 24);
+    const driverHourlyRate = Number(vehicle.driverPriceHour || Number(vehicle.driverPrice || 0) / 24);
+    const rentalTotal = hours * hourlyRate;
+    const driverTotal = withDriver ? hours * driverHourlyRate : 0;
 
 
     const securityDeposit =
@@ -424,6 +422,15 @@ function initBooking(vehicle) {
       rentalTotal +
       driverTotal +
       securityDeposit;
+
+    const paymentPlan =
+      paymentPlanInputs.find((input) => input.checked)?.value || "advance";
+
+    const paymentAmount =
+      paymentPlan === "advance" ? 500 : total;
+
+    const remainingBalance =
+      Math.max(0, total - paymentAmount);
 
 
     totalsEl.innerHTML = `
@@ -493,16 +500,42 @@ function initBooking(vehicle) {
         </strong>
 
       </div>
+
+      <div class="booking-total-row booking-total-row--payment">
+        <span>
+          ${paymentPlan === "advance" ? "Advance due today" : "Payment due today"}
+          <small>${paymentPlan === "advance" ? `Remaining at pickup: ₹${formatCurrency(remainingBalance)}` : "Your full booking amount"}</small>
+        </span>
+        <strong>₹${formatCurrency(paymentAmount)}</strong>
+      </div>
     `;
+
+    const totalRows = totalsEl.querySelectorAll(".booking-total-row");
+    const breakdownHeader = totalsEl.querySelector(".booking-totals__header span:last-child");
+    if (breakdownHeader) {
+      breakdownHeader.textContent = `${hours} hour${hours > 1 ? "s" : ""}`;
+    }
+    if (totalRows[0]?.querySelector("small")) {
+      totalRows[0].querySelector("small").textContent = `Hourly rate: ₹${formatCurrency(hourlyRate)}`;
+    }
+    if (withDriver && totalRows[1]?.querySelector("small")) {
+      totalRows[1].querySelector("small").textContent = `Hourly rate: ₹${formatCurrency(driverHourlyRate)}`;
+    }
 
 
     return {
       days,
+      hours,
       withDriver,
+      hourlyRate,
+      driverHourlyRate,
       rentalTotal,
       driverTotal,
       securityDeposit,
       total,
+      paymentPlan,
+      paymentAmount,
+      remainingBalance,
     };
   }
 
@@ -537,6 +570,27 @@ function initBooking(vehicle) {
     "change",
     calculateBooking
   );
+
+  paymentPlanInputs.forEach((input) => {
+    input.addEventListener("change", () => {
+      document.querySelectorAll(".booking-payment-option").forEach((option) => {
+        option.classList.toggle("booking-payment-option--selected", option.contains(input) && input.checked);
+      });
+      calculateBooking();
+    });
+  });
+
+  resetBookingTimes?.addEventListener("click", () => {
+    const resetNow = new Date();
+    const resetPickup = new Date(resetNow.getTime() + 60 * 60 * 1000);
+    const resetDrop = new Date(resetPickup);
+    resetDrop.setDate(resetDrop.getDate() + 1);
+    pickupInput.min = toLocalDateTime(resetNow);
+    pickupInput.value = toLocalDateTime(resetPickup);
+    dropInput.min = toLocalDateTime(resetPickup);
+    dropInput.value = toLocalDateTime(resetDrop);
+    calculateBooking();
+  });
 
 
   calculateBooking();
@@ -795,20 +849,38 @@ function initBooking(vehicle) {
               days:
                 calculation.days,
 
+              hours:
+                calculation.hours,
+
               withDriver:
                 calculation.withDriver,
 
               dayRate:
                 vehicle.priceDay,
 
+              hourlyRate:
+                calculation.hourlyRate,
+
               driverRate:
                 vehicle.driverPrice,
+
+              driverHourlyRate:
+                calculation.driverHourlyRate,
 
               securityDeposit:
                 vehicle.securityDeposit,
 
               totalAmount:
                 calculation.total,
+
+              paymentPlan:
+                calculation.paymentPlan,
+
+              paymentAmount:
+                calculation.paymentAmount,
+
+              remainingBalance:
+                calculation.remainingBalance,
 
               location:
                 vehicle.location,

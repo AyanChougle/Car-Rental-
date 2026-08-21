@@ -1,0 +1,42 @@
+/* Glass UI override: no boxed hero/nav look. Keep surfaces only where interaction needs hierarchy. */
+.auth-card {
+  background: rgba(4, 11, 18, 0.38) !important;
+}
+.auth-card .btn-outline {
+  background: rgba(255, 255, 255, 0.035) !important;
+}
+.auth-card .input-group input {
+  background: rgba(1, 7, 13, 0.48) !important;
+}
+.quick-book-card h2 {
+  font-size: 26px;
+  letter-spacing: -0.03em;
+}
+.quick-book-card p {
+  margin-top: 4px;
+}
+.quick-book-card .btn-dark {
+  margin-top: 4px;
+}
+.quick-book-card .btn-outline {
+  margin-top: 10px !important;
+}
+.admin-tabs {
+  border: 0 !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+.admin-tabs .tab-btn {
+  border: 0 !important;
+  background: transparent !important;
+}
+.admin-tabs .tab-btn:hover {
+  background: rgba(87, 213, 255, 0.08) !important;
+}
+.admin-tabs .tab-btn.active {
+  background: rgba(87, 213, 255, 0.1) !important;
+  color: #fff !important;
+}
+.site-footer {
+  border-top: 0 !important;
+}

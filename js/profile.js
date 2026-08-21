@@ -648,6 +648,10 @@ async function loadProfile(user) {
 
       licenseURL: null,
 
+      licenseFrontURL: null,
+
+      licenseBackURL: null,
+
       licenseStatus:
         "not_submitted",
 
@@ -916,13 +920,12 @@ async function renderProfileData(
      PROTECTED DOCUMENT PREVIEWS
      ========================================================== */
 
-  if (data.licenseURL) {
+  if (data.licenseFrontURL || data.licenseURL) {
+    await loadProtectedMediaPreview(user, data.licenseFrontURL || data.licenseURL, $("licenseFrontPreview"));
+  }
 
-    await loadProtectedMediaPreview(
-      user,
-      data.licenseURL,
-      $("licensePreview")
-    );
+  if (data.licenseBackURL) {
+    await loadProtectedMediaPreview(user, data.licenseBackURL, $("licenseBackPreview"));
   }
 
 
@@ -2212,42 +2215,10 @@ onAuthStateChanged(
          LICENSE
          ====================================================== */
 
-      initDocumentUpload(
-        user,
-        {
-
-          inputId:
-            "licenseFile",
-
-          buttonId:
-            "licenseUploadBtn",
-
-          previewId:
-            "licensePreview",
-
-          statusId:
-            "licenseUploadStatus",
-
-          pillId:
-            "licenseStatusPill",
-
-          /*
-             This is the category accepted by:
-
-             server/routes/media.js
-          */
-
-          serverCategory:
-            "license_doc",
-
-          urlField:
-            "licenseURL",
-
-          statusField:
-            "licenseStatus"
-
-        }
-      );
+      [
+        { inputId: "licenseFrontFile", buttonId: "licenseFrontUploadBtn", previewId: "licenseFrontPreview", statusId: "licenseFrontUploadStatus", pillId: "licenseStatusPill", serverCategory: "license_doc", urlField: "licenseFrontURL", statusField: "licenseStatus" },
+        { inputId: "licenseBackFile", buttonId: "licenseBackUploadBtn", previewId: "licenseBackPreview", statusId: "licenseBackUploadStatus", pillId: "licenseStatusPill", serverCategory: "license_doc", urlField: "licenseBackURL", statusField: "licenseStatus" }
+      ].forEach((config) => initDocumentUpload(user, config));
 
 
       /* ======================================================
