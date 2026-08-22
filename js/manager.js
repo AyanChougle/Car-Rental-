@@ -32,11 +32,16 @@ const returnCountEl = document.getElementById("mgrReturnCount");
 
 const bookingsWrap = document.getElementById("mgrBookingsWrap");
 const bookingSortOrder = document.getElementById("mgrBookingSortOrder");
+const bookingDateFrom = document.getElementById("mgrBookingDateFrom");
+const bookingDateTo = document.getElementById("mgrBookingDateTo");
+const bookingDateClear = document.getElementById("mgrBookingDateClear");
 
 let currentUser = null;
 let currentManagerBookings = [];
 let currentManagerUsers = [];
 let managerBookingSortDirection = "desc";
+let managerBookingDateFrom = "";
+let managerBookingDateTo = "";
 const MANAGER_BOOKINGS_PER_PAGE = 10;
 let managerBookingPage = 1;
 let activeExecutivePickupBooking = null;
@@ -55,6 +60,24 @@ if (bookingSortOrder) {
     renderManagerBookingsTable(getSortedManagerBookings());
   });
 }
+
+[bookingDateFrom, bookingDateTo].forEach((input) => {
+  input?.addEventListener("change", () => {
+    managerBookingDateFrom = bookingDateFrom?.value || "";
+    managerBookingDateTo = bookingDateTo?.value || "";
+    managerBookingPage = 1;
+    renderManagerBookingsTable(getSortedManagerBookings());
+  });
+});
+
+bookingDateClear?.addEventListener("click", () => {
+  managerBookingDateFrom = "";
+  managerBookingDateTo = "";
+  if (bookingDateFrom) bookingDateFrom.value = "";
+  if (bookingDateTo) bookingDateTo.value = "";
+  managerBookingPage = 1;
+  renderManagerBookingsTable(getSortedManagerBookings());
+});
 
 /* =========================================================
    FORCE HIDDEN STATE
@@ -969,8 +992,17 @@ function getManagerBookingDateMillis(booking) {
 
 function getSortedManagerBookings() {
   const direction = managerBookingSortDirection === "asc" ? 1 : -1;
+  const from = managerBookingDateFrom
+    ? new Date(`${managerBookingDateFrom}T00:00:00`).getTime()
+    : null;
+  const to = managerBookingDateTo
+    ? new Date(`${managerBookingDateTo}T23:59:59.999`).getTime()
+    : null;
 
-  return [...currentManagerBookings].sort((a, b) => {
+  return currentManagerBookings.filter((booking) => {
+    const date = getManagerBookingDateMillis(booking);
+    return (!from || date >= from) && (!to || date <= to);
+  }).sort((a, b) => {
     const dateDifference =
       getManagerBookingDateMillis(a) - getManagerBookingDateMillis(b);
 
@@ -1025,7 +1057,7 @@ function renderManagerBookingsTable(bookings) {
         class="admin-table"
         style="
           width: 100%;
-          min-width: 950px;
+          min-width: 1080px;
           border-collapse: collapse;
           text-align: left;
           font-size: 0.9rem;
@@ -1053,6 +1085,10 @@ function renderManagerBookingsTable(bookings) {
 
             <th style="padding: 14px;">
               Return
+            </th>
+
+            <th style="padding: 14px;">
+              Payment
             </th>
 
             <th style="padding: 14px;">
@@ -1127,6 +1163,13 @@ function renderManagerBookingsTable(bookings) {
       booking.returnDate ||
       booking.endDate ||
       "—";
+
+    const paymentStatus = formatStatus(
+      booking.paymentStatus || "payment pending"
+    );
+    const paymentAmount = Number(
+      booking.totalAmount ?? booking.amount ?? booking.total ?? 0
+    );
 
     /* =====================================================
        STATUS CLASS
@@ -1297,6 +1340,13 @@ function renderManagerBookingsTable(bookings) {
 
         <td style="padding: 14px;">
           ${escapeHtml(drop)}
+        </td>
+
+        <td style="padding: 14px;">
+          <strong>₹${Number.isFinite(paymentAmount) ? paymentAmount.toLocaleString("en-IN") : "0"}</strong>
+          <div style="margin-top: 4px; color: var(--sub); font-size: 0.75rem;">
+            ${escapeHtml(paymentStatus)}
+          </div>
         </td>
 
         <td style="padding: 14px;">

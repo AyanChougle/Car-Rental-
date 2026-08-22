@@ -135,6 +135,20 @@
       .admin-modal[hidden] {
         display: none !important;
       }
+      /* Process Return uses the same viewport-fixed presentation as Return Report. */
+      #returnModal.admin-modal {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 99999 !important;
+        padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)) !important;
+        overflow-y: auto;
+      }
+      #returnModal.admin-modal > .card {
+        width: min(620px, calc(100vw - 32px)) !important;
+        max-height: calc(100dvh - 32px) !important;
+        margin: auto;
+        overscroll-behavior: contain;
+      }
       .admin-modal__card {
         width: min(720px, 100%);
         max-height: 90vh;
@@ -432,15 +446,15 @@
               flex-wrap: wrap;
             "
           >
-            <button class="btn btn-dark tab-btn active" data-tab="tab-users">
-              User Accounts & Verification
+            <button class="btn btn-dark tab-btn active" data-tab="tab-bookings">
+              All Bookings
             </button>
             <button class="btn btn-outline tab-btn" data-tab="tab-payments">
               Payments
               <span id="paymentsTabBadge" class="tab-badge" hidden>0</span>
             </button>
-            <button class="btn btn-outline tab-btn" data-tab="tab-bookings">
-              All Bookings
+            <button class="btn btn-outline tab-btn" data-tab="tab-users">
+              User Accounts & Verification
             </button>
             <button class="btn btn-outline tab-btn" data-tab="tab-hosts">
               Vehicle Acquisition
@@ -451,7 +465,7 @@
           </div>
 
           <!-- TAB 1: USERS & DOCUMENT VERIFICATION -->
-          <section id="tab-users" class="tab-panel">
+          <section id="tab-users" class="tab-panel" hidden>
             <div
               class="card admin-panel-card"
               style="padding: 24px; overflow-x: auto"
@@ -505,7 +519,7 @@
           </section>
 
           <!-- TAB 3: ALL BOOKINGS -->
-          <section id="tab-bookings" class="tab-panel" hidden>
+          <section id="tab-bookings" class="tab-panel">
             <div
               class="card admin-panel-card"
               style="padding: 24px; overflow-x: auto"
@@ -634,6 +648,20 @@
                 </div>
                 <a class="btn btn-outline" href="fleet.html">Open Public Fleet</a>
               </div>
+              <form id="fleetUploadForm" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:end;margin-bottom:24px;padding:18px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.025);">
+                <label style="color:var(--sub);font-size:.78rem;">Brand<input id="fleetBrand" required placeholder="e.g. Hyundai" style="display:block;width:100%;margin-top:5px;padding:9px 10px;background:rgba(0,0,0,.4);color:var(--text);border:1px solid var(--line);border-radius:8px;" /></label>
+                <label style="color:var(--sub);font-size:.78rem;">Model<input id="fleetModel" required placeholder="e.g. Creta" style="display:block;width:100%;margin-top:5px;padding:9px 10px;background:rgba(0,0,0,.4);color:var(--text);border:1px solid var(--line);border-radius:8px;" /></label>
+                <label style="color:var(--sub);font-size:.78rem;">Registration<input id="fleetRegNo" required placeholder="MH 01 AB 1234" style="display:block;width:100%;margin-top:5px;padding:9px 10px;background:rgba(0,0,0,.4);color:var(--text);border:1px solid var(--line);border-radius:8px;" /></label>
+                <label style="color:var(--sub);font-size:.78rem;">Year<input id="fleetYear" type="number" min="2000" max="2100" required style="display:block;width:100%;margin-top:5px;padding:9px 10px;background:rgba(0,0,0,.4);color:var(--text);border:1px solid var(--line);border-radius:8px;" /></label>
+                <label style="color:var(--sub);font-size:.78rem;">Category<select id="fleetCategory" required style="display:block;width:100%;margin-top:5px;padding:9px 10px;background:rgba(0,0,0,.4);color:var(--text);border:1px solid var(--line);border-radius:8px;"><option value="economy">Economy</option><option value="sedan">Sedan</option><option value="suv">SUV</option><option value="luxury">Luxury</option></select></label>
+                <label style="color:var(--sub);font-size:.78rem;">Transmission<select id="fleetTransmission" required style="display:block;width:100%;margin-top:5px;padding:9px 10px;background:rgba(0,0,0,.4);color:var(--text);border:1px solid var(--line);border-radius:8px;"><option value="Automatic">Automatic</option><option value="Manual">Manual</option></select></label>
+                <label style="color:var(--sub);font-size:.78rem;">Fuel<input id="fleetFuel" required placeholder="Petrol, Diesel, EV..." style="display:block;width:100%;margin-top:5px;padding:9px 10px;background:rgba(0,0,0,.4);color:var(--text);border:1px solid var(--line);border-radius:8px;" /></label>
+                <label style="color:var(--sub);font-size:.78rem;">Seats<input id="fleetSeats" type="number" min="1" max="12" value="5" required style="display:block;width:100%;margin-top:5px;padding:9px 10px;background:rgba(0,0,0,.4);color:var(--text);border:1px solid var(--line);border-radius:8px;" /></label>
+                <label style="color:var(--sub);font-size:.78rem;">Daily rate (₹)<input id="fleetPriceDay" type="number" min="1" required style="display:block;width:100%;margin-top:5px;padding:9px 10px;background:rgba(0,0,0,.4);color:var(--text);border:1px solid var(--line);border-radius:8px;" /></label>
+                <label style="color:var(--sub);font-size:.78rem;">Vehicle image<input id="fleetImage" type="file" accept="image/jpeg,image/png,image/webp" required style="display:block;width:100%;margin-top:8px;color:var(--text);" /></label>
+                <button id="fleetUploadSubmit" type="submit" class="btn btn-dark">Add to Fleet</button>
+              </form>
+              <p id="fleetUploadStatus" role="status" style="margin:-12px 0 18px;color:var(--sub);" aria-live="polite"></p>
               <div id="fleetManagementWrap">
                 <p style="color:var(--sub);">Loading fleet...</p>
               </div>

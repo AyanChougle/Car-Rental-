@@ -355,10 +355,12 @@
       box-sizing: border-box;
     }
 
-    /* Keep the pickup handover as a true, viewport-safe popup. */
-    #executivePickupModal.manager-modal {
+    /* Keep handover and return processing as viewport-safe popups. */
+    #executivePickupModal.manager-modal,
+    #returnModal.manager-modal {
       position: fixed !important;
       inset: 0 !important;
+      z-index: 99999;
       display: flex !important;
       align-items: center !important;
       justify-content: center !important;
@@ -366,11 +368,13 @@
       overflow-y: auto;
     }
 
-    #executivePickupModal.manager-modal[hidden] {
+    #executivePickupModal.manager-modal[hidden],
+    #returnModal.manager-modal[hidden] {
       display: none !important;
     }
 
-    #executivePickupModal .manager-modal-card {
+    #executivePickupModal .manager-modal-card,
+    #returnModal .manager-modal-card {
       width: min(620px, calc(100vw - 32px)) !important;
       max-height: calc(100dvh - 32px) !important;
       margin: auto !important;

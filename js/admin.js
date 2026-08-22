@@ -16,6 +16,7 @@ import {
   getDocs,
   updateDoc,
   setDoc,
+  deleteDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 
@@ -43,6 +44,9 @@ const paymentsTableWrap = $("paymentsTableWrap");
 const bookingsTableWrap = $("bookingsTableWrap");
 const hostCarsTableWrap = $("hostCarsTableWrap");
 const fleetManagementWrap = $("fleetManagementWrap");
+const fleetUploadForm = $("fleetUploadForm");
+const fleetUploadStatus = $("fleetUploadStatus");
+const fleetUploadSubmit = $("fleetUploadSubmit");
 const exportFirebaseExcelBtn = $("exportFirebaseExcelBtn");
 const firebaseExportStatus = $("firebaseExportStatus");
 
@@ -403,6 +407,7 @@ function initialiseAdmin() {
   initialisePaymentModal();
   initialiseReturnModal();
   initialiseFirebaseExport();
+  initialiseFleetUpload();
 
   loadAllAdminData();
 }
@@ -722,24 +727,31 @@ async function loadFleetManagement() {
     const overrides = new Map(
       snapshot.docs.map((item) => [item.id, item.data()])
     );
-    const vehicles = catalog.map((vehicle) => ({
-      ...vehicle,
-      ...(overrides.get(vehicle.regNo) || {}),
-      regNo: vehicle.regNo,
-    }));
+    const catalogRegistrations = new Set(catalog.map((vehicle) => vehicle.regNo));
+    const vehicles = [
+      ...catalog.map((vehicle) => ({
+        ...vehicle,
+        ...(overrides.get(vehicle.regNo) || {}),
+        regNo: vehicle.regNo,
+      })),
+      ...snapshot.docs
+        .map((item) => ({ regNo: item.id, ...item.data() }))
+        .filter((vehicle) => vehicle.isCustomFleet && !catalogRegistrations.has(vehicle.regNo)),
+    ].filter((vehicle) => !vehicle.removed);
 
     if (!vehicles.length) {
       fleetManagementWrap.innerHTML =
-        `<p style="color:var(--sub);">No catalog vehicles found.</p>`;
+        `<p style="color:var(--sub);">No vehicles in the fleet yet. Add the first one above.</p>`;
       return;
     }
 
     fleetManagementWrap.innerHTML = `
       <div style="width:100%;overflow-x:auto;">
-        <table class="admin-table" style="width:100%;min-width:820px;border-collapse:collapse;text-align:left;">
+        <table class="admin-table" style="width:100%;min-width:940px;border-collapse:collapse;text-align:left;">
           <thead>
             <tr style="border-bottom:1px solid var(--line);color:var(--sub);">
               <th style="padding:12px;">Vehicle</th>
+              <th style="padding:12px;">Image</th>
               <th style="padding:12px;">Registration</th>
               <th style="padding:12px;">Category</th>
               <th style="padding:12px;">Daily Rate</th>
@@ -753,6 +765,11 @@ async function loadFleetManagement() {
               return `
                 <tr style="border-bottom:1px solid rgba(255,255,255,.06);">
                   <td style="padding:12px;"><strong>${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}</strong></td>
+                  <td style="padding:12px;">
+                    ${vehicle.imageUrl
+                      ? `<img src="${escapeHtml(vehicle.imageUrl)}" alt="${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}" style="display:block;width:72px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--line);" />`
+                      : `<span style="color:var(--sub);font-size:.8rem;">Catalog image</span>`}
+                  </td>
                   <td style="padding:12px;font-family:monospace;">${escapeHtml(vehicle.regNo)}</td>
                   <td style="padding:12px;">${escapeHtml(vehicle.category || "—")}</td>
                   <td style="padding:12px;">${formatINR(vehicle.priceDay)}</td>
@@ -769,6 +786,15 @@ async function loadFleetManagement() {
                       data-available="${String(available)}"
                     >
                       ${available ? "Mark Unavailable" : "Make Available"}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-outline admin-fleet-remove"
+                      data-reg="${escapeHtml(vehicle.regNo)}"
+                      data-custom="${String(Boolean(vehicle.isCustomFleet))}"
+                      style="margin-left:6px;border-color:#ef476f;color:#ef476f;"
+                    >
+                      Remove
                     </button>
                   </td>
                 </tr>
@@ -817,6 +843,35 @@ async function loadFleetManagement() {
           }
         });
       });
+
+    fleetManagementWrap
+      .querySelectorAll(".admin-fleet-remove")
+      .forEach((button) => {
+        button.addEventListener("click", async () => {
+          const regNo = button.dataset.reg;
+          if (!regNo || !confirm(`Remove ${regNo} from the fleet?`)) return;
+
+          button.disabled = true;
+          try {
+            if (button.dataset.custom === "true") {
+              await deleteDoc(doc(db, "vehicles", regNo));
+            } else {
+              await setDoc(doc(db, "vehicles", regNo), {
+                removed: true,
+                available: false,
+                status: "removed",
+                updatedAt: serverTimestamp(),
+                updatedBy: currentUser?.uid || null,
+              }, { merge: true });
+            }
+            await loadFleetManagement();
+          } catch (error) {
+            console.error("FLEET REMOVE ERROR:", error);
+            alert("Could not remove this vehicle.\n\n" + error.message);
+            button.disabled = false;
+          }
+        });
+      });
   } catch (error) {
     console.error("FLEET MANAGEMENT LOAD ERROR:", error);
     fleetManagementWrap.innerHTML = `
@@ -825,6 +880,67 @@ async function loadFleetManagement() {
       </p>
     `;
   }
+}
+
+function initialiseFleetUpload() {
+  fleetUploadForm?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const getValue = (id) => String($(id)?.value || "").trim();
+    const regNo = getValue("fleetRegNo").toUpperCase().replace(/\s+/g, "-");
+    const image = $("fleetImage")?.files?.[0];
+
+    if (!regNo || !image) return;
+    if (!image.type.startsWith("image/") || image.size > 10 * 1024 * 1024) {
+      if (fleetUploadStatus) fleetUploadStatus.textContent = "Use an image up to 10 MB.";
+      return;
+    }
+
+    fleetUploadSubmit.disabled = true;
+    if (fleetUploadStatus) fleetUploadStatus.textContent = "Uploading vehicle image...";
+
+    try {
+      const imageRef = ref(storage, `fleet/${regNo}/${Date.now()}-${image.name}`);
+      await uploadBytes(imageRef, image, { contentType: image.type });
+      const imageUrl = await getDownloadURL(imageRef);
+      const priceDay = Number(getValue("fleetPriceDay"));
+
+      await setDoc(doc(db, "vehicles", regNo), {
+        regNo,
+        brand: getValue("fleetBrand"),
+        model: getValue("fleetModel"),
+        year: Number(getValue("fleetYear")),
+        category: getValue("fleetCategory"),
+        transmission: getValue("fleetTransmission"),
+        fuel: getValue("fleetFuel"),
+        seats: Number(getValue("fleetSeats")),
+        bags: 2,
+        priceDay,
+        priceHour: Math.max(1, Math.round(priceDay / 24)),
+        driverPrice: 0,
+        securityDeposit: 0,
+        freeKm: 250,
+        extraKm: 0,
+        location: "Contact KRUIZLY for pickup location",
+        imageUrl,
+        isCustomFleet: true,
+        available: true,
+        status: "available",
+        removed: false,
+        createdAt: serverTimestamp(),
+        createdBy: currentUser?.uid || null,
+        updatedAt: serverTimestamp(),
+      });
+
+      fleetUploadForm.reset();
+      if (fleetUploadStatus) fleetUploadStatus.textContent = "Vehicle added to the fleet.";
+      await loadFleetManagement();
+    } catch (error) {
+      console.error("FLEET UPLOAD ERROR:", error);
+      if (fleetUploadStatus) fleetUploadStatus.textContent = `Could not add vehicle: ${error.message}`;
+    } finally {
+      fleetUploadSubmit.disabled = false;
+    }
+  });
 }
 
 // ============================================================================

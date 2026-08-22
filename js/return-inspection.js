@@ -18,10 +18,18 @@ import { formatBookingNumber } from "./booking-reference.js";
 export const DAMAGE_CHECKLIST = [
   { key: "scratch", label: "Scratch / paint damage", defaultAmount: 1500 },
   { key: "dent", label: "Dent", defaultAmount: 3000 },
-  { key: "broken_part", label: "Broken part (mirror, light, bumper, etc.)", defaultAmount: 5000 },
+  {
+    key: "broken_part",
+    label: "Broken part (mirror, light, bumper, etc.)",
+    defaultAmount: 5000,
+  },
   { key: "accident", label: "Accident damage", defaultAmount: 0 },
   { key: "interior", label: "Interior damage / stains", defaultAmount: 1000 },
-  { key: "fuel", label: "Missing fuel (below pickup level)", defaultAmount: 500 },
+  {
+    key: "fuel",
+    label: "Missing fuel / FASTag",
+    defaultAmount: 500,
+  },
   { key: "late_return", label: "Late return", defaultAmount: 500 },
   { key: "other", label: "Other", defaultAmount: 0 },
 ];
@@ -34,13 +42,23 @@ function formatCurrency(n) {
 }
 
 function safeFileName(value) {
-  return String(value || "photo")
-    .toLowerCase()
-    .replace(/[^a-z0-9._-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "") || "photo";
+  return (
+    String(value || "photo")
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "") || "photo"
+  );
 }
-
+// addEventListener.safeFileName(value);{
+//   return (
+//     String(value || "photo")
+//       .toLocaleLowerCase()
+//       .replace(/[^a-z0-9._-]+/g, "-")
+//       .replace(/-+/g, "-")
+//       .replaceAll(/^-|-$/g, "")
+//   )
+// }
 async function uploadReturnPhoto(user, bookingId, file, index) {
   if (!user) {
     throw new Error("Return photo upload requires a signed-in staff account.");
@@ -90,11 +108,7 @@ function normalizeSavedPhotos(value) {
         };
       }
 
-      const url =
-        item.url ||
-        item.downloadURL ||
-        item.src ||
-        "";
+      const url = item.url || item.downloadURL || item.src || "";
 
       if (!url) {
         return null;
@@ -111,11 +125,14 @@ function normalizeSavedPhotos(value) {
 
 async function fetchProtectedMediaBlob(user, mediaId) {
   const token = await user.getIdToken();
-  const response = await fetch(`${MEDIA_SERVER_URL}/api/media/file/${encodeURIComponent(mediaId)}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
+  const response = await fetch(
+    `${MEDIA_SERVER_URL}/api/media/file/${encodeURIComponent(mediaId)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     },
-  });
+  );
 
   if (!response.ok) {
     throw new Error(`Could not load photo (${response.status}).`);
@@ -181,7 +198,13 @@ function renderPhotoGrid(container, photos) {
     `;
     return;
   }
-
+  // if (!photos.length){
+  //   container.innerHTML = `
+  //     <div class="return-upload__empty">
+  //     No return photos yet. Upload clear shots after inspection.
+  //     </div>
+  //   `; return;
+  // }
   container.innerHTML = photos
     .map(
       (photo, index) => `
@@ -189,7 +212,7 @@ function renderPhotoGrid(container, photos) {
           <img src="${photo.url}" alt="${photo.name || `Return photo ${index + 1}`}" />
           <figcaption>${photo.kind === "new" ? "New" : "Saved"} photo</figcaption>
         </figure>
-      `
+      `,
     )
     .join("");
 }
@@ -219,25 +242,31 @@ export function openReturnModal({ booking, currentUser, onSaved }) {
   if (subtitle) {
     if (booking.returnInspection && booking.returnInspection.processedByName) {
       const when =
-        booking.returnInspection.processedAt && typeof booking.returnInspection.processedAt.toDate === "function"
-          ? booking.returnInspection.processedAt.toDate().toLocaleString("en-IN", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            })
+        booking.returnInspection.processedAt &&
+        typeof booking.returnInspection.processedAt.toDate === "function"
+          ? booking.returnInspection.processedAt
+              .toDate()
+              .toLocaleString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+                hour: "numeric",
+                minute: "2-digit",
+              })
           : "";
       subtitle.textContent = `Processed by ${booking.returnInspection.processedByName}${when ? ` on ${when}` : ""}. Adjust and save to update the record.`;
     } else {
-      subtitle.textContent = "Check anything found on inspection, adjust the deduction amount if needed, upload return photos, then save.";
+      subtitle.textContent =
+        "Check anything found on inspection, adjust the deduction amount if needed, upload return photos, then save.";
     }
   }
 
   const savedPhotos = Array.isArray(booking.returnInspection?.photos)
     ? booking.returnInspection.photos
     : Array.isArray(booking.returnInspection?.returnPhotoMediaIds)
-      ? booking.returnInspection.returnPhotoMediaIds.map((mediaId) => ({ mediaId }))
+      ? booking.returnInspection.returnPhotoMediaIds.map((mediaId) => ({
+          mediaId,
+        }))
       : Array.isArray(booking.returnInspection?.returnPhotos)
         ? booking.returnInspection.returnPhotos
         : [];
@@ -255,11 +284,12 @@ export function openReturnModal({ booking, currentUser, onSaved }) {
           <span class="return-item-currency">₹</span>
           <input type="number" class="return-item-amount" min="0" step="50" value="${item.amount}" ${item.checked ? "" : "disabled"} />
         </label>
-      `
+      `,
     )
     .join("");
 
-  notesInput.value = (booking.returnInspection && booking.returnInspection.notes) || "";
+  notesInput.value =
+    (booking.returnInspection && booking.returnInspection.notes) || "";
 
   async function refreshPhotoPreview() {
     selectedPhotoUrls.forEach((url) => URL.revokeObjectURL(url));
@@ -329,7 +359,8 @@ export function openReturnModal({ booking, currentUser, onSaved }) {
       for (const file of files) {
         if (!RETURN_PHOTO_TYPES.includes(file.type)) {
           if (photosStatus) {
-            photosStatus.textContent = "Only JPG, PNG, and WebP photos are allowed.";
+            photosStatus.textContent =
+              "Only JPG, PNG, and WebP photos are allowed.";
             photosStatus.className = "return-upload__status error";
           }
           photosInput.value = "";
@@ -357,9 +388,11 @@ export function openReturnModal({ booking, currentUser, onSaved }) {
 
   void refreshPhotoPreview();
 
-  itemsList.querySelectorAll(".return-item-check, .return-item-amount").forEach((el) => {
-    el.addEventListener("input", () => recalc(itemsList, booking));
-  });
+  itemsList
+    .querySelectorAll(".return-item-check, .return-item-amount")
+    .forEach((el) => {
+      el.addEventListener("input", () => recalc(itemsList, booking));
+    });
   recalc(itemsList, booking);
 
   function close() {
@@ -410,12 +443,10 @@ export function openReturnModal({ booking, currentUser, onSaved }) {
 
       for (let index = 0; index < selectedPhotoFiles.length; index += 1) {
         const file = selectedPhotoFiles[index];
-        uploadedPhotos.push(
-          {
-            ...await uploadReturnPhoto(currentUser, booking.id, file, index),
-            kind: "new",
-          }
-        );
+        uploadedPhotos.push({
+          ...(await uploadReturnPhoto(currentUser, booking.id, file, index)),
+          kind: "new",
+        });
       }
 
       await updateDoc(doc(db, "bookings", booking.id), {
@@ -446,7 +477,8 @@ export function openReturnModal({ booking, currentUser, onSaved }) {
               : 0) + uploadedPhotos.length,
           processedAt: serverTimestamp(),
           processedByUid: currentUser?.uid || null,
-          processedByName: currentUser?.displayName || currentUser?.email || "Staff",
+          processedByName:
+            currentUser?.displayName || currentUser?.email || "Staff",
         },
       });
 
@@ -455,10 +487,13 @@ export function openReturnModal({ booking, currentUser, onSaved }) {
     } catch (err) {
       console.error("Failed to save return inspection:", err);
       if (photosStatus) {
-        photosStatus.textContent = "Could not save the return assessment. Check your connection and try again.";
+        photosStatus.textContent =
+          "Could not save the return assessment. Check your connection and try again.";
         photosStatus.className = "return-upload__status error";
       }
-      alert("Could not save the return assessment - check your connection and try again.");
+      alert(
+        "Could not save the return assessment - check your connection and try again.",
+      );
     } finally {
       saveBtn.disabled = false;
       saveBtn.textContent = "Save & Mark Completed";

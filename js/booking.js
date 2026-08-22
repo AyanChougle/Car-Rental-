@@ -4,9 +4,7 @@
 
 import { auth, db } from "./firebase-init.js";
 
-import {
-  onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 
 import {
   doc,
@@ -28,7 +26,6 @@ function formatCurrency(value) {
     maximumFractionDigits: 0,
   }).format(Number(value) || 0);
 }
-
 
 // IMPORTANT:
 // Don't use toISOString() for today's date here.
@@ -67,7 +64,6 @@ function nextDayISO(value) {
   return `${year}-${month}-${day}`;
 }
 
-
 function sessionStorageGet(key) {
   try {
     return sessionStorage.getItem(key);
@@ -75,7 +71,6 @@ function sessionStorageGet(key) {
     return null;
   }
 }
-
 
 // ------------------------------------------------------------
 // DOM
@@ -85,56 +80,39 @@ const params = new URLSearchParams(window.location.search);
 
 const registration = params.get("reg");
 
-const catalog = Array.isArray(window.fleetVehicles)
-  ? window.fleetVehicles
-  : [];
+const catalog = Array.isArray(window.fleetVehicles) ? window.fleetVehicles : [];
 
-const vehicle = catalog.find(
-  (item) => item.regNo === registration
-);
-
+const vehicle = catalog.find((item) => item.regNo === registration);
 
 const form = document.getElementById("bookingForm");
 const totalsEl = document.getElementById("bookingTotals");
 const statusEl = document.getElementById("bookingStatus");
 
-const bookingTitle =
-  document.getElementById("bookingTitle");
+const bookingTitle = document.getElementById("bookingTitle");
 
-const vehicleImage =
-  document.getElementById("bookingVehicleImage");
+const vehicleImage = document.getElementById("bookingVehicleImage");
 
-const vehicleIcon =
-  document.getElementById("bookingVehicleIcon");
+const vehicleIcon = document.getElementById("bookingVehicleIcon");
 
-const vehicleName =
-  document.getElementById("bookingVehicleName");
+const vehicleName = document.getElementById("bookingVehicleName");
 
-const vehicleMeta =
-  document.getElementById("bookingVehicleMeta");
+const vehicleMeta = document.getElementById("bookingVehicleMeta");
 
-const dayRate =
-  document.getElementById("bookingDayRate");
+const dayRate = document.getElementById("bookingDayRate");
 
-const driverRate =
-  document.getElementById("bookingDriverRate");
+const driverRate = document.getElementById("bookingDriverRate");
 
-const deposit =
-  document.getElementById("bookingDeposit");
+const deposit = document.getElementById("bookingDeposit");
 
-const location =
-  document.getElementById("bookingLocation");
+const location = document.getElementById("bookingLocation");
 
-const licenseNote =
-  document.getElementById("bookingLicenseNote");
-
+const licenseNote = document.getElementById("bookingLicenseNote");
 
 // ------------------------------------------------------------
 // Invalid vehicle
 // ------------------------------------------------------------
 
 function showUnavailable(message) {
-
   bookingTitle.textContent = "Car Not Available";
 
   vehicleName.textContent = message;
@@ -146,147 +124,99 @@ function showUnavailable(message) {
   }
 }
 
-
 // ------------------------------------------------------------
 // Initialize
 // ------------------------------------------------------------
 
 if (!vehicle) {
-
   showUnavailable(
-    "We couldn't find that car. Please return to the fleet and choose another vehicle."
+    "We couldn't find that car. Please return to the fleet and choose another vehicle.",
   );
-
 } else if (!vehicle.available) {
-
-  vehicleName.textContent =
-    `${vehicle.brand} ${vehicle.model}`;
+  vehicleName.textContent = `${vehicle.brand} ${vehicle.model}`;
 
   showUnavailable(
-    "This car is currently booked. Please choose another vehicle from the fleet."
+    "This car is currently booked. Please choose another vehicle from the fleet.",
   );
-
 } else {
-
   initBooking(vehicle);
-
 }
-
 
 // ============================================================
 // BOOKING
 // ============================================================
 
 function initBooking(vehicle) {
-
   // ----------------------------------------------------------
   // Vehicle information
   // ----------------------------------------------------------
 
-  bookingTitle.textContent =
-    `Book the ${vehicle.brand} ${vehicle.model}`;
+  bookingTitle.textContent = `Book the ${vehicle.brand} ${vehicle.model}`;
 
+  vehicleName.textContent = `${vehicle.brand} ${vehicle.model}`;
 
-  vehicleName.textContent =
-    `${vehicle.brand} ${vehicle.model}`;
+  vehicleMeta.textContent = `${vehicle.category} • ${vehicle.transmission} • ${vehicle.fuel}`;
 
+  dayRate.textContent = `₹${formatCurrency(vehicle.priceDay)}`;
 
-  vehicleMeta.textContent =
-    `${vehicle.category} • ${vehicle.transmission} • ${vehicle.fuel}`;
+  dayRate.textContent = `₹${formatCurrency(vehicle.priceHour || Number(vehicle.priceDay || 0) / 24)}`;
 
+  driverRate.textContent = `₹${formatCurrency(vehicle.driverPrice)}`;
 
-  dayRate.textContent =
-    `₹${formatCurrency(vehicle.priceDay)}`;
+  driverRate.textContent = `₹${formatCurrency(vehicle.driverPriceHour || Number(vehicle.driverPrice || 0) / 24)}`;
 
-
-  dayRate.textContent =
-    `₹${formatCurrency(vehicle.priceHour || Number(vehicle.priceDay || 0) / 24)}`;
-
-  driverRate.textContent =
-    `₹${formatCurrency(vehicle.driverPrice)}`;
-
-
-  driverRate.textContent =
-    `₹${formatCurrency(vehicle.driverPriceHour || Number(vehicle.driverPrice || 0) / 24)}`;
-
-  deposit.textContent =
-    `₹${formatCurrency(vehicle.securityDeposit)}`;
-
+  deposit.textContent = `₹${formatCurrency(vehicle.securityDeposit)}`;
 
   location.textContent =
     vehicle.location || "Gavson Business Park, Ghansoli, Navi Mumbai.";
-
 
   // ----------------------------------------------------------
   // Vehicle image
   // ----------------------------------------------------------
 
-  const imagePath =
-    window.fleetImagePath
-      ? window.fleetImagePath(vehicle)
-      : "";
-
+  const imagePath = window.fleetImagePath ? window.fleetImagePath(vehicle) : "";
 
   if (imagePath) {
-
-    const img =
-      document.createElement("img");
+    const img = document.createElement("img");
 
     img.src = imagePath;
 
-    img.alt =
-      `${vehicle.brand} ${vehicle.model}`;
+    img.alt = `${vehicle.brand} ${vehicle.model}`;
 
     img.loading = "eager";
 
     img.decoding = "async";
 
-
     img.onload = () => {
-
       vehicleIcon.style.display = "none";
 
-      vehicleImage.classList.add(
-        "has-image"
-      );
-
+      vehicleImage.classList.add("has-image");
     };
-
 
     img.onerror = () => {
-
       img.remove();
 
-      vehicleImage.classList.remove(
-        "has-image"
-      );
-
+      vehicleImage.classList.remove("has-image");
     };
-
 
     vehicleImage.prepend(img);
   }
-
 
   // ----------------------------------------------------------
   // Inputs
   // ----------------------------------------------------------
 
-  const pickupInput =
-    document.getElementById("pickupDate");
+  const pickupInput = document.getElementById("pickupDate");
 
-  const dropInput =
-    document.getElementById("dropDate");
+  const dropInput = document.getElementById("dropDate");
 
-  const driverInput =
-    document.getElementById("withDriver");
+  const driverInput = document.getElementById("withDriver");
 
-  const paymentPlanInputs =
-    Array.from(document.querySelectorAll('input[name="paymentPlan"]'));
+  const paymentPlanInputs = Array.from(
+    document.querySelectorAll('input[name="paymentPlan"]'),
+  );
 
-  const resetBookingTimes =
-    document.getElementById("resetBookingTimes");
-
+  const resetBookingTimes = document.getElementById("resetBookingTimes");
 
   const now = new Date();
   const pickupDefault = new Date(now.getTime() + 60 * 60 * 1000);
@@ -298,103 +228,97 @@ function initBooking(vehicle) {
   dropInput.min = toLocalDateTime(pickupDefault);
   dropInput.value = toLocalDateTime(dropDefault);
 
-
   // ----------------------------------------------------------
   // Restore homepage dates
   // ----------------------------------------------------------
 
-  const pickupFromUrl =
-    params.get("pickup");
+  const pickupFromUrl = params.get("pickup");
 
-  const dropFromUrl =
-    params.get("drop");
+  const dropFromUrl = params.get("drop");
 
+  const storedPickup = sessionStorageGet("crp_pickupDate");
 
-  const storedPickup =
-    sessionStorageGet("crp_pickupDate");
+  const storedDrop = sessionStorageGet("crp_dropDate");
 
-  const storedDrop =
-    sessionStorageGet("crp_dropDate");
+  const prefillPickup = pickupFromUrl || storedPickup;
 
+  const prefillDrop = dropFromUrl || storedDrop;
 
-  const prefillPickup =
-    pickupFromUrl || storedPickup;
-
-  const prefillDrop =
-    dropFromUrl || storedDrop;
-
-
-  if (
-    prefillPickup &&
-    prefillPickup.length >= 10
-  ) {
-
+  if (prefillPickup && prefillPickup.length >= 10) {
     const pickupValue =
-      prefillPickup.length > 10
-        ? prefillPickup
-        : `${prefillPickup}T12:00`;
+      prefillPickup.length > 10 ? prefillPickup : `${prefillPickup}T12:00`;
 
-    pickupInput.value =
-      pickupValue;
+    pickupInput.value = pickupValue;
 
-    dropInput.min =
-      toLocalDateTime(new Date(`${pickupValue}`));
+    dropInput.min = toLocalDateTime(new Date(`${pickupValue}`));
 
-    dropInput.value =
-      (() => {
-        const valueDate = new Date(pickupValue);
-        if (Number.isNaN(valueDate.getTime())) return "";
-        const nextDay = new Date(valueDate);
-        nextDay.setDate(nextDay.getDate() + 1);
-        return toLocalDateTime(nextDay);
-      })();
+    dropInput.value = (() => {
+      const valueDate = new Date(pickupValue);
+      if (Number.isNaN(valueDate.getTime())) return "";
+      const nextDay = new Date(valueDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      return toLocalDateTime(nextDay);
+    })();
   }
 
-
-  if (
-    prefillDrop &&
-    prefillDrop.length >= 10
-  ) {
-
+  if (prefillDrop && prefillDrop.length >= 10) {
     dropInput.value =
-      prefillDrop.length > 10
-        ? prefillDrop
-        : `${prefillDrop}T12:00`;
+      prefillDrop.length > 10 ? prefillDrop : `${prefillDrop}T12:00`;
   }
 
+  // A stale URL/session value must never make the return date fall before
+  // today or before the selected pickup time.
+  function synchroniseRentalDates({ resetDrop = false } = {}) {
+    const currentTime = new Date();
+    const minimumPickup = new Date(currentTime.getTime() + 60 * 60 * 1000);
+    const selectedPickup = new Date(pickupInput.value);
+
+    if (
+      Number.isNaN(selectedPickup.getTime()) ||
+      selectedPickup < currentTime
+    ) {
+      pickupInput.value = toLocalDateTime(minimumPickup);
+    }
+
+    const pickupTime = new Date(pickupInput.value);
+    dropInput.min = toLocalDateTime(pickupTime);
+
+    const selectedDrop = new Date(dropInput.value);
+    if (
+      resetDrop ||
+      Number.isNaN(selectedDrop.getTime()) ||
+      selectedDrop < pickupTime
+    ) {
+      const defaultDrop = new Date(pickupTime);
+      defaultDrop.setDate(defaultDrop.getDate() + 1);
+      dropInput.value = toLocalDateTime(defaultDrop);
+    }
+  }
+
+  synchroniseRentalDates();
 
   // ----------------------------------------------------------
   // Calculate rental
   // ----------------------------------------------------------
 
   function calculateBooking() {
+    const pickup = pickupInput.value;
 
-    const pickup =
-      pickupInput.value;
-
-    const drop =
-      dropInput.value;
-
+    const drop = dropInput.value;
 
     if (!pickup || !drop) {
-
       totalsEl.innerHTML = "";
 
       return null;
     }
 
+    const pickupDate = new Date(pickup);
 
-    const pickupDate =
-      new Date(pickup);
-
-    const dropDate =
-      new Date(drop);
-
+    const dropDate = new Date(drop);
 
     const durationMs = dropDate - pickupDate;
 
     if (durationMs <= 0) {
-
       totalsEl.innerHTML = `
         <div class="booking-error">
           Drop date must be after the pickup date.
@@ -404,34 +328,28 @@ function initBooking(vehicle) {
       return null;
     }
 
-
     const hours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)));
     const days = Math.max(1, Math.ceil(hours / 24));
     const withDriver = driverInput.checked;
-    const hourlyRate = Number(vehicle.priceHour || Number(vehicle.priceDay || 0) / 24);
-    const driverHourlyRate = Number(vehicle.driverPriceHour || Number(vehicle.driverPrice || 0) / 24);
+    const hourlyRate = Number(
+      vehicle.priceHour || Number(vehicle.priceDay || 0) / 24,
+    );
+    const driverHourlyRate = Number(
+      vehicle.driverPriceHour || Number(vehicle.driverPrice || 0) / 24,
+    );
     const rentalTotal = hours * hourlyRate;
     const driverTotal = withDriver ? hours * driverHourlyRate : 0;
 
+    const securityDeposit = Number(vehicle.securityDeposit || 0);
 
-    const securityDeposit =
-      Number(vehicle.securityDeposit || 0);
-
-
-    const total =
-      rentalTotal +
-      driverTotal +
-      securityDeposit;
+    const total = rentalTotal + driverTotal + securityDeposit;
 
     const paymentPlan =
       paymentPlanInputs.find((input) => input.checked)?.value || "advance";
 
-    const paymentAmount =
-      paymentPlan === "advance" ? 500 : total;
+    const paymentAmount = paymentPlan === "advance" ? 500 : total;
 
-    const remainingBalance =
-      Math.max(0, total - paymentAmount);
-
+    const remainingBalance = Math.max(0, total - paymentAmount);
 
     totalsEl.innerHTML = `
 
@@ -511,17 +429,20 @@ function initBooking(vehicle) {
     `;
 
     const totalRows = totalsEl.querySelectorAll(".booking-total-row");
-    const breakdownHeader = totalsEl.querySelector(".booking-totals__header span:last-child");
+    const breakdownHeader = totalsEl.querySelector(
+      ".booking-totals__header span:last-child",
+    );
     if (breakdownHeader) {
       breakdownHeader.textContent = `${hours} hour${hours > 1 ? "s" : ""}`;
     }
     if (totalRows[0]?.querySelector("small")) {
-      totalRows[0].querySelector("small").textContent = `Hourly rate: ₹${formatCurrency(hourlyRate)}`;
+      totalRows[0].querySelector("small").textContent =
+        `Hourly rate: ₹${formatCurrency(hourlyRate)}`;
     }
     if (withDriver && totalRows[1]?.querySelector("small")) {
-      totalRows[1].querySelector("small").textContent = `Hourly rate: ₹${formatCurrency(driverHourlyRate)}`;
+      totalRows[1].querySelector("small").textContent =
+        `Hourly rate: ₹${formatCurrency(driverHourlyRate)}`;
     }
-
 
     return {
       days,
@@ -539,42 +460,26 @@ function initBooking(vehicle) {
     };
   }
 
-
   // ----------------------------------------------------------
   // Events
   // ----------------------------------------------------------
 
-  pickupInput.addEventListener(
-    "change",
-    () => {
+  pickupInput.addEventListener("change", () => {
+    synchroniseRentalDates();
+    calculateBooking();
+  });
 
-      const nextDay =
-        nextDayISO(pickupInput.value);
+  dropInput.addEventListener("change", calculateBooking);
 
-      dropInput.min = nextDay;
-
-      dropInput.value = nextDay;
-
-      calculateBooking();
-    }
-  );
-
-
-  dropInput.addEventListener(
-    "change",
-    calculateBooking
-  );
-
-
-  driverInput.addEventListener(
-    "change",
-    calculateBooking
-  );
+  driverInput.addEventListener("change", calculateBooking);
 
   paymentPlanInputs.forEach((input) => {
     input.addEventListener("change", () => {
       document.querySelectorAll(".booking-payment-option").forEach((option) => {
-        option.classList.toggle("booking-payment-option--selected", option.contains(input) && input.checked);
+        option.classList.toggle(
+          "booking-payment-option--selected",
+          option.contains(input) && input.checked,
+        );
       });
       calculateBooking();
     });
@@ -592,9 +497,7 @@ function initBooking(vehicle) {
     calculateBooking();
   });
 
-
   calculateBooking();
-
 
   // ----------------------------------------------------------
   // Authentication
@@ -602,63 +505,35 @@ function initBooking(vehicle) {
 
   let currentUser = null;
 
+  onAuthStateChanged(auth, async (user) => {
+    currentUser = user;
 
-  onAuthStateChanged(
-    auth,
-    async (user) => {
+    if (!user) {
+      statusEl.textContent = "Please log in to continue with your booking.";
 
-      currentUser = user;
+      return;
+    }
 
+    statusEl.textContent = "";
 
-      if (!user) {
+    try {
+      const vehicleOverride = await getDoc(doc(db, "vehicles", vehicle.regNo));
 
-        statusEl.textContent =
-          "Please log in to continue with your booking.";
-
-        return;
+      if (
+        vehicleOverride.exists() &&
+        vehicleOverride.data().available === false
+      ) {
+        throw new Error(
+          "This vehicle was just marked unavailable. Please choose another car.",
+        );
       }
 
+      const userSnapshot = await getDoc(doc(db, "users", user.uid));
 
-      statusEl.textContent = "";
+      const userData = userSnapshot.exists() ? userSnapshot.data() : {};
 
-
-      try {
-
-        const vehicleOverride = await getDoc(
-          doc(db, "vehicles", vehicle.regNo)
-        );
-
-        if (
-          vehicleOverride.exists() &&
-          vehicleOverride.data().available === false
-        ) {
-          throw new Error(
-            "This vehicle was just marked unavailable. Please choose another car."
-          );
-        }
-
-        const userSnapshot =
-          await getDoc(
-            doc(
-              db,
-              "users",
-              user.uid
-            )
-          );
-
-
-        const userData =
-          userSnapshot.exists()
-            ? userSnapshot.data()
-            : {};
-
-
-        if (
-          userData.licenseStatus !==
-          "verified"
-        ) {
-
-          licenseNote.innerHTML = `
+      if (userData.licenseStatus !== "verified") {
+        licenseNote.innerHTML = `
             <strong>Please Note</strong>
 
             <span>
@@ -668,275 +543,152 @@ function initBooking(vehicle) {
             </span>
           `;
 
-          licenseNote.classList.add(
-            "booking-license-note--warning"
-          );
-        }
-
-      } catch (error) {
-
-        console.warn(
-          "Could not load user profile.",
-          error
-        );
-
+        licenseNote.classList.add("booking-license-note--warning");
       }
-
+    } catch (error) {
+      console.warn("Could not load user profile.", error);
     }
-  );
-
+  });
 
   // ----------------------------------------------------------
   // Submit
   // ----------------------------------------------------------
 
-  form.addEventListener(
-    "submit",
-    async (event) => {
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
-      event.preventDefault();
+    // Login required
+    if (!currentUser) {
+      const nextParams = new URLSearchParams();
 
+      nextParams.set("reg", vehicle.regNo);
 
-      // Login required
-      if (!currentUser) {
-
-        const nextParams =
-          new URLSearchParams();
-
-
-        nextParams.set(
-          "reg",
-          vehicle.regNo
-        );
-
-
-        if (pickupInput.value) {
-
-          nextParams.set(
-            "pickup",
-            pickupInput.value
-          );
-
-        }
-
-
-        if (dropInput.value) {
-
-          nextParams.set(
-            "drop",
-            dropInput.value
-          );
-
-        }
-
-
-        const next =
-          `booking.html?${nextParams.toString()}`;
-
-
-        window.location.href =
-          `index.html?next=${encodeURIComponent(next)}`;
-
-
-        return;
+      if (pickupInput.value) {
+        nextParams.set("pickup", pickupInput.value);
       }
 
-
-      const calculation =
-        calculateBooking();
-
-
-      if (!calculation) {
-        return;
+      if (dropInput.value) {
+        nextParams.set("drop", dropInput.value);
       }
 
+      const next = `booking.html?${nextParams.toString()}`;
 
-      const submitButton =
-        form.querySelector(
-          'button[type="submit"]'
+      window.location.href = `index.html?next=${encodeURIComponent(next)}`;
+
+      return;
+    }
+
+    const calculation = calculateBooking();
+
+    if (!calculation) {
+      return;
+    }
+
+    const submitButton = form.querySelector('button[type="submit"]');
+
+    submitButton.disabled = true;
+
+    statusEl.textContent = "Creating your booking...";
+
+    statusEl.classList.remove("form-status--error");
+
+    try {
+      const userSnapshot = await getDoc(doc(db, "users", currentUser.uid));
+
+      const userData = userSnapshot.exists() ? userSnapshot.data() : {};
+
+      let bookingRef;
+
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const numericBookingId = generateNumericBookingId();
+        const candidateRef = doc(collection(db, "bookings"), numericBookingId);
+        const candidateSnapshot = await getDoc(candidateRef);
+
+        if (!candidateSnapshot.exists()) {
+          bookingRef = candidateRef;
+          break;
+        }
+      }
+
+      if (!bookingRef) {
+        throw new Error(
+          "Could not generate a unique booking number. Please try again.",
         );
+      }
 
+      await setDoc(bookingRef, {
+        bookingNumber: bookingRef.id,
 
-      submitButton.disabled = true;
+        userId: currentUser.uid,
 
+        userName: userData.name || currentUser.displayName || currentUser.email,
+
+        userEmail: currentUser.email,
+
+        userPhone: userData.phone || null,
+
+        vehicleReg: vehicle.regNo,
+
+        vehicleName: `${vehicle.brand} ${vehicle.model}`,
+
+        vehicleCategory: vehicle.category,
+
+        vehicleIcon: "",
+
+        pickupDate: pickupInput.value,
+
+        dropDate: dropInput.value,
+
+        days: calculation.days,
+
+        hours: calculation.hours,
+
+        withDriver: calculation.withDriver,
+
+        dayRate: vehicle.priceDay,
+
+        hourlyRate: calculation.hourlyRate,
+
+        driverRate: vehicle.driverPrice,
+
+        driverHourlyRate: calculation.driverHourlyRate,
+
+        securityDeposit: vehicle.securityDeposit,
+
+        totalAmount: calculation.total,
+
+        paymentPlan: calculation.paymentPlan,
+
+        paymentAmount: calculation.paymentAmount,
+
+        remainingBalance: calculation.remainingBalance,
+
+        location: vehicle.location,
+
+        status: "pending_payment",
+
+        paymentStatus: "unpaid",
+
+        paymentRef: null,
+
+        createdAt: serverTimestamp(),
+      });
+
+      // Preserve booking dates when moving to payment.
+      const paymentParams = new URLSearchParams();
+
+      paymentParams.set("booking", bookingRef.id);
+
+      window.location.href = `payment.html?${paymentParams.toString()}`;
+    } catch (error) {
+      console.error("Booking creation failed:", error);
 
       statusEl.textContent =
-        "Creating your booking...";
+        error?.message || "Couldn't create the booking. Please try again.";
 
+      statusEl.classList.add("form-status--error");
 
-      statusEl.classList.remove(
-        "form-status--error"
-      );
-
-
-      try {
-
-        const userSnapshot =
-          await getDoc(
-            doc(
-              db,
-              "users",
-              currentUser.uid
-            )
-          );
-
-
-        const userData =
-          userSnapshot.exists()
-            ? userSnapshot.data()
-            : {};
-
-
-        let bookingRef;
-
-        for (let attempt = 0; attempt < 5; attempt += 1) {
-          const numericBookingId = generateNumericBookingId();
-          const candidateRef = doc(
-            collection(db, "bookings"),
-            numericBookingId
-          );
-          const candidateSnapshot = await getDoc(candidateRef);
-
-          if (!candidateSnapshot.exists()) {
-            bookingRef = candidateRef;
-            break;
-          }
-        }
-
-        if (!bookingRef) {
-          throw new Error("Could not generate a unique booking number. Please try again.");
-        }
-
-        await setDoc(
-          bookingRef,
-          {
-
-              bookingNumber:
-                bookingRef.id,
-
-              userId:
-                currentUser.uid,
-
-              userName:
-                userData.name ||
-                currentUser.displayName ||
-                currentUser.email,
-
-              userEmail:
-                currentUser.email,
-
-              userPhone:
-                userData.phone ||
-                null,
-
-              vehicleReg:
-                vehicle.regNo,
-
-              vehicleName:
-                `${vehicle.brand} ${vehicle.model}`,
-
-              vehicleCategory:
-                vehicle.category,
-
-              vehicleIcon: "",
-
-              pickupDate:
-                pickupInput.value,
-
-              dropDate:
-                dropInput.value,
-
-              days:
-                calculation.days,
-
-              hours:
-                calculation.hours,
-
-              withDriver:
-                calculation.withDriver,
-
-              dayRate:
-                vehicle.priceDay,
-
-              hourlyRate:
-                calculation.hourlyRate,
-
-              driverRate:
-                vehicle.driverPrice,
-
-              driverHourlyRate:
-                calculation.driverHourlyRate,
-
-              securityDeposit:
-                vehicle.securityDeposit,
-
-              totalAmount:
-                calculation.total,
-
-              paymentPlan:
-                calculation.paymentPlan,
-
-              paymentAmount:
-                calculation.paymentAmount,
-
-              remainingBalance:
-                calculation.remainingBalance,
-
-              location:
-                vehicle.location,
-
-              status:
-                "pending_payment",
-
-              paymentStatus:
-                "unpaid",
-
-              paymentRef:
-                null,
-
-              createdAt:
-                serverTimestamp(),
-          }
-        );
-
-
-        // Preserve booking dates when moving to payment.
-        const paymentParams =
-          new URLSearchParams();
-
-        paymentParams.set(
-          "booking",
-          bookingRef.id
-        );
-
-
-        window.location.href =
-          `payment.html?${paymentParams.toString()}`;
-
-
-      } catch (error) {
-
-        console.error(
-          "Booking creation failed:",
-          error
-        );
-
-
-        statusEl.textContent =
-          error?.message ||
-          "Couldn't create the booking. Please try again.";
-
-
-        statusEl.classList.add(
-          "form-status--error"
-        );
-
-
-        submitButton.disabled =
-          false;
-      }
-
+      submitButton.disabled = false;
     }
-  );
-
+  });
 }

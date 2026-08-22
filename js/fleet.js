@@ -43,7 +43,7 @@ function renderFleetCards(records) {
   grid.innerHTML = records
     .map((vehicle, index) => {
       const vehicleName = `${vehicle.brand} ${vehicle.model}`;
-      const imagePath = window.fleetImagePath(vehicle);
+      const imagePath = vehicle.imageUrl || window.fleetImagePath(vehicle);
       const isAvailable = Boolean(vehicle.available);
       const availabilityLabel = isAvailable
         ? "Available"
@@ -496,13 +496,25 @@ async function applyFleetAvailabilityOverrides() {
       snapshot.docs.map((item) => [item.id, item.data()])
     );
 
-    (window.fleetVehicles || []).forEach((vehicle) => {
+    const catalog = window.fleetVehicles || [];
+    const catalogRegistrations = new Set(catalog.map((vehicle) => vehicle.regNo));
+
+    catalog.forEach((vehicle) => {
       const override = overrides.get(vehicle.regNo);
-      if (override && typeof override.available === "boolean") {
+      if (override?.removed) {
+        vehicle.removed = true;
+      } else if (override && typeof override.available === "boolean") {
         vehicle.available = override.available ? 1 : 0;
         vehicle.status = override.available ? "available" : "unavailable";
       }
     });
+
+    snapshot.docs
+      .map((item) => ({ regNo: item.id, ...item.data() }))
+      .filter((vehicle) => vehicle.isCustomFleet && !vehicle.removed && !catalogRegistrations.has(vehicle.regNo))
+      .forEach((vehicle) => catalog.push(vehicle));
+
+    window.fleetVehicles = catalog.filter((vehicle) => !vehicle.removed);
   } catch (error) {
     console.warn("Could not load fleet availability overrides:", error);
   }

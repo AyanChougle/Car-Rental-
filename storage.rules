@@ -67,5 +67,13 @@ service firebase.storage {
       allow read: if isHostCarOwnerOrStaff(hostCarId);
       allow write: if isStaff();
     }
+
+    // Admin-uploaded public fleet imagery. The download URL is stored on the
+    // matching vehicles document so Fleet can show the vehicle to visitors.
+    match /fleet/{regNo}/{fileName} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == "admin";
+    }
   }
 }
