@@ -5047,7 +5047,115 @@ footer,
   transform: none !important;
   box-shadow: none;
 }
+/* ================================
+   MAIN NAVBAR
+================================ */
 
+.main-nav {
+    width: fit-content;
+    max-width: calc(100% - 40px);
+    margin: 10px auto;
+    padding: 6px;
+    
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    background: rgba(35, 35, 35, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 16px;
+
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+}
+
+/* Navbar links */
+.main-nav a {
+    position: relative;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 12px 18px;
+
+    color: #aeb7c2;
+    text-decoration: none;
+
+    font-size: 14px;
+    font-weight: 700;
+
+    border-radius: 12px;
+
+    transition:
+        background 0.2s ease,
+        color 0.2s ease,
+        transform 0.2s ease;
+}
+
+/* Hover */
+.main-nav a:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+/* Active page */
+.main-nav a.active {
+    color: #ffffff;
+
+    background: rgba(255, 255, 255, 0.10);
+
+    box-shadow:
+        inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+        0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Cyan active underline */
+.main-nav a.active::after {
+    content: "";
+
+    position: absolute;
+
+    left: 50%;
+    bottom: 5px;
+
+    width: 28px;
+    height: 2px;
+
+    transform: translateX(-50%);
+
+    background: #35d8ff;
+    border-radius: 999px;
+
+    box-shadow: 0 0 8px rgba(53, 216, 255, 0.6);
+}
+
+
+/* ================================
+   MOBILE
+================================ */
+
+@media (max-width: 800px) {
+
+    .main-nav {
+        max-width: calc(100% - 20px);
+        overflow-x: auto;
+        justify-content: flex-start;
+        scrollbar-width: none;
+    }
+
+    .main-nav::-webkit-scrollbar {
+        display: none;
+    }
+
+    .main-nav a {
+        flex-shrink: 0;
+        padding: 11px 14px;
+        font-size: 13px;
+    }
+}
 .auth-tabs .tab-label:hover {
   background: rgba(255, 255, 255, 0.055);
   color: var(--white);

@@ -15,6 +15,7 @@
     <!-- Keep your global design system, then let fleet.css own this page. -->
     <link rel="stylesheet" href="css/style.css" />
     <link rel="stylesheet" href="css/premium.css" />
+    <link rel="stylesheet" href="css/fleet-admin-v5.css" />
   </head>
 
   <body class="fleet-page">
@@ -58,9 +59,7 @@
           <div class="fleet-hero__content">
             <span class="fleet-eyebrow">KRUIZLY FLEET</span>
 
-            <h1>
-              Curated cars for every route, mood.
-            </h1>
+            <h1>Curated cars for every route, mood.</h1>
 
             <p>
               Browse, filter, and sort your ideal ride with the same polished
@@ -80,37 +79,89 @@
                 <div class="fleet-input-wrap">
                   <span class="fleet-search-icon" aria-hidden="true">
                     <input
-                    id="search"
-                    type="search"
-                    autocomplete="off"
-                    placeholder="Search car, category, fuel or transmission..."
-                  />
+                      id="search"
+                      type="search"
+                      autocomplete="off"
+                      placeholder="Search car, category, fuel or transmission..."
+                    />
                   </span>
                 </div>
               </div>
 
-              <div class="fleet-field">
-                <label for="categorySelect">Select category</label>
-                <div class="fleet-select-wrap">
-                  <select id="categorySelect">
-                    <option value="all">All Categories</option>
-                    <option value="economy">Economy</option>
-                    <option value="suv">SUV</option>
-                    <option value="luxury">Luxury</option>
-                    <option value="van">Van</option>
-                  </select>
-                </div>
-              </div>
+              <div class="fleet-field fleet-sort-field">
+                <label for="sortDropdownButton">Sort vehicles</label>
 
-              <div class="fleet-field">
-                <label for="sort">Sort vehicles</label>
-                <div class="fleet-select-wrap">
-                  <select id="sort">
+                <div class="fleet-custom-select" id="sortDropdown">
+                  <!-- Keep the real select for the existing fleet.js sorting logic -->
+                  <select
+                    id="sort"
+                    class="fleet-sort-native"
+                    aria-hidden="true"
+                    tabindex="-1"
+                  >
                     <option value="recommended">Sort: Recommended</option>
                     <option value="price-asc">Price: Low to High</option>
                     <option value="price-desc">Price: High to Low</option>
                     <option value="seats-desc">Seats: High to Low</option>
                   </select>
+
+                  <button
+                    type="button"
+                    class="fleet-custom-select__button"
+                    id="sortDropdownButton"
+                    aria-haspopup="listbox"
+                    aria-expanded="false"
+                  >
+                    <span id="sortDropdownLabel">Sort: Recommended</span>
+
+                    <svg
+                      class="fleet-custom-select__arrow"
+                      viewBox="0 0 24 24"
+                      aria-hidden="true"
+                    >
+                      <path d="m6 9 6 6 6-6"></path>
+                    </svg>
+                  </button>
+
+                  <div
+                    class="fleet-custom-select__menu"
+                    id="sortDropdownMenu"
+                    role="listbox"
+                    aria-label="Sort vehicles"
+                  >
+                    <button
+                      type="button"
+                      class="fleet-custom-select__option is-selected"
+                      data-value="recommended"
+                      role="option"
+                      aria-selected="true"
+                    >
+                      <span>Sort: Recommended</span>
+                      <span class="fleet-custom-select__check">✓</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="fleet-custom-select__option"
+                      data-value="price-asc"
+                      role="option"
+                      aria-selected="false"
+                    >
+                      <span>Price: Low to High</span>
+                      <span class="fleet-custom-select__check">✓</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      class="fleet-custom-select__option"
+                      data-value="price-desc"
+                      role="option"
+                      aria-selected="false"
+                    >
+                      <span>Price: High to Low</span>
+                      <span class="fleet-custom-select__check">✓</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -162,7 +213,7 @@
                   Van
                 </button>
               </div>
-<!-- 
+              <!-- 
               <p class="fleet-result-count" id="fleetResultCount">
                 Loading vehicles...
               </p> -->
@@ -184,9 +235,7 @@
           <div class="fleet-empty-state hidden" id="fleetEmptyState">
             <div class="fleet-empty-state__icon" aria-hidden="true">KR</div>
             <h2>No matching cars found</h2>
-            <p>
-              Try changing your search term or selecting another category.
-            </p>
+            <p>Try changing your search term or selecting another category.</p>
             <button class="btn btn-light" id="clearFleetFilters" type="button">
               Clear Filters
             </button>
@@ -201,8 +250,8 @@
           <div class="footer-brand footer-section">
             <a href="index.html" class="logo">KRUIZLY</a>
             <p>
-              Premium self-drive rentals across India with trusted,
-              hassle-free booking and 24/7 support.
+              Premium self-drive rentals across India with trusted, hassle-free
+              booking and 24/7 support.
             </p>
           </div>
           <div class="footer-links footer-section">
@@ -230,24 +279,29 @@
             <p><a href="mailto:support@kruizly.com">support@kruizly.com</a></p>
             <p><a href="tel:+919167164547">+91 91671 64547</a></p>
 
-             <div class="social-links">
-              <a href="https://www.instagram.com/carrentpe1" class="social-link instagram" aria-label="Instagram"
+            <div class="social-links">
+              <a
+                href="https://www.instagram.com/carrentpe1"
+                class="social-link instagram"
+                aria-label="Instagram"
                 >Instagram</a
               >
-              <a href="https://www.facebook.com/people/Carrentpe/61590438248524/" class="social-link facebook" aria-label="Facebook"
+              <a
+                href="https://www.facebook.com/people/Carrentpe/61590438248524/"
+                class="social-link facebook"
+                aria-label="Facebook"
                 >Facebook</a
-              > 
+              >
             </div>
           </div>
         </div>
 
-        <div class="footer-copy">
-          © 2026 KRUIZLY. All rights reserved.
-        </div>
+        <div class="footer-copy">© 2026 KRUIZLY. All rights reserved.</div>
       </div>
     </footer>
 
     <script src="js/vehicles.js"></script>
+    <script src="js/custom-select.js"></script>
     <script type="module" src="js/fleet.js"></script>
   </body>
 </html>

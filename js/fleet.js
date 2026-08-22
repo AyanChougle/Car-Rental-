@@ -12,7 +12,7 @@ import "./nav-helper.js";
 
 const search = document.getElementById("search");
 const sort = document.getElementById("sort");
-const categorySelect = document.getElementById("categorySelect");
+
 const chips = [...document.querySelectorAll(".chip")];
 const grid = document.getElementById("fleetGrid");
 
@@ -242,7 +242,6 @@ function getCards() {
 
 function applyFilters() {
   const query = search.value.trim().toLowerCase();
-  const selectedCategory = categorySelect.value;
 
   getCards().forEach((card) => {
     const name = card.dataset.name.toLowerCase();
@@ -254,10 +253,6 @@ function applyFilters() {
     const matchesCategory =
       state.activeCategory === "all" ||
       category === state.activeCategory;
-
-    const matchesSelect =
-      selectedCategory === "all" ||
-      category === selectedCategory;
 
     const searchableContent = [
       name,
@@ -277,7 +272,6 @@ function applyFilters() {
       "hidden",
       !(
         matchesCategory &&
-        matchesSelect &&
         matchesSearch
       ),
     );
@@ -342,9 +336,6 @@ chips.forEach((chip) => {
     state.activeCategory =
       chip.dataset.category || "all";
 
-    categorySelect.value =
-      state.activeCategory;
-
     applyFilters();
   });
 });
@@ -352,24 +343,7 @@ chips.forEach((chip) => {
 search.addEventListener("input", applyFilters);
 
 sort.addEventListener("change", sortCards);
-
-categorySelect.addEventListener("change", () => {
-  state.activeCategory = categorySelect.value;
-
-  chips.forEach((chip) => {
-    const isActive =
-      chip.dataset.category === state.activeCategory;
-
-    chip.classList.toggle("active", isActive);
-
-    chip.setAttribute(
-      "aria-pressed",
-      String(isActive),
-    );
-  });
-
   applyFilters();
-});
 
 // Card button handling.
 grid.addEventListener("click", (event) => {
@@ -520,6 +494,164 @@ async function applyFleetAvailabilityOverrides() {
   }
 }
 
-await applyFleetAvailabilityOverrides();
+// Render the catalog immediately — it's already available from vehicles.js,
+// no need to wait on a network call for it. Live availability overrides
+// (from Firestore) are layered on top afterward and re-render the grid if
+// they succeed; if that call is slow, blocked by security rules, or fails
+// outright, the fleet is still visible instead of stuck on "Loading fleet...".
 renderFleetCards(window.fleetVehicles || []);
 applyFilters();
+
+applyFleetAvailabilityOverrides().then(() => {
+  renderFleetCards(window.fleetVehicles || []);
+  applyFilters();
+});
+/* =========================================================
+   CUSTOM SORT DROPDOWN
+   ========================================================= */
+
+const sortDropdown = document.getElementById("sortDropdown");
+const sortDropdownButton = document.getElementById(
+  "sortDropdownButton",
+);
+const sortDropdownLabel = document.getElementById(
+  "sortDropdownLabel",
+);
+const sortDropdownMenu = document.getElementById(
+  "sortDropdownMenu",
+);
+
+const sortOptions = [
+  ...document.querySelectorAll(
+    ".fleet-custom-select__option",
+  ),
+];
+
+function closeSortDropdown() {
+  if (!sortDropdown || !sortDropdownButton) {
+    return;
+  }
+
+  sortDropdown.classList.remove("is-open");
+  sortDropdownButton.setAttribute(
+    "aria-expanded",
+    "false",
+  );
+}
+
+function openSortDropdown() {
+  if (!sortDropdown || !sortDropdownButton) {
+    return;
+  }
+
+  sortDropdown.classList.add("is-open");
+  sortDropdownButton.setAttribute(
+    "aria-expanded",
+    "true",
+  );
+}
+
+function updateSortDropdown(value) {
+  const selectedOption = sortOptions.find(
+    (option) => option.dataset.value === value,
+  );
+
+  if (!selectedOption) {
+    return;
+  }
+
+  const label = selectedOption.querySelector("span");
+
+  if (label && sortDropdownLabel) {
+    sortDropdownLabel.textContent =
+      label.textContent.trim();
+  }
+
+  sortOptions.forEach((option) => {
+    const isSelected =
+      option.dataset.value === value;
+
+    option.classList.toggle(
+      "is-selected",
+      isSelected,
+    );
+
+    option.setAttribute(
+      "aria-selected",
+      String(isSelected),
+    );
+  });
+}
+
+if (
+  sortDropdown &&
+  sortDropdownButton &&
+  sortDropdownMenu
+) {
+  sortDropdownButton.addEventListener(
+    "click",
+    (event) => {
+      event.stopPropagation();
+
+      const isOpen =
+        sortDropdown.classList.contains(
+          "is-open",
+        );
+
+      if (isOpen) {
+        closeSortDropdown();
+      } else {
+        openSortDropdown();
+      }
+    },
+  );
+
+  sortOptions.forEach((option) => {
+    option.addEventListener("click", () => {
+      const value = option.dataset.value;
+
+      if (!value) {
+        return;
+      }
+
+      /*
+       * Update the real select.
+       * The existing fleet.js sorting code continues
+       * to work without being rewritten.
+       */
+      sort.value = value;
+
+      updateSortDropdown(value);
+
+      closeSortDropdown();
+
+      /*
+       * Trigger the existing sort handler.
+       */
+      sort.dispatchEvent(
+        new Event("change", {
+          bubbles: true,
+        }),
+      );
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (
+      !sortDropdown.contains(event.target)
+    ) {
+      closeSortDropdown();
+    }
+  });
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (event.key === "Escape") {
+        closeSortDropdown();
+      }
+    },
+  );
+
+  updateSortDropdown(sort.value);
+}

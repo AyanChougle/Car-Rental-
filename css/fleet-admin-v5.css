@@ -1,0 +1,346 @@
+/* ============================================================
+   KRUIZLY V5 — FLEET SORT + ADMIN FLEET MANAGEMENT
+   Drop-in overrides. No background-video or application logic changes.
+   ============================================================ */
+
+/* ---------- Custom fleet dropdown ---------- */
+.fleet-select-wrap.kr-custom-select {
+  position: relative !important;
+  width: 100% !important;
+  overflow: visible !important;
+  isolation: isolate;
+}
+
+.fleet-select-wrap.kr-custom-select > select {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.kr-custom-select__trigger {
+  position: relative !important;
+  width: 100% !important;
+  min-height: 48px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  padding: 0 15px !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, rgba(18,21,23,.94), rgba(7,9,10,.96)) !important;
+  color: #f5f7f8 !important;
+  font: 700 12px/1.2 "Manrope","Avenir Next","Segoe UI",Arial,sans-serif !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease !important;
+}
+
+.kr-custom-select__trigger:hover,
+.kr-custom-select.is-open .kr-custom-select__trigger {
+  border-color: rgba(53,210,255,.68) !important;
+  box-shadow: 0 0 0 3px rgba(53,210,255,.08) !important;
+  background: rgba(15,20,22,.98) !important;
+}
+
+.kr-custom-select__chevron {
+  flex: 0 0 auto !important;
+  width: 8px !important;
+  height: 8px !important;
+  border-right: 1px solid rgba(255,255,255,.75) !important;
+  border-bottom: 1px solid rgba(255,255,255,.75) !important;
+  transform: rotate(45deg) translateY(-2px) !important;
+  transition: transform .18s ease !important;
+}
+
+.kr-custom-select.is-open .kr-custom-select__chevron {
+  transform: rotate(225deg) translateY(-1px) !important;
+}
+
+.kr-custom-select__menu {
+  position: absolute !important;
+  z-index: 9999 !important;
+  top: calc(100% + 7px) !important;
+  left: 0 !important;
+  width: 100% !important;
+  max-height: min(250px, 42svh) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain !important;
+  padding: 6px !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  border-radius: 2px !important;
+  background: rgba(8,10,12,.985) !important;
+  box-shadow: 0 22px 55px rgba(0,0,0,.58), 0 0 0 1px rgba(0,0,0,.5) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  display: none !important;
+}
+
+.kr-custom-select.is-open .kr-custom-select__menu {
+  display: block !important;
+}
+
+.kr-custom-select.is-drop-up .kr-custom-select__menu {
+  top: auto !important;
+  bottom: calc(100% + 7px) !important;
+}
+
+.kr-custom-select__option {
+  width: 100% !important;
+  min-height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 0 11px !important;
+  border: 0 !important;
+  border-radius: 1px !important;
+  background: transparent !important;
+  color: rgba(245,247,248,.78) !important;
+  font: 700 11px/1.2 "Manrope","Avenir Next","Segoe UI",Arial,sans-serif !important;
+  text-align: left !important;
+  cursor: pointer !important;
+}
+
+.kr-custom-select__option:hover,
+.kr-custom-select__option:focus-visible {
+  outline: 0 !important;
+  color: #fff !important;
+  background: rgba(53,210,255,.12) !important;
+}
+
+.kr-custom-select__option.is-selected {
+  color: #fff !important;
+  background: rgba(53,210,255,.10) !important;
+}
+
+.kr-custom-select__option.is-selected::after {
+  content: "✓" !important;
+  margin-left: auto !important;
+  color: #35d2ff !important;
+  font-weight: 900 !important;
+}
+
+/* Prevent the fleet toolbar from clipping the custom menu. */
+.fleet-page .fleet-toolbar,
+.fleet-page .fleet-controls,
+.fleet-page .fleet-field,
+.fleet-page .fleet-listing-section,
+.fleet-page .fleet-select-wrap {
+  overflow: visible !important;
+}
+
+/* ---------- Admin fleet management ---------- */
+#fleetManagementWrap {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  overflow: visible !important;
+  padding: 0 !important;
+  border-radius: 22px !important;
+}
+
+#fleetManagementWrap > * {
+  min-width: 0 !important;
+}
+
+/* The form uses the full card width instead of leaving a huge empty right side. */
+#fleetUploadForm {
+  width: 100% !important;
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  margin: 0 !important;
+  padding: 24px !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(255,255,255,.09) !important;
+  background: rgba(255,255,255,.012) !important;
+}
+
+#fleetUploadForm > * {
+  min-width: 0 !important;
+}
+
+#fleetUploadForm label {
+  display: grid !important;
+  gap: 8px !important;
+  min-width: 0 !important;
+  color: rgba(255,255,255,.58) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  letter-spacing: .13em !important;
+  line-height: 1.25 !important;
+  text-transform: uppercase !important;
+}
+
+#fleetUploadForm input,
+#fleetUploadForm select,
+#fleetUploadForm textarea {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 48px !important;
+  border: 1px solid rgba(255,255,255,.13) !important;
+  border-radius: 0 !important;
+  background: rgba(5,7,8,.78) !important;
+  color: #f5f7f8 !important;
+  padding: 0 13px !important;
+  outline: 0 !important;
+}
+
+#fleetUploadForm input[type="file"] {
+  min-height: 48px !important;
+  padding: 7px !important;
+  color: rgba(255,255,255,.55) !important;
+}
+
+#fleetUploadForm input[type="file"]::file-selector-button {
+  min-height: 32px !important;
+  margin-right: 9px !important;
+  padding: 0 12px !important;
+  border: 1px solid rgba(255,255,255,.22) !important;
+  border-radius: 0 !important;
+  background: #15191b !important;
+  color: #fff !important;
+  font: 800 9px/1 "Manrope","Avenir Next","Segoe UI",Arial,sans-serif !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+}
+
+#fleetUploadForm input:focus,
+#fleetUploadForm select:focus,
+#fleetUploadForm textarea:focus {
+  border-color: rgba(53,210,255,.68) !important;
+  box-shadow: 0 0 0 3px rgba(53,210,255,.07) !important;
+}
+
+#fleetUploadSubmit {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  min-height: 48px !important;
+  margin: 0 !important;
+  border: 1px solid rgba(53,210,255,.7) !important;
+  border-radius: 0 !important;
+  background: linear-gradient(135deg, rgba(53,210,255,.18), rgba(53,210,255,.07)) !important;
+  color: #fff !important;
+  font: 800 10px/1 "Manrope","Avenir Next","Segoe UI",Arial,sans-serif !important;
+  letter-spacing: .13em !important;
+  text-transform: uppercase !important;
+}
+
+#fleetUploadSubmit:hover {
+  background: rgba(53,210,255,.16) !important;
+}
+
+/* Table fills the card instead of being squeezed into a narrow column. */
+#fleetManagementWrap .admin-table-wrap {
+  width: 100% !important;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 14px 14px !important;
+  overflow-x: auto !important;
+}
+
+#fleetManagementWrap .admin-table {
+  width: 100% !important;
+  min-width: 900px !important;
+  table-layout: fixed !important;
+  border-collapse: separate !important;
+  border-spacing: 0 8px !important;
+}
+
+#fleetManagementWrap .admin-table th,
+#fleetManagementWrap .admin-table td {
+  min-width: 0 !important;
+  padding: 14px 12px !important;
+  vertical-align: middle !important;
+  overflow-wrap: anywhere !important;
+}
+
+#fleetManagementWrap .admin-table th {
+  color: rgba(255,255,255,.48) !important;
+  font-size: 9px !important;
+  font-weight: 800 !important;
+  letter-spacing: .12em !important;
+  text-transform: uppercase !important;
+  white-space: nowrap !important;
+}
+
+#fleetManagementWrap .admin-table tbody tr {
+  background: rgba(255,255,255,.018) !important;
+  border: 1px solid rgba(255,255,255,.07) !important;
+}
+
+#fleetManagementWrap .admin-table tbody td {
+  color: rgba(245,247,248,.78) !important;
+  font-size: 11px !important;
+  border-top: 1px solid rgba(255,255,255,.045) !important;
+  border-bottom: 1px solid rgba(255,255,255,.045) !important;
+}
+
+#fleetManagementWrap .admin-table tbody td:first-child {
+  border-left: 1px solid rgba(255,255,255,.045) !important;
+}
+
+#fleetManagementWrap .admin-table tbody td:last-child {
+  border-right: 1px solid rgba(255,255,255,.045) !important;
+  width: 190px !important;
+}
+
+#fleetManagementWrap .admin-table .admin-actions {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 7px !important;
+  flex-wrap: wrap !important;
+}
+
+#fleetManagementWrap .admin-table .admin-actions .btn,
+#fleetManagementWrap .admin-table td:last-child button {
+  min-width: 0 !important;
+  min-height: 36px !important;
+  margin: 0 !important;
+  padding: 8px 11px !important;
+  border-radius: 0 !important;
+  white-space: nowrap !important;
+  font-size: 8px !important;
+  font-weight: 800 !important;
+  letter-spacing: .08em !important;
+  text-transform: uppercase !important;
+}
+
+@media (max-width: 900px) {
+  #fleetUploadForm {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 600px) {
+  #fleetUploadForm {
+    grid-template-columns: 1fr !important;
+    gap: 13px !important;
+    padding: 18px !important;
+  }
+
+  #fleetManagementWrap .admin-table-wrap {
+    padding-inline: 10px !important;
+  }
+
+  #fleetManagementWrap .admin-table {
+    min-width: 820px !important;
+  }
+
+  #fleetManagementWrap .admin-table td:last-child {
+    width: 170px !important;
+  }
+
+  .kr-custom-select__menu {
+    max-height: min(230px, 38svh) !important;
+  }
+}

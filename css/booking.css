@@ -980,3 +980,257 @@
   }
 
 }
+
+
+
+/* ============================================================
+   KRUIZLY V4 — BOOKING SCREEN
+   ============================================================ */
+
+.booking-page{
+  min-height:100svh!important;
+  background:#050708!important;
+}
+.booking-background{
+  position:fixed!important;
+  inset:0!important;
+  z-index:-2!important;
+}
+.booking-main{
+  position:relative!important;
+  z-index:1!important;
+  padding:44px 0 90px!important;
+}
+.booking-container{
+  width:min(1120px,calc(100% - 40px))!important;
+  margin-inline:auto!important;
+}
+.booking-hero{padding:10px 0 34px!important;}
+.booking-back{
+  display:inline-flex!important;
+  gap:8px!important;
+  align-items:center!important;
+  margin-bottom:24px!important;
+  color:rgba(255,255,255,.62)!important;
+  font-size:11px!important;
+}
+.booking-step{
+  margin-bottom:10px!important;
+  color:var(--kr-accent)!important;
+  font-size:9px!important;
+}
+.booking-title{
+  max-width:700px!important;
+  margin:0!important;
+  font-size:clamp(3.1rem,6vw,5.8rem)!important;
+  line-height:.9!important;
+  letter-spacing:-.07em!important;
+}
+.booking-subtitle{
+  margin-top:16px!important;
+  color:rgba(228,234,238,.62)!important;
+  font-size:13px!important;
+}
+.booking-layout{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr)!important;
+  gap:16px!important;
+  align-items:start!important;
+}
+.booking-card{
+  border-radius:0!important;
+  border:1px solid rgba(255,255,255,.11)!important;
+  background:rgba(7,10,12,.84)!important;
+  box-shadow:0 25px 80px rgba(0,0,0,.30)!important;
+}
+.booking-trip-card{padding:28px!important;}
+.booking-car-card{padding:26px!important;position:sticky!important;top:90px!important;}
+.booking-card-heading h2{font-size:30px!important;letter-spacing:-.045em!important;}
+.booking-card-heading p{font-size:12px!important;color:rgba(225,232,236,.58)!important;}
+.booking-date-heading{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  margin:26px 0 10px!important;
+}
+.booking-date-heading>span{
+  color:var(--kr-accent)!important;
+  font-size:9px!important;
+  font-weight:800!important;
+  letter-spacing:.18em!important;
+  text-transform:uppercase!important;
+}
+.booking-date-grid{gap:10px!important;}
+.booking-field label{
+  display:block!important;
+  margin-bottom:8px!important;
+  font-size:9px!important;
+  color:rgba(255,255,255,.56)!important;
+  letter-spacing:.12em!important;
+  text-transform:uppercase!important;
+}
+.booking-field input{
+  width:100%!important;
+  min-height:52px!important;
+}
+.booking-driver{
+  margin-top:16px!important;
+  padding:16px!important;
+  border:1px solid rgba(255,255,255,.1)!important;
+  background:rgba(255,255,255,.025)!important;
+}
+.booking-driver-label{display:flex!important;align-items:center!important;gap:12px!important;}
+.booking-driver-copy strong{
+  display:block!important;
+  font-size:12px!important;
+  text-transform:uppercase!important;
+  letter-spacing:.08em!important;
+}
+.booking-driver-copy small{
+  display:block!important;
+  margin-top:4px!important;
+  color:rgba(225,232,236,.5)!important;
+  font-size:10px!important;
+}
+.booking-payment-options{
+  margin:20px 0 0!important;
+  padding:0!important;
+  border:0!important;
+}
+.booking-payment-options legend{
+  margin-bottom:10px!important;
+  color:rgba(255,255,255,.68)!important;
+  font-size:11px!important;
+  font-weight:700!important;
+}
+.booking-payment-option{
+  display:flex!important;
+  gap:12px!important;
+  align-items:flex-start!important;
+  margin-top:8px!important;
+  padding:15px!important;
+  border:1px solid rgba(255,255,255,.1)!important;
+  background:rgba(255,255,255,.025)!important;
+}
+.booking-payment-option--selected{
+  border-color:rgba(53,210,255,.65)!important;
+  background:rgba(53,210,255,.075)!important;
+}
+.booking-payment-option strong{
+  display:block!important;
+  font-size:12px!important;
+  letter-spacing:.08em!important;
+  text-transform:uppercase!important;
+}
+.booking-payment-option small{
+  display:block!important;
+  margin-top:5px!important;
+  color:rgba(225,232,236,.58)!important;
+  font-size:10px!important;
+  line-height:1.5!important;
+}
+.booking-submit{
+  width:100%!important;
+  min-height:54px!important;
+  margin-top:18px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:#f2f4f4!important;
+  color:#050708!important;
+  font-size:10px!important;
+  font-weight:850!important;
+  letter-spacing:.13em!important;
+  text-transform:uppercase!important;
+}
+.booking-submit-arrow{font-size:18px!important;}
+.booking-eyebrow{
+  margin-bottom:12px!important;
+  color:var(--kr-accent)!important;
+  font-size:9px!important;
+}
+.booking-vehicle{
+  display:flex!important;
+  gap:14px!important;
+  align-items:center!important;
+  padding:16px 0 20px!important;
+  border-bottom:1px solid rgba(255,255,255,.08)!important;
+}
+.booking-vehicle-image{
+  flex:0 0 104px!important;
+  width:104px!important;height:72px!important;
+  overflow:hidden!important;
+  background:rgba(255,255,255,.05)!important;
+}
+.booking-vehicle-image img{width:100%!important;height:100%!important;object-fit:cover!important;}
+.booking-vehicle-info h2{font-size:19px!important;letter-spacing:-.03em!important;}
+.booking-vehicle-info p{font-size:11px!important;color:rgba(225,232,236,.56)!important;}
+.booking-specs{margin-top:16px!important;}
+.booking-spec{
+  padding:12px 0!important;
+  border-bottom:1px solid rgba(255,255,255,.08)!important;
+}
+.booking-spec span{font-size:10px!important;color:rgba(255,255,255,.48)!important;text-transform:uppercase!important;letter-spacing:.1em!important;}
+.booking-spec strong{font-size:15px!important;}
+.booking-location{padding-top:18px!important;}
+.booking-location-label{font-size:9px!important;letter-spacing:.16em!important;color:rgba(255,255,255,.45)!important;text-transform:uppercase!important;}
+.booking-location strong{display:block!important;margin-top:5px!important;font-size:13px!important;}
+
+@media (max-width:1050px){
+  .booking-layout{grid-template-columns:1fr!important;}
+  .booking-car-card{position:relative!important;top:auto!important;}
+}
+
+@media (max-width:760px){
+  .booking-page .site-header{position:sticky!important;top:0!important;}
+  .booking-page .booking-header .header-inner{
+    width:calc(100% - 20px)!important;
+    min-height:60px!important;
+  }
+  .booking-page .booking-header .nav{
+    position:static!important;
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    width:auto!important;
+    min-width:0!important;
+    margin-left:auto!important;
+    padding:0!important;
+    border:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+    overflow-x:auto!important;
+    scrollbar-width:none!important;
+  }
+  .booking-page .booking-header .nav::-webkit-scrollbar{display:none!important;}
+  .booking-page .booking-header .nav a{
+    flex:0 0 auto!important;
+    min-height:32px!important;
+    padding:8px 9px!important;
+    font-size:8px!important;
+  }
+  .booking-page .booking-header .nav a:nth-child(4){display:none!important;}
+  .booking-main{padding:24px 0 60px!important;}
+  .booking-container{width:calc(100% - 20px)!important;}
+  .booking-hero{padding:8px 0 24px!important;}
+  .booking-back{margin-bottom:18px!important;}
+  .booking-title{
+    font-size:clamp(2.7rem,13vw,4rem)!important;
+    line-height:.92!important;
+  }
+  .booking-subtitle{font-size:12px!important;}
+  .booking-layout{grid-template-columns:1fr!important;gap:12px!important;}
+  .booking-trip-card,.booking-car-card{padding:18px!important;}
+  .booking-card-heading h2{font-size:27px!important;}
+  .booking-date-grid{grid-template-columns:1fr!important;}
+  .booking-date-heading{margin-top:20px!important;}
+  .booking-field input{min-height:50px!important;font-size:12px!important;}
+  .booking-payment-option{padding:14px!important;}
+  .booking-submit{min-height:52px!important;}
+  .booking-vehicle-image{flex-basis:88px!important;width:88px!important;height:62px!important;}
+}
+
+@media (max-width:430px){
+  .booking-page .booking-header .logo{font-size:10px!important;}
+  .booking-page .booking-header .nav a{padding-inline:7px!important;font-size:7px!important;}
+  .booking-title{font-size:2.55rem!important;}
+}

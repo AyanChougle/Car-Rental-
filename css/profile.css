@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 /* ============================================================
    KRUIZLY PROFILE PAGE
    FINAL UI FIX
@@ -1672,4 +1673,349 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+}
+
+
+
+/* ============================================================
+   KRUIZLY PROFILE V3 FINAL OVERRIDES
+   ============================================================ */
+.profile-page,
+.profile-page button,
+.profile-page input,
+.profile-page select,
+.profile-page textarea {
+  font-family: "Manrope", "Avenir Next", "Segoe UI", Arial, sans-serif !important;
+}
+
+@media (max-width: 760px) {
+  .profile-page .profile-head {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  .profile-page .profile-identity {
+    width: 100% !important;
+  }
+
+  .profile-page .profile-head-actions,
+  .profile-page .profile-actions {
+    width: 100% !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .profile-page .profile-head-actions > *,
+  .profile-page .profile-actions > * {
+    max-width: 100% !important;
+  }
+
+  .profile-page .doc-upload,
+  .profile-page .document-card,
+  .profile-page .profile-listing-card {
+    min-width: 0 !important;
+  }
+
+  .profile-page .doc-upload__row {
+    grid-template-columns: 1fr !important;
+  }
+
+  .profile-page .doc-upload__preview {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .profile-page .media-upload-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .profile-page .media-upload-row > * {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+
+
+/* ============================================================
+   KRUIZLY V4 — PROFILE SCREEN
+   ============================================================ */
+
+.profile-page{
+  position:relative!important;
+  z-index:1!important;
+  min-height:100svh!important;
+  padding:54px 0 90px!important;
+}
+.profile-container{
+  width:min(1120px,calc(100% - 40px))!important;
+  margin-inline:auto!important;
+}
+.profile-page-header{
+  max-width:760px!important;
+  margin:0 auto 28px!important;
+  text-align:center!important;
+}
+.profile-page-title{
+  margin:8px 0 10px!important;
+  font-size:clamp(2.8rem,5.4vw,5.2rem)!important;
+  line-height:.92!important;
+  letter-spacing:-.07em!important;
+}
+.profile-page-subtitle{
+  margin:0!important;
+  color:rgba(225,232,236,.62)!important;
+  font-size:13px!important;
+}
+.profile-tabs{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:0!important;
+  margin:0 0 18px!important;
+  padding:0!important;
+  border:0!important;
+  border-bottom:1px solid rgba(255,255,255,.12)!important;
+  border-radius:0!important;
+  background:transparent!important;
+  overflow-x:auto!important;
+  scrollbar-width:none!important;
+}
+.profile-tabs::-webkit-scrollbar{display:none!important;}
+.prof-tab-btn{
+  position:relative!important;
+  flex:0 0 auto!important;
+  min-height:52px!important;
+  padding:0 22px!important;
+  border:0!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:rgba(225,232,236,.55)!important;
+  font-size:10px!important;
+  font-weight:800!important;
+  letter-spacing:.1em!important;
+  text-transform:uppercase!important;
+  white-space:nowrap!important;
+}
+.prof-tab-btn:hover{color:#fff!important;background:transparent!important;}
+.prof-tab-btn.active{
+  color:#fff!important;
+  background:transparent!important;
+}
+.prof-tab-btn.active::after{
+  content:""!important;
+  position:absolute!important;
+  left:22px!important;right:22px!important;
+  bottom:-1px!important;
+  width:auto!important;height:2px!important;
+  transform:none!important;
+  background:var(--kr-accent)!important;
+  box-shadow:0 0 14px rgba(53,210,255,.42)!important;
+}
+.profile-card{
+  border-radius:0!important;
+  border:1px solid rgba(255,255,255,.11)!important;
+  background:rgba(6,9,11,.84)!important;
+  box-shadow:0 28px 90px rgba(0,0,0,.34)!important;
+}
+.prof-panel{padding:32px!important;}
+.profile-head{
+  padding-bottom:24px!important;
+  border-bottom:1px solid rgba(255,255,255,.09)!important;
+}
+.profile-avatar{
+  width:62px!important;height:62px!important;
+  border-radius:50%!important;
+  border:1px solid rgba(255,255,255,.16)!important;
+  background:linear-gradient(145deg,#182228,#080b0d)!important;
+}
+.profile-identity-text h2{font-size:25px!important;letter-spacing:-.04em!important;}
+.profile-email{font-size:12px!important;color:rgba(225,232,236,.55)!important;}
+.profile-info-grid{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:1px!important;
+  margin-top:22px!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+  background:rgba(255,255,255,.08)!important;
+}
+.profile-info-item{
+  min-width:0!important;
+  padding:18px!important;
+  background:rgba(8,11,13,.92)!important;
+}
+.profile-info-label{
+  display:block!important;
+  margin-bottom:7px!important;
+  color:rgba(255,255,255,.45)!important;
+  font-size:9px!important;
+  font-weight:800!important;
+  letter-spacing:.14em!important;
+  text-transform:uppercase!important;
+}
+.profile-info-item strong{font-size:13px!important;}
+.profile-actions,.profile-form-actions{
+  display:flex!important;
+  gap:10px!important;
+  flex-wrap:wrap!important;
+  margin-top:20px!important;
+}
+.profile-action{
+  min-height:42px!important;
+  padding:10px 16px!important;
+  border-radius:0!important;
+  font-size:9px!important;
+  font-weight:800!important;
+  letter-spacing:.1em!important;
+  text-transform:uppercase!important;
+}
+.profile-action.primary{
+  color:#061014!important;
+  background:#f3f5f5!important;
+  border:1px solid #f3f5f5!important;
+}
+.profile-action.secondary{
+  color:#fff!important;
+  background:transparent!important;
+  border:1px solid rgba(255,255,255,.22)!important;
+}
+.document-card{
+  border-radius:0!important;
+  background:rgba(8,11,13,.86)!important;
+  border:1px solid rgba(255,255,255,.1)!important;
+}
+.document-card h3{font-size:20px!important;letter-spacing:-.035em!important;}
+.document-card p{font-size:11px!important;color:rgba(225,232,236,.58)!important;line-height:1.6!important;}
+.document-icon{
+  min-width:42px!important;height:42px!important;
+  display:grid!important;place-items:center!important;
+  border:1px solid rgba(255,255,255,.14)!important;
+  border-radius:50%!important;
+  color:#fff!important;
+  font-size:9px!important;
+  font-weight:800!important;
+  letter-spacing:.08em!important;
+}
+.doc-upload__side,.doc-upload__row{
+  min-width:0!important;
+}
+.doc-upload__preview{
+  border-radius:0!important;
+  border:1px solid rgba(255,255,255,.1)!important;
+  background:#0a0d0f!important;
+  object-fit:cover!important;
+}
+.profile-page input[type=file]{
+  display:none!important;
+}
+.doc-upload__controls{
+  display:flex!important;
+  gap:8px!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+}
+.bookings-header,.listings-header,.documents-header{
+  border-bottom:1px solid rgba(255,255,255,.09)!important;
+  padding-bottom:20px!important;
+  margin-bottom:20px!important;
+}
+.bookings-header h2,.listings-header h2,.documents-header h2{
+  margin:6px 0!important;
+  font-size:30px!important;
+  letter-spacing:-.05em!important;
+}
+.profile-booking-card,.profile-listing-card,.media-item{
+  border-radius:0!important;
+  border:1px solid rgba(255,255,255,.1)!important;
+  background:rgba(9,12,14,.82)!important;
+}
+.media-grid{gap:12px!important;}
+.media-item__image{border-radius:0!important;}
+
+@media (max-width:760px){
+  .profile-page{padding:30px 0 60px!important;}
+  .profile-container{width:calc(100% - 20px)!important;}
+  .profile-page-header{
+    margin-bottom:18px!important;
+    text-align:left!important;
+  }
+  .profile-page-title{
+    font-size:clamp(2.55rem,12vw,3.8rem)!important;
+    line-height:.92!important;
+  }
+  .profile-page-subtitle{font-size:12px!important;line-height:1.55!important;}
+  .profile-tabs{
+    justify-content:flex-start!important;
+    margin-inline:-10px!important;
+    padding-inline:10px!important;
+  }
+  .prof-tab-btn{
+    min-height:48px!important;
+    padding-inline:15px!important;
+    font-size:8px!important;
+  }
+  .prof-tab-btn.active::after{
+    left:15px!important;right:15px!important;
+  }
+  .profile-card{border-left:0!important;border-right:0!important;}
+  .prof-panel{padding:20px 14px!important;}
+  .profile-head{
+    display:flex!important;
+    flex-direction:column!important;
+    gap:14px!important;
+    align-items:flex-start!important;
+  }
+  .profile-identity{width:100%!important;}
+  .profile-info-grid{grid-template-columns:1fr 1fr!important;}
+  .profile-info-item{padding:14px!important;}
+  .profile-actions,.profile-form-actions{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+  }
+  .profile-action{width:100%!important;}
+  .document-card-grid{grid-template-columns:1fr!important;}
+  .document-card{padding:16px!important;}
+  .document-card-header{
+    display:flex!important;
+    gap:12px!important;
+    align-items:flex-start!important;
+  }
+  .license-upload-grid{
+    grid-template-columns:1fr!important;
+  }
+  .doc-upload__row{
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+  }
+  .doc-upload__preview{
+    width:100%!important;
+    max-width:100%!important;
+    min-height:150px!important;
+    max-height:230px!important;
+  }
+  .doc-upload__controls{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    width:100%!important;
+  }
+  .doc-upload__controls>*{width:100%!important;}
+  .bookings-header,.listings-header{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    gap:14px!important;
+  }
+  .bookings-header h2,.listings-header h2,.documents-header h2{
+    font-size:25px!important;
+  }
+  .book-new-car-btn,.listing-add-btn{width:100%!important;}
+  .profile-booking-card,.profile-listing-card,.media-item{min-width:0!important;}
+}
+
+@media (max-width:430px){
+  .profile-info-grid{grid-template-columns:1fr!important;}
+  .doc-upload__controls{grid-template-columns:1fr!important;}
+  .prof-panel{padding:18px 12px!important;}
 }
