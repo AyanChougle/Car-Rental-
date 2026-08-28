@@ -1,0 +1,447 @@
+/* =========================================================
+   KRUIZLY FLEET CATALOG (css/fleet.css)
+   Clean Page-Specific Rules | Zero Gradients | 3-Col / 2-Col / 1-Col
+   ========================================================= */
+
+@import url('base.css');
+@import url('components.css');
+
+.fleet-hero {
+  padding: 48px 0 28px;
+}
+
+.fleet-hero__content {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.fleet-hero__content h1 {
+  margin-bottom: 12px;
+}
+
+.fleet-hero__content p {
+  font-size: 1.05rem;
+  line-height: 1.6;
+}
+
+/* Toolbar: Search, Sort, Filter Chips */
+.fleet-listing-section {
+  padding-bottom: 80px;
+}
+
+.fleet-toolbar {
+  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fleet-controls {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  align-items: end;
+}
+
+.fleet-input-wrap {
+  position: relative;
+}
+
+/* Native select must be hidden */
+.fleet-sort-native {
+  display: none !important;
+}
+
+/* Custom Sort Dropdown */
+.fleet-custom-select {
+  position: relative;
+}
+
+.fleet-custom-select__button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: var(--kr-input-height);
+  padding: 0 16px;
+  background-color: var(--kr-surface-input);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--kr-border);
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 180ms ease;
+}
+
+.fleet-custom-select__button:hover,
+.fleet-custom-select__button[aria-expanded="true"] {
+  border-color: var(--kr-cyan-border);
+}
+
+.fleet-custom-select__arrow {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  transition: transform 180ms ease;
+}
+
+.fleet-custom-select__button[aria-expanded="true"] .fleet-custom-select__arrow {
+  transform: rotate(180deg);
+}
+
+.fleet-custom-select__menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background-color: var(--kr-surface-solid);
+  border: 1px solid var(--kr-cyan-border);
+  border-radius: 12px;
+  box-shadow: var(--kr-shadow);
+  padding: 6px;
+  z-index: var(--kr-z-dropdown);
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fleet-custom-select.is-open .fleet-custom-select__menu,
+.fleet-custom-select__menu.is-open {
+  display: flex;
+}
+
+.fleet-custom-select__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--kr-text-secondary);
+  border-radius: var(--kr-radius-xs);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.fleet-custom-select__option:hover,
+.fleet-custom-select__option.is-selected {
+  background-color: var(--kr-surface-control);
+  color: #ffffff;
+}
+
+.fleet-custom-select__option.is-selected {
+  color: var(--kr-cyan);
+}
+
+/* Category Filter Chips */
+.fleet-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--kr-radius-pill);
+  background-color: var(--kr-surface-control);
+  border: 1px solid var(--kr-border);
+  color: var(--kr-text-secondary);
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.chip:hover {
+  background-color: var(--kr-surface-control-hover);
+  color: #ffffff;
+  border-color: var(--kr-border-strong);
+}
+
+.chip.active,
+.chip[aria-pressed="true"] {
+  background-color: var(--kr-cyan);
+  border-color: var(--kr-cyan);
+  color: #041017;
+  box-shadow: var(--kr-shadow-btn);
+}
+
+/* Fleet Cards Grid */
+.fleet-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.fleet-grid .fleet-card {
+  height: fit-content;
+}
+
+.fleet-card.hidden,
+.fleet-card[hidden] {
+  display: none !important;
+}
+
+.fleet-grid__placeholder {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  background-color: var(--kr-surface);
+  border: 1px solid var(--kr-border);
+  border-radius: var(--kr-radius-lg);
+  color: var(--kr-text-muted);
+  font-size: 1.1rem;
+}
+
+/* Vehicle Card Specific Elements (Rendered by JS) */
+.fleet-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.fleet-card__heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fleet-card__availability {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--kr-success);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fleet-card__availability.booked {
+  color: var(--kr-danger);
+}
+
+.fleet-card__heading h3 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+}
+
+.fleet-card__subline {
+  font-size: 13px;
+  color: var(--kr-text-muted);
+  display: flex;
+  gap: 6px;
+}
+
+.fleet-card__main-price {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.fleet-card__main-price strong {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.fleet-card__main-price span {
+  font-size: 12px;
+  color: var(--kr-text-muted);
+  text-transform: uppercase;
+}
+
+.fleet-card__chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+
+.chip-sm {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: var(--kr-radius-sm);
+  background-color: var(--kr-surface-control);
+  border: 1px solid var(--kr-border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--kr-text-secondary);
+}
+
+/* Card Action Buttons (Book Now & Show More) */
+.fleet-card__main-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--kr-border);
+}
+
+.fleet-book-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  padding: 0 16px;
+  background-color: var(--kr-cyan);
+  color: #041017;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: var(--kr-radius-pill);
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--kr-shadow-btn);
+  transition: all 180ms ease;
+  white-space: nowrap;
+}
+
+.fleet-book-btn:hover {
+  background-color: var(--kr-cyan-hover);
+  transform: translateY(-1px);
+}
+
+.fleet-book-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: var(--kr-surface-control);
+  color: var(--kr-text-muted);
+  box-shadow: none;
+}
+
+.fleet-card__more-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 14px;
+  background-color: var(--kr-surface-control);
+  border: 1px solid var(--kr-border-strong);
+  border-radius: var(--kr-radius-pill);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 180ms ease;
+  white-space: nowrap;
+}
+
+.fleet-card__more-toggle:hover {
+  background-color: var(--kr-surface-control-hover);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.fleet-card__chevron svg {
+  transition: transform 180ms ease;
+}
+
+.fleet-card__more-toggle[aria-expanded="true"] .fleet-card__chevron svg {
+  transform: rotate(180deg);
+}
+
+/* Expandable Specifications Area */
+.fleet-card__details {
+  display: none;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--kr-border);
+  flex-direction: column;
+}
+
+.fleet-card.is-expanded .fleet-card__details,
+.fleet-card__details.is-open,
+.fleet-card__details:not([hidden]) {
+  display: flex;
+}
+
+.fleet-specs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  background-color: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.fleet-specs > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  background-color: rgba(3, 8, 13, 0.65);
+  border: 1px solid var(--kr-border);
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.fleet-specs strong {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--kr-text-muted);
+}
+
+.fleet-specs span {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.fleet-specs > div:first-child span,
+.fleet-specs > div:nth-child(2) span {
+  color: var(--kr-cyan);
+}
+
+/* Responsive */
+@media (max-width: 1023px) {
+  .fleet-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .fleet-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 767px) {
+  .fleet-hero {
+    padding: 24px 0 18px;
+  }
+
+  .fleet-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .fleet-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}

@@ -1,0 +1,52 @@
+/* =========================================================
+   KRUIZLY BOOKINGS / TRIP OVERVIEW (css/bookings.css)
+   Clean Page-Specific Rules | Zero Gradients
+   ========================================================= */
+
+@import url('base.css');
+@import url('components.css');
+
+.bookings-page {
+  padding: 40px 0 80px;
+}
+
+.bookings-header {
+  margin-bottom: 32px;
+}
+
+.bookings-header h1 {
+  margin-top: 10px;
+}
+
+.bookings-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.booking-item-card {
+  display: grid;
+  grid-template-columns: 240px 1fr auto;
+  gap: 24px;
+  align-items: center;
+  padding: 24px;
+}
+
+.booking-item-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.booking-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .booking-item-card {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+}

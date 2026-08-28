@@ -1,0 +1,260 @@
+/* =========================================================
+   KRUIZLY ABOUT (css/about.css)
+   Executive Minimal Luxury | Strictly Zero Gradients
+   ========================================================= */
+
+@import url('base.css');
+@import url('components.css');
+
+.about-page {
+  padding: 32px 0 80px;
+  position: relative;
+  z-index: var(--kr-z-content);
+}
+
+.about-container {
+  max-width: 880px;
+  margin-inline: auto;
+  padding-inline: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 36px;
+}
+
+/* 1. Hero */
+.about-hero-section {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.about-hero-section .section-label {
+  margin-inline: auto;
+}
+
+.about-hero-title {
+  font-size: clamp(2.2rem, 4.2vw, 3rem);
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: #ffffff;
+  text-align: center;
+}
+
+.about-hero-subtitle {
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: var(--kr-text-secondary);
+  max-width: 620px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+/* 2. Story & Philosophy Card */
+.about-story-section {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.about-story-card {
+  padding: 36px 32px;
+  background-color: var(--kr-surface);
+  backdrop-filter: blur(var(--kr-glass-blur));
+  -webkit-backdrop-filter: blur(var(--kr-glass-blur));
+  border: 1px solid var(--kr-cyan-border);
+  box-shadow: var(--kr-shadow);
+  border-radius: var(--kr-radius-xl);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.about-story-card .section-label {
+  margin-inline: auto;
+}
+
+.story-pullquote {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.55;
+  color: #ffffff;
+  font-style: italic;
+  max-width: 660px;
+  margin: 4px auto 0;
+  text-align: center;
+}
+
+.story-body {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--kr-text-secondary);
+  max-width: 680px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.story-cite {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--kr-cyan);
+  font-style: normal;
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* 3. Core Standards Grid */
+.about-pillars-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.about-pillars-section .section-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+}
+
+.about-pillars-section .section-label {
+  margin-inline: auto;
+}
+
+.about-pillars-section .section-title {
+  text-align: center;
+  font-size: clamp(1.8rem, 3.5vw, 2.4rem);
+  font-weight: 900;
+  color: #ffffff;
+  margin: 0 0 4px;
+}
+
+.about-pillars-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  width: 100%;
+}
+
+.about-pillar-card {
+  padding: 26px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  background-color: var(--kr-surface);
+  backdrop-filter: blur(var(--kr-glass-blur));
+  -webkit-backdrop-filter: blur(var(--kr-glass-blur));
+  border: 1px solid var(--kr-border);
+  border-radius: var(--kr-radius-lg);
+  box-shadow: var(--kr-shadow);
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.pillar-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background-color: var(--kr-cyan-soft);
+  border: 1px solid var(--kr-cyan-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.about-pillar-card h3 {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+}
+
+.about-pillar-card p {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--kr-text-secondary);
+  min-height: 58px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  margin: 0;
+}
+
+/* 4. CTA Box */
+.about-cta-section {
+  width: 100%;
+}
+
+.cta-box {
+  padding: 36px 32px;
+  background-color: var(--kr-surface);
+  backdrop-filter: blur(var(--kr-glass-blur));
+  -webkit-backdrop-filter: blur(var(--kr-glass-blur));
+  border: 1px solid var(--kr-border);
+  box-shadow: var(--kr-shadow);
+  border-radius: var(--kr-radius-xl);
+  text-align: center;
+  max-width: 880px;
+  margin: 0 auto;
+}
+
+.cta-box h2 {
+  font-size: clamp(20px, 3vw, 28px);
+  margin-top: 6px;
+  margin-bottom: 8px;
+  color: #ffffff;
+}
+
+.cta-box p {
+  font-size: 13.5px;
+  color: var(--kr-text-secondary);
+  max-width: 520px;
+  margin: 0 auto 20px;
+  line-height: 1.6;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .about-pillars-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .about-container {
+    gap: 28px;
+  }
+}
+
+@media (max-width: 600px) {
+  .about-page {
+    padding: 16px 0 60px;
+  }
+
+  .about-hero-title {
+    font-size: 1.85rem;
+  }
+
+  .about-story-card,
+  .about-pillar-card,
+  .cta-box {
+    padding: 20px 16px;
+  }
+}

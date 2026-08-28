@@ -1,0 +1,65 @@
+/* =========================================================
+   KRUIZLY MASTER DESIGN TOKENS (css/variables.css)
+   Unified Brand Tokens Across All 18 Pages
+   ========================================================= */
+
+:root {
+  /* Brand Accent */
+  --kr-cyan:                  #4fd7ff;
+  --kr-cyan-hover:            #70e0ff;
+  --kr-cyan-soft:             rgba(79, 215, 255, 0.12);
+  --kr-cyan-border:           rgba(79, 215, 255, 0.30);
+  --kr-cyan-glow:             rgba(79, 215, 255, 0.18);
+
+  /* Backgrounds & Surfaces (STRICTLY SOLID / NO GRADIENTS) */
+  --kr-bg:                    #05080b;
+  --kr-bg-deep:               #080a0c;
+  --kr-surface:               rgba(10, 16, 23, 0.70);
+  --kr-surface-solid:         #0c1219;
+  --kr-surface-control:       rgba(255, 255, 255, 0.05);
+  --kr-surface-control-hover: rgba(255, 255, 255, 0.10);
+  --kr-surface-input:         rgba(3, 8, 13, 0.72);
+  --kr-surface-media:         #0d131c;
+
+  /* Borders */
+  --kr-border:                rgba(255, 255, 255, 0.12);
+  --kr-border-strong:         rgba(255, 255, 255, 0.16);
+  --kr-border-hover:          rgba(82, 215, 255, 0.65);
+
+  /* Typography */
+  --kr-text:                  #f5f7fa;
+  --kr-text-secondary:        #a8b2bf;
+  --kr-text-muted:            #778392;
+
+  /* Status Colors */
+  --kr-success:               #35d486;
+  --kr-danger:                #ff5f67;
+  --kr-warning:               #fbbf24;
+
+  /* Radii */
+  --kr-radius-sm:             8px;
+  --kr-radius-md:             14px;
+  --kr-radius-lg:             20px;
+  --kr-radius-xl:             26px;
+  --kr-radius-pill:           999px;
+
+  /* Shadows & Glass */
+  --kr-shadow:                0 20px 60px rgba(0, 0, 0, 0.35);
+  --kr-shadow-btn:            0 8px 24px rgba(79, 215, 255, 0.18);
+  --kr-glass-blur:            18px;
+
+  /* Layout */
+  --kr-container-max:         1400px;
+  --kr-nav-height:            60px;
+  --kr-btn-height:            48px;
+  --kr-input-height:          48px;
+
+  /* Layer Z-Index */
+  --kr-z-video:               0;
+  --kr-z-overlay:             1;
+  --kr-z-content:             2;
+  --kr-z-header:              100;
+  --kr-z-dropdown:            200;
+  --kr-z-drawer:              500;
+  --kr-z-modal:               1000;
+}

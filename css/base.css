@@ -1,0 +1,430 @@
+/* =========================================================
+   KRUIZLY BASE SYSTEM (css/base.css)
+   Layer Order | Responsive Typography | Global Container
+   ========================================================= */
+
+@import url('variables.css');
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+[hidden],
+.hidden,
+.is-hidden {
+  display: none !important;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-x: hidden;
+  background-color: var(--kr-bg);
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background-color: var(--kr-bg);
+  color: var(--kr-text);
+  font-family: "Plus Jakarta Sans", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-x: hidden;
+  position: relative;
+}
+
+img, picture, video, canvas, svg {
+  display: block;
+  max-width: 100%;
+}
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ---------- Typography Hierarchy ---------- */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--kr-text);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+h1 { font-size: clamp(34px, 5vw, 64px); }
+h2 { font-size: clamp(26px, 3.5vw, 40px); }
+h3 { font-size: clamp(20px, 2.2vw, 26px); }
+h4 { font-size: 18px; }
+h5 { font-size: 16px; }
+h6 { font-size: 14px; }
+
+p {
+  color: var(--kr-text-secondary);
+  font-size: 15px;
+}
+
+.text-muted {
+  color: var(--kr-text-muted);
+}
+
+/* ---------- Video Layer Hierarchy ---------- */
+.background-video-wrap,
+.booking-background,
+.bg-video {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  z-index: var(--kr-z-video, -2) !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  background-color: var(--kr-bg) !important;
+}
+
+.background-video-wrap video,
+.booking-background video,
+.bg-video video {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  width: 100% !important;
+  height: 100% !important;
+  min-width: 100% !important;
+  min-height: 100% !important;
+  transform: translate(-50%, -50%) !important;
+  object-fit: cover !important;
+  object-position: center !important;
+}
+
+/* Solid Dark Transparent Overlay (Subtle 0.40 overlay / Zero Gradients) */
+.background-video-wrap::after,
+.booking-background::after,
+.booking-background-overlay {
+  content: "";
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(0, 0, 0, 0.40) !important;
+  z-index: var(--kr-z-overlay, -1) !important;
+  pointer-events: none !important;
+}
+
+@media (max-width: 768px) {
+  .background-video-wrap video {
+    object-position: center center;
+  }
+}
+
+/* ---------- Main Content Container Layer ---------- */
+main {
+  position: relative;
+  z-index: var(--kr-z-content);
+  min-height: calc(100vh - var(--kr-nav-height));
+  min-height: calc(100dvh - var(--kr-nav-height));
+}
+
+.container {
+  width: 100%;
+  max-width: var(--kr-container-max);
+  margin-inline: auto;
+  padding-inline: 40px;
+}
+
+@media (max-width: 992px) {
+  .container {
+    padding-inline: 28px;
+  }
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding-inline: 16px;
+  }
+}
+
+/* ---------- Autofill Override (Dark Inset) ---------- */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #090e17 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: var(--kr-cyan) !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+  border: 1px solid var(--kr-cyan-border) !important;
+}
+
+/* =========================================================
+   FLATPICKR CUSTOM DARK GLASS OVERLAY PICKER (DD/MM/YYYY)
+   Zero Gradients | 100% Visible Days Grid | High Contrast
+   ========================================================= */
+
+.flatpickr-calendar {
+  background: #080d15 !important;
+  border: 1px solid var(--kr-cyan-border) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.95) !important;
+  padding: 14px 12px 10px !important;
+  font-family: inherit !important;
+  width: 320px !important;
+  box-sizing: border-box !important;
+  z-index: 99999 !important;
+}
+
+.flatpickr-calendar:not(.open) {
+  display: none !important;
+}
+
+.flatpickr-calendar.arrowTop::before,
+.flatpickr-calendar.arrowTop::after {
+  border-bottom-color: #080d15 !important;
+}
+
+.flatpickr-calendar.arrowBottom::before,
+.flatpickr-calendar.arrowBottom::after {
+  border-top-color: #080d15 !important;
+}
+
+.flatpickr-months {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 2px 4px 10px !important;
+  position: relative !important;
+}
+
+.flatpickr-current-month {
+  font-size: 1.05rem !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  padding: 0 !important;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months {
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  background: #0d1522 !important;
+  border: 1px solid var(--kr-border) !important;
+  border-radius: 8px !important;
+  padding: 3px 8px !important;
+  cursor: pointer !important;
+}
+
+.flatpickr-current-month .flatpickr-monthDropdown-months option {
+  background-color: #080d15 !important;
+  color: #ffffff !important;
+}
+
+.flatpickr-current-month input.cur-year {
+  font-weight: 800 !important;
+  color: var(--kr-cyan) !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.flatpickr-months .flatpickr-prev-month,
+.flatpickr-months .flatpickr-next-month {
+  color: var(--kr-cyan) !important;
+  fill: var(--kr-cyan) !important;
+  padding: 6px !important;
+  border-radius: 8px !important;
+  top: 6px !important;
+}
+
+.flatpickr-months .flatpickr-prev-month:hover,
+.flatpickr-months .flatpickr-next-month:hover {
+  background: var(--kr-cyan-soft) !important;
+}
+
+.flatpickr-innerContainer,
+.flatpickr-rContainer {
+  display: block !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+.flatpickr-weekdays {
+  display: flex !important;
+  width: 100% !important;
+  height: 32px !important;
+  align-items: center !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-radius: 8px !important;
+  margin: 6px 0 8px !important;
+  overflow: visible !important;
+}
+
+.flatpickr-weekdaycontainer {
+  display: flex !important;
+  width: 100% !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+}
+
+span.flatpickr-weekday {
+  color: var(--kr-cyan) !important;
+  font-weight: 800 !important;
+  font-size: 0.72rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0 !important;
+  flex: 0 0 14.28% !important;
+  width: 14.28% !important;
+  max-width: 14.28% !important;
+  text-align: center !important;
+  display: inline-block !important;
+  line-height: 32px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.flatpickr-days {
+  width: 100% !important;
+  display: block !important;
+  overflow: visible !important;
+}
+
+.dayContainer {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-start !important;
+  outline: 0 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.flatpickr-day {
+  color: #ffffff !important;
+  border-radius: 8px !important;
+  font-weight: 700 !important;
+  font-size: 0.85rem !important;
+  height: 36px !important;
+  line-height: 36px !important;
+  flex: 0 0 14.28% !important;
+  width: 14.28% !important;
+  max-width: 14.28% !important;
+  margin: 2px 0 !important;
+  border: 1px solid transparent !important;
+  box-sizing: border-box !important;
+  text-align: center !important;
+  display: inline-block !important;
+  background: transparent !important;
+  cursor: pointer !important;
+  transition: all 140ms ease !important;
+}
+
+.flatpickr-day.today {
+  border-color: var(--kr-cyan-border) !important;
+  color: var(--kr-cyan) !important;
+  background: var(--kr-cyan-soft) !important;
+}
+
+.flatpickr-day.selected,
+.flatpickr-day.startRange,
+.flatpickr-day.endRange {
+  background: var(--kr-cyan) !important;
+  border-color: var(--kr-cyan) !important;
+  color: #041017 !important;
+  font-weight: 900 !important;
+}
+
+.flatpickr-day:hover {
+  background: var(--kr-surface-control-hover) !important;
+  border-color: var(--kr-cyan-border) !important;
+  color: var(--kr-cyan) !important;
+}
+
+.flatpickr-day.flatpickr-disabled,
+.flatpickr-day.flatpickr-disabled:hover,
+.flatpickr-day.prevMonthDay,
+.flatpickr-day.nextMonthDay {
+  color: rgba(255, 255, 255, 0.22) !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
+  pointer-events: none !important;
+}
+
+/* Time Picker Controls */
+.flatpickr-time {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-top: 1px solid var(--kr-border) !important;
+  background: transparent !important;
+  line-height: 40px !important;
+  max-height: 44px !important;
+  margin-top: 8px !important;
+  padding-top: 8px !important;
+}
+
+.flatpickr-time .numInputWrapper {
+  flex: 1 !important;
+  width: auto !important;
+  height: 38px !important;
+  background: var(--kr-surface-input) !important;
+  border: 1px solid var(--kr-border) !important;
+  border-radius: 8px !important;
+  margin: 0 4px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.flatpickr-time input {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  font-size: 15px !important;
+  background: transparent !important;
+  border: none !important;
+  text-align: center !important;
+}
+
+.numInputWrapper span {
+  display: none !important;
+}
+
+.flatpickr-time .flatpickr-time-separator {
+  color: var(--kr-cyan) !important;
+  font-weight: 800 !important;
+  font-size: 16px !important;
+}
+
+.flatpickr-time .flatpickr-am-pm {
+  color: var(--kr-cyan) !important;
+  font-weight: 800 !important;
+  font-size: 14px !important;
+  height: 38px !important;
+  line-height: 38px !important;
+  padding: 0 12px !important;
+  background: var(--kr-surface-input) !important;
+  border: 1px solid var(--kr-border) !important;
+  border-radius: 8px !important;
+  margin-left: 6px !important;
+  cursor: pointer !important;
+}
+
+.flatpickr-time .flatpickr-am-pm:hover {
+  background: var(--kr-surface-control-hover) !important;
+  color: #ffffff !important;
+}

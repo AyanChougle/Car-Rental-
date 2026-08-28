@@ -1,0 +1,308 @@
+/* ==========================================================================
+   KRUIZLY LUXURY MOTION & ANIMATION SYSTEM
+   ========================================================================== */
+
+/* 1. Global Smooth Scroll */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 76px;
+}
+
+/* 2. PRELOADER SPLASH SCREEN */
+.kr-splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background: radial-gradient(circle at 50% 45%, #0b1218 0%, #040608 70%, #020304 100%);
+  z-index: 999999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: all;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              visibility 0.55s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.kr-splash-screen.is-hidden {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: scale(1.025);
+}
+
+.kr-splash-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  position: relative;
+}
+
+.kr-splash-logo-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.kr-splash-logo-glow {
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(72, 215, 255, 0.3) 0%, rgba(72, 215, 255, 0) 70%);
+  border-radius: 50%;
+  animation: krSplashPulse 2.4s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+.kr-splash-logo {
+  height: 78px;
+  width: auto;
+  max-width: 320px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 20px rgba(72, 215, 255, 0.5));
+  animation: krSplashFloat 2.8s ease-in-out infinite alternate;
+  position: relative;
+  z-index: 2;
+}
+
+.kr-splash-progress-track {
+  width: 140px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 99px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 14px;
+}
+
+.kr-splash-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 30%;
+  background: linear-gradient(90deg, #25a4d4 0%, #48d7ff 50%, #ffffff 100%);
+  border-radius: 99px;
+  box-shadow: 0 0 10px rgba(72, 215, 255, 0.8);
+  animation: krSplashTrack 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+
+.kr-splash-tagline {
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.55);
+  margin: 0;
+  animation: krSplashFadeIn 1s ease forwards;
+}
+
+@keyframes krSplashPulse {
+  0% { transform: scale(0.85); opacity: 0.4; }
+  100% { transform: scale(1.25); opacity: 0.85; }
+}
+
+@keyframes krSplashFloat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-4px); }
+}
+
+@keyframes krSplashTrack {
+  0% { left: -40%; width: 40%; }
+  50% { width: 70%; }
+  100% { left: 100%; width: 30%; }
+}
+
+@keyframes krSplashFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 3. HERO ENTRANCE CASCADE ANIMATIONS */
+.hero-badge,
+.hero .badge,
+.badge-pill {
+  animation: krHeroBadgeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.hero-title,
+.hero h1,
+.fleet-hero h1,
+.page-title {
+  animation: krHeroTitleIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.1s both;
+}
+
+.hero-subtitle,
+.hero p,
+.fleet-hero p {
+  animation: krHeroSubIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+.hero-actions,
+.hero-cta,
+.cta-row {
+  animation: krHeroActionsIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+}
+
+@keyframes krHeroBadgeIn {
+  from { opacity: 0; transform: translateY(-14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes krHeroTitleIn {
+  from { opacity: 0; transform: translateY(22px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes krHeroSubIn {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes krHeroActionsIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* 4. SCROLL REVEAL ANIMATIONS */
+.kr-reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.kr-reveal.kr-revealed {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+.kr-reveal--left {
+  opacity: 0;
+  transform: translateX(-30px);
+  transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.kr-reveal--right {
+  opacity: 0;
+  transform: translateX(30px);
+  transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.kr-reveal--scale {
+  opacity: 0;
+  transform: scale(0.95);
+  transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.kr-reveal--left.kr-revealed,
+.kr-reveal--right.kr-revealed,
+.kr-reveal--scale.kr-revealed {
+  opacity: 1 !important;
+  transform: translate(0, 0) scale(1) !important;
+}
+
+/* Stagger Delays for Cards in Grid */
+.kr-delay-1 { transition-delay: 0.07s !important; }
+.kr-delay-2 { transition-delay: 0.14s !important; }
+.kr-delay-3 { transition-delay: 0.21s !important; }
+.kr-delay-4 { transition-delay: 0.28s !important; }
+.kr-delay-5 { transition-delay: 0.35s !important; }
+.kr-delay-6 { transition-delay: 0.42s !important; }
+
+/* 5. LUXURY CARD & BUTTON MICRO-INTERACTIONS */
+.vehicle-card,
+.feature-card,
+.stat-card,
+.benefit-card,
+.service-card,
+.review-card,
+.testimonial-card,
+.admin-card,
+.pricing-card,
+.doc-upload__side {
+  transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.32s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.32s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.vehicle-card:hover,
+.feature-card:hover,
+.benefit-card:hover,
+.pricing-card:hover {
+  transform: translateY(-5px) !important;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.55), 0 0 22px rgba(72, 215, 255, 0.15) !important;
+  border-color: rgba(72, 215, 255, 0.35) !important;
+}
+
+/* Vehicle card image zoom on hover */
+.vehicle-card .vehicle-thumb img,
+.vehicle-card .car-image img,
+.vehicle-card .thumb-img {
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.vehicle-card:hover .vehicle-thumb img,
+.vehicle-card:hover .car-image img,
+.vehicle-card:hover .thumb-img {
+  transform: scale(1.04) !important;
+}
+
+/* Button & Action Magnetism */
+button:not(:disabled),
+.btn-primary,
+.cta-button,
+.hero-cta,
+.btn-cyan,
+.nav a,
+.social-pill {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.btn-primary:hover,
+.cta-button:hover,
+.hero-cta:hover,
+.btn-cyan:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 24px rgba(72, 215, 255, 0.35) !important;
+  filter: brightness(1.06) !important;
+}
+
+.btn-primary:active,
+.cta-button:active,
+.hero-cta:active,
+.btn-cyan:active {
+  transform: translateY(0) scale(0.98) !important;
+}
+
+/* Scrolled Header Glass Effect */
+.site-header {
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+.site-header.is-scrolled {
+  background-color: rgba(4, 7, 10, 0.98) !important;
+  border-bottom-color: rgba(72, 215, 255, 0.18) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.7), 0 0 15px rgba(72, 215, 255, 0.06) !important;
+}

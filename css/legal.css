@@ -1,0 +1,40 @@
+/* =========================================================
+   KRUIZLY LEGAL & POLICIES (css/legal.css)
+   Clean Page-Specific Rules | Zero Gradients
+   ========================================================= */
+
+@import url('base.css');
+@import url('components.css');
+
+.legal-page {
+  padding: 48px 0 80px;
+}
+
+.legal-card {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 48px;
+}
+
+.legal-card h1 {
+  margin-bottom: 24px;
+}
+
+.legal-card h2 {
+  font-size: 1.4rem;
+  margin: 32px 0 12px;
+  color: #ffffff;
+}
+
+.legal-card p,
+.legal-card li {
+  font-size: 0.96rem;
+  line-height: 1.75;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+.legal-card ul {
+  padding-left: 24px;
+  margin-bottom: 18px;
+}

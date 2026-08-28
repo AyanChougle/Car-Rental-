@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Checkout | KRUIZLY</title>
+
+    <meta name="description" content="Securely complete payment for your KRUIZLY booking via UPI or bank transfer." />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  
+    
+    
+      <link rel="stylesheet" href="css/payment.css" />
+      <link rel="stylesheet" href="css/kruizly-motion.css" />
+  </head>
+
+<body>
+
+
+  <!-- =========================================================
+       BACKGROUND
+       ========================================================= -->
+
+  <div class="background-video-wrap" aria-hidden="true">
+    <video autoplay muted loop playsinline preload="auto">
+      <source src="assets/background-video.mp4" type="video/mp4" />
+    </video>
+  </div>
+
+  <!-- =========================================================
+       HEADER
+       ========================================================= -->
+
+  <header class="site-header">
+    <div class="container header-inner">
+
+      <a href="index.html" class="logo"><img src="images/logo.png" alt="KRUIZLY" class="logo-img" /></a>
+
+      <button
+        type="button"
+        class="mobile-nav-toggle"
+        id="mobileNavToggle"
+        aria-label="Open navigation menu"
+        aria-controls="mainNav"
+        aria-expanded="false"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav class="nav" aria-label="Main navigation" id="mainNav">
+        <a href="fleet.html">Fleet</a>
+        <a href="about.html">About</a>
+        <a href="contact.html">Contact</a>
+        <a href="partner.html">Host Car</a>
+        <a href="profile.html">Profile</a>
+      </nav>
+
+    </div>
+  </header>
+
+  <!-- =========================================================
+       MAIN
+       ========================================================= -->
+
+  <main class="checkout-page">
+
+    <!-- HERO -->
+
+    <section class="checkout-hero">
+
+      <div class="checkout-hero-inner">
+
+        <div class="checkout-step">
+          Step 2 of 2
+        </div>
+
+        <h1 class="checkout-title">
+          Secure checkout
+        </h1>
+
+        <p class="checkout-subtitle">
+          Review your reservation, choose a secure payment method,
+          and submit your transaction reference for verification.
+        </p>
+
+      </div>
+
+    </section>
+
+
+    <!-- =======================================================
+         CHECKOUT GRID
+         ======================================================= -->
+
+    <section>
+
+      <div class="checkout-container">
+
+        <!-- ===================================================
+             LEFT — RESERVATION
+             =================================================== -->
+
+        <section class="checkout-card payment-booking-card">
+
+          <div class="checkout-card-inner">
+
+            <!-- <span class="checkout-label">
+            </span> -->
+
+            <h2 class="checkout-card-title">
+              Payment summary
+            </h2>
+
+            <p class="checkout-card-copy">
+              Confirm these details before completing your payment.
+            </p>
+
+
+            <!-- VEHICLE -->
+
+            <div class="payment-vehicle">
+
+              <div class="payment-vehicle-image" id="paymentVehicleImage">
+                <span id="paymentVehicleIcon" aria-hidden="true"></span>
+              </div>
+
+              <div>
+
+                <h3 class="payment-vehicle-name" id="paymentVehicleName">
+                  Loading booking...
+                </h3>
+
+                <p class="payment-vehicle-meta" id="paymentVehicleMeta"></p>
+
+              </div>
+
+            </div>
+
+
+            <!-- BOOKING DETAILS -->
+
+            <div class="booking-details">
+
+              <div class="booking-detail">
+
+                <span>
+                  Booking
+                </span>
+
+                <strong>
+                  #<span id="paymentBookingId">---</span>
+                </strong>
+
+              </div>
+
+
+              <div class="booking-detail">
+
+                <span>
+                  Pickup
+                </span>
+
+                <strong id="paymentPickup">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="booking-detail">
+
+                <span>
+                  Drop
+                </span>
+
+                <strong id="paymentDrop">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="booking-detail">
+
+                <span>
+                  Duration
+                </span>
+
+                <strong id="paymentDuration">
+                  —
+                </strong>
+
+              </div>
+
+
+              <div class="booking-detail booking-detail--amount">
+
+                <span>
+                  Pay today
+                </span>
+
+                <strong id="paymentAmount">
+                  ₹0.00
+                </strong>
+
+              </div>
+
+              <p class="payment-plan-note" id="paymentPlanNote"></p>
+
+            </div>
+
+
+            <div class="checkout-security">
+              Your payment is reviewed by KRUIZLY before the
+              booking is confirmed.
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- ===================================================
+             RIGHT — PAYMENT
+             =================================================== -->
+
+        <section class="checkout-card payment-card">
+
+          <div class="checkout-card-inner">
+
+            <span class="checkout-label">
+              Secure payment
+            </span>
+
+            <h2 class="checkout-card-title">
+              Use any payment method to complete
+              your payment.
+            </h2>
+
+            <p class="checkout-card-copy">
+              Pay By UPI
+            </p>
+
+
+            <!-- PAYMENT TABS -->
+
+            <div class="payment-tabs">
+
+              <button type="button" class="payment-tab active" id="upiTab">
+
+                <strong>
+                  UPI payment
+                </strong>
+
+                <small>
+                  Google Pay · PhonePe · Paytm · BHIM
+                </small>
+
+              </button>
+
+
+              <button type="button" class="payment-tab" id="offlineTab">
+
+                <strong>
+                  Bank transfer
+                </strong>
+
+                <small>
+                  Admin verification required
+                </small>
+
+              </button>
+
+            </div>
+
+
+            <!-- =================================================
+                 UPI
+                 ================================================= -->
+
+            <div id="upiPaymentSection">
+
+              <!-- AMOUNT -->
+
+              <div class="payment-amount-card">
+
+                <span>
+                  Pay today
+                </span>
+
+                <strong>
+                  <span id="upiAmount"> ₹0.00</span>
+                </strong>
+
+              </div>
+
+
+              <!-- QR + DETAILS -->
+
+              <div class="upi-card">
+
+                <div class="qr-section">
+
+                  <div id="upiQr" class="upi-qr"></div>
+
+                  <p class="qr-caption">
+                    Scan with any UPI app
+                  </p>
+
+                </div>
+
+
+                <div class="upi-info">
+
+                  <h3>
+                    Pay using UPI
+                  </h3>
+
+                  <p class="section-sub">
+                    Scan the QR code or use the UPI ID below.
+                  </p>
+
+
+                  <div class="upi-id-box">
+                    <div>
+                      <strong>UPI ID</strong>
+                      <span id="upiId">svcmerc00314092@svcbank</span>
+                    </div>
+                    <button type="button" class="btn-copy-upi" id="copyUpiBtn" title="Copy UPI ID">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                      <span>Copy</span>
+                    </button>
+                  </div>
+
+
+                  <button type="button" id="openUpiBtn" class="btn btn-dark btn-full upi-open-button">
+                    Open UPI App
+                  </button>
+
+
+                  <div class="upi-apps">
+
+                    <button type="button" class="upi-app-btn" data-app="gpay">
+                      Google Pay
+                    </button>
+
+                    <button type="button" class="upi-app-btn" data-app="phonepe">
+                      PhonePe
+                    </button>
+
+                    <button type="button" class="upi-app-btn" data-app="paytm">
+                      Paytm
+                    </button>
+
+                    <button type="button" class="upi-app-btn" data-app="bhim">
+                      BHIM / Other
+                    </button>
+
+                  </div>
+
+                </div>
+
+              </div>
+
+
+              <!-- HELP -->
+
+              <div class="payment-help-card">
+
+                <strong>
+                  After making the payment
+                </strong>
+
+                <p class="section-sub">
+                  Enter your UTR / transaction ID and upload
+                  a screenshot showing the successful payment.
+                  Your booking remains pending until verification.
+                </p>
+
+              </div>
+
+
+              <!-- FORM -->
+
+              <form class="payment-form" id="paymentForm">
+
+                <div class="field">
+
+                  <label for="upiReference">
+                    Payment Reference / UPI Transaction ID *
+                  </label>
+
+                  <input type="text" id="upiReference" name="upiReference" placeholder="Enter UTR / transaction ID"
+                    autocomplete="off" required />
+
+                </div>
+
+
+                <div class="field">
+
+                  <label for="paymentScreenshot">
+                    Payment Screenshot *
+                  </label>
+
+                  <div class="custom-file-dropzone" id="fileDropzone">
+                    <input
+                      type="file"
+                      id="paymentScreenshot"
+                      name="paymentScreenshot"
+                      accept="image/jpeg,image/png,image/webp"
+                      class="sr-only-file"
+                      required
+                    />
+                    <label for="paymentScreenshot" class="dropzone-inner" id="dropzoneLabel">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                      </svg>
+                      <div class="dropzone-text">
+                        <strong id="dropzoneTitle">Click or drag screenshot here</strong>
+                        <small>PNG, JPG, or WEBP (Max 5 MB)</small>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div id="paymentPreview" class="payment-preview"></div>
+
+                </div>
+
+
+                <button type="submit" id="submitPaymentBtn" class="btn btn-dark btn-full payment-submit">
+                  Submit Payment Reference
+                </button>
+
+
+                <p id="paymentStatus" class="form-status" role="status" aria-live="polite"></p>
+
+              </form>
+
+            </div>
+
+
+            <!-- =================================================
+                 OFFLINE PAYMENT
+                 ================================================= -->
+
+            <div id="offlinePaymentSection" style="display:none;">
+
+              <div class="offline-box">
+
+                <span class="checkout-label">
+                  Offline payment
+                </span>
+
+                <h3>
+                  Bank Transfer / Offline Payment
+                </h3>
+
+                <p class="section-sub">
+                  Contact KRUIZLY for bank transfer instructions.
+                  Your booking will remain pending until an
+                  administrator verifies the payment.
+                </p>
+
+                <a href="contact.html" class="btn btn-dark">
+                  Contact KRUIZLY
+                </a>
+
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- =========================================================
+       FOOTER
+       ========================================================= -->
+
+      <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand footer-section">
+            <a href="index.html" class="logo"><img src="images/logo.png" alt="KRUIZLY" class="logo-img" /></a>
+            <p>
+              Premium self-drive rentals across India with trusted, hassle-free
+              booking and 24/7 support.
+            </p>
+          </div>
+
+          <div class="footer-links footer-section">
+            <h4>Quick Links</h4>
+            <ul class="footer-list">
+              <li><a href="fleet.html">Fleet</a></li>
+              <li><a href="about.html">About</a></li>
+              <li><a href="contact.html">Contact</a></li>
+              <li><a href="partner.html">Host Car</a></li>
+              <li><a href="profile.html">Profile</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-legal footer-section">
+            <h4>Legal</h4>
+            <ul class="footer-list">
+              <li><a href="privacy.html">Privacy Policy</a></li>
+              <li><a href="terms.html">Terms &amp; Conditions</a></li>
+              <li><a href="refund.html">Refund Policy</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-office footer-section">
+            <h4>Office &amp; Support</h4>
+            <div class="footer-contact-items">
+              <div class="footer-contact-item">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>Gavson Business Park, Ghansoli, Navi Mumbai, India</span>
+              </div>
+              <div class="footer-contact-item">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                <a href="mailto:support@kruizly.com">support@kruizly.com</a>
+              </div>
+              <div class="footer-contact-item">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+                <a href="tel:+919167164547">+91 91671 64547</a>
+              </div>
+            </div>
+            <div class="social-links">
+              <a
+                href="https://www.instagram.com/carrentpe1"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="social-link"
+                aria-label="Instagram"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+                <span>Instagram</span>
+              </a>
+              <a
+                href="https://www.facebook.com/people/Carrentpe/61590438248524/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="social-link"
+                aria-label="Facebook"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+                </svg>
+                <span>Facebook</span>
+              </a>
+              <a
+                href="https://wa.me/919167164547"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="social-link"
+                aria-label="WhatsApp"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                </svg>
+                <span>WhatsApp</span>
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-copy">© 2026 KRUIZLY. All rights reserved.</div>
+      </div>
+    </footer>
+
+
+  <!-- =========================================================
+       SCRIPTS — ONLY ONCE
+       ========================================================= -->
+
+  <script src="js/vehicles.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <script type="module" src="js/payment.js?v=20260818-redirect"></script>
+
+    <script src="js/glass-ui.js"></script>
+      <script src="js/kruizly-motion.js"></script>
+  </body>
+
+</html>

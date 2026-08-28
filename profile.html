@@ -1,0 +1,977 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>Profile | KRUIZLY</title>
+
+    <meta name="description" content="Manage your KRUIZLY account, bookings, listings, and identity verification from your profile dashboard." />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  
+    <link rel="stylesheet" href="css/components.css" />
+    <link rel="stylesheet" href="css/kruizly-ui.css" />
+    <link rel="stylesheet" href="css/profile.css" />
+      <link rel="stylesheet" href="css/kruizly-motion.css" />
+  </head>
+
+<body>
+
+
+  <!-- =========================================================
+       BACKGROUND
+  ========================================================== -->
+
+  <div
+    class="background-video-wrap"
+    aria-hidden="true"
+  >
+    <video
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="auto"
+    >
+      <source
+        src="assets/background-video.mp4"
+        type="video/mp4"
+      />
+    </video>
+  </div>
+
+
+  <!-- =========================================================
+       HEADER
+  ========================================================== -->
+
+  <header class="site-header">
+
+    <div class="container header-inner">
+
+      <a
+        href="index.html"
+        class="logo"
+      ><img src="images/logo.png" alt="KRUIZLY" class="logo-img" /></a>
+
+      <button
+        type="button"
+        class="mobile-nav-toggle"
+        id="mobileNavToggle"
+        aria-label="Open navigation menu"
+        aria-controls="mainNav"
+        aria-expanded="false"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <nav class="nav" id="mainNav">
+
+        <a href="fleet.html">
+          Fleet
+        </a>
+
+        <a href="about.html">
+          About
+        </a>
+
+        <a href="contact.html">
+          Contact
+        </a>
+
+        <a href="partner.html">
+          Host Car
+        </a>
+
+        <a
+          href="profile.html"
+          class="active"
+        >
+          Profile
+        </a>
+
+      </nav>
+
+    </div>
+
+  </header>
+
+
+  <!-- =========================================================
+       MAIN
+  ========================================================== -->
+
+  <main class="profile-page">
+
+    <div class="container profile-container">
+
+
+      <!-- =====================================================
+           PAGE HEADER
+      ====================================================== -->
+
+      <div class="profile-page-header">
+
+        <span class="section-label">
+          ACCOUNT & DASHBOARD
+        </span>
+
+        <h1 class="profile-page-title">
+          Your Member Profile
+        </h1>
+
+        <p class="profile-page-subtitle">
+          Manage your account, bookings and identity verification.
+        </p>
+
+      </div>
+
+
+      <!-- =====================================================
+           PROFILE TABS
+      ====================================================== -->
+
+      <div
+        class="profile-tabs"
+        role="tablist"
+        aria-label="Profile sections"
+      >
+
+        <button
+          type="button"
+          class="prof-tab-btn active"
+          data-tab="prof-tab-info"
+          role="tab"
+          aria-selected="true"
+        >
+          Profile Details
+        </button>
+
+        <button
+          type="button"
+          class="prof-tab-btn"
+          data-tab="prof-tab-bookings"
+          role="tab"
+          aria-selected="false"
+        >
+          My Bookings
+        </button>
+
+        <button
+          type="button"
+          class="prof-tab-btn"
+          data-tab="prof-tab-listings"
+          role="tab"
+          aria-selected="false"
+        >
+          My Listings
+        </button>
+
+        <button
+          type="button"
+          class="prof-tab-btn"
+          data-tab="prof-tab-docs"
+          role="tab"
+          aria-selected="false"
+        >
+          ID Verification
+        </button>
+
+        <button
+          type="button"
+          class="prof-tab-btn"
+          data-tab="prof-tab-media"
+          role="tab"
+          aria-selected="false"
+        >
+          My Media
+        </button>
+
+      </div>
+
+
+      <!-- =====================================================
+           MAIN PROFILE CARD
+      ====================================================== -->
+
+      <div class="profile-card">
+
+
+        <!-- ===================================================
+             TAB 1 — PROFILE DETAILS
+        ==================================================== -->
+
+        <section
+          id="prof-tab-info"
+          class="prof-panel"
+        >
+
+          <!-- PROFILE VIEW -->
+
+          <div id="profileView">
+
+            <div class="profile-head">
+
+              <div class="profile-identity">
+
+                <div
+                  class="profile-avatar"
+                  id="profileAvatar"
+                >
+                  ?
+                </div>
+
+                <div class="profile-identity-text">
+
+                  <h2 id="profileName">
+                    Loading profile...
+                  </h2>
+
+                  <p
+                    class="profile-email"
+                    id="profileEmail"
+                  >
+                    —
+                  </p>
+
+                </div>
+
+              </div>
+
+
+              <div
+                id="verificationBadge"
+                class="fleet-status profile-verification-badge"
+              >
+                Not Verified
+              </div>
+
+            </div>
+
+
+            <!-- PROFILE INFORMATION -->
+
+            <div class="profile-info-grid">
+
+              <div class="profile-info-item">
+
+                <span class="profile-info-label">
+                  Phone
+                </span>
+
+                <strong id="profilePhone">
+                  Phone not added
+                </strong>
+
+              </div>
+
+
+              <div class="profile-info-item">
+
+                <span class="profile-info-label">
+                  Age
+                </span>
+
+                <strong id="profileAge">
+                  Not added
+                </strong>
+
+              </div>
+
+
+              <div class="profile-info-item">
+
+                <span class="profile-info-label">
+                  License
+                </span>
+
+                <span
+                  class="fleet-status"
+                  id="licenseStatusPill"
+                >
+                  Not submitted
+                </span>
+
+              </div>
+
+
+              <div class="profile-info-item">
+
+                <span class="profile-info-label">
+                  Aadhaar
+                </span>
+
+                <span
+                  class="fleet-status"
+                  id="aadharStatusPill"
+                >
+                  Not submitted
+                </span>
+
+              </div>
+
+              <div class="profile-info-item">
+                <span class="profile-info-label">PAN</span>
+                <span class="fleet-status" id="panStatusPill">Not submitted</span>
+              </div>
+
+            </div>
+
+
+            <!-- PROFILE ACTIONS -->
+
+            <div class="profile-actions">
+
+              <button
+                type="button"
+                id="editProfile"
+                class="profile-action primary"
+              >
+                Edit Details
+              </button>
+
+              <button
+                type="button"
+                id="logoutBtn"
+                class="profile-action secondary"
+              >
+                Logout
+              </button>
+
+            </div>
+
+          </div>
+
+
+          <!-- =================================================
+               EDIT PROFILE FORM
+          ================================================== -->
+
+          <form
+            id="profileEditForm"
+            class="profile-edit-form"
+            hidden
+          >
+
+            <div class="form-section-heading">
+
+              <span class="section-label">
+                ACCOUNT
+              </span>
+
+              <h2>
+                Edit Profile Information
+              </h2>
+
+              <p>
+                Update your personal information below.
+              </p>
+
+            </div>
+
+
+            <div class="profile-form-grid">
+
+              <div class="field">
+
+                <label for="editName">
+                  Full Name
+                </label>
+
+                <input
+                  type="text"
+                  id="editName"
+                  name="editName"
+                  autocomplete="name"
+                  required
+                />
+
+              </div>
+
+
+              <div class="field">
+
+                <label for="editAge">
+                  Age
+                </label>
+
+                <input
+                  type="number"
+                  id="editAge"
+                  name="editAge"
+                  min="18"
+                  max="100"
+                  placeholder="e.g. 27"
+                />
+
+              </div>
+
+
+              <div class="field full">
+
+                <label for="editPhone">
+                  Phone Number
+                </label>
+
+                <input
+                  type="tel"
+                  id="editPhone"
+                  name="editPhone"
+                  placeholder="+91 1234567890"
+                  autocomplete="tel"
+                />
+
+              </div>
+
+            </div>
+
+
+            <div class="profile-form-actions">
+
+              <button
+                type="submit"
+                id="saveProfile"
+                class="profile-action primary"
+              >
+                Save Changes
+              </button>
+
+              <button
+                type="button"
+                id="cancelProfile"
+                class="profile-action secondary"
+              >
+                Cancel
+              </button>
+
+              <p
+                class="form-status"
+                id="editProfileStatus"
+                role="status"
+                aria-live="polite"
+              ></p>
+
+            </div>
+
+          </form>
+
+        </section>
+
+
+        <!-- ===================================================
+             TAB 2 — MY BOOKINGS
+        ==================================================== -->
+
+        <section
+          id="prof-tab-bookings"
+          class="prof-panel"
+          hidden
+        >
+
+          <div class="bookings-header">
+
+            <div>
+
+              <span class="section-label">
+                RENTAL HISTORY
+              </span>
+
+              <h2>
+                My Booking History
+              </h2>
+
+              <p>
+                View your current and previous rentals.
+              </p>
+
+            </div>
+
+
+            <a
+              href="fleet.html"
+              class="btn btn-light book-new-car-btn"
+            >
+              + Book New Car
+            </a>
+
+          </div>
+
+
+          <!-- IMPORTANT:
+               profile.js loads the Firebase bookings here.
+          -->
+
+          <div
+            id="profLiveBookings"
+            class="profile-bookings-list"
+          >
+
+            <div class="booking-loading">
+              Loading your bookings...
+            </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- ===================================================
+             TAB 3 — DOCUMENT VERIFICATION
+        ==================================================== -->
+
+        <section
+          id="prof-tab-listings"
+          class="prof-panel"
+          hidden
+        >
+          <div class="listings-header">
+            <div>
+              <span class="section-label">HOST DASHBOARD</span>
+              <h2>My Vehicle Listings</h2>
+              <p>Track vehicles you have submitted and their approval status.</p>
+            </div>
+
+            <a href="partner.html" class="btn btn-light listing-add-btn">
+              + List Another Car
+            </a>
+          </div>
+
+          <div
+            id="profListingsSummary"
+            class="profile-listing-summary"
+            aria-live="polite"
+          ></div>
+
+          <div id="profListingsGrid" class="profile-listings-grid">
+            <div class="profile-listing-state">Loading your listings...</div>
+          </div>
+        </section>
+
+
+        <section
+          id="prof-tab-docs"
+          class="prof-panel"
+          hidden
+        >
+
+          <div class="documents-header">
+
+            <span class="section-label">
+              IDENTITY
+            </span>
+
+            <h2>
+              Identity & Driving Verification
+            </h2>
+
+            <p>
+              Upload your documents before vehicle pickup.
+            </p>
+
+          </div>
+
+
+          <div class="document-card-grid">
+
+          <!-- =================================================
+               DRIVING LICENSE
+          ================================================== -->
+
+          <div class="document-card">
+
+            <div class="document-card-header">
+
+              <div>
+
+                <h3>
+                  Driving License
+                </h3>
+
+                <p>
+                  Upload clear photos of both sides of your driving licence.
+                  Both sides are required before vehicle pickup.
+                </p>
+
+              </div>
+
+              <span
+                class="document-icon"
+                aria-hidden="true"
+              >
+                DL
+              </span>
+
+            </div>
+
+
+            <div class="doc-upload-grid">
+              <div class="doc-upload__side">
+                <strong>Front</strong>
+                <img id="licenseFrontPreview" class="doc-upload__preview" alt="Driving licence front preview" hidden />
+                <div class="doc-upload__controls">
+                  <label class="doc-btn-choose" for="licenseFrontFile">Choose Front</label>
+                  <input type="file" id="licenseFrontFile" accept="image/jpeg,image/png,image/webp" hidden />
+                  <button type="button" id="licenseFrontUploadBtn" class="doc-btn-upload" disabled>Upload Front</button>
+                </div>
+                <p class="form-status" id="licenseFrontUploadStatus" role="status" aria-live="polite"></p>
+              </div>
+              <div class="doc-upload__side">
+                <strong>Back</strong>
+                <img id="licenseBackPreview" class="doc-upload__preview" alt="Driving licence back preview" hidden />
+                <div class="doc-upload__controls">
+                  <label class="doc-btn-choose" for="licenseBackFile">Choose Back</label>
+                  <input type="file" id="licenseBackFile" accept="image/jpeg,image/png,image/webp" hidden />
+                  <button type="button" id="licenseBackUploadBtn" class="doc-btn-upload" disabled>Upload Back</button>
+                </div>
+                <p class="form-status" id="licenseBackUploadStatus" role="status" aria-live="polite"></p>
+              </div>
+            </div>
+
+          </div>
+
+
+          <!-- =================================================
+               AADHAAR
+          ================================================== -->
+
+          <div class="document-card">
+
+            <div class="document-card-header">
+
+              <div>
+
+                <h3>
+                  Aadhaar Card
+                </h3>
+
+                <p>
+                  Upload clear photos of both sides of your Aadhaar card.
+                </p>
+
+              </div>
+
+              <span
+                class="document-icon"
+                aria-hidden="true"
+              >
+                ID
+              </span>
+
+            </div>
+
+
+            <div class="doc-upload-grid">
+              <div class="doc-upload__side">
+                <strong>Front</strong>
+                <img id="aadharFrontPreview" class="doc-upload__preview" alt="Aadhaar front preview" hidden />
+                <div class="doc-upload__controls">
+                  <label class="doc-btn-choose" for="aadharFrontFile">Choose Front</label>
+                  <input type="file" id="aadharFrontFile" accept="image/jpeg,image/png,image/webp" hidden />
+                  <button type="button" id="aadharFrontUploadBtn" class="doc-btn-upload" disabled>Upload Front</button>
+                </div>
+                <p class="form-status" id="aadharFrontUploadStatus" role="status" aria-live="polite"></p>
+              </div>
+              <div class="doc-upload__side">
+                <strong>Back</strong>
+                <img id="aadharBackPreview" class="doc-upload__preview" alt="Aadhaar back preview" hidden />
+                <div class="doc-upload__controls">
+                  <label class="doc-btn-choose" for="aadharBackFile">Choose Back</label>
+                  <input type="file" id="aadharBackFile" accept="image/jpeg,image/png,image/webp" hidden />
+                  <button type="button" id="aadharBackUploadBtn" class="doc-btn-upload" disabled>Upload Back</button>
+                </div>
+                <p class="form-status" id="aadharBackUploadStatus" role="status" aria-live="polite"></p>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="document-card">
+            <div class="document-card-header">
+              <div>
+                <h3>PAN Card</h3>
+                <p>Upload clear photos of the front and back of your PAN card.</p>
+              </div>
+              <span class="document-icon" aria-hidden="true">PAN</span>
+            </div>
+
+            <div class="doc-upload-grid">
+              <div class="doc-upload__side">
+                <strong>Front</strong>
+                <img id="panFrontPreview" class="doc-upload__preview" alt="PAN front preview" hidden />
+                <div class="doc-upload__controls">
+                  <label class="doc-btn-choose" for="panFrontFile">Choose Front</label>
+                  <input type="file" id="panFrontFile" accept="image/jpeg,image/png,image/webp" hidden />
+                  <button type="button" id="panFrontUploadBtn" class="doc-btn-upload" disabled>Upload Front</button>
+                </div>
+                <p class="form-status" id="panFrontUploadStatus" role="status" aria-live="polite"></p>
+              </div>
+              <div class="doc-upload__side">
+                <strong>Back</strong>
+                <img id="panBackPreview" class="doc-upload__preview" alt="PAN back preview" hidden />
+                <div class="doc-upload__controls">
+                  <label class="doc-btn-choose" for="panBackFile">Choose Back</label>
+                  <input type="file" id="panBackFile" accept="image/jpeg,image/png,image/webp" hidden />
+                  <button type="button" id="panBackUploadBtn" class="doc-btn-upload" disabled>Upload Back</button>
+                </div>
+                <p class="form-status" id="panBackUploadStatus" role="status" aria-live="polite"></p>
+              </div>
+            </div>
+          </div>
+
+          </div>
+
+        </section>
+
+
+        <!-- ===================================================
+             TAB 4 — MY MEDIA
+             Personal photo/video gallery. Stored on the local
+             media server (Node/Express + SQLite), not Firebase
+             Storage — see /server. Separate from the license and
+             Aadhaar uploads above, which stay on their own flow.
+        ==================================================== -->
+
+        <section
+          id="prof-tab-media"
+          class="prof-panel"
+          hidden
+        >
+
+          <div class="documents-header">
+
+            <span class="section-label">
+              GALLERY
+            </span>
+
+            <h2>
+              My Media
+            </h2>
+
+            <p>
+              Your own photos and videos, stored privately —
+              only you (or staff, for support) can view them.
+            </p>
+
+          </div>
+
+
+          <div class="media-upload-row">
+
+            <label
+              class="profile-action secondary-outline"
+              for="mediaFile"
+            >
+              Choose Photo or Video
+            </label>
+
+            <input
+              type="file"
+              id="mediaFile"
+              accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+              hidden
+            />
+
+            <button
+              type="button"
+              id="mediaUploadBtn"
+              class="profile-action primary"
+              disabled
+            >
+              Upload
+            </button>
+
+          </div>
+
+          <div
+            class="media-selection-preview"
+            id="mediaSelectionPreview"
+            hidden
+          >
+            <div
+              class="media-selection-preview__frame"
+              id="mediaSelectionFrame"
+            ></div>
+
+            <div class="media-selection-preview__details">
+              <span class="media-selection-tag">Selected File</span>
+              <strong id="mediaSelectionName"></strong>
+              <span id="mediaSelectionSize" class="media-selection-size"></span>
+            </div>
+
+            <button
+              type="button"
+              class="media-selection-preview__remove"
+              id="mediaSelectionRemove"
+              aria-label="Remove selected file"
+            >
+              Remove
+            </button>
+          </div>
+
+          <p
+            class="form-status"
+            id="mediaUploadStatus"
+            role="status"
+            aria-live="polite"
+          ></p>
+
+          <p
+            class="media-error-state"
+            id="mediaErrorState"
+            role="alert"
+            hidden
+          ></p>
+
+          <p
+            class="media-empty-state"
+            id="mediaEmptyState"
+            hidden
+          >
+            No media yet — upload a photo or video above to get started.
+          </p>
+
+          <div
+            class="media-grid"
+            id="mediaGrid"
+          ></div>
+
+        </section>
+
+      </div>
+
+    </div>
+
+  </main>
+
+
+  <!-- =========================================================
+       FOOTER
+  ========================================================== -->
+        <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand footer-section">
+            <a href="index.html" class="logo"><img src="images/logo.png" alt="KRUIZLY" class="logo-img" /></a>
+            <p>
+              Premium self-drive rentals across India with trusted, hassle-free
+              booking and 24/7 support.
+            </p>
+          </div>
+
+          <div class="footer-links footer-section">
+            <h4>Quick Links</h4>
+            <ul class="footer-list">
+              <li><a href="fleet.html">Fleet</a></li>
+              <li><a href="about.html">About</a></li>
+              <li><a href="contact.html">Contact</a></li>
+              <li><a href="partner.html">Host Car</a></li>
+              <li><a href="profile.html">Profile</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-legal footer-section">
+            <h4>Legal</h4>
+            <ul class="footer-list">
+              <li><a href="privacy.html">Privacy Policy</a></li>
+              <li><a href="terms.html">Terms &amp; Conditions</a></li>
+              <li><a href="refund.html">Refund Policy</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-office footer-section">
+            <h4>Office &amp; Support</h4>
+            <div class="footer-contact-items">
+              <div class="footer-contact-item">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>Gavson Business Park, Ghansoli, Navi Mumbai, India</span>
+              </div>
+              <div class="footer-contact-item">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                <a href="mailto:support@kruizly.com">support@kruizly.com</a>
+              </div>
+              <div class="footer-contact-item">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+                <a href="tel:+919167164547">+91 91671 64547</a>
+              </div>
+            </div>
+            <div class="social-links">
+              <a
+                href="https://www.instagram.com/carrentpe1"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="social-link"
+                aria-label="Instagram"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+                <span>Instagram</span>
+              </a>
+              <a
+                href="https://www.facebook.com/people/Carrentpe/61590438248524/"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="social-link"
+                aria-label="Facebook"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path>
+                </svg>
+                <span>Facebook</span>
+              </a>
+              <a
+                href="https://wa.me/919167164547"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="social-link"
+                aria-label="WhatsApp"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                </svg>
+                <span>WhatsApp</span>
+              </a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-copy">© 2026 KRUIZLY. All rights reserved.</div>
+      </div>
+    </footer>
+
+
+  <!-- =========================================================
+       SCRIPTS
+  ========================================================== -->
+
+  <script
+    type="module"
+    src="js/vehicles.js"
+  ></script>
+
+  <script
+    type="module"
+    src="js/profile.js"
+  ></script>
+
+    <script src="js/glass-ui.js"></script>
+      <script src="js/kruizly-motion.js"></script>
+  </body>
+</html>

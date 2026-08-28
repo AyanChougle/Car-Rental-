@@ -1,0 +1,62 @@
+/* =========================================================
+   KRUIZLY VEHICLE DETAILS (css/vehicle.css)
+   Clean Page-Specific Rules | Zero Gradients
+   ========================================================= */
+
+@import url('base.css');
+@import url('components.css');
+
+.vehicle-page {
+  padding: 40px 0 80px;
+}
+
+.vehicle-hero-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 36px;
+  align-items: start;
+}
+
+.vehicle-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vehicle-main-media {
+  background-color: var(--surface-media);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.vehicle-main-media img {
+  max-height: 280px;
+  width: 100%;
+  object-fit: contain;
+}
+
+.vehicle-specs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.vehicle-spec-item {
+  padding: 14px;
+  background-color: var(--surface-control);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .vehicle-hero-grid {
+    grid-template-columns: 1fr;
+  }
+}

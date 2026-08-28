@@ -1,0 +1,101 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+.yarn/cache/
+.yarn/unplugged/
+bower_components/
+
+# Environment files and credentials
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.local
+**/serviceAccountKey.json
+**/service-account*.json
+**/firebase-adminsdk*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Runtime databases (keep server/db/index.js tracked)
+/server/db/*.sqlite
+/server/db/*.sqlite-*
+/server/db/*.sqlite3
+/server/db/*.sqlite3-*
+/server/db/*.db
+/server/db/*.db-*
+
+# Runtime uploads (keep the empty directory placeholder)
+/server/uploads/*
+!/server/uploads/.gitkeep
+
+# Generated exports and backups
+/server/exports/
+/server/backups/
+/exports/
+/backups/
+firebase-export*.xlsx
+*.backup
+*.bak
+
+# Accidental nested working copy
+/server/Car-Rental/
+
+# Build, test, and tool caches
+dist/
+build/
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+playwright-report/
+.cache/
+.parcel-cache/
+.vite/
+.tmp/
+tmp/
+temp/
+*.tsbuildinfo
+.eslintcache
+.npm/
+.node_repl_history
+.yarn-integrity
+.grunt/
+.lock-wscript
+lib-cov/
+
+# Logs and process files
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+firebase-debug.log*
+firestore-debug.log*
+ui-debug.log*
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Firebase local state and emulator output
+.firebase/
+.dataconnect/
+.emulator-data/
+.vercel/
+.netlify/
+
+# Editor and operating-system files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Package archives
+*.tgz
