@@ -24,7 +24,11 @@ app.set("trust proxy", 1);
 // SECURITY
 // ------------------------------------------------------------
 
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+  })
+);
 
 // ------------------------------------------------------------
 // CORS
@@ -33,7 +37,7 @@ app.use(helmet());
 const configuredOrigins = (
   process.env.ALLOWED_ORIGINS ||
   process.env.ALLOWED_ORIGIN ||
-  "http://localhost:5500,http://127.0.0.1:5500"
+  "http://localhost:5500,http://127.0.0.1:5500,https://ayanchougle.github.io"
 )
   .split(",")
   .map((origin) => origin.trim())

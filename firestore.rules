@@ -185,10 +185,17 @@ service cloud.firestore {
       allow update, delete: if isManagerOrAdmin();
     }
 
-    // coupons/{couponId} — public read for customers during checkout; write for signed-in users/admins
+    // coupons/{couponId} — public read for customers during checkout; write for staff/admin
     match /coupons/{couponId} {
       allow read: if true;
-      allow create, update, delete: if isSignedIn();
+      allow create, update, delete: if isManagerOrAdmin() || isAdmin();
+    }
+
+    // couponUsage/{usageId} — customer reads their own usage records; creation during confirmed booking
+    match /couponUsage/{usageId} {
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || isManagerOrAdmin());
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
     }
   }
 }

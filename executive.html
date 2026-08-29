@@ -196,6 +196,36 @@
           "
         ></div>
 
+        <!-- Payment Collection at Pickup -->
+        <div id="executivePickupPaymentSection" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; margin-top: 14px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+            <span style="font-size: 0.78rem; font-weight: 700; color: #4fd7ff; text-transform: uppercase; letter-spacing: 0.05em;">Payment Collection at Pickup</span>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <input type="checkbox" id="executivePickupFullPaidCheck" style="width: 16px; height: 16px; accent-color: #06d6a0; cursor: pointer;" />
+              <label for="executivePickupFullPaidCheck" style="font-size: 0.82rem; font-weight: 700; color: #06d6a0; cursor: pointer; margin: 0;">
+                Collect Remaining Balance (<span id="executivePickupBalanceDisplay">₹0</span>)
+              </label>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div>
+              <label class="pickup-field-label" for="executivePickupPayMode">Payment Mode</label>
+              <select id="executivePickupPayMode" class="kr-clean-input" style="background: #0d1520; color: #fff;">
+                <option value="UPI">UPI (QR / GPay / PhonePe)</option>
+                <option value="Cash">Cash Collected</option>
+                <option value="Bank Transfer">Bank Transfer / IMPS</option>
+                <option value="Card/POS">Card / POS</option>
+                <option value="Already Paid">Already Paid</option>
+              </select>
+            </div>
+            <div>
+              <label class="pickup-field-label" for="executivePickupPayRef">Transaction / Receipt #</label>
+              <input id="executivePickupPayRef" type="text" placeholder="UPI Ref / Cash Receipt #" class="kr-clean-input" />
+            </div>
+          </div>
+        </div>
+
         <!-- Notes -->
         <div class="field" style="margin-top:16px;">
           <label class="pickup-field-label" for="executivePickupNotes">Pickup Notes</label>

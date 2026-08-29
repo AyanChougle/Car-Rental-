@@ -53,6 +53,13 @@ import { PAYMENT_CONFIG } from "./payment-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
 
 import "./nav-helper.js";
+import {
+  calculateDuration,
+  formatCurrency,
+  formatHumanDateTime,
+  parseDateTime
+} from "./booking-calculator.js";
+import { recordCouponUsage } from "./coupon-service.js";
 
 
 // ============================================================
@@ -99,13 +106,7 @@ function $(id) {
 }
 
 
-function formatCurrency(value) {
-  const amount = Number(value || 0);
 
-  return new Intl.NumberFormat("en-IN").format(
-    amount
-  );
-}
 
 
 function formatDate(value) {
@@ -780,14 +781,12 @@ async function loadVehicleImage(
 ) {
   try {
     const catalog =
-      window.fleetVehicles ||
-      [];
+      Array.isArray(window.fleetVehicles) ? window.fleetVehicles : [];
 
     const vehicle =
       catalog.find(
         (item) =>
-          item.regNo ===
-          booking.vehicleReg
+          item.regNo === (booking.vehicleReg || booking.carId)
       );
 
 
@@ -872,11 +871,9 @@ function displayBooking(
       "Vehicle";
   }
 
-
   if (paymentVehicleIcon) {
     paymentVehicleIcon.textContent = "";
   }
-
 
   if ($("paymentBookingId")) {
     $("paymentBookingId").textContent =
@@ -886,94 +883,78 @@ function displayBooking(
       });
   }
 
+  const pickupLocation = booking.pickupLocation || booking.location || "Gavson Business Park, Ghansoli";
+  const dropLocation = booking.dropLocation || booking.location || "Gavson Business Park, Ghansoli";
 
   if ($("paymentPickup")) {
-    $("paymentPickup").textContent =
-      booking.pickupLocation ||
-      booking.pickup ||
-      "Gavson Business Park, Ghansoli";
+    $("paymentPickup").textContent = `${formatHumanDateTime(booking.pickupDate)} • ${pickupLocation}`;
   }
-
 
   if ($("paymentDrop")) {
-    $("paymentDrop").textContent =
-      booking.dropLocation ||
-      booking.drop ||
-      "Gavson Business Park, Ghansoli";
+    $("paymentDrop").textContent = `${formatHumanDateTime(booking.dropDate)} • ${dropLocation}`;
   }
-
 
   if ($("paymentDateRange")) {
     $("paymentDateRange").textContent =
-      `${formatDate(
-        booking.pickupDate
-      )} – ${formatDate(
-        booking.dropDate
-      )}`;
+      `${formatHumanDateTime(booking.pickupDate)} – ${formatHumanDateTime(booking.dropDate)}`;
   }
 
+  // Authoritative duration calculation from actual pickup and drop date/time
+  const durationResult = calculateDuration(booking.pickupDate, booking.dropDate);
+  const formattedDuration = durationResult.valid
+    ? durationResult.formattedDuration
+    : (booking.duration || (booking.days ? `${booking.days} Day${booking.days > 1 ? "s" : ""}` : "1 Day"));
 
-  let duration =
-    booking.duration ||
-    booking.durationDays;
+  if ($("paymentDuration")) {
+    $("paymentDuration").textContent = formattedDuration;
+  }
 
+  const totalAmount = Number(booking.totalAmount ?? booking.finalAmount ?? booking.rentalTotal ?? 0);
+  const couponDiscount = Number(booking.couponDiscount || 0);
+  const couponCode = booking.couponCode;
+  const paymentPlan = booking.paymentPlan || "advance";
+  const paymentAmount = Number(booking.paymentAmount ?? (paymentPlan === "advance" ? Math.min(500, totalAmount) : totalAmount));
+  const remainingBalance = Math.max(0, totalAmount - paymentAmount);
 
-  if (
-    !duration &&
-    booking.pickupDate &&
-    booking.dropDate
-  ) {
-    const start =
-      new Date(
-        `${booking.pickupDate}T00:00:00`
-      );
+  if ($("paymentTotalRental")) {
+    $("paymentTotalRental").textContent = `₹${formatCurrency(totalAmount)}`;
+  }
 
-    const end =
-      new Date(
-        `${booking.dropDate}T00:00:00`
-      );
-
-
-    if (
-      !isNaN(
-        start.getTime()
-      ) &&
-      !isNaN(
-        end.getTime()
-      )
-    ) {
-      duration =
-        Math.max(
-          1,
-          Math.ceil(
-            (
-              end.getTime() -
-              start.getTime()
-            ) /
-            (
-              1000 *
-              60 *
-              60 *
-              24
-            )
-          )
-        );
+  if ($("paymentCouponRow")) {
+    if (couponDiscount > 0) {
+      $("paymentCouponRow").style.display = "flex";
+      if ($("paymentCouponLabel")) {
+        $("paymentCouponLabel").textContent = `Coupon Discount (${couponCode || "Applied"})`;
+      }
+      if ($("paymentCouponDiscount")) {
+        $("paymentCouponDiscount").textContent = `-₹${formatCurrency(couponDiscount)}`;
+      }
+    } else {
+      $("paymentCouponRow").style.display = "none";
     }
   }
 
+  if ($("paymentAmount")) {
+    $("paymentAmount").textContent = `₹${formatCurrency(paymentAmount)}`;
+  }
 
-  if ($("paymentDuration")) {
-    $("paymentDuration").textContent =
-      duration
-        ? `${duration} day${
-            Number(duration) === 1
-              ? ""
-              : "s"
-          }`
-        : "1 day";
+  if ($("paymentRemainingRow")) {
+    if (paymentPlan === "advance") {
+      $("paymentRemainingRow").style.display = "flex";
+      if ($("paymentRemaining")) {
+        $("paymentRemaining").textContent = `₹${formatCurrency(remainingBalance)}`;
+      }
+    } else {
+      $("paymentRemainingRow").style.display = "none";
+    }
+  }
+
+  if ($("paymentPlanNote")) {
+    $("paymentPlanNote").textContent = paymentPlan === "advance"
+      ? `Advance booking fee to lock reservation. Balance of ₹${formatCurrency(remainingBalance)} due at vehicle handover.`
+      : "100% full rental payment.";
   }
 }
-
 
 // ============================================================
 // INITIALISE PAYMENT UI
@@ -1678,6 +1659,24 @@ async function submitPayment(
     console.log(
       "FIRESTORE PAYMENT UPDATE COMPLETE"
     );
+
+    // Record atomic coupon consumption in Firestore for all applied coupons
+    if (currentUser?.uid) {
+      const codes = Array.isArray(booking.couponCodes)
+        ? booking.couponCodes
+        : (booking.couponCode ? String(booking.couponCode).split(",").map((s) => s.trim()) : []);
+
+      codes.forEach((cCode) => {
+        if (cCode) {
+          recordCouponUsage({
+            couponCode: cCode,
+            userId: currentUser.uid,
+            bookingId: bookingId,
+            discountAmount: Number(booking.couponDiscount || 0)
+          }).catch((cErr) => console.warn("[payment] Coupon usage record notice:", cErr));
+        }
+      });
+    }
 
 
     // ========================================================

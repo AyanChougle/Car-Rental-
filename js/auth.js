@@ -7,6 +7,8 @@ import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   onAuthStateChanged,
   signOut,
@@ -75,20 +77,21 @@ function friendlyAuthError(error) {
     "auth/wrong-password": "Wrong password — try again.",
     "auth/invalid-credential": "Email or password is incorrect.",
     "auth/too-many-requests": "Too many attempts — wait a bit and try again.",
-    "auth/network-request-failed": "Network error — check your connection and try again.",
-    "auth/popup-closed-by-user": "Sign-in was cancelled.",
+    "auth/network-request-failed": "Network error — check your internet connection and try again.",
+    "auth/popup-closed-by-user": "Sign-in was cancelled or popup was closed.",
     "auth/popup-blocked": "Your browser blocked the sign-in pop-up — allow pop-ups for this site and try again.",
     "auth/cancelled-popup-request": "Sign-in was cancelled.",
     "auth/account-exists-with-different-credential": "That email is already registered with a password — log in with your password instead.",
+    "auth/unauthorized-domain": "This domain is not authorized in Firebase Console → Authentication → Settings → Authorized domains.",
     "auth/operation-not-allowed":
-      "Email/Password sign-in isn't turned on for this project yet — enable it in Firebase Console → Authentication → Sign-in method.",
+      "Google Sign-In isn't turned on for this project yet — enable it in Firebase Console → Authentication → Sign-in method.",
     "auth/configuration-not-found":
       "Firebase Authentication isn't set up for this project yet — open Firebase Console → Authentication and click Get Started.",
     "permission-denied":
-      "Firestore is blocking this write — deploy firestore.rules (see README) so signed-in users can write their own profile.",
+      "Firestore is blocking this write — deploy firestore.rules so signed-in users can write their own profile.",
     "unavailable": "Can't reach Firebase right now — check your connection and try again.",
   };
-  return map[error.code] || "Something went wrong. Please try again.";
+  return map[error?.code] || error?.message || "Something went wrong with authentication. Please try again.";
 }
 
 function setStatus(form, message, isError) {
@@ -204,11 +207,56 @@ function wireForgotPassword() {
 }
 
 // ---- Google Sign-In ----
-// Only writes a fresh users/{uid} doc the first time this account signs in.
-// On every later sign-in it deliberately leaves role and document statuses
-// untouched — firestore.rules blocks an owner from changing those fields on
-// an *update*, by design (see README's security notes), so re-sending them
-// here on a returning user would just fail the write and could break login.
+async function syncGoogleUserProfile(user) {
+  if (!user) return;
+  try {
+    const userRef = doc(db, "users", user.uid);
+    const existing = await getDoc(userRef);
+
+    if (!existing.exists()) {
+      await setDoc(userRef, {
+        name: user.displayName || "",
+        email: user.email || "",
+        phone: user.phoneNumber || null,
+        licenseURL: null,
+        licenseFrontURL: null,
+        licenseBackURL: null,
+        licenseStatus: "not_submitted",
+        aadharURL: null,
+        aadharStatus: "not_submitted",
+        aadharFrontURL: null,
+        aadharBackURL: null,
+        panFrontURL: null,
+        panBackURL: null,
+        panStatus: "not_submitted",
+        role: "customer",
+        createdAt: serverTimestamp(),
+      });
+    }
+
+    saveUserIpAddress(user.uid).catch(() => {});
+  } catch (err) {
+    console.warn("Could not sync Google user profile to Firestore:", err);
+  }
+}
+
+async function checkRedirectAuth() {
+  try {
+    const cred = await getRedirectResult(auth);
+    if (cred && cred.user) {
+      await syncGoogleUserProfile(cred.user);
+      window.location.href = getSafeNextUrl();
+    }
+  } catch (error) {
+    console.warn("Redirect sign-in notice:", error);
+    const statusEl = document.getElementById("googleAuthStatus");
+    if (statusEl) {
+      statusEl.textContent = friendlyAuthError(error);
+      statusEl.classList.add("form-status--error");
+    }
+  }
+}
+
 function wireGoogleAuth() {
   const googleBtn = document.getElementById("googleLoginBtn");
   if (!googleBtn) return;
@@ -223,49 +271,43 @@ function wireGoogleAuth() {
 
     try {
       const provider = new GoogleAuthProvider();
-      const cred = await signInWithPopup(auth, provider);
-      const user = cred.user;
-
-      const userRef = doc(db, "users", user.uid);
-      const existing = await getDoc(userRef);
-
-      if (!existing.exists()) {
-        await setDoc(userRef, {
-          name: user.displayName || "",
-          email: user.email || "",
-          phone: user.phoneNumber || null,
-          licenseURL: null,
-          licenseFrontURL: null,
-          licenseBackURL: null,
-          licenseStatus: "not_submitted",
-          aadharURL: null,
-          aadharStatus: "not_submitted",
-          aadharFrontURL: null,
-          aadharBackURL: null,
-          panFrontURL: null,
-          panBackURL: null,
-          panStatus: "not_submitted",
-          role: "customer",
-          createdAt: serverTimestamp(),
-        });
+      provider.setCustomParameters({ prompt: "select_account" });
+      
+      let user = null;
+      try {
+        const cred = await signInWithPopup(auth, provider);
+        user = cred.user;
+      } catch (popupErr) {
+        console.warn("Popup error:", popupErr.code, popupErr.message);
+        if (
+          popupErr.code === "auth/popup-blocked" ||
+          popupErr.code === "auth/popup-closed-by-user" ||
+          popupErr.code === "auth/cancelled-popup-request"
+        ) {
+          if (statusEl) {
+            statusEl.textContent = "Redirecting to Google sign-in...";
+            statusEl.classList.remove("form-status--error");
+          }
+          await signInWithRedirect(auth, provider);
+          return;
+        }
+        throw popupErr;
       }
 
-      saveUserIpAddress(user.uid).catch(() => {});
+      if (!user) return;
+
+      await syncGoogleUserProfile(user);
 
       if (statusEl) statusEl.textContent = "";
 
-      // Only redirect away if another page explicitly sent us here to sign
-      // in (e.g. payment.html?next=...). A plain visit to index.html stays
-      // put so the auth-card can swap to the quick date/time picker.
-      const hasNext = new URLSearchParams(window.location.search).has("next");
-      if (hasNext) {
-        window.location.href = getSafeNextUrl();
-      }
+      window.location.href = getSafeNextUrl();
     } catch (error) {
+      console.error("Google Sign-In Error:", error);
       if (statusEl) {
         statusEl.textContent = friendlyAuthError(error);
         statusEl.classList.add("form-status--error");
       }
+    } finally {
       googleBtn.disabled = false;
     }
   });
@@ -442,6 +484,7 @@ function wireAuthTabs() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  checkRedirectAuth();
   wireAuthTabs();
   wirePasswordToggles();
   wireLoginForm();

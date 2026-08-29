@@ -549,6 +549,31 @@ function openExecutivePickupModal(booking) {
   if (fastagInput) fastagInput.value = booking.pickupFastagBalance != null ? booking.pickupFastagBalance : "";
   if (fuelSelect) fuelSelect.value = booking.pickupFuelLevel || "";
 
+  const fullPaidCheck = document.getElementById("executivePickupFullPaidCheck");
+  const balanceDisplay = document.getElementById("executivePickupBalanceDisplay");
+  const payModeSelect = document.getElementById("executivePickupPayMode");
+  const payRefInput = document.getElementById("executivePickupPayRef");
+
+  const totalAmount = Number(booking.finalAmount || booking.totalAmount || booking.rentalTotal || 0);
+  const paidSoFar = Number(booking.paymentAmountPaid || booking.advanceAmount || (booking.paymentStatus === "paid" ? totalAmount : 0));
+  const remaining = Math.max(0, Number(booking.remainingBalance ?? (totalAmount - paidSoFar)));
+
+  if (balanceDisplay) {
+    balanceDisplay.textContent = `₹${Math.round(remaining).toLocaleString("en-IN")}`;
+  }
+
+  if (fullPaidCheck) {
+    fullPaidCheck.checked = (booking.paymentStatus === "paid" || remaining > 0);
+  }
+
+  if (payModeSelect) {
+    payModeSelect.value = booking.paymentMode || "UPI";
+  }
+
+  if (payRefInput) {
+    payRefInput.value = booking.paymentRef || "";
+  }
+
   modal.hidden = false;
   modal.style.display = "flex";
 }
@@ -740,6 +765,26 @@ function initialiseExecutivePickupModal() {
       if (pickupFastagBalance !== null) updatePayload.pickupFastagBalance = pickupFastagBalance;
       if (fuelLevel) updatePayload.pickupFuelLevel = fuelLevel;
 
+      const fullPaidChecked = document.getElementById("executivePickupFullPaidCheck")?.checked;
+      const payMode = document.getElementById("executivePickupPayMode")?.value || "UPI";
+      const payRef = document.getElementById("executivePickupPayRef")?.value.trim() || "";
+
+      if (fullPaidChecked || payRef) {
+        const fullTotal = Number(booking.finalAmount || booking.totalAmount || booking.rentalTotal || 0);
+        updatePayload.paymentPlan = "full";
+        updatePayload.paymentStatus = "paid";
+        updatePayload.paymentAmountPaid = fullTotal;
+        updatePayload.paymentAmount = fullTotal;
+        updatePayload.advanceAmount = fullTotal;
+        updatePayload.remainingBalance = 0;
+        updatePayload.remainingAmount = 0;
+        updatePayload.paymentMode = payMode;
+        if (payRef) updatePayload.paymentRef = payRef;
+        updatePayload.pickupPaymentCollected = true;
+        updatePayload.pickupPaymentCollectedAt = serverTimestamp();
+        updatePayload.pickupPaymentCollectedBy = currentUser?.displayName || currentUser?.email || currentUser?.uid || "Executive";
+      }
+
       await updateDoc(
         doc(db, "bookings", booking.id),
         updatePayload
@@ -775,6 +820,21 @@ async function openExecutiveBookingDetails(booking) {
   const mediaIds = Array.isArray(booking.pickupPhotoMediaIds)
     ? booking.pickupPhotoMediaIds
     : [];
+
+  const returnInspection = booking.returnInspection || {};
+  const returnMediaIds = Array.isArray(returnInspection.returnPhotoMediaIds) && returnInspection.returnPhotoMediaIds.length
+    ? returnInspection.returnPhotoMediaIds
+    : Array.isArray(returnInspection.photos)
+      ? returnInspection.photos.map((p) => p.mediaId || p.url).filter(Boolean)
+      : Array.isArray(returnInspection.returnPhotos)
+        ? returnInspection.returnPhotos
+        : [];
+
+  const returnItems = (Array.isArray(returnInspection.items) ? returnInspection.items : []).filter(
+    (i) => i.checked === true || i.checked === "true"
+  );
+  const returnNotes = returnInspection.notes || booking.returnNotes || "";
+
   const overlay = document.createElement("div");
   overlay.id = "executiveBookingDetails";
   overlay.className = "manager-modal";
@@ -797,6 +857,11 @@ async function openExecutiveBookingDetails(booking) {
         <button type="button" role="tab" id="executivePhotosTab" aria-controls="executivePhotosPanel" aria-selected="false" tabindex="-1" data-details-tab="photos">
           Pickup Photos <span>${mediaIds.length}</span>
         </button>
+        ${returnMediaIds.length ? `
+        <button type="button" role="tab" id="executiveReturnPhotosTab" aria-controls="executiveReturnPhotosPanel" aria-selected="false" tabindex="-1" data-details-tab="return-photos">
+          Return Photos <span>${returnMediaIds.length}</span>
+        </button>
+        ` : ""}
       </div>
 
       <section id="executiveOverviewPanel" class="executive-details-panel" role="tabpanel" aria-labelledby="executiveOverviewTab" data-details-panel="overview">
@@ -813,10 +878,10 @@ async function openExecutiveBookingDetails(booking) {
             ["Booking status", formatStatus(booking.status)],
             ["Pickup status", formatStatus(booking.pickupStatus || "awaiting pickup")],
             ["Pickup Odometer", booking.pickupOdometer != null ? `${Number(booking.pickupOdometer).toLocaleString("en-IN")} km` : "—"],
-            ["Return Odometer", booking.returnInspection?.returnOdometer != null ? `${Number(booking.returnInspection.returnOdometer).toLocaleString("en-IN")} km` : "—"],
+            ["Return Odometer", returnInspection.returnOdometer != null ? `${Number(returnInspection.returnOdometer).toLocaleString("en-IN")} km` : "—"],
             ["Pickup FASTag", booking.pickupFastagBalance != null ? `₹${Number(booking.pickupFastagBalance).toLocaleString("en-IN")}` : "—"],
-            ["Return FASTag", booking.returnInspection?.returnFastagBalance != null ? `₹${Number(booking.returnInspection.returnFastagBalance).toLocaleString("en-IN")}` : "—"],
-            ["Fuel level", booking.pickupFuelLevel || "—"],
+            ["Return FASTag", returnInspection.returnFastagBalance != null ? `₹${Number(returnInspection.returnFastagBalance).toLocaleString("en-IN")}` : "—"],
+            ["Fuel Level", booking.pickupFuelLevel || returnInspection.fuelLevel || "—"],
           ].map(([label, value]) => `
             <div class="executive-detail-item">
               <span>${escapeHtml(label)}</span>
@@ -825,6 +890,27 @@ async function openExecutiveBookingDetails(booking) {
           `).join("")}
         </div>
         ${booking.pickupNotes ? `<div class="executive-detail-notes"><span>Pickup notes</span><p>${escapeHtml(booking.pickupNotes)}</p></div>` : ""}
+        ${returnNotes ? `<div class="executive-detail-notes" style="margin-top:10px;"><span>Return notes</span><p>${escapeHtml(returnNotes)}</p></div>` : ""}
+
+        ${(returnInspection && (returnInspection.processedAt || returnInspection.returnOdometer != null || returnItems.length > 0 || returnInspection.deductionTotal > 0)) ? `
+        <div class="executive-detail-notes" style="margin-top:14px; border:1px solid rgba(79,215,255,0.25); background:rgba(79,215,255,0.03); border-radius:10px; padding:14px;">
+          <span style="color:#4fd7ff; font-weight:800; text-transform:uppercase; font-size:0.75rem; letter-spacing:0.05em; display:block; margin-bottom:8px;">Return Inspection &amp; Deductions</span>
+          ${returnItems.length ? `
+            <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
+              ${returnItems.map((item) => `
+                <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px dashed var(--line);">
+                  <span>${escapeHtml(item.label || item.name || item.key)}</span>
+                  <strong style="color:#ef476f;">₹${Number(item.amount || 0).toLocaleString("en-IN")}</strong>
+                </div>
+              `).join("")}
+            </div>
+          ` : `<p style="margin:0 0 8px; color:var(--sub); font-size:0.85rem;">No damage deductions recorded.</p>`}
+          <div style="display:flex; justify-content:space-between; font-size:0.85rem; border-top:1px solid var(--line); padding-top:8px;">
+            <span>Total Deductions: <strong style="color:#ef476f;">₹${Number(returnInspection.deductionTotal || 0).toLocaleString("en-IN")}</strong></span>
+            <span>Deposit Refund: <strong style="color:#34d399;">₹${Number(returnInspection.depositRefund ?? Math.max(0, (booking.securityDeposit || 0) - (returnInspection.deductionTotal || 0))).toLocaleString("en-IN")}</strong></span>
+          </div>
+        </div>
+        ` : ""}
       </section>
 
       <section id="executivePhotosPanel" class="executive-details-panel" role="tabpanel" aria-labelledby="executivePhotosTab" data-details-panel="photos" hidden>
@@ -832,6 +918,14 @@ async function openExecutiveBookingDetails(booking) {
           ${mediaIds.length ? '<div class="manager-state">Loading pickup photos...</div>' : '<div class="executive-details-empty">No pickup photos recorded yet.</div>'}
         </div>
       </section>
+
+      ${returnMediaIds.length ? `
+      <section id="executiveReturnPhotosPanel" class="executive-details-panel" role="tabpanel" aria-labelledby="executiveReturnPhotosTab" data-details-panel="return-photos" hidden>
+        <div id="executiveReturnPhotoGallery" class="executive-details-gallery">
+          <div class="manager-state">Loading return photos...</div>
+        </div>
+      </section>
+      ` : ""}
     </div>
   `;
 
@@ -904,6 +998,35 @@ async function openExecutiveBookingDetails(booking) {
 
     if (gallery?.isConnected) {
       gallery.innerHTML = photos.filter(Boolean).join("");
+    }
+  }
+
+  if (returnMediaIds.length) {
+    const returnGallery = overlay.querySelector("#executiveReturnPhotoGallery");
+    const returnPhotos = await Promise.all(
+      returnMediaIds.map(async (mediaRef) => {
+        try {
+          let url = "";
+          if (typeof mediaRef === "string" && (mediaRef.startsWith("http") || mediaRef.startsWith("blob:") || mediaRef.startsWith("data:"))) {
+            url = mediaRef;
+          } else {
+            const mediaId = typeof mediaRef === "object" ? (mediaRef.mediaId || mediaRef.url) : mediaRef;
+            url = await fetchExecutiveMedia(mediaId);
+            if (closed) {
+              URL.revokeObjectURL(url);
+              return "";
+            }
+            objectUrls.push(url);
+          }
+          return `<img src="${escapeHtml(url)}" alt="Return condition photo" />`;
+        } catch {
+          return `<div class="executive-details-photo-error">Photo unavailable</div>`;
+        }
+      })
+    );
+
+    if (returnGallery?.isConnected) {
+      returnGallery.innerHTML = returnPhotos.filter(Boolean).join("");
     }
   }
 }
@@ -1778,13 +1901,32 @@ function openReturnReport(booking) {
       0
     );
 
-  const deductions =
-    getNumber(
-      inspection.totalDeductions ??
-      inspection.deductions ??
-      inspection.deductionTotal ??
-      0
-    );
+  /* =====================================================
+     INSPECTION ITEMS (ONLY CHECKED ITEMS ARE DEDUCTED)
+  ===================================================== */
+
+  const rawItems =
+    inspection.items ||
+    inspection.checklist ||
+    inspection.damageItems ||
+    [];
+
+  const items = (Array.isArray(rawItems) ? rawItems : []).filter((item) => {
+    if (typeof item === "string") return true;
+    return item.checked === true || item.checked === "true";
+  });
+
+  const calculatedDeductions = items.reduce((sum, item) => {
+    if (typeof item === "string") return sum;
+    return sum + getNumber(item.amount ?? item.deduction ?? item.cost ?? 0);
+  }, 0);
+
+  const deductions = getNumber(
+    inspection.totalDeductions ??
+    inspection.deductions ??
+    inspection.deductionTotal ??
+    calculatedDeductions
+  );
 
   const refund =
     getNumber(
@@ -1822,16 +1964,6 @@ function openReturnReport(booking) {
     inspection.inspectedBy ||
     booking.returnedBy ||
     "Executive";
-
-  /* =====================================================
-     INSPECTION ITEMS
-  ===================================================== */
-
-  const items =
-    inspection.items ||
-    inspection.checklist ||
-    inspection.damageItems ||
-    [];
 
   let itemsHtml = "";
 
@@ -2043,9 +2175,9 @@ function openReturnReport(booking) {
       </div>
 
       <!-- INSPECTION ITEMS -->
-      ${Array.isArray(items) && items.length ? `
       <div class="rr-section">
         <span class="rr-section-title">Inspection Items</span>
+        ${items.length ? `
         <div class="rr-items-list">
           ${items.map((item) => {
             if (typeof item === "string") {
@@ -2053,8 +2185,6 @@ function openReturnReport(booking) {
             }
             const title = item.name || item.title || item.label || item.description || "Inspection item";
             const amount = getNumber(item.amount ?? item.deduction ?? item.cost ?? 0);
-            const isChecked = item.checked === true || item.checked === "true" || amount > 0;
-            if (!isChecked) return "";
             return `
               <div class="rr-item">
                 <span class="rr-item-name">${escapeHtml(title)}</span>
@@ -2063,8 +2193,12 @@ function openReturnReport(booking) {
             `;
           }).join("")}
         </div>
+        ` : `
+        <div style="padding: 14px; border: 1px solid var(--line); border-radius: 10px; color: var(--sub); font-size: 0.88rem;">
+          No damage or extra deductions recorded.
+        </div>
+        `}
       </div>
-      ` : ""}
 
       <!-- RETURN PHOTOS -->
       ${returnPhotoRefs.length ? `

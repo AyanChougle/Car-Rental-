@@ -10,17 +10,25 @@ import {
   updateDoc,
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 
-function formatCurrency(value) {
-  return new Intl.NumberFormat("en-IN").format(value);
+import {
+  calculateDuration,
+  formatCurrency,
+  formatHumanDateTime,
+  parseDateTime
+} from "./booking-calculator.js";
+
+function formatDate(val) {
+  return formatHumanDateTime(val);
 }
 
-function formatDate(iso) {
-  if (!iso) return "—";
-  return new Date(iso + "T00:00:00").toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+function escapeHtml(str) {
+  if (str == null) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 const STATUS_COPY = {
@@ -111,11 +119,12 @@ function bookingCard(booking, isLive) {
 				<div class="booking-card__dates">
 					<span>Pickup: ${formatDate(booking.pickupDate)}</span>
 					<span>Drop: ${formatDate(booking.dropDate)}</span>
-					<span>${booking.days} day${booking.days > 1 ? "s" : ""}${booking.withDriver ? " • With driver" : ""}</span>
+					<span>Duration: ${booking.duration || (booking.days ? `${booking.days} Day${booking.days > 1 ? "s" : ""}` : "1 Day")}${booking.withDriver ? " • With driver" : ""}</span>
 				</div>
 				<div class="booking-card__meta">
-					<span>${booking.location || ""}</span>
+					<span>${booking.location || "Gavson Business Park, Ghansoli"}</span>
 					<span>${paymentStatusLabel(booking)}</span>
+					${booking.couponCode ? `<span style="color:var(--accent,#4fd7ff);font-weight:600;">Coupon: ${escapeHtml(booking.couponCode)} (-₹${formatCurrency(booking.couponDiscount)})</span>` : ""}
 				</div>
 				<div class="booking-card__bottom">
 					<div class="fleet-price">₹${formatCurrency(booking.totalAmount)}</div>

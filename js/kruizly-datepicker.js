@@ -132,6 +132,12 @@
             targetContainer.appendChild(icon);
           }
         }
+      },
+      onChange: function (selectedDates, dateStr, instance) {
+        try {
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+        } catch (_) {}
       }
     };
 

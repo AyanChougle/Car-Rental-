@@ -102,6 +102,12 @@ function formatINR(value) {
   return `₹${Math.round(number).toLocaleString("en-IN")}`;
 }
 
+function formatCurrency(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return "0";
+  return Math.round(number).toLocaleString("en-IN");
+}
+
 function toMillis(value) {
   if (!value) return 0;
 
@@ -421,6 +427,7 @@ function initialiseAdmin() {
   initialiseDocumentModal();
   initialisePaymentModal();
   initialiseReturnModal();
+  initialiseInvoiceEditorModal();
   initialiseFirebaseExport();
   initialiseFleetUpload();
   initialiseCouponManagement();
@@ -723,10 +730,6 @@ function getFilteredBookings() {
 // ============================================================================
 
 async function loadAllAdminData() {
-  updateUserStats();
-  updateBookingStats();
-  updateRevenueStats();
-
   await Promise.allSettled([
     loadUsers(),
     loadBookings(),
@@ -734,6 +737,10 @@ async function loadAllAdminData() {
     loadFleetManagement(),
     loadCoupons(),
   ]);
+
+  updateUserStats();
+  updateBookingStats();
+  updateRevenueStats();
 }
 
 async function loadFleetManagement() {
@@ -1208,14 +1215,17 @@ function renderCouponsTable() {
     btn.addEventListener("click", async () => {
       const c = couponsData.find(item => item.id === btn.dataset.id);
       if (!c) return;
-      const nextStatus = c.status === "active" ? "inactive" : "active";
+      const isActive = c.status === "active" || c.active === true;
+      const nextActive = !isActive;
+      const nextStatus = nextActive ? "active" : "inactive";
       btn.disabled = true;
 
+      c.active = nextActive;
       c.status = nextStatus;
       c.updatedAt = new Date().toISOString();
 
       try {
-        await setDoc(doc(db, "coupons", c.id), { status: nextStatus, updatedAt: serverTimestamp() }, { merge: true });
+        await setDoc(doc(db, "coupons", c.id), { active: nextActive, status: nextStatus, updatedAt: serverTimestamp() }, { merge: true });
       } catch (_) {}
 
       try {
@@ -1281,14 +1291,19 @@ function initialiseCouponManagement() {
 
     try {
       const couponId = editingCouponId || code;
+      const isActive = status === "active";
       const data = {
         code,
+        active: isActive,
+        status,
         type,
+        discountType: type,
         val,
+        discountValue: val,
         label,
         minOrder,
-        status,
-        updatedAt: new Date().toISOString(),
+        minimumBookingAmount: minOrder,
+        updatedAt: serverTimestamp(),
         updatedBy: currentUser?.uid || "admin",
       };
 
@@ -3250,10 +3265,6 @@ function renderBookingsTable(
               }
             </button>
 
-            ${["paid", "advance_paid"].includes(booking.paymentStatus)
-              ? `<button type="button" class="btn btn-dark send-booking-invoice-btn" data-bid="${escapeHtml(id)}" style="padding:6px 12px;font-size:.8rem;margin-left:6px;">Send Invoice</button>`
-              : ""}
-
           </td>
 
         </tr>
@@ -3807,9 +3818,7 @@ async function openAdminPickupPhotos(booking) {
 }
 
 function attachBookingEvents() {
-  bookingsTableWrap.querySelectorAll(".send-booking-invoice-btn").forEach((button) => {
-    button.addEventListener("click", () => sendBookingInvoice(button.dataset.bid, button));
-  });
+  bookingsTableWrap
 
   bookingsTableWrap
     .querySelectorAll(".admin-view-pickup-photos-btn")
@@ -4447,7 +4456,7 @@ function openReturnReport(
     existing.remove();
   }
 
-  const deductions =
+  const rawDeductions =
     Array.isArray(
       inspection.items
     )
@@ -4458,6 +4467,11 @@ function openReturnReport(
         ? inspection.deductions
         : [];
 
+  const deductions = rawDeductions.filter((item) => {
+    if (typeof item === "string") return true;
+    return item.checked === true || item.checked === "true";
+  });
+
   const deposit =
     Number(
       inspection.originalDeposit ??
@@ -4466,20 +4480,22 @@ function openReturnReport(
         0
     );
 
+  const calculatedDeductions = deductions.reduce(
+    (sum, item) =>
+      sum +
+      Number(
+        item.amount ||
+          item.deduction ||
+          0
+      ),
+    0
+  );
+
   const totalDeduction =
     Number(
       inspection.totalDeductions ??
         inspection.deductionTotal ??
-        deductions.reduce(
-          (sum, item) =>
-            sum +
-            Number(
-              item.amount ||
-                item.deduction ||
-                0
-            ),
-          0
-        )
+        calculatedDeductions
     );
 
   const refund =
@@ -5321,11 +5337,12 @@ function renderPaymentsTable() {
             style="
               padding:12px;
               text-align:right;
+              white-space:nowrap;
             "
           >
             ${booking.paymentStatus === "pending_verification"
               ? `<button type="button" class="btn btn-dark review-payment-btn" data-bid="${escapeHtml(booking.id)}" style="padding:6px 12px;font-size:.8rem;">Review</button>`
-              : `<button type="button" class="btn btn-outline send-invoice-btn" data-bid="${escapeHtml(booking.id)}" style="padding:6px 12px;font-size:.8rem;">Send Invoice</button>`}
+              : `<button type="button" class="btn btn-outline edit-invoice-btn" data-bid="${escapeHtml(booking.id)}" style="padding:6px 12px;font-size:.8rem;">Edit / Send Invoice</button>`}
           </td>
 
         </tr>
@@ -5373,8 +5390,8 @@ function renderPaymentsTable() {
       );
     });
 
-  paymentsTableWrap.querySelectorAll(".send-invoice-btn").forEach((button) => {
-    button.addEventListener("click", () => sendBookingInvoice(button.dataset.bid, button));
+  paymentsTableWrap.querySelectorAll(".edit-invoice-btn, .send-invoice-btn").forEach((button) => {
+    button.addEventListener("click", () => openInvoiceEditorModal(button.dataset.bid, button));
   });
 
   paymentsTableWrap
@@ -5389,10 +5406,68 @@ function renderPaymentsTable() {
     });
 }
 
-async function sendBookingInvoice(bookingId, button) {
-  const originalText = button.textContent;
-  button.disabled = true;
-  button.textContent = "Sending…";
+async function convertBookingToFullPayment(bookingId, triggerBtn) {
+  // Open the invoice editor with full paid pre-selected so admin can specify payment mode and reference
+  await openInvoiceEditorModal(bookingId, triggerBtn);
+  const fullPaidCheck = $("adminInvFullPaidCheck");
+  if (fullPaidCheck) {
+    fullPaidCheck.checked = true;
+    fullPaidCheck.dispatchEvent(new Event("change"));
+  }
+  const refInput = $("adminInvPaymentRef");
+  if (refInput) {
+    refInput.focus();
+  }
+  const statusEl = $("adminInvoiceModalStatus");
+  if (statusEl) {
+    statusEl.textContent = "⚡ Converted to Full Payment! Select Payment Mode, enter Reference ID, then click Save or Send.";
+    statusEl.className = "form-status is-success";
+  }
+}
+
+let currentEditingInvoice = null;
+
+function recalculateInvoiceModalTotals() {
+  const rental = Number($("adminInvRental")?.value || 0);
+  const driver = Number($("adminInvDriver")?.value || 0);
+  const extraKm = Number($("adminInvExtraKm")?.value || 0);
+  const lateFee = Number($("adminInvLateFee")?.value || 0);
+  const fuel = Number($("adminInvFuel")?.value || 0);
+  const damage = Number($("adminInvDamage")?.value || 0);
+  const discount = Number($("adminInvDiscount")?.value || 0);
+  const taxRate = Number($("adminInvTaxRate")?.value || 0);
+
+  const subtotal = Math.max(0, rental + driver + extraKm + lateFee + fuel + damage - discount);
+  const tax = Math.round((subtotal * taxRate) / 100);
+  const total = subtotal + tax;
+
+  const fullPaidCheck = $("adminInvFullPaidCheck");
+  const amountPaidInput = $("adminInvAmountPaid");
+
+  let paid = Number(amountPaidInput?.value || 0);
+  if (fullPaidCheck?.checked && paid < total) {
+    paid = total;
+    if (amountPaidInput) amountPaidInput.value = total;
+  }
+  const balance = Math.max(0, total - paid);
+
+  if ($("adminInvSubtotal")) $("adminInvSubtotal").textContent = formatINR(subtotal);
+  if ($("adminInvTax")) $("adminInvTax").textContent = formatINR(tax);
+  if ($("adminInvTotal")) $("adminInvTotal").textContent = formatINR(total);
+  if ($("adminInvPaid")) $("adminInvPaid").textContent = formatINR(paid);
+  if ($("adminInvBalance")) $("adminInvBalance").textContent = formatINR(balance);
+
+  return { subtotal, tax, total, paid, balance };
+}
+
+async function openInvoiceEditorModal(bookingId, triggerBtn) {
+  const statusEl = $("adminInvoiceModalStatus");
+  if (statusEl) {
+    statusEl.textContent = "Loading invoice data…";
+    statusEl.className = "form-status is-loading";
+  }
+
+  showModal("adminInvoiceModal");
 
   try {
     const apiBase = window.MEDIA_API_URL || "http://localhost:4001";
@@ -5407,12 +5482,363 @@ async function sendBookingInvoice(bookingId, button) {
     if (!response.ok) {
       throw new Error(data.message || data.error || `Server responded with status ${response.status}`);
     }
-    button.textContent = "Invoice Sent";
+
+    currentEditingInvoice = data.invoice;
+    const inv = data.invoice;
+    const booking = bookingsData.find((item) => item.id === bookingId) || {};
+
+    if ($("adminInvoiceModalNumber")) {
+      $("adminInvoiceModalNumber").textContent = inv.invoiceNumber || inv.invoiceId || "";
+    }
+    if ($("adminInvCustomerName")) $("adminInvCustomerName").value = inv.customer?.name || "";
+    if ($("adminInvCustomerEmail")) $("adminInvCustomerEmail").value = inv.customer?.email || "";
+    if ($("adminInvVehicleName")) $("adminInvVehicleName").value = inv.vehicle?.name || "";
+    let regVal = inv.vehicle?.registration || booking.vehicleReg || booking.registration || "";
+    if (typeof regVal === "string" && (regVal.toUpperCase().startsWith("ZIP") || regVal.toUpperCase() === "ZIP001")) {
+      regVal = "";
+    }
+    if ($("adminInvVehicleReg")) $("adminInvVehicleReg").value = regVal;
+
+    const c = inv.charges || {};
+    if ($("adminInvRental")) $("adminInvRental").value = c.rental || 0;
+    if ($("adminInvDriver")) $("adminInvDriver").value = c.driver || 0;
+    if ($("adminInvExtraKm")) $("adminInvExtraKm").value = c.extraKm || 0;
+    if ($("adminInvLateFee")) $("adminInvLateFee").value = c.lateFee || 0;
+    if ($("adminInvFuel")) $("adminInvFuel").value = c.fuel || 0;
+    if ($("adminInvDamage")) $("adminInvDamage").value = Number(c.damage || 0) + Number(c.cleaning || 0);
+    if ($("adminInvDiscount")) $("adminInvDiscount").value = c.discount || 0;
+    if ($("adminInvTaxRate")) $("adminInvTaxRate").value = inv.taxRate ?? 0;
+    if ($("adminInvNotes")) $("adminInvNotes").value = inv.notes || "";
+
+    const pay = inv.payment || {};
+    if ($("adminInvPaymentMode")) $("adminInvPaymentMode").value = pay.mode || booking.paymentMode || "UPI";
+    if ($("adminInvPaymentRef")) $("adminInvPaymentRef").value = pay.reference || booking.paymentRef || "";
+
+    const isFull = inv.paymentPlan === "full" || inv.paymentStatus === "paid" || inv.balanceDue === 0;
+    if ($("adminInvFullPaidCheck")) $("adminInvFullPaidCheck").checked = isFull;
+    if (currentEditingInvoice) {
+      currentEditingInvoice.isFullPaid = isFull;
+      currentEditingInvoice.originalAmountPaid = inv.amountPaid || booking.paymentAmountPaid || booking.advanceAmount || 0;
+    }
+    if ($("adminInvAmountPaid")) {
+      $("adminInvAmountPaid").value = isFull ? (inv.total || inv.subtotal || 0) : (inv.amountPaid || booking.paymentAmountPaid || booking.advanceAmount || 0);
+    }
+
+    recalculateInvoiceModalTotals();
+
+    if (statusEl) {
+      statusEl.textContent = data.emailSent
+        ? "✓ Invoice loaded. Sent to customer."
+        : "✓ Invoice loaded. Edit line items, payment mode, preview PDF, or send to customer.";
+      statusEl.className = "form-status is-success";
+    }
   } catch (error) {
-    console.error("INVOICE SEND ERROR:", error);
-    alert(`Could not send invoice:\n\n${error.message}`);
-    button.textContent = originalText;
-    button.disabled = false;
+    console.error("LOAD INVOICE ERROR:", error);
+    if (statusEl) {
+      statusEl.textContent = `Could not load invoice: ${error.message}`;
+      statusEl.className = "form-status is-error";
+    }
+  }
+}
+
+function initialiseInvoiceEditorModal() {
+  const close = $("closeAdminInvoiceModal");
+  if (close) {
+    close.addEventListener("click", () => hideModal("adminInvoiceModal"));
+  }
+
+  document.querySelectorAll(".inv-calc-field").forEach((input) => {
+    input.addEventListener("input", recalculateInvoiceModalTotals);
+  });
+
+  const fullPaidCheck = $("adminInvFullPaidCheck");
+  const amountPaidInput = $("adminInvAmountPaid");
+
+  if (fullPaidCheck) {
+    fullPaidCheck.addEventListener("change", () => {
+      if (!currentEditingInvoice) return;
+      currentEditingInvoice.isFullPaid = fullPaidCheck.checked;
+      if (fullPaidCheck.checked) {
+        const rental = Number($("adminInvRental")?.value || 0);
+        const driver = Number($("adminInvDriver")?.value || 0);
+        const extraKm = Number($("adminInvExtraKm")?.value || 0);
+        const lateFee = Number($("adminInvLateFee")?.value || 0);
+        const fuel = Number($("adminInvFuel")?.value || 0);
+        const damage = Number($("adminInvDamage")?.value || 0);
+        const discount = Number($("adminInvDiscount")?.value || 0);
+        const taxRate = Number($("adminInvTaxRate")?.value || 0);
+        const subtotal = Math.max(0, rental + driver + extraKm + lateFee + fuel + damage - discount);
+        const total = subtotal + Math.round((subtotal * taxRate) / 100);
+        if (amountPaidInput) amountPaidInput.value = total;
+      } else {
+        if (amountPaidInput) amountPaidInput.value = currentEditingInvoice.originalAmountPaid || 0;
+      }
+      recalculateInvoiceModalTotals();
+    });
+  }
+
+  if (amountPaidInput) {
+    amountPaidInput.addEventListener("input", () => {
+      const rental = Number($("adminInvRental")?.value || 0);
+      const driver = Number($("adminInvDriver")?.value || 0);
+      const extraKm = Number($("adminInvExtraKm")?.value || 0);
+      const lateFee = Number($("adminInvLateFee")?.value || 0);
+      const fuel = Number($("adminInvFuel")?.value || 0);
+      const damage = Number($("adminInvDamage")?.value || 0);
+      const discount = Number($("adminInvDiscount")?.value || 0);
+      const taxRate = Number($("adminInvTaxRate")?.value || 0);
+      const subtotal = Math.max(0, rental + driver + extraKm + lateFee + fuel + damage - discount);
+      const total = subtotal + Math.round((subtotal * taxRate) / 100);
+      const currentPaid = Number(amountPaidInput.value || 0);
+      if (fullPaidCheck) {
+        fullPaidCheck.checked = (currentPaid >= total && total > 0);
+      }
+      recalculateInvoiceModalTotals();
+    });
+  }
+
+  const previewBtn = $("adminInvPreviewBtn");
+  if (previewBtn) {
+    previewBtn.addEventListener("click", async () => {
+      if (!currentEditingInvoice) return;
+      const statusEl = $("adminInvoiceModalStatus");
+      try {
+        previewBtn.disabled = true;
+        previewBtn.textContent = "Generating PDF…";
+        const apiBase = window.MEDIA_API_URL || "http://localhost:4001";
+
+        // Sync latest form inputs to backend before opening PDF preview
+        const rental = Number($("adminInvRental")?.value || 0);
+        const driver = Number($("adminInvDriver")?.value || 0);
+        const extraKm = Number($("adminInvExtraKm")?.value || 0);
+        const lateFee = Number($("adminInvLateFee")?.value || 0);
+        const fuel = Number($("adminInvFuel")?.value || 0);
+        const damage = Number($("adminInvDamage")?.value || 0);
+        const discount = Number($("adminInvDiscount")?.value || 0);
+        const taxRate = Number($("adminInvTaxRate")?.value || 0);
+        const isFull = $("adminInvFullPaidCheck")?.checked;
+        const amountPaid = Number($("adminInvAmountPaid")?.value || 0);
+
+        const payload = {
+          customer: {
+            name: $("adminInvCustomerName")?.value.trim() || currentEditingInvoice.customer?.name || "",
+            email: $("adminInvCustomerEmail")?.value.trim() || currentEditingInvoice.customer?.email || "",
+            phone: currentEditingInvoice.customer?.phone || "",
+            address: currentEditingInvoice.customer?.address || "",
+          },
+          vehicle: {
+            name: $("adminInvVehicleName")?.value.trim() || currentEditingInvoice.vehicle?.name || "",
+            registration: $("adminInvVehicleReg")?.value.trim() || "",
+            category: currentEditingInvoice.vehicle?.category || "",
+          },
+          charges: { rental, driver, extraKm, lateFee, fuel, damage, discount },
+          taxRate,
+          notes: $("adminInvNotes")?.value.trim() || "",
+          amountPaid,
+          paymentMode: $("adminInvPaymentMode")?.value || "UPI",
+          paymentRef: $("adminInvPaymentRef")?.value || "",
+          paymentPlan: isFull ? "full" : (currentEditingInvoice.paymentPlan || "advance"),
+          paymentStatus: isFull ? "paid" : (currentEditingInvoice.paymentStatus || "advance_paid"),
+        };
+
+        await fetch(`${apiBase}/api/invoices/${encodeURIComponent(currentEditingInvoice.invoiceId)}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(await mediaAuthHeaders()),
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const res = await fetch(`${apiBase}/api/invoices/${encodeURIComponent(currentEditingInvoice.invoiceId)}/pdf?refresh=true`, {
+          headers: await mediaAuthHeaders(),
+        });
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}));
+          throw new Error(d.message || d.error || "Could not load invoice PDF.");
+        }
+        const blob = await res.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        window.open(objectUrl, "_blank", "noopener");
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+      } catch (err) {
+        if (statusEl) {
+          statusEl.textContent = `PDF Preview error: ${err.message}`;
+          statusEl.className = "form-status is-error";
+        }
+      } finally {
+        previewBtn.disabled = false;
+        previewBtn.textContent = "📄 Preview PDF";
+      }
+    });
+  }
+
+  const saveBtn = $("adminInvSaveBtn");
+  if (saveBtn) {
+    saveBtn.addEventListener("click", async () => {
+      if (!currentEditingInvoice) return;
+      const statusEl = $("adminInvoiceModalStatus");
+      try {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving…";
+        if (statusEl) {
+          statusEl.textContent = "Saving changes & regenerating PDF…";
+          statusEl.className = "form-status is-loading";
+        }
+
+        const totalsData = recalculateInvoiceModalTotals();
+        const isFull = (totalsData.balance === 0 || $("adminInvFullPaidCheck")?.checked);
+
+        const payload = {
+          customer: {
+            ...currentEditingInvoice.customer,
+            name: $("adminInvCustomerName")?.value || "",
+            email: $("adminInvCustomerEmail")?.value || "",
+          },
+          vehicle: {
+            ...currentEditingInvoice.vehicle,
+            name: $("adminInvVehicleName")?.value || "",
+            registration: $("adminInvVehicleReg")?.value || "",
+          },
+          charges: {
+            ...currentEditingInvoice.charges,
+            rental: Number($("adminInvRental")?.value || 0),
+            driver: Number($("adminInvDriver")?.value || 0),
+            extraKm: Number($("adminInvExtraKm")?.value || 0),
+            lateFee: Number($("adminInvLateFee")?.value || 0),
+            fuel: Number($("adminInvFuel")?.value || 0),
+            damage: Number($("adminInvDamage")?.value || 0),
+            discount: Number($("adminInvDiscount")?.value || 0),
+          },
+          taxRate: Number($("adminInvTaxRate")?.value || 0),
+          notes: $("adminInvNotes")?.value || "",
+          amountPaid: totalsData.paid,
+          paymentMode: $("adminInvPaymentMode")?.value || "UPI",
+          paymentRef: $("adminInvPaymentRef")?.value || "",
+          paymentPlan: isFull ? "full" : (currentEditingInvoice.paymentPlan || "advance"),
+          paymentStatus: isFull ? "paid" : (currentEditingInvoice.paymentStatus || "advance_paid"),
+        };
+
+        const apiBase = window.MEDIA_API_URL || "http://localhost:4001";
+        const res = await fetch(`${apiBase}/api/invoices/${encodeURIComponent(currentEditingInvoice.invoiceId)}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(await mediaAuthHeaders()),
+          },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || data.error || "Save failed");
+
+        currentEditingInvoice = data.invoice;
+        recalculateInvoiceModalTotals();
+        renderPaymentsTable();
+        updateRevenueStats();
+
+        if (statusEl) {
+          statusEl.textContent = "✓ Invoice saved & PDF updated successfully!";
+          statusEl.className = "form-status is-success";
+        }
+      } catch (err) {
+        if (statusEl) {
+          statusEl.textContent = `Save error: ${err.message}`;
+          statusEl.className = "form-status is-error";
+        }
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "💾 Save Changes";
+      }
+    });
+  }
+
+  const sendBtn = $("adminInvSendBtn");
+  if (sendBtn) {
+    sendBtn.addEventListener("click", async () => {
+      if (!currentEditingInvoice) return;
+      const statusEl = $("adminInvoiceModalStatus");
+      try {
+        sendBtn.disabled = true;
+        sendBtn.textContent = "Sending Email…";
+        if (statusEl) {
+          statusEl.textContent = "Saving latest edits & sending email…";
+          statusEl.className = "form-status is-loading";
+        }
+
+        const totalsData = recalculateInvoiceModalTotals();
+        const isFull = (totalsData.balance === 0 || $("adminInvFullPaidCheck")?.checked);
+
+        const payload = {
+          customer: {
+            ...currentEditingInvoice.customer,
+            name: $("adminInvCustomerName")?.value || "",
+            email: $("adminInvCustomerEmail")?.value || "",
+          },
+          vehicle: {
+            ...currentEditingInvoice.vehicle,
+            name: $("adminInvVehicleName")?.value || "",
+            registration: $("adminInvVehicleReg")?.value || "",
+          },
+          charges: {
+            ...currentEditingInvoice.charges,
+            rental: Number($("adminInvRental")?.value || 0),
+            driver: Number($("adminInvDriver")?.value || 0),
+            extraKm: Number($("adminInvExtraKm")?.value || 0),
+            lateFee: Number($("adminInvLateFee")?.value || 0),
+            fuel: Number($("adminInvFuel")?.value || 0),
+            damage: Number($("adminInvDamage")?.value || 0),
+            discount: Number($("adminInvDiscount")?.value || 0),
+          },
+          taxRate: Number($("adminInvTaxRate")?.value || 0),
+          notes: $("adminInvNotes")?.value || "",
+          amountPaid: totalsData.paid,
+          paymentMode: $("adminInvPaymentMode")?.value || "UPI",
+          paymentRef: $("adminInvPaymentRef")?.value || "",
+          paymentPlan: isFull ? "full" : (currentEditingInvoice.paymentPlan || "advance"),
+          paymentStatus: isFull ? "paid" : (currentEditingInvoice.paymentStatus || "advance_paid"),
+        };
+
+        const apiBase = window.MEDIA_API_URL || "http://localhost:4001";
+        await fetch(`${apiBase}/api/invoices/${encodeURIComponent(currentEditingInvoice.invoiceId)}`, {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            ...(await mediaAuthHeaders()),
+          },
+          body: JSON.stringify(payload),
+        });
+
+        const sendRes = await fetch(`${apiBase}/api/invoices/${encodeURIComponent(currentEditingInvoice.invoiceId)}/send`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(await mediaAuthHeaders()),
+          },
+          body: JSON.stringify({ email: payload.customer.email }),
+        });
+
+        const sendData = await sendRes.json().catch(() => ({}));
+        if (!sendRes.ok) throw new Error(sendData.message || sendData.error || "Email send failed");
+
+        renderPaymentsTable();
+        updateRevenueStats();
+
+        if (statusEl) {
+          statusEl.textContent = `✓ Invoice successfully sent to ${payload.customer.email}!`;
+          statusEl.className = "form-status is-success";
+        }
+      } catch (err) {
+        if (statusEl) {
+          statusEl.textContent = `Send error: ${err.message}`;
+          statusEl.className = "form-status is-error";
+          statusEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        alert(`Email Send Notice:\n\n${err.message}`);
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = "✉️ Send to Customer Email";
+      }
+    });
   }
 }
 
@@ -5785,6 +6211,16 @@ async function openPaymentModal(
 // REVENUE
 // ============================================================================
 
+function getBookingCollectedAmount(booking) {
+  if (booking.paymentStatus === "advance_paid") {
+    return Number(booking.advanceAmount || booking.paymentAmountPaid || booking.paymentAmount || 500);
+  }
+  if (booking.paymentStatus === "paid") {
+    return Number(booking.finalAmount || booking.totalAmount || booking.paymentAmountPaid || booking.paymentAmount || booking.rentalTotal || 0);
+  }
+  return Number(booking.paymentAmountPaid || booking.paymentAmount || 0);
+}
+
 function updateRevenueStats() {
   const paid =
     bookingsData.filter(
@@ -5796,11 +6232,7 @@ function updateRevenueStats() {
   const totalRevenue =
     paid.reduce(
       (sum, booking) =>
-        sum +
-        Number(
-          booking.paymentAmountPaid || booking.paymentAmount || booking.totalAmount ||
-            0
-        ),
+        sum + getBookingCollectedAmount(booking),
       0
     );
 
@@ -5813,6 +6245,9 @@ function updateRevenueStats() {
         const date =
           parseDateOnly(
             booking.paymentVerifiedAt
+          ) ||
+          parseDateOnly(
+            booking.createdAt
           ) ||
           parseDateOnly(
             booking.bookingDate
@@ -5831,19 +6266,15 @@ function updateRevenueStats() {
       })
       .reduce(
         (sum, booking) =>
-          sum +
-          Number(
-            booking.paymentAmountPaid || booking.paymentAmount || booking.totalAmount ||
-              0
-          ),
+          sum + getBookingCollectedAmount(booking),
         0
       );
 
   const pendingPayments =
     bookingsData.filter(
       (booking) =>
-        booking.paymentStatus ===
-        "pending_verification"
+        booking.paymentStatus === "pending_verification" ||
+        (booking.paymentRef && booking.paymentStatus !== "paid" && booking.paymentStatus !== "advance_paid" && booking.paymentStatus !== "rejected")
     ).length;
 
   // Keep the average aligned with the verified revenue cards.

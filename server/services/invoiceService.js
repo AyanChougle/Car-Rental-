@@ -37,12 +37,23 @@ function customer(b) {
 }
 
 function vehicle(b) {
+  let reg = b.vehicle?.registration || b.vehicleReg || b.registration || "";
+  if (typeof reg === "string" && (reg.toUpperCase().startsWith("ZIP") || reg.toUpperCase() === "ZIP001")) {
+    reg = "";
+  }
   return {
     vehicleId: b.vehicleId || b.carId || "",
-    name: b.vehicle?.name || b.vehicleName || b.carName || "",
-    registration: b.vehicle?.registration || b.vehicleReg || b.registration || "",
+    name: b.vehicle?.name || b.vehicleName || b.carName || "Rental Vehicle",
+    registration: reg,
     category: b.vehicle?.category || b.vehicleCategory || ""
   };
+}
+
+function shortBookingId(rawId, b = {}) {
+  if (b.bookingNumber) return String(b.bookingNumber);
+  const str = String(rawId || b.id || "");
+  if (/^\d{6,10}$/.test(str)) return str;
+  return str.length > 8 ? str.slice(-8).toUpperCase() : str;
 }
 
 async function createBookingInvoice(bookingId) {
@@ -54,31 +65,53 @@ async function createBookingInvoice(bookingId) {
 
   const booking = bookingSnap.data();
   const existing = await db.collection("invoices")
-    .where("bookingId", "==", value).where("type", "==", "BOOKING").limit(1).get();
+    .where("bookingId", "in", [value, shortBookingId(value, booking)]).where("type", "==", "BOOKING").limit(1).get();
 
   if (!existing.empty) {
     const doc = existing.docs[0];
     return { ...doc.data(), invoiceId: doc.data().invoiceId || doc.id };
   }
 
+  const returnInspection = booking.returnInspection || {};
+  const rawItems = Array.isArray(returnInspection.items)
+    ? returnInspection.items
+    : Array.isArray(returnInspection.deductions)
+      ? returnInspection.deductions
+      : [];
+  const deductionItems = rawItems
+    .filter((item) => Number(item?.amount || item?.cost || 0) > 0)
+    .map((item) => ({
+      name: item.name || item.title || item.label || "Inspection Deduction",
+      amount: Number(item.amount || item.cost || 0),
+      reason: item.description || item.reason || item.notes || "Assessed on Return Inspection"
+    }));
+
+  const totalDeduct = deductionItems.reduce((sum, x) => sum + x.amount, 0) || Number(returnInspection.totalDeductions || returnInspection.deductions || 0);
+  const secDeposit = numberValue(booking.securityDeposit);
+  const refundAmount = Math.max(0, secDeposit - totalDeduct);
+
   const charges = {
-    rental: numberValue(booking.rentalTotal ?? booking.pricing?.rental ?? booking.rentalAmount ?? booking.totalAmount),
+    rental: numberValue(booking.rentalTotal ?? booking.baseAmount ?? booking.pricing?.rental ?? booking.rentalAmount ?? booking.totalAmount),
     driver: numberValue(booking.driverTotal),
     delivery: numberValue(booking.deliveryFee),
     protection: numberValue(booking.insuranceFee),
-    discount: numberValue(booking.discount),
-    extraKm: 0, lateFee: 0, fuel: 0, cleaning: 0, damage: 0, toll: 0, other: 0
+    discount: numberValue(booking.couponDiscount ?? booking.discount),
+    extraKm: 0, lateFee: 0, fuel: 0, cleaning: 0, damage: totalDeduct, toll: 0, other: 0
   };
   const taxRate = numberValue(booking.taxRate ?? process.env.INVOICE_TAX_RATE ?? 0);
   const summary = totals(charges, taxRate);
-  const amountPaid = numberValue(booking.paymentAmountPaid ?? booking.paymentAmount ?? booking.amountPaid ?? booking.payment?.amountPaid);
-  const isAdvance = booking.paymentPlan === "advance";
+  const isAdvance = booking.paymentPlan === "advance" && booking.paymentStatus !== "paid" && !booking.pickupPaymentCollected;
+  const isFullPaid = (booking.paymentStatus === "paid" || booking.paymentPlan === "full" || Boolean(booking.pickupPaymentCollected));
+  const amountPaid = isFullPaid
+    ? summary.total
+    : numberValue(booking.paymentAmountPaid ?? booking.paymentAmount ?? booking.amountPaid ?? booking.payment?.amountPaid ?? booking.advanceAmount ?? 0);
   const invoiceId = crypto.randomUUID();
 
   const invoice = {
     invoiceId,
     invoiceNumber: await nextInvoiceNumber("BOOKING"),
-    bookingId: value,
+    bookingId: shortBookingId(value, booking),
+    rawBookingId: value,
     userId: booking.userId || booking.customerId || null,
     type: "BOOKING",
     status: isAdvance ? "PARTIALLY_PAID" : "PAID",
@@ -89,18 +122,23 @@ async function createBookingInvoice(bookingId) {
     rental: {
       pickupDate: booking.pickupDate || booking.rental?.pickupDate,
       returnDate: booking.dropDate || booking.rental?.returnDate,
-      duration: booking.hours ? `${booking.hours} hour${booking.hours === 1 ? "" : "s"}` : booking.duration || booking.rentalDays || ""
+      duration: booking.duration || (booking.days ? `${booking.days} Day${booking.days > 1 ? "s" : ""}` : `${booking.hours || 24} hours`)
     },
     charges, taxRate, ...summary, amountPaid,
     balanceDue: Math.max(0, summary.total - amountPaid),
     payment: {
       status: isAdvance ? "ADVANCE PAID" : "PAID IN FULL",
-      plan: booking.paymentPlan || "full",
-      reference: booking.paymentRef || booking.paymentReference || ""
+      plan: isAdvance ? "advance" : "full",
+      mode: booking.paymentMode || "UPI",
+      reference: booking.paymentRef || booking.paymentReference || (booking.pickupPaymentCollected ? `Collected at Pickup by ${booking.pickupPaymentCollectedBy || "Executive"}` : "")
     },
     securityDeposit: {
-      collected: numberValue(booking.securityDeposit),
-      deducted: 0, refunded: 0, status: "HELD"
+      collected: secDeposit,
+      deducted: totalDeduct,
+      refunded: refundAmount,
+      status: totalDeduct > 0 ? "PARTIALLY_REFUNDED" : "HELD",
+      deductions: deductionItems,
+      inspectionNotes: returnInspection.notes || returnInspection.invoiceNotes || ""
     },
     email: { status: "PENDING", sentAt: null, recipient: customer(booking).email || null, messageId: null },
     createdAt: FieldValue.serverTimestamp(),

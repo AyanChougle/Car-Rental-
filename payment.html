@@ -188,28 +188,48 @@
 
 
               <div class="booking-detail">
-
                 <span>
                   Duration
                 </span>
-
                 <strong id="paymentDuration">
                   —
                 </strong>
-
               </div>
 
+              <div class="booking-detail" id="paymentTotalRentalRow">
+                <span>
+                  Total Rental
+                </span>
+                <strong id="paymentTotalRental">
+                  ₹0
+                </strong>
+              </div>
+
+              <div class="booking-detail" id="paymentCouponRow" style="display: none; color: var(--kz-success, #34d399);">
+                <span id="paymentCouponLabel">
+                  Coupon Discount
+                </span>
+                <strong id="paymentCouponDiscount" style="color: var(--kz-success, #34d399);">
+                  -₹0
+                </strong>
+              </div>
 
               <div class="booking-detail booking-detail--amount">
-
                 <span>
                   Pay today
                 </span>
-
                 <strong id="paymentAmount">
                   ₹0.00
                 </strong>
+              </div>
 
+              <div class="booking-detail" id="paymentRemainingRow" style="display: none;">
+                <span>
+                  Remaining Balance
+                </span>
+                <strong id="paymentRemaining">
+                  ₹0
+                </strong>
               </div>
 
               <p class="payment-plan-note" id="paymentPlanNote"></p>
@@ -599,11 +619,11 @@
        SCRIPTS — ONLY ONCE
        ========================================================= -->
 
-  <script src="js/vehicles.js"></script>
+  <script src="js/vehicles.js?v=20260829-crp"></script>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <script type="module" src="js/payment.js?v=20260818-redirect"></script>
+  <script type="module" src="js/payment.js?v=20260829-authoritative"></script>
 
     <script src="js/glass-ui.js"></script>
       <script src="js/kruizly-motion.js"></script>

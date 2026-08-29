@@ -54,16 +54,36 @@ r.post("/payment-approved/:bookingId", requireAuth, requireRole(...STAFF_ROLES),
   }
 
   const recipient = req.body?.email || invoice.customer?.email || invoice.email?.recipient || "";
-  if (!recipient) return res.status(400).json({ success:false, message:"Invoice created, but customer email address was not found.", invoiceId: invoice.invoiceId });
+  let emailSent = false;
+  let mailResult = null;
 
-  const mailResult = await sendInvoiceEmail({ invoice, pdfBuffer, recipient });
+  if (recipient) {
+    try {
+      mailResult = await sendInvoiceEmail({ invoice, pdfBuffer, recipient });
+      emailSent = true;
+      await db.collection("invoices").doc(invoice.invoiceId).set({
+        email: { status: "SENT", sentAt: new Date().toISOString(), recipient, messageId: mailResult?.messageId || null },
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+    } catch (mailErr) {
+      console.warn("[invoice payment-approved] Email delivery skipped/notice:", mailErr.message);
+      await db.collection("invoices").doc(invoice.invoiceId).set({
+        email: { status: mailErr.code || "NOT_SENT", error: mailErr.message, recipient, attemptedAt: new Date().toISOString() },
+        updatedAt: FieldValue.serverTimestamp()
+      }, { merge: true });
+    }
+  }
 
-  await db.collection("invoices").doc(invoice.invoiceId).set({
-    email: { status:"SENT", sentAt:new Date().toISOString(), recipient, messageId:mailResult?.messageId || null },
-    updatedAt:FieldValue.serverTimestamp()
-  }, { merge:true });
-
-  res.json({ success:true, message:"Invoice generated and sent successfully.", invoice, emailSent:true, recipient, messageId:mailResult?.messageId || null });
+  res.json({
+    success: true,
+    message: emailSent
+      ? "Invoice generated and sent to customer email successfully."
+      : "Invoice PDF generated successfully.",
+    invoice,
+    emailSent,
+    recipient: recipient || null,
+    messageId: mailResult?.messageId || null
+  });
 }));
 
 r.get("/:invoiceId", requireAuth, requireOwnerOrStaff, a(async (req,res) => {
@@ -83,6 +103,18 @@ r.put("/:invoiceId", requireAuth, requireRole(...STAFF_ROLES), a(async (req,res)
     balanceDue:Math.max(0, t.total - amountPaid),
     updatedAt:FieldValue.serverTimestamp()
   };
+
+  if (invoice.bookingId && (p.paymentStatus || p.amountPaid !== undefined || p.paymentPlan)) {
+    const bookingUpdates = { updatedAt: FieldValue.serverTimestamp() };
+    if (invoice.balanceDue === 0 || p.paymentStatus === "paid" || p.paymentPlan === "full") {
+      bookingUpdates.paymentPlan = "full";
+      bookingUpdates.paymentStatus = "paid";
+      bookingUpdates.remainingBalance = 0;
+      bookingUpdates.remainingAmount = 0;
+      bookingUpdates.paymentAmountPaid = invoice.total;
+    }
+    await db.collection("bookings").doc(invoice.bookingId).set(bookingUpdates, { merge: true }).catch(() => {});
+  }
 
   const generated = await generateInvoicePdf(invoice);
   invoice.pdf = { fileName:generated.fileName, filePath:generated.filePath, generatedAt:new Date().toISOString() };
@@ -108,20 +140,35 @@ r.post("/:invoiceId/send", requireAuth, requireRole(...STAFF_ROLES), a(async (re
   const recipient = req.body?.email || invoice.customer?.email || invoice.email?.recipient || "";
   if (!recipient) return res.status(400).json({ success:false, message:"Customer email address not found." });
 
-  const mailResult = await sendInvoiceEmail({ invoice, pdfBuffer, recipient });
-  await db.collection("invoices").doc(invoice.invoiceId).set({
-    email:{ status:"SENT", sentAt:new Date().toISOString(), recipient, messageId:mailResult?.messageId || null },
-    updatedAt:FieldValue.serverTimestamp()
-  }, { merge:true });
+  try {
+    const mailResult = await sendInvoiceEmail({ invoice, pdfBuffer, recipient });
+    await db.collection("invoices").doc(invoice.invoiceId).set({
+      email:{ status:"SENT", sentAt:new Date().toISOString(), recipient, messageId:mailResult?.messageId || null },
+      updatedAt:FieldValue.serverTimestamp()
+    }, { merge:true });
 
-  res.json({ success:true, message:"Invoice sent successfully.", emailSent:true, recipient, messageId:mailResult?.messageId || null });
+    res.json({ success:true, message:"Invoice sent successfully.", emailSent:true, recipient, messageId:mailResult?.messageId || null });
+  } catch (mailErr) {
+    console.error("[INVOICE SEND ERROR]", mailErr);
+    const isBadCredentials = mailErr.message && (mailErr.message.includes("BadCredentials") || mailErr.message.includes("Invalid login") || mailErr.message.includes("535"));
+    const helpfulMsg = isBadCredentials
+      ? "Gmail SMTP Error: Google requires a 16-character Google App Password (not your personal password). Generate one at https://myaccount.google.com/apppasswords and update SMTP_PASS in server/.env."
+      : (mailErr.message || "Failed to send invoice email.");
+
+    return res.status(400).json({
+      success: false,
+      message: helpfulMsg,
+      code: mailErr.code || "SMTP_ERROR"
+    });
+  }
 }));
 
 r.get("/:invoiceId/pdf", requireAuth, requireOwnerOrStaff, a(async (req,res) => {
   const invoice = req.invoice;
   let buffer, pdfInfo;
 
-  if (invoice.pdf?.filePath) {
+  const forceRefresh = req.query.refresh === "true" || !invoice.pdf?.filePath;
+  if (!forceRefresh && invoice.pdf?.filePath) {
     try { buffer = await readInvoicePdf(invoice.pdf.filePath); pdfInfo = invoice.pdf; } catch (_) {}
   }
 

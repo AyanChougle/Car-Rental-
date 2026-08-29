@@ -1815,6 +1815,21 @@ function renderBooking(
         <div class="booking-detail">
 
           <span>
+            Duration
+          </span>
+
+          <strong>
+            ${escapeHtml(
+              booking.duration || (booking.days ? `${booking.days} Day${booking.days > 1 ? "s" : ""}` : "1 Day")
+            )}
+          </strong>
+
+        </div>
+
+
+        <div class="booking-detail">
+
+          <span>
             Amount
           </span>
 
@@ -1826,8 +1841,17 @@ function renderBooking(
 
         </div>
 
-
       </div>
+
+      ${
+        booking.couponCode
+          ? `
+            <div style="margin-top: 8px; font-size: 0.8rem; color: var(--kz-success, #34d399);">
+              Coupon: <strong>${escapeHtml(booking.couponCode)}</strong> (-₹${formatINR(booking.couponDiscount || 0)})
+            </div>
+          `
+          : ""
+      }
 
 
       ${

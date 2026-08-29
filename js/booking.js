@@ -3,9 +3,7 @@
 // ============================================================
 
 import { auth, db } from "./firebase-init.js";
-
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
-
 import {
   doc,
   getDoc,
@@ -16,52 +14,21 @@ import {
 
 import "./nav-helper.js";
 import { generateNumericBookingId } from "./booking-reference.js";
-
-// ------------------------------------------------------------
-// Helpers
-// ------------------------------------------------------------
-
-function formatCurrency(value) {
-  return new Intl.NumberFormat("en-IN", {
-    maximumFractionDigits: 0,
-  }).format(Number(value) || 0);
-}
-
-// IMPORTANT:
-// Don't use toISOString() for today's date here.
-// It uses UTC and can cause the date to shift around midnight.
-function todayISO() {
-  const date = new Date();
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
-}
+import {
+  calculateBookingPrice,
+  calculateDuration,
+  formatCurrency,
+  formatHumanDateTime,
+  parseDateTime
+} from "./booking-calculator.js";
+import { validateCoupon } from "./coupon-service.js";
 
 function padDatePart(value) {
   return String(value).padStart(2, "0");
 }
 
 function toLocalDateTime(date) {
-  return `${date.getFullYear()}-${padDatePart(date.getMonth() + 1)}-${padDatePart(date.getDate())}T${padDatePart(date.getHours())}:${padDatePart(date.getMinutes())}`;
-}
-
-function nextDayISO(value) {
-  const date = new Date(`${value}T00:00:00`);
-
-  if (Number.isNaN(date.getTime())) {
-    return "";
-  }
-
-  date.setDate(date.getDate() + 1);
-
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-
-  return `${year}-${month}-${day}`;
+  return date.getFullYear() + "-" + padDatePart(date.getMonth() + 1) + "-" + padDatePart(date.getDate()) + "T" + padDatePart(date.getHours()) + ":" + padDatePart(date.getMinutes());
 }
 
 function sessionStorageGet(key) {
@@ -72,564 +39,341 @@ function sessionStorageGet(key) {
   }
 }
 
-// ------------------------------------------------------------
-// DOM
-// ------------------------------------------------------------
-
 const params = new URLSearchParams(window.location.search);
-
 const registration = params.get("reg");
-
 const catalog = Array.isArray(window.fleetVehicles) ? window.fleetVehicles : [];
-
 const vehicle = catalog.find((item) => item.regNo === registration);
 
 const form = document.getElementById("bookingForm");
 const totalsEl = document.getElementById("bookingTotals");
 const statusEl = document.getElementById("bookingStatus");
-
 const bookingTitle = document.getElementById("bookingTitle");
-
 const vehicleImage = document.getElementById("bookingVehicleImage");
-
 const vehicleIcon = document.getElementById("bookingVehicleIcon");
-
 const vehicleName = document.getElementById("bookingVehicleName");
-
 const vehicleMeta = document.getElementById("bookingVehicleMeta");
-
 const dayRate = document.getElementById("bookingDayRate");
-
 const driverRate = document.getElementById("bookingDriverRate");
-
 const deposit = document.getElementById("bookingDeposit");
-
 const location = document.getElementById("bookingLocation");
-
 const licenseNote = document.getElementById("bookingLicenseNote");
 
-// ------------------------------------------------------------
-// Invalid vehicle
-// ------------------------------------------------------------
-
 function showUnavailable(message) {
-  bookingTitle.textContent = "Car Not Available";
-
-  vehicleName.textContent = message;
-
-  vehicleMeta.textContent = "";
-
-  if (form) {
-    form.hidden = true;
-  }
+  if (bookingTitle) bookingTitle.textContent = "Car Not Available";
+  if (vehicleName) vehicleName.textContent = message;
+  if (vehicleMeta) vehicleMeta.textContent = "";
+  if (form) form.hidden = true;
 }
 
-// ------------------------------------------------------------
-// Initialize
-// ------------------------------------------------------------
-
 if (!vehicle) {
-  showUnavailable(
-    "We couldn't find that car. Please return to the fleet and choose another vehicle.",
-  );
+  showUnavailable("We couldn't find that car. Please return to the fleet and choose another vehicle.");
 } else if (!vehicle.available) {
-  vehicleName.textContent = `${vehicle.brand} ${vehicle.model}`;
-
-  showUnavailable(
-    "This car is currently booked. Please choose another vehicle from the fleet.",
-  );
+  if (vehicleName) vehicleName.textContent = vehicle.brand + " " + vehicle.model;
+  showUnavailable("This car is currently booked. Please choose another vehicle from the fleet.");
 } else {
   initBooking(vehicle);
 }
 
-// ============================================================
-// BOOKING
-// ============================================================
-
 function initBooking(vehicle) {
-  // ----------------------------------------------------------
-  // Vehicle information
-  // ----------------------------------------------------------
+  let currentUser = null;
+  let appliedCoupons = [];
 
-  bookingTitle.textContent = `Book the ${vehicle.brand} ${vehicle.model}`;
-
-  vehicleName.textContent = `${vehicle.brand} ${vehicle.model}`;
-
-  vehicleMeta.textContent = `${vehicle.category} • ${vehicle.transmission} • ${vehicle.fuel}`;
-
-  dayRate.textContent = `₹${formatCurrency(vehicle.priceDay)}`;
-
-  driverRate.textContent = `₹${formatCurrency(vehicle.driverPrice || 1500)}`;
-
-  deposit.textContent = `₹${formatCurrency(vehicle.securityDeposit)}`;
-
-  location.textContent =
-    vehicle.location || "Gavson Business Park, Ghansoli, Navi Mumbai.";
-
-  // ----------------------------------------------------------
-  // Vehicle image
-  // ----------------------------------------------------------
+  if (bookingTitle) bookingTitle.textContent = "Book the " + vehicle.brand + " " + vehicle.model;
+  if (vehicleName) vehicleName.textContent = vehicle.brand + " " + vehicle.model;
+  if (vehicleMeta) vehicleMeta.textContent = vehicle.category + " • " + vehicle.transmission + " • " + vehicle.fuel;
+  if (dayRate) dayRate.textContent = "₹" + formatCurrency(vehicle.priceDay);
+  if (driverRate) driverRate.textContent = "₹" + formatCurrency(vehicle.driverPrice || 2000);
+  if (deposit) deposit.textContent = "₹" + formatCurrency(vehicle.securityDeposit);
+  if (location) location.textContent = vehicle.location || "Gavson Business Park, Ghansoli, Navi Mumbai.";
 
   const imagePath = window.fleetImagePath ? window.fleetImagePath(vehicle) : "";
-
-  if (imagePath) {
+  if (imagePath && vehicleImage) {
     const img = document.createElement("img");
-
     img.src = imagePath;
-
-    img.alt = `${vehicle.brand} ${vehicle.model}`;
-
+    img.alt = vehicle.brand + " " + vehicle.model;
     img.loading = "eager";
-
     img.decoding = "async";
-
     img.onload = () => {
-      vehicleIcon.style.display = "none";
-
+      if (vehicleIcon) vehicleIcon.style.display = "none";
       vehicleImage.classList.add("has-image");
     };
-
     img.onerror = () => {
-      img.remove();
-
-      vehicleImage.classList.remove("has-image");
+      if (vehicleIcon) vehicleIcon.style.display = "block";
     };
-
-    vehicleImage.prepend(img);
+    vehicleImage.appendChild(img);
   }
-
-  // ----------------------------------------------------------
-  // Inputs
-  // ----------------------------------------------------------
 
   const pickupInput = document.getElementById("pickupDate");
-
   const dropInput = document.getElementById("dropDate");
-
   const driverInput = document.getElementById("withDriver");
-
-  const paymentPlanInputs = Array.from(
-    document.querySelectorAll('input[name="paymentPlan"]'),
-  );
-
-  const resetBookingTimes = document.getElementById("resetBookingTimes");
-
-  const now = new Date();
-  const pickupDefault = new Date(now.getTime() + 60 * 60 * 1000);
-  const dropDefault = new Date(pickupDefault);
-  dropDefault.setDate(dropDefault.getDate() + 1);
-
-  pickupInput.min = toLocalDateTime(now);
-  pickupInput.value = toLocalDateTime(pickupDefault);
-  dropInput.min = toLocalDateTime(pickupDefault);
-  dropInput.value = toLocalDateTime(dropDefault);
-
-  // ----------------------------------------------------------
-  // Restore homepage dates
-  // ----------------------------------------------------------
-
-  function toIsoDateTimeString(dateStr) {
-    if (!dateStr) return null;
-    let parsed = null;
-    if (window.parseKruizlyDate) {
-      parsed = window.parseKruizlyDate(dateStr);
-    }
-    if (!parsed || Number.isNaN(parsed.getTime())) {
-      parsed = new Date(dateStr);
-    }
-    if (Number.isNaN(parsed.getTime())) return null;
-
-    const year = parsed.getFullYear();
-    const month = String(parsed.getMonth() + 1).padStart(2, "0");
-    const day = String(parsed.getDate()).padStart(2, "0");
-    let hours = parsed.getHours();
-    let minutes = parsed.getMinutes();
-    if (hours === 0 && minutes === 0 && !dateStr.includes(":")) {
-      hours = 12; // Default 12:00 PM noon if date only
-    }
-
-    return `${year}-${month}-${day}T${padDatePart(hours)}:${padDatePart(minutes)}`;
-  }
-
-  const pickupFromUrl = params.get("pickup");
-  const dropFromUrl = params.get("drop");
-  const storedPickup = sessionStorageGet("crp_pickupDate");
-  const storedDrop = sessionStorageGet("crp_dropDate");
-
-  const prefillPickup = pickupFromUrl || storedPickup;
-  const prefillDrop = dropFromUrl || storedDrop;
-
-  if (prefillPickup) {
-    const pickupIso = toIsoDateTimeString(prefillPickup);
-    if (pickupIso) {
-      pickupInput.value = pickupIso;
-    }
-  }
-
-  if (prefillDrop) {
-    const dropIso = toIsoDateTimeString(prefillDrop);
-    if (dropIso) {
-      dropInput.value = dropIso;
-    }
-  }
-
-  function parseDateSafe(val) {
-    if (!val) return null;
-    if (window.parseKruizlyDate) {
-      const parsed = window.parseKruizlyDate(val);
-      if (parsed && !Number.isNaN(parsed.getTime())) return parsed;
-    }
-    const fallback = new Date(val);
-    return Number.isNaN(fallback.getTime()) ? null : fallback;
-  }
-
-  // A stale URL/session value must never make the return date fall before
-  // today or before the selected pickup time.
-  function synchroniseRentalDates({ resetDrop = false } = {}) {
-    const currentTime = new Date();
-    const minimumPickup = new Date(currentTime.getTime() + 60 * 60 * 1000);
-    const selectedPickup = parseDateSafe(pickupInput.value);
-
-    if (
-      !selectedPickup ||
-      selectedPickup < currentTime
-    ) {
-      pickupInput.value = toLocalDateTime(minimumPickup);
-    }
-
-    const pickupTime = parseDateSafe(pickupInput.value) || minimumPickup;
-    dropInput.min = toLocalDateTime(pickupTime);
-
-    const selectedDrop = parseDateSafe(dropInput.value);
-    if (
-      resetDrop ||
-      !selectedDrop ||
-      selectedDrop < pickupTime
-    ) {
-      const defaultDrop = new Date(pickupTime);
-      defaultDrop.setDate(defaultDrop.getDate() + 1);
-      dropInput.value = toLocalDateTime(defaultDrop);
-    }
-  }
-
-  synchroniseRentalDates();
-
-  // ----------------------------------------------------------
-  // Calculate rental
-  // ----------------------------------------------------------
-
-  let activeCoupon = null;
-
+  const paymentPlanInputs = Array.from(document.querySelectorAll('input[name="paymentPlan"]'));
+  const submitBtn = document.getElementById("bookingSubmitBtn");
   const couponInput = document.getElementById("couponInput");
   const couponApplyBtn = document.getElementById("couponApplyBtn");
   const couponMsg = document.getElementById("couponMsg");
+  const appliedCouponsWrap = document.getElementById("appliedCouponsWrap");
+  const couponSuggestionsGrid = document.getElementById("couponSuggestionsGrid");
+  const resetBookingTimes = document.getElementById("resetBookingTimes");
 
-  const DEFAULT_VALID_COUPONS = {
-    KRUIZLY10: { code: "KRUIZLY10", type: "percent", val: 10, label: "10% Off Rental", status: "active" },
-    KRUIZLY20: { code: "KRUIZLY20", type: "percent", val: 20, label: "20% Off Rental", status: "active" },
-    WELCOME500: { code: "WELCOME500", type: "flat", val: 500, label: "₹500 Flat Off", status: "active" },
-    FIRST500: { code: "FIRST500", type: "flat", val: 500, label: "₹500 Flat Off", status: "active" },
-    DRIVE10: { code: "DRIVE10", type: "percent", val: 10, label: "10% Off Rental", status: "active" },
-    SPECIAL15: { code: "SPECIAL15", type: "percent", val: 15, label: "15% Off Rental", status: "active" },
-    PROMO10: { code: "PROMO10", type: "percent", val: 10, label: "10% Off Rental", status: "active" },
-  };
-
-  async function resolveCoupon(code) {
-    const cleanCode = String(code || "").trim().toUpperCase();
-    if (!cleanCode) return null;
-
-    // 1. Try Firestore if permissions allow
-    try {
-      const snap = await getDoc(doc(db, "coupons", cleanCode));
-      if (snap && snap.exists()) {
-        const data = snap.data();
-        if (data && data.status === "active") return { code: cleanCode, ...data };
-        return null;
-      }
-    } catch (_) {
-      // Graceful fallback when Firestore security rules haven't been deployed yet
+  function renderAppliedCoupons() {
+    if (!appliedCouponsWrap) return;
+    if (appliedCoupons.length === 0) {
+      appliedCouponsWrap.innerHTML = "";
+      appliedCouponsWrap.hidden = true;
+      return;
     }
 
-    // 2. Try LocalStorage for admin-created offline coupons
-    try {
-      const localStored = localStorage.getItem("kruizly_coupons");
-      if (localStored) {
-        const list = JSON.parse(localStored);
-        const found = list.find(item => (item.code || "").toUpperCase() === cleanCode || (item.id || "").toUpperCase() === cleanCode);
-        if (found && found.status === "active") return found;
-      }
-    } catch (_) {}
+    appliedCouponsWrap.hidden = false;
+    appliedCouponsWrap.innerHTML = appliedCoupons.map((c) => {
+      const discountTxt = c.discountType === "percent" ? `${c.discountValue}% OFF` : `₹${c.discountValue} OFF`;
+      return `
+        <span class="applied-coupon-tag">
+          <strong>${c.code}</strong> (${discountTxt})
+          <button type="button" class="remove-coupon-btn" data-code="${c.code}" aria-label="Remove coupon ${c.code}">✕</button>
+        </span>
+      `;
+    }).join("");
 
-    // 3. Fallback to builtin valid promotional coupons
-    const fallback = DEFAULT_VALID_COUPONS[cleanCode];
-    if (fallback && fallback.status === "active") return fallback;
-    return null;
+    appliedCouponsWrap.querySelectorAll(".remove-coupon-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const codeToRemove = btn.dataset.code;
+        appliedCoupons = appliedCoupons.filter((c) => c.code !== codeToRemove);
+        if (couponMsg) {
+          couponMsg.textContent = `Coupon ${codeToRemove} removed.`;
+          couponMsg.className = "booking-coupon-msg";
+        }
+        calculateBooking();
+        renderAppliedCoupons();
+      });
+    });
+  }
+
+  async function applyCouponCode(rawCode) {
+    const code = String(rawCode || "").trim().toUpperCase();
+    if (!code) {
+      if (couponMsg) {
+        couponMsg.textContent = "Please enter a coupon code.";
+        couponMsg.className = "booking-coupon-msg error";
+      }
+      return;
+    }
+
+    if (appliedCoupons.some((c) => c.code === code)) {
+      if (couponMsg) {
+        couponMsg.textContent = `Coupon ${code} is already applied.`;
+        couponMsg.className = "booking-coupon-msg";
+      }
+      return;
+    }
+
+    if (couponApplyBtn) couponApplyBtn.disabled = true;
+    if (couponMsg) {
+      couponMsg.textContent = "Verifying coupon with Firebase...";
+      couponMsg.className = "booking-coupon-msg";
+    }
+
+    const baseCalc = calculateBookingPrice({
+      vehicle,
+      pickup: pickupInput.value,
+      drop: dropInput.value,
+      withDriver: Boolean(driverInput && driverInput.checked),
+      coupon: null
+    });
+
+    const result = await validateCoupon({
+      code,
+      bookingAmount: baseCalc.rentalTotal || 0,
+      userId: currentUser?.uid,
+      appliedCoupons
+    });
+
+    if (couponApplyBtn) couponApplyBtn.disabled = false;
+
+    if (result.valid && result.coupon) {
+      appliedCoupons.push(result.coupon);
+      if (couponInput) couponInput.value = "";
+      if (couponMsg) {
+        couponMsg.textContent = `✓ Coupon '${code}' applied! (${result.coupon.label})`;
+        couponMsg.className = "booking-coupon-msg success";
+      }
+      calculateBooking();
+      renderAppliedCoupons();
+      renderSuggestedCoupons(baseCalc.rentalTotal || 0);
+    } else {
+      if (couponMsg) {
+        couponMsg.textContent = result.error || "Coupon could not be applied.";
+        couponMsg.className = "booking-coupon-msg error";
+      }
+    }
   }
 
   function calculateBooking() {
-    const pickup = pickupInput.value;
-    const drop = dropInput.value;
+    const pickup = pickupInput ? pickupInput.value : "";
+    const drop = dropInput ? dropInput.value : "";
+    const withDriver = Boolean(driverInput && driverInput.checked);
+    const paymentPlan = paymentPlanInputs.find((input) => input.checked)?.value || "advance";
 
-    if (!pickup || !drop) {
-      totalsEl.innerHTML = "";
-      return null;
-    }
-
-    const pickupDate = parseDateSafe(pickup);
-    const dropDate = parseDateSafe(drop);
-
-    if (!pickupDate || !dropDate) {
-      totalsEl.innerHTML = "";
-      return null;
-    }
-
-    const durationMs = dropDate - pickupDate;
-
-    if (durationMs <= 0) {
-      totalsEl.innerHTML = `
-        <div class="booking-error">
-          Drop date must be after the pickup date.
-        </div>
-      `;
-
-      return null;
-    }
-
-    const hours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)));
-    const days = Math.max(1, Math.ceil(hours / 24));
-    const withDriver = driverInput.checked;
-    const hourlyRate = Number(
-      vehicle.priceHour || Number(vehicle.priceDay || 0) / 24,
-    );
-    const driverHourlyRate = Number(
-      vehicle.driverPriceHour || Number(vehicle.driverPrice || 0) / 24,
-    );
-    const rentalTotal = hours * hourlyRate;
-    const driverTotal = withDriver ? hours * driverHourlyRate : 0;
-
-    const securityDeposit = Number(vehicle.securityDeposit || 0);
-
-    let discountAmount = 0;
-    if (activeCoupon) {
-      if (activeCoupon.type === "percent") {
-        discountAmount = Math.round((rentalTotal * activeCoupon.val) / 100);
-      } else if (activeCoupon.type === "flat") {
-        discountAmount = activeCoupon.val;
-      }
-    }
-
-    const total = Math.max(
-      0,
-      rentalTotal + driverTotal + securityDeposit - discountAmount,
-    );
-
-    const paymentPlan =
-      paymentPlanInputs.find((input) => input.checked)?.value || "advance";
-
-    const paymentAmount = paymentPlan === "advance" ? 500 : total;
-
-    const remainingBalance = Math.max(0, total - paymentAmount);
-
-    totalsEl.innerHTML = `
-      <div class="booking-totals__header">
-        <span>PRICE BREAKDOWN</span>
-        <span>Duration: ${hours} hrs (${days} day${days > 1 ? "s" : ""})</span>
-      </div>
-
-      <div class="booking-total-row">
-        <span>Rental Charges</span>
-        <strong>₹${formatCurrency(rentalTotal)}</strong>
-      </div>
-
-      ${
-        withDriver
-          ? `
-            <div class="booking-total-row">
-              <span>Driver Allowance</span>
-              <strong>₹${formatCurrency(driverTotal)}</strong>
-            </div>
-          `
-          : ""
-      }
-
-      <div class="booking-total-row">
-        <span>
-          Security Deposit
-          <small style="display:block; font-size:0.75rem; color:var(--text-sub)">(Refundable upon vehicle return)</small>
-        </span>
-        <strong>₹${formatCurrency(securityDeposit)}</strong>
-      </div>
-
-      ${
-        discountAmount > 0
-          ? `
-            <div class="booking-total-row" style="color: var(--kz-success);">
-              <span>Coupon Discount (${activeCoupon.code})</span>
-              <strong style="color: var(--kz-success);">-\u20b9${formatCurrency(discountAmount)}</strong>
-            </div>
-          `
-          : ""
-      }
-
-      <div class="booking-total-row booking-total-row--grand">
-        <span>Total Estimated Amount</span>
-        <strong>₹${formatCurrency(total)}</strong>
-      </div>
-
-      <div class="booking-total-row booking-total-row--payment">
-        <span>
-          ${paymentPlan === "advance" ? "Advance Payable Now" : "Full Amount Payable Now"}
-          <small style="display:block; font-size:0.75rem; color:var(--text-sub)">${paymentPlan === "advance" ? `Balance due at pickup: ₹${formatCurrency(remainingBalance)}` : "100% booking confirmation"}</small>
-        </span>
-        <strong>₹${formatCurrency(paymentAmount)}</strong>
-      </div>
-    `;
-
-    return {
-      days,
-      hours,
+    const calculation = calculateBookingPrice({
+      vehicle,
+      pickup,
+      drop,
       withDriver,
-      hourlyRate,
-      driverHourlyRate,
+      coupon: appliedCoupons,
+      paymentPlan
+    });
+
+    if (!calculation.valid) {
+      totalsEl.innerHTML = '<div class="booking-error">' + (calculation.error || "Please select valid rental dates.") + '</div>';
+      return null;
+    }
+
+    const {
+      duration,
+      hours,
+      days,
       rentalTotal,
       driverTotal,
       securityDeposit,
-      discountAmount,
-      total,
-      paymentPlan,
-      paymentAmount,
-      remainingBalance,
-    };
+      couponDiscount,
+      finalAmount,
+      advanceAmount,
+      remainingAmount
+    } = calculation;
+
+    let html = '<div class="booking-totals__header"><span>PRICE BREAKDOWN</span><span>Duration: ' + duration.formattedDuration + '</span></div>';
+    html += '<div class="booking-total-row"><span>Rental Charges (' + days + ' day' + (days > 1 ? 's' : '') + ')</span><strong>₹' + formatCurrency(rentalTotal) + '</strong></div>';
+
+    if (withDriver) {
+      html += '<div class="booking-total-row"><span>Driver Allowance</span><strong>₹' + formatCurrency(driverTotal) + '</strong></div>';
+    }
+
+    html += '<div class="booking-total-row"><span>Security Deposit<small style="display:block; font-size:0.75rem; color:var(--text-sub)">(100% Refundable upon vehicle return)</small></span><strong>₹' + formatCurrency(securityDeposit) + '</strong></div>';
+
+    if (couponDiscount > 0) {
+      const appliedLabels = appliedCoupons.map((c) => c.code).join(", ");
+      html += '<div class="booking-total-row" style="color: var(--kz-success, #34d399);"><span>Coupon Discount (' + appliedLabels + ')</span><strong style="color: var(--kz-success, #34d399);">-₹' + formatCurrency(couponDiscount) + '</strong></div>';
+    }
+
+    html += '<div class="booking-total-row booking-total-row--grand"><span>Total Estimated Amount</span><strong>₹' + formatCurrency(finalAmount) + '</strong></div>';
+    html += '<div class="booking-total-row booking-total-row--payment"><span>' + (paymentPlan === "advance" ? "Advance Payable Now" : "Full Amount Payable Now") + '<small style="display:block; font-size:0.75rem; color:var(--text-sub)">' + (paymentPlan === "advance" ? ("Balance due at pickup: ₹" + formatCurrency(remainingAmount)) : "100% booking confirmation") + '</small></span><strong>₹' + formatCurrency(advanceAmount) + '</strong></div>';
+
+    totalsEl.innerHTML = html;
+    return calculation;
   }
 
-  // ----------------------------------------------------------
-  // Coupon Events
-  // ----------------------------------------------------------
-
   if (couponApplyBtn && couponInput) {
-    couponApplyBtn.addEventListener("click", async () => {
-      const code = (couponInput.value || "").trim().toUpperCase();
-      if (!code) {
-        activeCoupon = null;
-        if (couponMsg) {
-          couponMsg.textContent = "Please enter a coupon code.";
-          couponMsg.className = "booking-coupon-msg error";
-        }
-        calculateBooking();
-        return;
-      }
+    couponApplyBtn.addEventListener("click", () => {
+      applyCouponCode(couponInput.value);
+    });
 
-      couponApplyBtn.disabled = true;
-      if (couponMsg) {
-        couponMsg.textContent = "Verifying coupon code...";
-        couponMsg.className = "booking-coupon-msg";
-      }
-
-      const match = await resolveCoupon(code);
-      couponApplyBtn.disabled = false;
-
-      if (match) {
-        activeCoupon = match;
-        if (couponMsg) {
-          couponMsg.textContent = `Coupon '${code}' applied! (${match.label || "Discount Applied"})`;
-          couponMsg.className = "booking-coupon-msg success";
-        }
-        calculateBooking();
-      } else {
-        activeCoupon = null;
-        if (couponMsg) {
-          couponMsg.textContent =
-            "Invalid or expired coupon code. Try WELCOME500 or KRUIZLY10.";
-          couponMsg.className = "booking-coupon-msg error";
-        }
-        calculateBooking();
+    couponInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        applyCouponCode(couponInput.value);
       }
     });
   }
 
-  // ----------------------------------------------------------
-  // Events
-  // ----------------------------------------------------------
+  if (resetBookingTimes) {
+    resetBookingTimes.addEventListener("click", () => {
+      const resetNow = new Date();
+      const resetPickup = new Date(resetNow.getTime() + 60 * 60 * 1000);
+      const resetDrop = new Date(resetPickup.getTime() + 24 * 60 * 60 * 1000);
+
+      if (pickupInput._flatpickr) {
+        pickupInput._flatpickr.setDate(resetPickup, true);
+      } else {
+        pickupInput.min = toLocalDateTime(resetNow);
+        pickupInput.value = toLocalDateTime(resetPickup);
+      }
+
+      if (dropInput._flatpickr) {
+        dropInput._flatpickr.setDate(resetDrop, true);
+      } else {
+        dropInput.min = toLocalDateTime(resetPickup);
+        dropInput.value = toLocalDateTime(resetDrop);
+      }
+
+      if (driverInput) driverInput.checked = false;
+      paymentPlanInputs.forEach((input) => {
+        input.checked = input.value === "advance";
+      });
+      document.querySelectorAll(".booking-payment-option").forEach((option) => {
+        const radio = option.querySelector('input[name="paymentPlan"]');
+        option.classList.toggle("booking-payment-option--selected", radio && radio.value === "advance");
+      });
+
+      appliedCoupons = [];
+      renderAppliedCoupons();
+      if (couponInput) couponInput.value = "";
+      if (couponMsg) {
+        couponMsg.textContent = "";
+        couponMsg.className = "booking-coupon-msg";
+      }
+
+      try {
+        sessionStorage.removeItem("crp_pickupDate");
+        sessionStorage.removeItem("crp_dropDate");
+        sessionStorage.removeItem("kruizly_applied_coupon");
+        localStorage.removeItem("kruizly_temp_booking");
+      } catch (_) {}
+
+      if (window.history && window.history.replaceState) {
+        const cleanParams = new URLSearchParams();
+        if (vehicle && vehicle.regNo) cleanParams.set("reg", vehicle.regNo);
+        const cleanUrl = window.location.pathname + "?" + cleanParams.toString();
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+
+      calculateBooking();
+    });
+  }
 
   pickupInput.addEventListener("change", () => {
     synchroniseRentalDates();
     calculateBooking();
   });
+  pickupInput.addEventListener("input", calculateBooking);
 
   dropInput.addEventListener("change", calculateBooking);
-
-  driverInput.addEventListener("change", calculateBooking);
+  dropInput.addEventListener("input", calculateBooking);
+  driverInput && driverInput.addEventListener("change", calculateBooking);
 
   paymentPlanInputs.forEach((input) => {
     input.addEventListener("change", () => {
       document.querySelectorAll(".booking-payment-option").forEach((option) => {
         option.classList.toggle(
           "booking-payment-option--selected",
-          option.contains(input) && input.checked,
+          option.contains(input) && input.checked
         );
       });
       calculateBooking();
     });
   });
 
-  resetBookingTimes?.addEventListener("click", () => {
-    const resetNow = new Date();
-    const resetPickup = new Date(resetNow.getTime() + 60 * 60 * 1000);
-    const resetDrop = new Date(resetPickup);
-    resetDrop.setDate(resetDrop.getDate() + 1);
-    pickupInput.min = toLocalDateTime(resetNow);
-    pickupInput.value = toLocalDateTime(resetPickup);
-    dropInput.min = toLocalDateTime(resetPickup);
-    dropInput.value = toLocalDateTime(resetDrop);
-    calculateBooking();
-  });
-
   calculateBooking();
-
-  // ----------------------------------------------------------
-  // Authentication
-  // ----------------------------------------------------------
-
-  let currentUser = null;
 
   onAuthStateChanged(auth, async (user) => {
     currentUser = user;
 
     if (!user) {
-      statusEl.textContent = "Please log in to continue with your booking.";
-
+      if (statusEl) statusEl.textContent = "Please log in to continue with your booking.";
       return;
     }
 
-    statusEl.textContent = "";
+    if (statusEl) statusEl.textContent = "";
 
     try {
       const vehicleOverride = await getDoc(doc(db, "vehicles", vehicle.regNo));
-
-      if (
-        vehicleOverride.exists() &&
-        vehicleOverride.data().available === false
-      ) {
-        throw new Error(
-          "This vehicle was just marked unavailable. Please choose another car.",
-        );
+      if (vehicleOverride.exists() && vehicleOverride.data().available === false) {
+        throw new Error("This vehicle was just marked unavailable. Please choose another car.");
       }
 
       const userSnapshot = await getDoc(doc(db, "users", user.uid));
-
       const userData = userSnapshot.exists() ? userSnapshot.data() : {};
 
-      if (userData.licenseStatus !== "verified") {
-        licenseNote.innerHTML = `
-            <strong>Please Note</strong>
-
-            <span>
-              Your licence is not verified yet.
-              You can continue, but please add and
-              verify it from your profile before pickup.
-            </span>
-          `;
-
+      if (userData.licenseStatus !== "verified" && licenseNote) {
+        licenseNote.innerHTML = "<strong>Please Note</strong><span>Your driving licence is not verified yet. You can continue with booking, but please upload and verify it from your profile before pickup.</span>";
         licenseNote.classList.add("booking-license-note--warning");
       }
     } catch (error) {
@@ -637,55 +381,41 @@ function initBooking(vehicle) {
     }
   });
 
-  // ----------------------------------------------------------
-  // Submit
-  // ----------------------------------------------------------
-
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    // Login required
     if (!currentUser) {
       const nextParams = new URLSearchParams();
-
       nextParams.set("reg", vehicle.regNo);
-
-      if (pickupInput.value) {
-        nextParams.set("pickup", pickupInput.value);
-      }
-
-      if (dropInput.value) {
-        nextParams.set("drop", dropInput.value);
-      }
-
-      const next = `booking.html?${nextParams.toString()}`;
-
-      window.location.href = `index.html?next=${encodeURIComponent(next)}`;
-
+      if (pickupInput.value) nextParams.set("pickup", pickupInput.value);
+      if (dropInput.value) nextParams.set("drop", dropInput.value);
+      const next = "booking.html?" + nextParams.toString();
+      window.location.href = "index.html?next=" + encodeURIComponent(next);
       return;
     }
 
     const calculation = calculateBooking();
-
-    if (!calculation) {
+    if (!calculation || !calculation.valid) {
+      if (statusEl) {
+        statusEl.textContent = calculation ? calculation.error : "Please review the booking schedule before proceeding.";
+        statusEl.classList.add("form-status--error");
+      }
       return;
     }
 
     const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) submitButton.disabled = true;
 
-    submitButton.disabled = true;
-
-    statusEl.textContent = "Creating your booking...";
-
-    statusEl.classList.remove("form-status--error");
+    if (statusEl) {
+      statusEl.textContent = "Creating your booking in Firebase...";
+      statusEl.classList.remove("form-status--error");
+    }
 
     try {
       const userSnapshot = await getDoc(doc(db, "users", currentUser.uid));
-
       const userData = userSnapshot.exists() ? userSnapshot.data() : {};
 
-      let bookingRef;
-
+      let bookingRef = null;
       for (let attempt = 0; attempt < 5; attempt += 1) {
         const numericBookingId = generateNumericBookingId();
         const candidateRef = doc(collection(db, "bookings"), numericBookingId);
@@ -698,84 +428,79 @@ function initBooking(vehicle) {
       }
 
       if (!bookingRef) {
-        throw new Error(
-          "Could not generate a unique booking number. Please try again.",
-        );
+        throw new Error("Could not generate a unique booking number. Please try again.");
       }
 
-      await setDoc(bookingRef, {
+      const bookingRecord = {
+        bookingId: bookingRef.id,
         bookingNumber: bookingRef.id,
-
         userId: currentUser.uid,
-
-        userName: userData.name || currentUser.displayName || currentUser.email,
-
-        userEmail: currentUser.email,
-
+        userName: userData.name || currentUser.displayName || currentUser.email || "",
+        userEmail: currentUser.email || "",
         userPhone: userData.phone || null,
 
+        carId: vehicle.regNo,
         vehicleReg: vehicle.regNo,
-
-        vehicleName: `${vehicle.brand} ${vehicle.model}`,
-
+        vehicleName: vehicle.brand + " " + vehicle.model,
         vehicleCategory: vehicle.category,
-
         vehicleIcon: "",
 
-        pickupDate: pickupInput.value,
-
-        dropDate: dropInput.value,
-
+        pickupDate: (parseDateTime(pickupInput) || new Date()).toISOString(),
+        dropDate: (parseDateTime(dropInput) || new Date()).toISOString(),
+        duration: calculation.duration.formattedDuration,
+        durationDays: calculation.days,
         days: calculation.days,
-
         hours: calculation.hours,
 
         withDriver: calculation.withDriver,
-
         dayRate: vehicle.priceDay,
-
         hourlyRate: calculation.hourlyRate,
-
-        driverRate: vehicle.driverPrice,
-
+        driverRate: vehicle.driverPrice || 2000,
         driverHourlyRate: calculation.driverHourlyRate,
-
-        securityDeposit: vehicle.securityDeposit,
-
-        totalAmount: calculation.total,
+        securityDeposit: calculation.securityDeposit,
+        baseAmount: calculation.rentalTotal,
+        couponCode: calculation.appliedCoupons?.length ? calculation.appliedCoupons.map((c) => c.code).join(", ") : (calculation.couponApplied ? calculation.couponApplied.code : null),
+        couponCodes: calculation.appliedCoupons?.length ? calculation.appliedCoupons.map((c) => c.code) : (calculation.couponApplied ? [calculation.couponApplied.code] : []),
+        appliedCoupons: calculation.appliedCoupons || [],
+        couponDiscount: calculation.couponDiscount || 0,
+        finalAmount: calculation.finalAmount,
+        totalAmount: calculation.finalAmount,
 
         paymentPlan: calculation.paymentPlan,
-
+        advanceAmount: calculation.advanceAmount,
         paymentAmount: calculation.paymentAmount,
+        remainingAmount: calculation.remainingAmount,
+        remainingBalance: calculation.remainingAmount,
 
-        remainingBalance: calculation.remainingBalance,
-
-        location: vehicle.location,
+        location: vehicle.location || "Gavson Business Park, Ghansoli",
+        pickupLocation: vehicle.location || "Gavson Business Park, Ghansoli",
+        dropLocation: vehicle.location || "Gavson Business Park, Ghansoli",
 
         status: "pending_payment",
-
+        bookingStatus: "pending_payment",
         paymentStatus: "unpaid",
-
         paymentRef: null,
-
         createdAt: serverTimestamp(),
-      });
+        updatedAt: serverTimestamp()
+      };
 
-      // Preserve booking dates when moving to payment.
+      await setDoc(bookingRef, bookingRecord);
+
+      try {
+        sessionStorage.removeItem("crp_pickupDate");
+        sessionStorage.removeItem("crp_dropDate");
+      } catch (_) {}
+
       const paymentParams = new URLSearchParams();
-
       paymentParams.set("booking", bookingRef.id);
-
-      window.location.href = `payment.html?${paymentParams.toString()}`;
+      window.location.href = "payment.html?" + paymentParams.toString();
     } catch (error) {
       console.error("Booking creation failed:", error);
-
-      statusEl.textContent =
-        error?.message || "Couldn't create the booking. Please try again.";
-
-      statusEl.classList.add("form-status--error");
-
-      submitButton.disabled = false;
+      if (statusEl) {
+        statusEl.textContent = (error && error.message) || "Couldn't create the booking. Please try again.";
+        statusEl.classList.add("form-status--error");
+      }
+      if (submitButton) submitButton.disabled = false;
     }
   });
 }

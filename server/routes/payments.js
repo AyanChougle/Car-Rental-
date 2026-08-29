@@ -696,6 +696,32 @@ router.post(
         }
       );
 
+      // Record coupon usage in Firestore if coupon was applied
+      if (booking.data && booking.data.couponCode) {
+        const couponCode = String(booking.data.couponCode).trim().toUpperCase();
+        const bUserId = booking.data.userId || req.user.uid;
+        const bId = booking.id;
+        const discountAmount = Number(booking.data.couponDiscount || 0);
+
+        const usageDocId = `${couponCode}_${bUserId}_${bId}`;
+        const usageRef = firestore.collection("couponUsage").doc(usageDocId);
+        const couponRef = firestore.collection("coupons").doc(couponCode);
+
+        batch.set(usageRef, {
+          usageId: usageDocId,
+          couponCode,
+          userId: bUserId,
+          bookingId: bId,
+          discountAmount,
+          usedAt: admin.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        batch.update(couponRef, {
+          usedCount: admin.firestore.FieldValue.increment(1),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        });
+      }
+
       await batch.commit();
 
       db.prepare(`
@@ -726,6 +752,14 @@ router.post(
           "[payment verify] Firestore mirror failed (non-fatal):",
           syncError.message
         );
+      }
+
+      // Auto-generate booking invoice
+      try {
+        const { createBookingInvoice } = require("../services/invoiceService");
+        await createBookingInvoice(booking.id);
+      } catch (invErr) {
+        console.warn("[payment verify] Invoice generation notice:", invErr.message);
       }
 
       return res.json({

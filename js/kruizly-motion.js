@@ -139,9 +139,13 @@
     });
   }
 
-  // 5. ANIMATED STAT NUMBER COUNTERS
+  // 5. ANIMATED STAT NUMBER COUNTERS (Landing pages & static marketing elements only)
   function initStatCounters() {
-    const statElements = document.querySelectorAll('.stat-number, .stat-value, [data-counter]');
+    // Exclude live dashboard stats in admin/manager/profile panels
+    const statElements = Array.from(
+      document.querySelectorAll('.stat-number, .landing-stat, [data-counter]')
+    ).filter(el => !el.closest('.admin-wrapper, .manager-wrapper, .staff-page, .stat-card, [id^="stat"]'));
+
     if (!statElements.length) return;
 
     const counterObserver = new IntersectionObserver((entries) => {
@@ -159,7 +163,7 @@
           const suffix = match[3] || '';
           const isDecimal = match[2].includes('.');
 
-          if (isNaN(targetNum)) return;
+          if (isNaN(targetNum) || targetNum === 0) return;
 
           const duration = 1400;
           const startTime = performance.now();
@@ -174,7 +178,7 @@
             if (progress < 1) {
               requestAnimationFrame(update);
             } else {
-              el.textContent = rawText;
+              el.textContent = prefix + (isDecimal ? targetNum.toFixed(1) : Math.round(targetNum).toLocaleString()) + suffix;
             }
           };
 

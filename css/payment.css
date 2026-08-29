@@ -113,8 +113,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f3f4f6;
-  border-radius: var(--kr-radius-md);
+  background-color: rgba(255, 255, 255, 0.05);
+  border-radius: var(--kr-radius-md, 12px);
   border: 1px solid rgba(255, 255, 255, 0.10);
   padding: 0;
   box-sizing: border-box;

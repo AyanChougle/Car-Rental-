@@ -33,16 +33,81 @@ const esc = (v) => String(v ?? "")
 function emailHtml(invoice) {
   const name = invoice.customer?.name || "Kruizly Customer";
   const no = invoice.invoiceNumber || invoice.invoiceId || "Kruizly Invoice";
+  const vehicle = invoice.vehicle?.name || "Rental Vehicle";
   const total = Number(invoice.total ?? 0);
-  return `<!doctype html><html><body style="margin:0;background:#f3f7fc;font-family:Arial,sans-serif;color:#172033">
-  <div style="max-width:600px;margin:30px auto;background:#fff;border-radius:18px;overflow:hidden">
-  <div style="padding:30px;background:#0b6cff;color:#fff"><b style="font-size:26px">KRUIZLY</b><div>Premium Self Drive Rentals</div></div>
-  <div style="padding:35px"><h2>Invoice Ready</h2><p>Hi ${esc(name)},</p>
-  <p>Thank you for choosing Kruizly. Your invoice is attached as a PDF.</p>
-  <div style="padding:18px;background:#f6f9fd;border-radius:12px"><b>${esc(no)}</b><span style="float:right">₹${Number.isFinite(total)?total.toFixed(2):"0.00"}</span></div>
-  <p style="color:#68758a">Please keep the attached invoice for your records.</p></div>
-  <div style="padding:20px;background:#f7f9fc;color:#7b8798;font-size:12px">Automated email from Kruizly.</div>
-  </div></body></html>`;
+  const paid = Number(invoice.amountPaid ?? total);
+  const balance = Number(invoice.balanceDue ?? 0);
+  const isFullPaid = balance === 0;
+
+  return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { margin: 0; padding: 0; background: #0f172a; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1e293b; }
+    .email-wrap { max-width: 600px; margin: 30px auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+    .email-head { padding: 32px 30px; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); color: #ffffff; border-bottom: 3px solid #0284c7; }
+    .brand-name { font-size: 26px; font-weight: 900; letter-spacing: 0.1em; }
+    .brand-name span { color: #38bdf8; }
+    .brand-tag { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; margin-top: 4px; }
+    .email-body { padding: 35px 30px; }
+    .greeting { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 12px; }
+    .summary-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px 20px; margin: 20px 0; }
+    .card-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px solid #edf2f7; }
+    .card-row:last-child { border-bottom: none; }
+    .status-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: ${isFullPaid ? "#dcfce7" : "#fef3c7"}; color: ${isFullPaid ? "#166534" : "#92400e"}; }
+    .email-foot { padding: 20px 30px; background: #f1f5f9; color: #64748b; font-size: 11px; text-align: center; border-top: 1px solid #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="email-wrap">
+    <div class="email-head">
+      <div class="brand-name">KRUIZLY<span>.</span></div>
+      <div class="brand-tag">Premium Self Drive Rentals</div>
+    </div>
+    <div class="email-body">
+      <div class="greeting">Tax Invoice Ready</div>
+      <p style="color:#475569;font-size:14px;line-height:1.6;margin:0 0 16px;">
+        Hi <b>${esc(name)}</b>,<br>
+        Thank you for choosing Kruizly. Your official digital tax invoice has been generated and is attached to this email as a PDF document.
+      </p>
+
+      <div class="summary-card">
+        <table style="width:100%;border-collapse:collapse;font-size:13px;">
+          <tr>
+            <td style="padding:6px 0;color:#64748b;">Invoice Number:</td>
+            <td style="padding:6px 0;text-align:right;font-weight:700;color:#0284c7;">${esc(no)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#64748b;">Vehicle:</td>
+            <td style="padding:6px 0;text-align:right;font-weight:600;color:#0f172a;">${esc(vehicle)}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#64748b;">Total Amount:</td>
+            <td style="padding:6px 0;text-align:right;font-weight:800;color:#0f172a;">₹${Number.isFinite(total)?total.toLocaleString("en-IN"): "0"}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#64748b;">Amount Paid:</td>
+            <td style="padding:6px 0;text-align:right;font-weight:700;color:#166534;">₹${Number.isFinite(paid)?paid.toLocaleString("en-IN"): "0"}</td>
+          </tr>
+          <tr>
+            <td style="padding:6px 0;color:#64748b;">Payment Status:</td>
+            <td style="padding:6px 0;text-align:right;"><span class="status-badge">${isFullPaid ? "PAID IN FULL" : "ADVANCE PAID"}</span></td>
+          </tr>
+        </table>
+      </div>
+
+      <p style="color:#64748b;font-size:12.5px;line-height:1.5;">
+        📎 <b>Attachment:</b> Please find the complete PDF invoice attached with itemized breakdown and security deposit information.
+      </p>
+    </div>
+    <div class="email-foot">
+      © 2026 Gavson Business Park, Ghansoli, Navi Mumbai<br>
+      This is an automated invoice dispatch. For support, reply to this email or contact support@kruizly.in.
+    </div>
+  </div>
+</body>
+</html>`;
 }
 
 async function sendInvoiceEmail({ invoice, pdfBuffer, recipient }) {

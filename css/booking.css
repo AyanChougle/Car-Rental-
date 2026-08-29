@@ -254,6 +254,121 @@
   margin-top: 6px;
 }
 
+.booking-coupon-msg.success {
+  color: #34d399;
+}
+
+.booking-coupon-msg.error {
+  color: #f87171;
+}
+
+/* Applied Multi-Coupons Badges */
+.applied-coupons-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.applied-coupon-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(79, 215, 255, 0.12);
+  border: 1px solid rgba(79, 215, 255, 0.35);
+  color: #4fd7ff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: var(--kr-radius-pill);
+  animation: fadeIn 0.2s ease;
+}
+
+.applied-coupon-tag .remove-coupon-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.applied-coupon-tag .remove-coupon-btn:hover {
+  color: #f87171;
+}
+
+/* Available Coupon Suggestions */
+.coupon-suggestions-box {
+  margin-top: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+}
+
+.coupon-suggestions-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--kr-text-secondary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.coupon-suggestions-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.suggested-coupon-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.suggested-coupon-chip:hover {
+  background: rgba(79, 215, 255, 0.15);
+  border-color: rgba(79, 215, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+.suggested-coupon-chip.is-applied {
+  background: rgba(52, 211, 153, 0.15);
+  border-color: rgba(52, 211, 153, 0.4);
+  color: #34d399;
+  cursor: default;
+}
+
+.suggested-coupon-chip strong {
+  color: #4fd7ff;
+  font-weight: 800;
+}
+
+.suggested-coupon-chip.is-applied strong {
+  color: #34d399;
+}
+
+.suggested-coupon-chip .chip-sub {
+  color: var(--kr-text-secondary);
+  font-size: 11px;
+}
+
 /* Payment Plans */
 .booking-payment-options {
   border: none;

@@ -426,11 +426,14 @@ export function openReturnModal({ booking, currentUser, onSaved }) {
       const amountInput = row.querySelector(".return-item-amount");
       const label = row.querySelector(".return-item-label");
 
+      const isChecked = !!checkbox.checked;
+      const amountVal = Math.max(0, Number(amountInput.value) || 0);
+
       savedItems.push({
         key: checkbox.dataset.key,
         label: label ? label.textContent : "",
-        checked: checkbox.checked,
-        amount: Math.max(0, Number(amountInput.value) || 0),
+        checked: isChecked,
+        amount: isChecked ? amountVal : 0,
       });
     });
 
