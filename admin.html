@@ -11,7 +11,7 @@
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="stylesheet" href="css/components.css" />
     <link rel="stylesheet" href="css/kruizly-ui.css" />
-    <link rel="stylesheet" href="css/admin.css" />
+    <link rel="stylesheet" href="css/admin.css?v=20260829-fix-buttons" />
       <link rel="stylesheet" href="css/kruizly-motion.css" />
   </head>
   <body>
@@ -592,91 +592,92 @@
 
     <!-- INVOICE EDIT & SEND MODAL -->
     <div id="adminInvoiceModal" class="modal admin-modal" hidden>
-      <div class="card admin-inspect-modal-card" style="max-width: 720px; width: 95%;">
+      <div class="card admin-inspect-modal-card" style="max-width: 820px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 28px 32px; background: #0b111a; border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; box-shadow: 0 24px 80px rgba(0,0,0,0.8);">
         <button id="closeAdminInvoiceModal" class="admin-inspect-close" aria-label="Close modal">&times;</button>
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 14px; margin-bottom: 18px;">
+        
+        <!-- Header with safe right padding for close button -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 14px; margin-bottom: 18px; padding-right: 48px;">
           <div>
-            <h2 id="adminInvoiceModalTitle" class="admin-inspect-title" style="margin: 0;">Edit Invoice</h2>
-            <span id="adminInvoiceModalNumber" style="color: var(--kz-accent, #4fd7ff); font-weight: 700; font-size: 0.9rem;"></span>
+            <h2 id="adminInvoiceModalTitle" class="admin-inspect-title" style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #fff;">Edit Invoice</h2>
+            <div id="adminInvoiceModalNumber" style="color: var(--kz-accent, #4fd7ff); font-weight: 700; font-size: 0.95rem; margin-top: 2px;"></div>
           </div>
-          <span id="adminInvoiceStatusBadge" class="status-badge status-badge--verified">ISSUED</span>
+          <span id="adminInvoiceStatusBadge" class="status-badge status-badge--verified" style="font-size: 0.78rem; padding: 4px 12px; font-weight: 800; letter-spacing: 0.05em;">ISSUED</span>
         </div>
 
-        <div id="adminInvoiceModalStatus" class="form-status" style="margin-bottom: 14px;"></div>
+        <div id="adminInvoiceModalStatus" class="form-status" style="margin-bottom: 16px;"></div>
 
-        <form id="adminInvoiceForm" style="display: grid; gap: 16px;">
-          <!-- Customer & Vehicle Row -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-            <div class="form-group">
-              <label style="font-size: 0.8rem; color: var(--kr-text-secondary); text-transform: uppercase;">Customer Name</label>
-              <input type="text" id="adminInvCustomerName" class="form-input" required />
+        <form id="adminInvoiceForm" style="display: flex; flex-direction: column; gap: 16px;">
+          <!-- Customer & Vehicle Info Section -->
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px;">
+            <h4 style="margin: 0 0 12px; font-size: 0.82rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em;">Customer &amp; Vehicle Information</h4>
+            
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 12px;">
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Customer Name</label>
+                <input type="text" id="adminInvCustomerName" class="form-input" required style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              </div>
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Customer Email (Recipient)</label>
+                <input type="email" id="adminInvCustomerEmail" class="form-input" required style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              </div>
             </div>
-            <div class="form-group">
-              <label style="font-size: 0.8rem; color: var(--kr-text-secondary); text-transform: uppercase;">Customer Email (Recipient)</label>
-              <input type="email" id="adminInvCustomerEmail" class="form-input" required />
-            </div>
-          </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-            <div class="form-group">
-              <label style="font-size: 0.8rem; color: var(--kr-text-secondary); text-transform: uppercase;">Vehicle Name</label>
-              <input type="text" id="adminInvVehicleName" class="form-input" required />
-            </div>
-            <div class="form-group">
-              <label style="font-size: 0.8rem; color: var(--kr-text-secondary); text-transform: uppercase;">Registration No.</label>
-              <input type="text" id="adminInvVehicleReg" class="form-input" required />
-            </div>
-          </div>
-
-          <!-- Charges Grid -->
-          <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px;">
-            <h4 style="margin: 0 0 12px; font-size: 0.9rem; color: var(--kz-accent, #4fd7ff); text-transform: uppercase; letter-spacing: 0.05em;">Charges & Line Items (₹)</h4>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px;">
-              <div class="form-group">
-                <label style="font-size: 0.75rem; color: var(--kr-text-secondary);">Base Rental (₹)</label>
-                <input type="number" id="adminInvRental" class="form-input inv-calc-field" min="0" step="1" />
+            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Vehicle Name</label>
+                <input type="text" id="adminInvVehicleName" class="form-input" required style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
               </div>
-              <div class="form-group">
-                <label style="font-size: 0.75rem; color: var(--kr-text-secondary);">Driver Fee (₹)</label>
-                <input type="number" id="adminInvDriver" class="form-input inv-calc-field" min="0" step="1" />
-              </div>
-              <div class="form-group">
-                <label style="font-size: 0.75rem; color: var(--kr-text-secondary);">Extra KM (₹)</label>
-                <input type="number" id="adminInvExtraKm" class="form-input inv-calc-field" min="0" step="1" />
-              </div>
-              <div class="form-group">
-                <label style="font-size: 0.75rem; color: var(--kr-text-secondary);">Late Fee (₹)</label>
-                <input type="number" id="adminInvLateFee" class="form-input inv-calc-field" min="0" step="1" />
-              </div>
-              <div class="form-group">
-                <label style="font-size: 0.75rem; color: var(--kr-text-secondary);">Fuel / Toll (₹)</label>
-                <input type="number" id="adminInvFuel" class="form-input inv-calc-field" min="0" step="1" />
-              </div>
-              <div class="form-group">
-                <label style="font-size: 0.75rem; color: var(--kr-text-secondary);">Damage / Clean (₹)</label>
-                <input type="number" id="adminInvDamage" class="form-input inv-calc-field" min="0" step="1" />
-              </div>
-              <div class="form-group">
-                <label style="font-size: 0.75rem; color: var(--kr-text-secondary);">Discount (-₹)</label>
-                <input type="number" id="adminInvDiscount" class="form-input inv-calc-field" min="0" step="1" />
-              </div>
-              <div class="form-group">
-                <label style="font-size: 0.75rem; color: var(--kr-text-secondary);">Tax Rate (%)</label>
-                <input type="number" id="adminInvTaxRate" class="form-input inv-calc-field" min="0" max="100" step="0.5" />
+              <div class="form-group" style="margin: 0;">
+                <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Registration No.</label>
+                <input type="text" id="adminInvVehicleReg" class="form-input" placeholder="e.g. MH04AB1234" style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
               </div>
             </div>
           </div>
 
-          <!-- Notes -->
-          <div class="form-group">
-            <label style="font-size: 0.8rem; color: var(--kr-text-secondary); text-transform: uppercase;">Invoice Notes (Shown to Customer on PDF)</label>
-            <textarea id="adminInvNotes" class="form-input" rows="2" placeholder="e.g. Verified by Kruizly Admin. Security deposit refundable."></textarea>
+          <!-- Charges Grid Section -->
+          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px;">
+            <h4 style="margin: 0 0 12px; font-size: 0.82rem; font-weight: 800; color: var(--kz-accent, #4fd7ff); text-transform: uppercase; letter-spacing: 0.06em;">Charges &amp; Line Items (₹)</h4>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 12px;">
+              <div class="form-group" style="margin: 0; min-width: 0;">
+                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Base Rental (₹)</label>
+                <input type="number" id="adminInvRental" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              </div>
+              <div class="form-group" style="margin: 0; min-width: 0;">
+                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Driver Fee (₹)</label>
+                <input type="number" id="adminInvDriver" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              </div>
+              <div class="form-group" style="margin: 0; min-width: 0;">
+                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Extra KM (₹)</label>
+                <input type="number" id="adminInvExtraKm" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              </div>
+              <div class="form-group" style="margin: 0; min-width: 0;">
+                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Late Fee (₹)</label>
+                <input type="number" id="adminInvLateFee" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              </div>
+              <div class="form-group" style="margin: 0; min-width: 0;">
+                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Fuel / Toll (₹)</label>
+                <input type="number" id="adminInvFuel" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              </div>
+              <div class="form-group" style="margin: 0; min-width: 0;">
+                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Damage / Clean (₹)</label>
+                <input type="number" id="adminInvDamage" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              </div>
+              <div class="form-group" style="margin: 0; min-width: 0;">
+                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Discount (-₹)</label>
+                <input type="number" id="adminInvDiscount" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              </div>
+              <div class="form-group" style="margin: 0; min-width: 0;">
+                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Tax Rate (%)</label>
+                <input type="number" id="adminInvTaxRate" class="form-input inv-calc-field" min="0" max="100" step="0.5" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              </div>
+            </div>
           </div>
 
-          <!-- Payment Collection & Full Payment Section -->
-          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 16px;">
+          <!-- Payment Collection & Full Settlement Section -->
+          <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 16px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-              <h4 style="margin: 0; font-size: 0.9rem; color: var(--kz-accent, #4fd7ff); text-transform: uppercase; letter-spacing: 0.05em;">Payment Collection &amp; Settlement</h4>
+              <h4 style="margin: 0; font-size: 0.82rem; font-weight: 800; color: var(--kz-accent, #4fd7ff); text-transform: uppercase; letter-spacing: 0.06em;">Payment Collection &amp; Settlement</h4>
               <div style="display: flex; align-items: center; gap: 8px;">
                 <input type="checkbox" id="adminInvFullPaidCheck" style="width: 17px; height: 17px; cursor: pointer; accent-color: #06d6a0;" />
                 <label for="adminInvFullPaidCheck" style="cursor: pointer; font-size: 0.85rem; font-weight: 700; color: #34d399; margin: 0;">
@@ -685,10 +686,10 @@
               </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px;">
-              <div class="form-group">
-                <label style="font-size: 0.75rem; color: var(--kr-text-secondary); text-transform: uppercase;">Payment Mode</label>
-                <select id="adminInvPaymentMode" class="form-input" style="background: #0d1520; color: #fff; cursor: pointer;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+              <div class="form-group" style="margin: 0; min-width: 0;">
+                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 5px;">Payment Mode</label>
+                <select id="adminInvPaymentMode" class="form-input" style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.85rem; background: #0d1520; color: #fff; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; cursor: pointer;">
                   <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
                   <option value="Cash">Cash at Pickup / Executive</option>
                   <option value="Bank Transfer">Bank Transfer / IMPS / NEFT</option>
@@ -699,51 +700,57 @@
                 </select>
               </div>
 
-              <div class="form-group">
-                <label style="font-size: 0.75rem; color: var(--kr-text-secondary); text-transform: uppercase;">Transaction / Reference ID</label>
-                <input type="text" id="adminInvPaymentRef" class="form-input" placeholder="e.g. UPI Ref / UTR / Cash Receipt #" />
+              <div class="form-group" style="margin: 0; min-width: 0;">
+                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 5px;">Transaction / Reference ID</label>
+                <input type="text" id="adminInvPaymentRef" class="form-input" placeholder="e.g. UPI UTR / Cash Slip #" style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.85rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
               </div>
 
-              <div class="form-group">
-                <label style="font-size: 0.75rem; color: var(--kr-text-secondary); text-transform: uppercase;">Amount Paid (₹)</label>
-                <input type="number" id="adminInvAmountPaid" class="form-input inv-calc-field" min="0" step="1" placeholder="Amount Paid" />
+              <div class="form-group" style="margin: 0; min-width: 0;">
+                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 5px;">Amount Paid (₹)</label>
+                <input type="number" id="adminInvAmountPaid" class="form-input inv-calc-field" min="0" step="1" placeholder="₹ Paid" style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.85rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
               </div>
             </div>
           </div>
 
-          <!-- Totals Summary Card -->
-          <div style="background: rgba(79, 215, 255, 0.05); border: 1px solid rgba(79, 215, 255, 0.2); border-radius: 12px; padding: 14px; display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; text-align: center;">
-            <div>
-              <div style="font-size: 0.75rem; color: var(--kr-text-secondary);">Subtotal</div>
-              <strong id="adminInvSubtotal" style="font-size: 1rem; color: #fff;">₹0</strong>
+          <!-- Notes -->
+          <div class="form-group" style="margin: 0;">
+            <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 5px;">Invoice Notes (Shown to Customer on PDF)</label>
+            <textarea id="adminInvNotes" class="form-input" rows="2" placeholder="e.g. Verified by Kruizly Admin. Security deposit refundable." style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.85rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff; resize: vertical;"></textarea>
+          </div>
+
+          <!-- Totals Summary Card (Self-wrapping grid with min-width to avoid number collisions) -->
+          <div style="background: rgba(79, 215, 255, 0.04); border: 1px solid rgba(79, 215, 255, 0.18); border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; text-align: center;">
+            <div style="min-width: 0; padding: 6px;">
+              <div style="font-size: 0.72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase;">Subtotal</div>
+              <strong id="adminInvSubtotal" style="font-size: 0.95rem; color: #fff; display: block; margin-top: 4px; white-space: nowrap;">₹0</strong>
             </div>
-            <div>
-              <div style="font-size: 0.75rem; color: var(--kr-text-secondary);">Tax</div>
-              <strong id="adminInvTax" style="font-size: 1rem; color: #fff;">₹0</strong>
+            <div style="min-width: 0; padding: 6px;">
+              <div style="font-size: 0.72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase;">Tax</div>
+              <strong id="adminInvTax" style="font-size: 0.95rem; color: #fff; display: block; margin-top: 4px; white-space: nowrap;">₹0</strong>
             </div>
-            <div>
-              <div style="font-size: 0.75rem; color: var(--kr-text-secondary);">Grand Total</div>
-              <strong id="adminInvTotal" style="font-size: 1.1rem; color: var(--kz-accent, #4fd7ff);">₹0</strong>
+            <div style="min-width: 0; padding: 6px; background: rgba(79, 215, 255, 0.08); border-radius: 8px;">
+              <div style="font-size: 0.72rem; font-weight: 700; color: var(--kz-accent, #4fd7ff); text-transform: uppercase;">Grand Total</div>
+              <strong id="adminInvTotal" style="font-size: 1.05rem; font-weight: 800; color: var(--kz-accent, #4fd7ff); display: block; margin-top: 4px; white-space: nowrap;">₹0</strong>
             </div>
-            <div>
-              <div style="font-size: 0.75rem; color: var(--kr-text-secondary);">Amount Paid</div>
-              <strong id="adminInvPaid" style="font-size: 1rem; color: var(--kz-success, #34d399);">₹0</strong>
+            <div style="min-width: 0; padding: 6px; background: rgba(52, 211, 153, 0.08); border-radius: 8px;">
+              <div style="font-size: 0.72rem; font-weight: 700; color: #34d399; text-transform: uppercase;">Amount Paid</div>
+              <strong id="adminInvPaid" style="font-size: 1.05rem; font-weight: 700; color: #34d399; display: block; margin-top: 4px; white-space: nowrap;">₹0</strong>
             </div>
-            <div>
-              <div style="font-size: 0.75rem; color: var(--kr-text-secondary);">Balance Due</div>
-              <strong id="adminInvBalance" style="font-size: 1rem; color: #f87171;">₹0</strong>
+            <div style="min-width: 0; padding: 6px;">
+              <div style="font-size: 0.72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase;">Balance Due</div>
+              <strong id="adminInvBalance" style="font-size: 0.95rem; font-weight: 700; color: #f87171; display: block; margin-top: 4px; white-space: nowrap;">₹0</strong>
             </div>
           </div>
 
-          <!-- Modal Action Buttons -->
-          <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 10px;">
-            <button type="button" id="adminInvPreviewBtn" class="btn btn-secondary" style="padding: 9px 16px;">
+          <!-- Modal Action Buttons Toolbar -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 6px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); width: 100%;">
+            <button type="button" id="adminInvPreviewBtn" class="btn btn-secondary" style="width: 100%; justify-content: center; padding: 11px 16px; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
               📄 Preview PDF
             </button>
-            <button type="button" id="adminInvSaveBtn" class="btn btn-secondary" style="padding: 9px 16px;">
+            <button type="button" id="adminInvSaveBtn" class="btn btn-secondary" style="width: 100%; justify-content: center; padding: 11px 16px; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
               💾 Save Changes
             </button>
-            <button type="button" id="adminInvSendBtn" class="btn btn-primary" style="padding: 9px 20px; background: linear-gradient(135deg, #0b6cff, #4fd7ff); color: #fff;">
+            <button type="button" id="adminInvSendBtn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 11px 20px; font-size: 0.88rem; font-weight: 700; border-radius: 8px; background: linear-gradient(135deg, #0b6cff, #4fd7ff); color: #fff; border: none; cursor: pointer; box-shadow: 0 4px 14px rgba(11, 108, 255, 0.4);">
               ✉️ Send to Customer Email
             </button>
           </div>
@@ -855,7 +862,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="js/vehicles.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script type="module" src="js/admin.js?v=20260829-pdf-refresh-1"></script>
+    <script type="module" src="js/admin.js?v=20260829-perfect-grid"></script>
     <script src="js/glass-ui.js"></script>
   </body>
 </html>
