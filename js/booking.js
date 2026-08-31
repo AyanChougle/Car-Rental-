@@ -270,9 +270,10 @@ function initBooking(vehicle) {
 
   function synchroniseRentalDates(isInitial = false) {
     const now = new Date();
+    pickupInput.min = toLocalDateTime(now);
 
-    let pDate = parseDateTime(pickupInput);
-    let dDate = parseDateTime(dropInput);
+    let pDate = parseDateTime(pickupInput.value);
+    let dDate = parseDateTime(dropInput.value);
 
     if (isInitial) {
       const urlPickup = params.get("pickup") || sessionStorageGet("crp_pickupDate");
@@ -289,20 +290,9 @@ function initBooking(vehicle) {
       dDate = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
     }
 
-    if (pickupInput._flatpickr) {
-      pickupInput._flatpickr.setDate(pDate, false);
-    } else {
-      pickupInput.value = toLocalDateTime(pDate);
-    }
-    pickupInput.min = toLocalDateTime(now);
-
-    if (dropInput._flatpickr) {
-      dropInput._flatpickr.set("minDate", new Date(pDate.getTime() + 60 * 60 * 1000));
-      dropInput._flatpickr.setDate(dDate, false);
-    } else {
-      dropInput.min = toLocalDateTime(new Date(pDate.getTime() + 60 * 60 * 1000));
-      dropInput.value = toLocalDateTime(dDate);
-    }
+    pickupInput.value = toLocalDateTime(pDate);
+    dropInput.min = toLocalDateTime(pDate);
+    dropInput.value = toLocalDateTime(dDate);
 
     try {
       sessionStorage.setItem("crp_pickupDate", pickupInput.value);
@@ -476,7 +466,16 @@ function initBooking(vehicle) {
   }
 
   pickupInput.addEventListener("change", () => {
-    synchroniseRentalDates();
+    if (pickupInput.value) {
+      dropInput.min = pickupInput.value;
+      if (!dropInput.value || dropInput.value <= pickupInput.value) {
+        const pDate = new Date(pickupInput.value);
+        if (!isNaN(pDate.getTime())) {
+          const dDate = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
+          dropInput.value = toLocalDateTime(dDate);
+        }
+      }
+    }
     calculateBooking();
   });
   pickupInput.addEventListener("input", calculateBooking);
@@ -497,6 +496,7 @@ function initBooking(vehicle) {
     });
   });
 
+  synchroniseRentalDates(true);
   calculateBooking();
 
   onAuthStateChanged(auth, async (user) => {
