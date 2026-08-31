@@ -4,9 +4,14 @@
 	"use strict";
 
 	const params = new URLSearchParams(window.location.search);
-	const reg = params.get("reg");
+	const query = params.get("id") || params.get("car") || params.get("reg") || params.get("vehicle");
 	const catalog = window.fleetVehicles || [];
-	const vehicle = catalog.find((v) => v.regNo === reg) || catalog[0];
+	const vehicle = (typeof window.getFleetVehicle === "function" && window.getFleetVehicle(query)) ||
+		catalog.find((v) =>
+			(query && (v.id === query || v.slug === query || v.regNo === query)) ||
+			(query && `${v.brand} ${v.model}`.toLowerCase() === query.toLowerCase())
+		) ||
+		catalog[0];
 
 	const nameEl = document.getElementById("vehicleName");
 
@@ -23,7 +28,7 @@
 	}
 
 	// ---- header + specs ----
-	document.title = `${vehicle.brand} ${vehicle.model} | Car Rent PE`;
+	document.title = `${vehicle.brand} ${vehicle.model} | KRUIZLY`;
 	document.getElementById("vehicleCategory").textContent = vehicle.category;
 	nameEl.textContent = `${vehicle.brand} ${vehicle.model}`;
 	document.getElementById("vehicleMetaRow").innerHTML = `
@@ -36,7 +41,7 @@
 
 	const bookBtn = document.getElementById("vehicleBookBtn");
 	if (vehicle.available) {
-		bookBtn.href = `booking.html?reg=${encodeURIComponent(vehicle.regNo)}`;
+		bookBtn.href = `booking.html?id=${encodeURIComponent(vehicle.id || vehicle.slug || vehicle.regNo)}`;
 	} else {
 		bookBtn.textContent = "Currently Unavailable";
 		bookBtn.classList.remove("btn-dark");

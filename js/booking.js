@@ -40,9 +40,14 @@ function sessionStorageGet(key) {
 }
 
 const params = new URLSearchParams(window.location.search);
-const registration = params.get("reg");
+const queryId = params.get("id") || params.get("car") || params.get("reg") || params.get("vehicle");
 const catalog = Array.isArray(window.fleetVehicles) ? window.fleetVehicles : [];
-const vehicle = catalog.find((item) => item.regNo === registration);
+const vehicle = (typeof window.getFleetVehicle === "function" && window.getFleetVehicle(queryId)) ||
+  catalog.find((item) =>
+    (queryId && (item.id === queryId || item.slug === queryId || item.regNo === queryId)) ||
+    (queryId && `${item.brand} ${item.model}`.toLowerCase() === queryId.toLowerCase())
+  ) ||
+  catalog[0];
 
 const form = document.getElementById("bookingForm");
 const totalsEl = document.getElementById("bookingTotals");

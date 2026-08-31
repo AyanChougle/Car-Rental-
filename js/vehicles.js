@@ -1,11 +1,13 @@
-// Fleet catalog, generated from official Kruizly Excel Fleet Master: D:\\AYAN\\Excel\\Car Fleet Details CRP.xlsx
+// Fleet catalog, generated from official Kruizly Excel Fleet Master
 // Categories: economy (sedans & hatchbacks), suv, mpv, luxury.
 // All driver rates: ₹2,000 / day.
 // Loaded as a plain classic script (no bundler) so fleet.js, booking.js,
-// and vehicle-gallery.js can reference `fleetVehicles` directly.
+// and vehicle-gallery.js can reference fleetVehicles directly.
 
 const fleetVehicles = [
   {
+    "id": "krz-01",
+    "slug": "bmw-520d-diesel-automatic",
     "regNo": "",
     "brand": "BMW",
     "model": "520D",
@@ -32,6 +34,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-02",
+    "slug": "mahindra-7xo-diesel-amt",
     "regNo": "",
     "brand": "Mahindra",
     "model": "7XO",
@@ -58,6 +62,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-03",
+    "slug": "tata-altroz-petrol-manual",
     "regNo": "",
     "brand": "Tata",
     "model": "Altroz",
@@ -84,6 +90,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-04",
+    "slug": "tata-altroz-petrol-cng-manual",
     "regNo": "",
     "brand": "Tata",
     "model": "Altroz",
@@ -110,6 +118,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-05",
+    "slug": "hyundai-aura-petrol-amt",
     "regNo": "",
     "brand": "Hyundai",
     "model": "Aura",
@@ -136,6 +146,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-06",
+    "slug": "hyundai-aura-petrol-cng-manual",
     "regNo": "",
     "brand": "Hyundai",
     "model": "Aura",
@@ -162,6 +174,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-07",
+    "slug": "maruti-suzuki-baleno-petrol-cng-manual",
     "regNo": "",
     "brand": "Maruti Suzuki",
     "model": "Baleno",
@@ -188,6 +202,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-08",
+    "slug": "maruti-suzuki-brezza-petrol-cng-manual",
     "regNo": "",
     "brand": "Maruti Suzuki",
     "model": "Brezza",
@@ -214,6 +230,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-09",
+    "slug": "maruti-suzuki-brezza-diesel-manual",
     "regNo": "",
     "brand": "Maruti Suzuki",
     "model": "Brezza",
@@ -240,6 +258,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-10",
+    "slug": "kia-carens-diesel-manual",
     "regNo": "",
     "brand": "Kia",
     "model": "Carens",
@@ -266,6 +286,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-11",
+    "slug": "jeep-compass-diesel-manual",
     "regNo": "",
     "brand": "Jeep",
     "model": "Compass",
@@ -292,6 +314,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-12",
+    "slug": "hyundai-creta-diesel-manual",
     "regNo": "",
     "brand": "Hyundai",
     "model": "Creta",
@@ -318,6 +342,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-13",
+    "slug": "maruti-suzuki-dzire-petrol-cng-manual",
     "regNo": "",
     "brand": "Maruti Suzuki",
     "model": "Dzire",
@@ -344,6 +370,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-14",
+    "slug": "maruti-suzuki-ertiga-petrol-cng-manual",
     "regNo": "",
     "brand": "Maruti Suzuki",
     "model": "Ertiga",
@@ -370,6 +398,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-15",
+    "slug": "hyundai-exter-petrol-amt",
     "regNo": "",
     "brand": "Hyundai",
     "model": "Exter",
@@ -396,6 +426,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-16",
+    "slug": "hyundai-exter-petrol-cng-manual",
     "regNo": "",
     "brand": "Hyundai",
     "model": "Exter",
@@ -422,6 +454,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-17",
+    "slug": "maruti-suzuki-fronx-petrol-cng-manual",
     "regNo": "",
     "brand": "Maruti Suzuki",
     "model": "Fronx",
@@ -448,6 +482,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-18",
+    "slug": "maruti-suzuki-fronx-petrol-automatic",
     "regNo": "",
     "brand": "Maruti Suzuki",
     "model": "Fronx",
@@ -474,6 +510,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-19",
+    "slug": "toyota-glanza-petrol-cng-manual",
     "regNo": "",
     "brand": "Toyota",
     "model": "Glanza",
@@ -500,6 +538,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-20",
+    "slug": "maruti-suzuki-grand-vitara-diesel-manual",
     "regNo": "",
     "brand": "Maruti Suzuki",
     "model": "Grand Vitara",
@@ -526,6 +566,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-21",
+    "slug": "hyundai-i20-petrol-manual",
     "regNo": "",
     "brand": "Hyundai",
     "model": "i20",
@@ -552,6 +594,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-22",
+    "slug": "hyundai-i20-diesel-manual",
     "regNo": "",
     "brand": "Hyundai",
     "model": "i20",
@@ -578,6 +622,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-23",
+    "slug": "maruti-suzuki-ignis-petrol-cng-manual",
     "regNo": "",
     "brand": "Maruti Suzuki",
     "model": "Ignis",
@@ -604,6 +650,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-24",
+    "slug": "toyota-innova-crysta-diesel-manual",
     "regNo": "",
     "brand": "Toyota",
     "model": "Innova Crysta",
@@ -630,6 +678,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-25",
+    "slug": "toyota-innova-crysta-diesel-automatic",
     "regNo": "",
     "brand": "Toyota",
     "model": "Innova Crysta",
@@ -656,6 +706,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-26",
+    "slug": "tata-nexon-petrol-cng-manual",
     "regNo": "",
     "brand": "Tata",
     "model": "Nexon",
@@ -682,6 +734,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-27",
+    "slug": "tata-punch-petrol-cng-manual",
     "regNo": "",
     "brand": "Tata",
     "model": "Punch",
@@ -708,6 +762,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-28",
+    "slug": "tata-safari-diesel-automatic",
     "regNo": "",
     "brand": "Tata",
     "model": "Safari",
@@ -734,6 +790,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-29",
+    "slug": "mahindra-scorpio-n-diesel-manual",
     "regNo": "",
     "brand": "Mahindra",
     "model": "Scorpio N",
@@ -760,6 +818,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-30",
+    "slug": "maruti-suzuki-swift-petrol-cng-manual",
     "regNo": "",
     "brand": "Maruti Suzuki",
     "model": "Swift",
@@ -786,6 +846,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-31",
+    "slug": "maruti-suzuki-swift-petrol-amt",
     "regNo": "",
     "brand": "Maruti Suzuki",
     "model": "Swift",
@@ -812,6 +874,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-32",
+    "slug": "mahindra-thar-diesel-manual",
     "regNo": "",
     "brand": "Mahindra",
     "model": "Thar",
@@ -838,6 +902,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-33",
+    "slug": "mahindra-thar-diesel-automatic",
     "regNo": "",
     "brand": "Mahindra",
     "model": "Thar",
@@ -864,6 +930,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-34",
+    "slug": "mahindra-thar-roxx-diesel-automatic",
     "regNo": "",
     "brand": "Mahindra",
     "model": "Thar Roxx",
@@ -890,6 +958,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-35",
+    "slug": "maruti-suzuki-wagonr-petrol-cng-manual",
     "regNo": "",
     "brand": "Maruti Suzuki",
     "model": "WagonR",
@@ -916,6 +986,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-36",
+    "slug": "maruti-suzuki-xl6-petrol-cng-manual",
     "regNo": "",
     "brand": "Maruti Suzuki",
     "model": "XL6",
@@ -942,6 +1014,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-37",
+    "slug": "mahindra-xuv500-diesel-manual",
     "regNo": "",
     "brand": "Mahindra",
     "model": "XUV500",
@@ -968,6 +1042,8 @@ const fleetVehicles = [
     "tracking": "pending"
   },
   {
+    "id": "krz-38",
+    "slug": "mahindra-xuv700-diesel-manual",
     "regNo": "",
     "brand": "Mahindra",
     "model": "XUV700",
@@ -1013,10 +1089,28 @@ function fleetImagePath(vehicle) {
   return encodeURI(rawPath);
 }
 
+function getFleetVehicle(query) {
+  if (!query) return null;
+  const q = String(query).trim().toLowerCase();
+  return (
+    fleetVehicles.find(
+      (v) =>
+        (v.id && v.id.toLowerCase() === q) ||
+        (v.slug && v.slug.toLowerCase() === q) ||
+        (v.regNo && v.regNo.toLowerCase() === q) ||
+        `${v.brand} ${v.model}`.toLowerCase() === q ||
+        `${v.brand}-${v.model}`.toLowerCase().replace(/\s+/g, "-") === q ||
+        v.brand.toLowerCase() === q ||
+        v.model.toLowerCase() === q
+    ) || null
+  );
+}
+
 if (typeof window !== "undefined") {
   window.fleetImagePath = fleetImagePath;
   window.fleetVehicles = fleetVehicles;
+  window.getFleetVehicle = getFleetVehicle;
 }
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { fleetVehicles, fleetImagePath };
+  module.exports = { fleetVehicles, fleetImagePath, getFleetVehicle };
 }

@@ -139,7 +139,8 @@ function renderFleetCards(records) {
               <button
                 class="fleet-book-btn"
                 type="button"
-                data-reg="${vehicle.regNo}"
+                data-id="${vehicle.id || vehicle.slug}"
+                data-reg="${vehicle.regNo || vehicle.id || vehicle.slug}"
                 data-name="${vehicleName}"
                 ${isAvailable ? "" : "disabled"}
               >
@@ -431,14 +432,14 @@ grid.addEventListener("click", (event) => {
 
   if (galleryButton) {
     const registrationNumber =
-      galleryButton.dataset.reg;
+      galleryButton.dataset.id || galleryButton.dataset.reg || galleryButton.dataset.name;
 
     if (!registrationNumber) {
       return;
     }
 
     window.location.href =
-      `vehicle.html?reg=${encodeURIComponent(
+      `vehicle.html?id=${encodeURIComponent(
         registrationNumber,
       )}`;
 
@@ -447,14 +448,14 @@ grid.addEventListener("click", (event) => {
 
   if (bookButton && !bookButton.disabled) {
     const registrationNumber =
-      bookButton.dataset.reg;
+      bookButton.dataset.id || bookButton.dataset.reg || bookButton.dataset.name;
 
     if (!registrationNumber) {
       return;
     }
 
     window.location.href =
-      `booking.html?reg=${encodeURIComponent(
+      `booking.html?id=${encodeURIComponent(
         registrationNumber,
       )}${bookingDateParams()}`;
   }

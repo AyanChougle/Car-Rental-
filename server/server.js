@@ -34,21 +34,18 @@ app.use(
 // CORS
 // ------------------------------------------------------------
 
-const configuredOrigins = (
-  process.env.ALLOWED_ORIGINS ||
-  process.env.ALLOWED_ORIGIN ||
-  "http://localhost:5500,http://127.0.0.1:5500,https://ayanchougle.github.io"
-)
+const defaultOrigins = [
+  "http://localhost:5500",
+  "http://127.0.0.1:5500",
+  "https://ayanchougle.github.io"
+];
+
+const envOrigins = (process.env.ALLOWED_ORIGINS || process.env.ALLOWED_ORIGIN || "")
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
 
-if (NODE_ENV === "production" && configuredOrigins.length === 0) {
-  console.error(
-    "[server] ALLOWED_ORIGINS must be configured in production."
-  );
-  process.exit(1);
-}
+const configuredOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins]));
 
 app.use(
   cors({
@@ -56,13 +53,17 @@ app.use(
       // Allow non-browser requests such as curl/Postman.
       if (!origin) return callback(null, true);
 
-      if (configuredOrigins.includes(origin)) {
+      const isAllowed =
+        configuredOrigins.includes(origin) ||
+        origin.endsWith(".github.io") ||
+        /^https?:\/\/localhost(:\d+)?$/.test(origin) ||
+        /^https?:\/\/127\.0\.0\.1(:\d+)?$/.test(origin);
+
+      if (isAllowed) {
         return callback(null, true);
       }
 
-      return callback(
-        new Error(`CORS blocked for origin: ${origin}`)
-      );
+      return callback(null, false);
     },
 
     methods: [
@@ -77,9 +78,12 @@ app.use(
     allowedHeaders: [
       "Content-Type",
       "Authorization",
+      "X-Requested-With",
+      "Accept",
+      "Origin"
     ],
 
-    credentials: false,
+    credentials: true,
     maxAge: 600,
   })
 );
