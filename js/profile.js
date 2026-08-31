@@ -1901,7 +1901,7 @@ function renderBooking(
         booking.couponCode
           ? `
             <div style="margin-top: 8px; font-size: 0.8rem; color: var(--kz-success, #34d399);">
-              Coupon: <strong>${escapeHtml(booking.couponCode)}</strong> (-₹${formatINR(booking.couponDiscount || 0)})
+              Coupon: <strong>${escapeHtml(booking.couponCode)}</strong> (-${formatINR(booking.couponDiscount || 0)})
             </div>
           `
           : ""

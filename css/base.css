@@ -167,9 +167,29 @@ input:-webkit-autofill:active {
 }
 
 /* =========================================================
-   FLATPICKR CUSTOM DARK GLASS OVERLAY PICKER (DD/MM/YYYY)
-   Zero Gradients | 100% Visible Days Grid | High Contrast
+   NATIVE HTML5 DATE & TIME PICKER (WHITE ICONS & DARK POPUP)
    ========================================================= */
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"] {
+  color-scheme: dark !important;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(100%) !important;
+  cursor: pointer;
+  opacity: 0.9;
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
 
 .flatpickr-calendar {
   background: #080d15 !important;
