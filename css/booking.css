@@ -764,3 +764,34 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
     padding: 20px 16px;
   }
 }
+
+/* =========================================================
+   GLOBAL WHITE CALENDAR & TIME PICKER ICONS
+   ========================================================= */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  color-scheme: dark !important;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  display: block !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
+  width: 18px !important;
+  height: 18px !important;
+  filter: invert(1) brightness(100%) !important;
+  -webkit-filter: invert(1) brightness(100%) !important;
+  transition: transform 140ms ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.15);
+  filter: invert(1) brightness(130%) !important;
+  -webkit-filter: invert(1) brightness(130%) !important;
+}
+
