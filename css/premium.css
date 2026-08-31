@@ -1227,7 +1227,7 @@ body > :not(.background-video-wrap):not(.booking-background) {
   margin-left: 8px;
   opacity: 1 !important;
   cursor: pointer;
-  filter: invert(76%) sepia(89%) saturate(716%) hue-rotate(159deg) brightness(101%) contrast(101%) !important;
+  filter: invert(1) brightness(100%) !important;
 }
 
 .profile-page .document-card {

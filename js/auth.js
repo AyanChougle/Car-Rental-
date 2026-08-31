@@ -153,19 +153,42 @@ function wireSignupForm() {
       return;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const DISPOSABLE_EMAIL_DOMAINS = new Set([
+      "mailinator.com", "yopmail.com", "tempmail.com", "10minutemail.com",
+      "guerrillamail.com", "throwawaymail.com", "trashmail.com", "sharklasers.com",
+      "dispostable.com", "getairmail.com", "fake.com", "test.com", "example.com",
+      "asdf.com", "qwerty.com", "temp-mail.org", "nada.ltd"
+    ]);
+
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
     if (!email || !emailRegex.test(email)) {
       setStatus(form, "Please enter a valid email address.", true);
+      return;
+    }
+
+    const domain = email.split("@")[1]?.toLowerCase() || "";
+    if (DISPOSABLE_EMAIL_DOMAINS.has(domain)) {
+      setStatus(form, "Temporary and disposable email domains are not permitted.", true);
       return;
     }
 
     let cleanPhone = rawPhone.replace(/\D/g, "");
     if (cleanPhone.length === 12 && cleanPhone.startsWith("91")) {
       cleanPhone = cleanPhone.slice(2);
+    } else if (cleanPhone.length === 11 && cleanPhone.startsWith("0")) {
+      cleanPhone = cleanPhone.slice(1);
     }
-    if (cleanPhone && !/^[6-9]\d{9}$/.test(cleanPhone)) {
-      setStatus(form, "Please enter a valid 10-digit Indian mobile number (e.g. 9876543210).", true);
-      return;
+
+    if (cleanPhone) {
+      if (cleanPhone.length !== 10 || !/^[6-9]/.test(cleanPhone)) {
+        setStatus(form, "Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.", true);
+        return;
+      }
+      const fakeSequences = ["9999999999", "8888888888", "7777777777", "6666666666", "1234567890", "9876543210", "0123456789"];
+      if (fakeSequences.includes(cleanPhone) || /^(\d)\1{9}$/.test(cleanPhone)) {
+        setStatus(form, "Please enter a genuine, active mobile number.", true);
+        return;
+      }
     }
 
     if (password !== confirmPassword) {

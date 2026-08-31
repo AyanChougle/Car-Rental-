@@ -440,7 +440,10 @@
                 <input
                   type="tel"
                   id="ownerPhone"
-                  placeholder="+91 9876543210"
+                  placeholder="e.g. 9876543210 (10 digits)"
+                  maxlength="10"
+                  inputmode="numeric"
+                  pattern="[6-9][0-9]{9}"
                   required
                 />
 

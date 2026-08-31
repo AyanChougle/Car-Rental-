@@ -75,10 +75,10 @@
 
     const config = {
       enableTime: isDateTime,
-      time_24hr: false,
+      time_24hr: true,
       dateFormat: isDateTime ? "Y-m-dTH:i" : "Y-m-d",
       altInput: true,
-      altFormat: isDateTime ? "d/m/Y h:i K" : "d/m/Y",
+      altFormat: isDateTime ? "d/m/Y H:i" : "d/m/Y",
       allowInput: true,
       minuteIncrement: 5,
       disableMobile: true,
@@ -94,14 +94,10 @@
           return `${day}/${month}/${year}`;
         }
 
-        let hours = dateObj.getHours();
+        const hours = String(dateObj.getHours()).padStart(2, "0");
         const minutes = String(dateObj.getMinutes()).padStart(2, "0");
-        const ampm = hours >= 12 ? "PM" : "AM";
-        hours = hours % 12;
-        hours = hours ? hours : 12;
-        const formattedHours = String(hours).padStart(2, "0");
 
-        return `${day}/${month}/${year} ${formattedHours}:${minutes} ${ampm}`;
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
       },
       onReady: function (selectedDates, dateStr, instance) {
         if (instance.altInput && !instance.altInput._iconAttached) {
@@ -122,8 +118,8 @@
           if (targetContainer && !targetContainer.querySelector(".kruizly-datepicker-icon")) {
             const icon = document.createElement("span");
             icon.className = "kruizly-datepicker-icon";
-            icon.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;
-            icon.style.cssText = "position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;display:flex;align-items:center;opacity:0.9;z-index:10;pointer-events:auto;";
+            icon.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>`;
+            icon.style.cssText = "position:absolute;right:14px;top:50%;transform:translateY(-50%);cursor:pointer;display:flex;align-items:center;opacity:0.95;z-index:10;pointer-events:auto;";
             icon.addEventListener("click", (e) => {
               e.preventDefault();
               e.stopPropagation();

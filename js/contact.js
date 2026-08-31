@@ -51,6 +51,23 @@ if (form && status) {
       return;
     }
 
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)+$/;
+    if (!emailRegex.test(email)) {
+      status.className = "form-status form-status--error";
+      status.textContent = "Please enter a valid email address.";
+      return;
+    }
+
+    let cleanPhone = phone.replace(/\D/g, "");
+    if (cleanPhone.length === 12 && cleanPhone.startsWith("91")) cleanPhone = cleanPhone.slice(2);
+    else if (cleanPhone.length === 11 && cleanPhone.startsWith("0")) cleanPhone = cleanPhone.slice(1);
+
+    if (cleanPhone && (cleanPhone.length !== 10 || !/^[6-9]/.test(cleanPhone))) {
+      status.className = "form-status form-status--error";
+      status.textContent = "Please enter a valid 10-digit Indian mobile number.";
+      return;
+    }
+
     if (submitButton) submitButton.disabled = true;
     status.className = "form-status";
     status.textContent = "Preparing your message...";

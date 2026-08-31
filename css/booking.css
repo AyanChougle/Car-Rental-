@@ -112,6 +112,38 @@
   margin-bottom: 20px;
 }
 
+.booking-field input[type="datetime-local"],
+.booking-field input[type="date"] {
+  color-scheme: dark;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+  padding: 0 14px;
+  cursor: pointer;
+}
+
+.booking-field input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+.booking-field input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator {
+  display: block !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
+  width: 20px !important;
+  height: 20px !important;
+  padding: 2px !important;
+  margin-right: 2px !important;
+  filter: invert(1) brightness(100%) !important;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.booking-field input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.15);
+  filter: invert(1) brightness(120%) !important;
+}
+
 .booking-date-heading {
   grid-column: 1 / -1;
   display: flex;

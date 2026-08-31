@@ -502,6 +502,15 @@ if (form) {
       const ownerPhone =
         getValue("ownerPhone");
 
+      let cleanOwnerPhone = String(ownerPhone || "").replace(/\D/g, "");
+      if (cleanOwnerPhone.length === 12 && cleanOwnerPhone.startsWith("91")) {
+        cleanOwnerPhone = cleanOwnerPhone.slice(2);
+      }
+      if (!/^[6-9]\d{9}$/.test(cleanOwnerPhone)) {
+        showError("Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.");
+        return;
+      }
+
 
       // ------------------------------------------------------
       // Validate insurance dates

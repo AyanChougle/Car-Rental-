@@ -1123,6 +1123,15 @@ function initEditProfile(
     $("editProfileStatus");
 
 
+  if (phoneInput && !phoneInput._phoneMaskAttached) {
+    phoneInput._phoneMaskAttached = true;
+    phoneInput.setAttribute("maxlength", "10");
+    phoneInput.setAttribute("inputmode", "numeric");
+    phoneInput.addEventListener("input", () => {
+      phoneInput.value = phoneInput.value.replace(/\D/g, "").slice(0, 10);
+    });
+  }
+
   if (
     !editButton ||
     !cancelButton ||

@@ -13,7 +13,8 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
-    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css" />
     <link rel="stylesheet" href="css/booking.css" />
     <link rel="stylesheet" href="css/kruizly-motion.css" />
   </head>
@@ -157,10 +158,10 @@
                   type="datetime-local"
                   id="pickupDate"
                   lang="en-GB"
+                  step="60"
                   required
                 />
               </div>
-
 
               <div class="booking-field">
                 <label for="dropDate">
@@ -171,6 +172,7 @@
                   type="datetime-local"
                   id="dropDate"
                   lang="en-GB"
+                  step="60"
                   required
                 />
               </div>
@@ -497,6 +499,8 @@
        SCRIPTS
   ========================== -->
 
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="js/kruizly-datepicker.js"></script>
   <script src="js/vehicles.js?v=20260829-crp"></script>
   <script
     type="module"

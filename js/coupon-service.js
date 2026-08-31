@@ -74,17 +74,20 @@ export const DEFAULT_COUPONS = [
  */
 export async function getAvailableCoupons(rentalTotal = 0) {
   try {
-    const q = query(collection(db, "coupons"), where("active", "==", true));
-    const snap = await getDocs(q);
-    let list = [];
+    const snap = await getDocs(collection(db, "coupons"));
+    let firestoreList = [];
 
     if (!snap.empty) {
-      list = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    } else {
-      list = [...DEFAULT_COUPONS];
+      firestoreList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     }
 
-    return list.map(c => {
+    const firestoreCodes = new Set(firestoreList.map(c => String(c.code || c.id).toUpperCase()));
+    const missingDefaults = DEFAULT_COUPONS.filter(dc => !firestoreCodes.has(dc.code.toUpperCase()));
+    const combined = [...firestoreList, ...missingDefaults];
+
+    const activeList = combined.filter(c => c.active !== false && c.status !== "inactive");
+
+    return activeList.map(c => {
       const minAmount = Number(c.minimumBookingAmount || c.minOrder || 0);
       const isEligible = rentalTotal <= 0 || rentalTotal >= minAmount;
       const type = c.discountType || c.type || "flat";
@@ -138,15 +141,14 @@ export async function validateCoupon({ code, bookingAmount, userId, appliedCoupo
 
     // 1. Try Firestore fetch
     try {
-      const couponSnap = await getDoc(doc(db, "coupons", cleanCode));
-      if (couponSnap.exists()) {
-        couponData = couponSnap.data();
-      } else {
-        const q = query(collection(db, "coupons"), where("code", "==", cleanCode));
-        const qSnap = await getDocs(q);
-        if (!qSnap.empty) {
-          const found = qSnap.docs[0];
-          couponData = found.data();
+      const snap = await getDocs(collection(db, "coupons"));
+      if (!snap.empty) {
+        const found = snap.docs.find(d => {
+          const data = d.data();
+          return d.id.toUpperCase() === cleanCode || String(data.code || "").toUpperCase() === cleanCode;
+        });
+        if (found) {
+          couponData = { id: found.id, ...found.data() };
           couponDocId = found.id;
         }
       }
@@ -156,7 +158,7 @@ export async function validateCoupon({ code, bookingAmount, userId, appliedCoupo
 
     // 2. Fallback to default catalog if not in Firestore
     if (!couponData) {
-      const fallbackMatch = DEFAULT_COUPONS.find(c => c.code === cleanCode);
+      const fallbackMatch = DEFAULT_COUPONS.find(c => c.code.toUpperCase() === cleanCode);
       if (fallbackMatch) {
         couponData = { ...fallbackMatch };
       }

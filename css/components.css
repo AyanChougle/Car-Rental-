@@ -377,6 +377,32 @@ textarea {
   box-sizing: border-box;
 }
 
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"] {
+  color-scheme: dark;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  display: block !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
+  width: 20px !important;
+  height: 20px !important;
+  padding: 2px !important;
+  filter: invert(1) brightness(100%) !important;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.15);
+  filter: invert(1) brightness(120%) !important;
+}
+
 textarea {
   height: 120px;
   padding: 12px 14px;
