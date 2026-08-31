@@ -63,23 +63,76 @@ carPhotosInput?.addEventListener("change", () => {
 });
 
 async function uploadHostPhoto(file, listingId) {
-  const token = await currentUser.getIdToken();
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("category", "partner_car_photo");
-formData.append("fleetId", listingId);
-formData.append("relatedId", listingId);
-  const response = await fetch(`${MEDIA_SERVER_URL}/api/media/upload`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: formData
-  });
+  // 1. Try local media server if available
+  try {
+    const token = await currentUser.getIdToken();
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("category", "partner_car_photo");
+    formData.append("fleetId", listingId);
+    formData.append("relatedId", listingId);
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.error || `Photo upload failed (${response.status}).`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+    const response = await fetch(`${MEDIA_SERVER_URL}/api/media/upload`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+      signal: controller.signal
+    });
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      if (payload && payload.id) return payload;
+    }
+  } catch (err) {
+    console.warn("[Partner] Local media server offline, using cloud image fallback:", err);
   }
-  return payload;
+
+  // 2. Client-side compressed image processing for direct Firestore listing storage
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_DIM = 1200;
+        let width = img.width;
+        let height = img.height;
+        if (width > height && width > MAX_DIM) {
+          height = Math.round((height * MAX_DIM) / width);
+          width = MAX_DIM;
+        } else if (height > MAX_DIM) {
+          width = Math.round((width * MAX_DIM) / height);
+          height = MAX_DIM;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.78);
+        resolve({
+          id: `photo_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          url: dataUrl,
+          category: "partner_car_photo",
+          originalName: file.name
+        });
+      };
+      img.onerror = () => {
+        resolve({
+          id: `photo_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          url: e.target.result,
+          category: "partner_car_photo",
+          originalName: file.name
+        });
+      };
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error("Could not process vehicle photo."));
+    reader.readAsDataURL(file);
+  });
 }
 
 async function removeUploadedHostPhoto(mediaId) {
@@ -633,6 +686,7 @@ if (form) {
 
       const listingRef = doc(collection(db, "partner_cars"));
       const uploadedPhotoIds = [];
+      const uploadedPhotoUrls = [];
 
       try {
         for (let index = 0; index < photoFiles.length; index += 1) {
@@ -641,6 +695,7 @@ if (form) {
           }
           const uploaded = await uploadHostPhoto(photoFiles[index], listingRef.id);
           uploadedPhotoIds.push(uploaded.id);
+          if (uploaded.url) uploadedPhotoUrls.push(uploaded.url);
         }
 
         await setDoc(
@@ -675,7 +730,8 @@ if (form) {
             pucEnd,
 
 
-            // Photos stored on the authenticated media server
+            // Photos stored
+            photos: uploadedPhotoUrls,
             photoMediaIds: uploadedPhotoIds,
 
 

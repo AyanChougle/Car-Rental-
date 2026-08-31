@@ -503,17 +503,30 @@
 
 /* White Calendar & Date Picker Icons */
 .partner-field input[type="date"],
-.partner-field input[type="datetime-local"] {
-  color-scheme: dark;
+.partner-field input[type="datetime-local"],
+input[type="date"],
+input[type="datetime-local"] {
+  color-scheme: dark !important;
 }
 
 .partner-field input[type="date"]::-webkit-calendar-picker-indicator,
-.partner-field input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+.partner-field input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   display: block !important;
   opacity: 1 !important;
   cursor: pointer !important;
   width: 18px !important;
   height: 18px !important;
   filter: invert(1) brightness(100%) !important;
+  -webkit-filter: invert(1) brightness(100%) !important;
+  transition: transform 160ms ease;
+}
+
+.partner-field input[type="date"]::-webkit-calendar-picker-indicator:hover,
+.partner-field input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.15);
+  filter: invert(1) brightness(125%) !important;
+  -webkit-filter: invert(1) brightness(125%) !important;
 }
 

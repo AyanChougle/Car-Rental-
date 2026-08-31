@@ -652,15 +652,14 @@ function initBooking(vehicle) {
         pickupLocation: vehicle.location || "Gavson Business Park, Ghansoli",
         dropLocation: vehicle.location || "Gavson Business Park, Ghansoli",
 
-        status: "pending_payment",
-        bookingStatus: "pending_payment",
-        paymentStatus: "unpaid",
+        status: "pending_verification",
+        bookingStatus: "pending_verification",
+        paymentStatus: "pending_verification",
         paymentRef: null,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
       };
 
-      await setDoc(bookingRef, bookingRecord);
+      // Store pending booking in sessionStorage so NO abandoned booking is created in Firestore
+      sessionStorage.setItem("kruizly_pending_booking", JSON.stringify(bookingRecord));
 
       try {
         sessionStorage.removeItem("crp_pickupDate");
@@ -668,14 +667,14 @@ function initBooking(vehicle) {
       } catch (_) {}
 
       const paymentParams = new URLSearchParams();
-      paymentParams.set("booking", bookingRef.id);
+      paymentParams.set("booking", bookingRecord.bookingId);
       window.location.href = "payment.html?" + paymentParams.toString();
     } catch (error) {
-      console.error("Booking creation failed:", error);
+      console.error("Booking preparation failed:", error);
       if (statusEl) {
         statusEl.textContent =
           (error && error.message) ||
-          "Couldn't create the booking. Please try again.";
+          "Couldn't prepare the booking. Please try again.";
         statusEl.classList.add("form-status--error");
       }
       if (submitButton) submitButton.disabled = false;

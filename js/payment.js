@@ -45,6 +45,7 @@ import {
 import {
   doc,
   getDoc,
+  setDoc,
   updateDoc,
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
@@ -1569,56 +1570,48 @@ async function submitPayment(
       "Screenshot uploaded. Saving your payment reference..."
     );
 
+    const finalBookingRecord = {
+      ...booking,
+      bookingId,
+      bookingNumber: bookingId,
+      userId: currentUser.uid,
+      userName: booking.userName || currentUser.displayName || currentUser.email || "",
+      userEmail: currentUser.email || booking.userEmail || "",
+      userPhone: booking.userPhone || null,
+      paymentMethod: activeMethod,
+      paymentPlan: booking.paymentPlan || "full",
+      paymentAmount: Number(booking.paymentAmount ?? booking.totalAmount ?? 0),
+      paymentAmountPaid: Number(booking.paymentAmount ?? booking.totalAmount ?? 0),
+      remainingBalance: Number(booking.remainingBalance ?? 0),
+      paymentRef: reference,
+      paymentScreenshotMediaId: String(uploadedMediaId),
+      paymentScreenshotCategory: "payment_screenshot",
+      paymentStatus: "pending_verification",
+      status: "pending_verification",
+      bookingStatus: "pending_verification",
+      paymentSubmittedAt: serverTimestamp(),
+      paymentSubmittedBy: currentUser.uid,
+      createdAt: booking.createdAt || serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
 
-    await updateDoc(
+    if (media?.url && media.url.startsWith("data:")) {
+      finalBookingRecord.paymentScreenshotDataUrl = media.url;
+    }
+
+    await setDoc(
       doc(
         db,
         "bookings",
         bookingId
       ),
-      {
-        paymentMethod:
-          activeMethod,
-
-        paymentPlan:
-          booking.paymentPlan || "full",
-
-        paymentAmount:
-          Number(booking.paymentAmount ?? booking.totalAmount ?? 0),
-
-        paymentAmountPaid:
-          Number(booking.paymentAmount ?? booking.totalAmount ?? 0),
-
-        remainingBalance:
-          Number(booking.remainingBalance ?? 0),
-
-        paymentRef:
-          reference,
-
-        // IMPORTANT:
-        // This is NOT a Firebase Storage URL.
-        //
-        // It is the SQLite media row ID.
-        paymentScreenshotMediaId:
-          String(
-            uploadedMediaId
-          ),
-
-        // Keep this useful metadata in Firestore.
-        paymentScreenshotCategory:
-          "payment_screenshot",
-
-        paymentStatus:
-          "pending_verification",
-
-        paymentSubmittedAt:
-          serverTimestamp(),
-
-        paymentSubmittedBy:
-          currentUser.uid,
-      }
+      finalBookingRecord,
+      { merge: true }
     );
 
+    try {
+      sessionStorage.removeItem("kruizly_pending_booking");
+    } catch (_) {}
 
     console.log(
       "FIRESTORE PAYMENT UPDATE COMPLETE"
@@ -1900,57 +1893,41 @@ async function startPaymentPage() {
       // LOAD BOOKING
       // --------------------------------------------------------
 
-      let bookingSnapshot;
-
+      let booking = null;
 
       try {
-        console.log(
-          "Loading booking..."
+        const snap = await getDoc(
+          doc(
+            db,
+            "bookings",
+            bookingId
+          )
         );
-
-
-        bookingSnapshot =
-          await getDoc(
-            doc(
-              db,
-              "bookings",
-              bookingId
-            )
-          );
-
+        if (snap.exists()) {
+          booking = snap.data();
+        }
       } catch (error) {
-        console.error(
-          "BOOKING LOAD ERROR:",
-          error
-        );
-
-
-        showError(
-          "Couldn't load this booking. Please try again."
-        );
-
-
-        return;
+        console.warn("Firestore booking read fallback:", error.message);
       }
 
-
-      // --------------------------------------------------------
-      // BOOKING DOES NOT EXIST
-      // --------------------------------------------------------
-
-      if (
-        !bookingSnapshot.exists()
-      ) {
-        showError(
-          "That booking does not exist."
-        );
-
-        return;
+      if (!booking) {
+        try {
+          const rawPending = sessionStorage.getItem("kruizly_pending_booking");
+          if (rawPending) {
+            const parsed = JSON.parse(rawPending);
+            if (parsed && (parsed.bookingId === bookingId || !bookingId)) {
+              booking = parsed;
+            }
+          }
+        } catch (_) {}
       }
 
-
-      const booking =
-        bookingSnapshot.data();
+      if (!booking) {
+        showError(
+          "That booking does not exist. Please start your booking from the vehicle fleet."
+        );
+        return;
+      }
 
 
       console.log(

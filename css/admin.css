@@ -156,6 +156,21 @@
   border: 1px solid var(--kr-border);
   border-radius: 10px;
   color: #ffffff;
+  color-scheme: dark !important;
+}
+
+.manager-date-sort input::-webkit-calendar-picker-indicator,
+.admin-main input::-webkit-calendar-picker-indicator,
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  display: block !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
+  width: 18px !important;
+  height: 18px !important;
+  filter: invert(1) brightness(100%) !important;
+  -webkit-filter: invert(1) brightness(100%) !important;
+  transition: transform 160ms ease;
 }
 
 /* Operations Queue Table */

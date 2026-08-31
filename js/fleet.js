@@ -30,6 +30,20 @@ function formatCurrency(value) {
   }).format(amount);
 }
 
+function getVehicleBodyType(vehicle) {
+  const cat = (vehicle.category || "").toLowerCase();
+  const model = (vehicle.model || "").toLowerCase();
+  const brand = (vehicle.brand || "").toLowerCase();
+  const slug = (vehicle.slug || "").toLowerCase();
+
+  if (cat === "luxury") return "luxury";
+  if (cat === "mpv" || /innova|ertiga|carens|xl6|carnival|rumion|triber/.test(model + " " + slug)) return "mpv";
+  if (cat === "suv" || /7xo|scorpio|thar|creta|seltos|fortuner|brezza|nexon|harrier|xuv|safari|venue|sonet|grand vitara|hyryder|taigun|kushaq|punch|exter/.test(model + " " + slug)) return "suv";
+  if (/altroz|swift|baleno|i20|tiago|wagonr|ignis|polo|glanza|c3|kwid/.test(model + " " + slug)) return "hatchback";
+  if (/city|verna|ciaz|dzire|amaze|slavia|virtus|aura|tigor/.test(model + " " + slug)) return "sedan";
+  return cat || "sedan";
+}
+
 function renderFleetCards(records) {
   if (!Array.isArray(records) || records.length === 0) {
     grid.innerHTML = `
@@ -55,6 +69,7 @@ function renderFleetCards(records) {
         ? "available"
         : "booked";
 
+      const bodyType = getVehicleBodyType(vehicle);
       const detailsId = `fleet-card-details-${index}`;
 
       return `
@@ -62,6 +77,7 @@ function renderFleetCards(records) {
           class="fleet-card fleet-card--compact"
           data-reg="${vehicle.regNo}"
           data-category="${vehicle.category}"
+          data-bodytype="${bodyType}"
           data-price="${vehicle.priceDay}"
           data-seats="${vehicle.seats}"
           data-name="${vehicleName}"
@@ -199,28 +215,28 @@ function renderFleetCards(records) {
                 <div>
                   <strong>Driver</strong>
                   <span>
-                    ₹${formatCurrency(vehicle.driverPrice)}
+                    ₹${formatCurrency(vehicle.driverPriceHour || Number(vehicle.driverPrice || 0) / 24)}
                   </span>
                 </div>
 
                 <div>
                   <strong>Deposit</strong>
                   <span>
-                    ₹${formatCurrency(vehicle.securityDeposit)}
+                    ₹${formatCurrency(vehicle.securityDeposit || 5000)}
                   </span>
                 </div>
 
                 <div>
                   <strong>Free Distance</strong>
                   <span>
-                    ${formatCurrency(vehicle.freeKm)} km
+                    ${formatCurrency(vehicle.freeKm || 200)} km
                   </span>
                 </div>
 
                 <div>
                   <strong>Extra Distance</strong>
                   <span>
-                    ₹${formatCurrency(vehicle.extraKm)}/km
+                    ₹${formatCurrency(vehicle.extraKm || 12)}/km
                   </span>
                 </div>
               </div>
@@ -231,14 +247,6 @@ function renderFleetCards(records) {
     })
     .join("");
 
-  grid.querySelectorAll(".fleet-card").forEach((card) => {
-    const vehicle = records.find((item) => item.regNo === card.dataset.reg);
-    const driverSpec = card.querySelector(".fleet-specs > div:nth-child(3)");
-    if (!vehicle || !driverSpec) return;
-    driverSpec.querySelector("strong").textContent = "Driver / Hour";
-    driverSpec.querySelector("span").textContent = `₹${formatCurrency(vehicle.driverPriceHour || Number(vehicle.driverPrice || 0) / 24)}`;
-  });
-
   grid.setAttribute("aria-busy", "false");
 }
 
@@ -247,34 +255,79 @@ function getCards() {
 }
 
 function applyFilters() {
-  const query = search.value.trim().toLowerCase();
+  const query = search ? search.value.trim().toLowerCase() : "";
+
+  const selectedTransmissions = [...document.querySelectorAll('input[name="filterTransmission"]:checked')].map((el) => el.value.toLowerCase());
+  const selectedFuels = [...document.querySelectorAll('input[name="filterFuel"]:checked')].map((el) => el.value.toLowerCase());
+  const selectedBodyTypes = [...document.querySelectorAll('input[name="filterBodyType"]:checked')].map((el) => el.value.toLowerCase());
+  const selectedSeats = [...document.querySelectorAll('input[name="filterSeats"]:checked')].map((el) => el.value);
+
+  const activeCount = selectedTransmissions.length + selectedFuels.length + selectedBodyTypes.length + selectedSeats.length;
+  const badge = document.getElementById("filterActiveBadge");
+  if (badge) {
+    badge.textContent = activeCount;
+    badge.hidden = activeCount === 0;
+  }
 
   getCards().forEach((card) => {
-    const name = card.dataset.name.toLowerCase();
-    const category = card.dataset.category.toLowerCase();
-    const transmission =
-      card.dataset.transmission.toLowerCase();
-    const fuel = card.dataset.fuel.toLowerCase();
+    const name = (card.dataset.name || "").toLowerCase();
+    const category = (card.dataset.category || "").toLowerCase();
+    const transmission = (card.dataset.transmission || "").toLowerCase();
+    const fuel = (card.dataset.fuel || "").toLowerCase();
+    const bodyType = (card.dataset.bodytype || category).toLowerCase();
+    const seats = Number(card.dataset.seats) || 5;
 
-    const matchesCategory =
-      state.activeCategory === "all" ||
-      category === state.activeCategory;
+    // Transmission Filter
+    let matchesTransmission = true;
+    if (selectedTransmissions.length > 0) {
+      matchesTransmission = selectedTransmissions.some((t) => {
+        if (t === "automatic") return transmission.includes("auto") || transmission.includes("amt");
+        if (t === "manual") return transmission.includes("man");
+        return transmission.includes(t);
+      });
+    }
 
+    // Fuel Filter
+    let matchesFuel = true;
+    if (selectedFuels.length > 0) {
+      matchesFuel = selectedFuels.some((f) => fuel.includes(f));
+    }
+
+    // Body Type Filter
+    let matchesBodyType = true;
+    if (selectedBodyTypes.length > 0) {
+      matchesBodyType = selectedBodyTypes.includes(bodyType) || selectedBodyTypes.includes(category);
+    }
+
+    // Seating Capacity Filter
+    let matchesSeats = true;
+    if (selectedSeats.length > 0) {
+      matchesSeats = selectedSeats.some((s) => {
+        if (s === "5") return seats <= 5;
+        if (s === "7") return seats >= 7;
+        return seats === Number(s);
+      });
+    }
+
+    // Search Query
     const searchableContent = [
       name,
       category,
+      bodyType,
       transmission,
       fuel,
       card.textContent.toLowerCase(),
     ];
+    const matchesSearch = !query || searchableContent.some((value) => value.includes(query));
 
-    const matchesSearch =
-      !query ||
-      searchableContent.some((value) =>
-        value.includes(query),
-      );
+    const isMatch = Boolean(
+      matchesBodyType &&
+      matchesTransmission &&
+      matchesFuel &&
+      matchesSeats &&
+      matchesSearch,
+    );
 
-    const isMatch = Boolean(matchesCategory && matchesSearch);
     card.classList.toggle("hidden", !isMatch);
     card.hidden = !isMatch;
   });
@@ -301,9 +354,7 @@ function sortCards() {
     (card) => !card.classList.contains("hidden"),
   );
 
-  const hiddenCards = cards.filter((card) =>
-    card.classList.contains("hidden"),
-  );
+  const hiddenCards = cards.filter((card) => card.classList.contains("hidden"));
 
   const mode = sort.value;
 
@@ -330,134 +381,109 @@ function sortCards() {
   });
 }
 
-chips.forEach((chip) => {
-  chip.addEventListener("click", () => {
-    chips.forEach((currentChip) => {
-      currentChip.classList.remove("active");
-      currentChip.setAttribute(
-        "aria-pressed",
-        "false",
-      );
-    });
+if (search) search.addEventListener("input", applyFilters);
 
-    chip.classList.add("active");
-    chip.setAttribute("aria-pressed", "true");
-
-    state.activeCategory =
-      chip.dataset.category || "all";
-
-    applyFilters();
-  });
-});
-
-search.addEventListener("input", applyFilters);
-
-sort.addEventListener("change", () => {
-  if (typeof updateSortDropdown === "function") {
-    updateSortDropdown(sort.value);
-  }
-  sortCards();
-});
-
-if (clearFleetFiltersBtn) {
-  clearFleetFiltersBtn.addEventListener("click", () => {
-    search.value = "";
-    state.activeCategory = "all";
-
-    chips.forEach((currentChip) => {
-      const isAll = (currentChip.dataset.category || "all") === "all";
-      currentChip.classList.toggle("active", isAll);
-      currentChip.setAttribute("aria-pressed", String(isAll));
-    });
-
-    applyFilters();
+if (sort) {
+  sort.addEventListener("change", () => {
+    if (typeof updateSortDropdown === "function") {
+      updateSortDropdown(sort.value);
+    }
+    sortCards();
   });
 }
 
+// Checkbox Filter Change Listeners
+document.querySelectorAll(".filter-check-input").forEach((chk) => {
+  chk.addEventListener("change", applyFilters);
+});
+
+// Sidebar drawer open/close
+const mobileFilterToggle = document.getElementById("mobileFilterToggle");
+const fleetSidebar = document.getElementById("fleetSidebar");
+const fleetSidebarBackdrop = document.getElementById("fleetSidebarBackdrop");
+const applyMobileFiltersBtn = document.getElementById("applyMobileFiltersBtn");
+const resetSidebarFilters = document.getElementById("resetSidebarFilters");
+
+function openSidebar() {
+  if (fleetSidebar) fleetSidebar.classList.add("is-open");
+  if (fleetSidebarBackdrop) fleetSidebarBackdrop.classList.add("is-open");
+}
+
+function closeSidebar() {
+  if (fleetSidebar) fleetSidebar.classList.remove("is-open");
+  if (fleetSidebarBackdrop) fleetSidebarBackdrop.classList.remove("is-open");
+}
+
+if (mobileFilterToggle) mobileFilterToggle.addEventListener("click", openSidebar);
+if (fleetSidebarBackdrop) fleetSidebarBackdrop.addEventListener("click", closeSidebar);
+if (applyMobileFiltersBtn) {
+  applyMobileFiltersBtn.addEventListener("click", () => {
+    applyFilters();
+    closeSidebar();
+  });
+}
+
+function resetAllFilters() {
+  document.querySelectorAll(".filter-check-input").forEach((chk) => (chk.checked = false));
+  if (search) search.value = "";
+  applyFilters();
+}
+
+if (resetSidebarFilters) resetSidebarFilters.addEventListener("click", resetAllFilters);
+if (clearFleetFiltersBtn) clearFleetFiltersBtn.addEventListener("click", resetAllFilters);
+
 // Card button handling.
 grid.addEventListener("click", (event) => {
-  const moreToggle = event.target.closest(
-    ".fleet-card__more-toggle",
-  );
+  const moreToggle = event.target.closest(".fleet-specs-btn, .fleet-card__more-toggle");
 
-  const galleryButton = event.target.closest(
-    ".fleet-card__gallery-link",
-  );
+  const galleryButton = event.target.closest(".fleet-card__gallery-link");
 
-  const bookButton = event.target.closest(
-    ".fleet-book-btn",
-  );
+  const bookButton = event.target.closest(".fleet-book-btn");
 
   if (moreToggle) {
     const card = moreToggle.closest(".fleet-card");
+    const detailsId = moreToggle.getAttribute("aria-controls");
+    const details = document.getElementById(detailsId);
 
-    const detailsId =
-      moreToggle.getAttribute("aria-controls");
+    if (!card || !details) return;
 
-    const details =
-      document.getElementById(detailsId);
-
-    const label = moreToggle.querySelector(
-      ".fleet-card__more-label",
-    );
-
-    if (!card || !details || !label) {
-      return;
-    }
-
-    const isExpanded =
-      moreToggle.getAttribute("aria-expanded") ===
-      "true";
-
-    if (isExpanded) {
-      details.hidden = true;
-      card.classList.remove("is-expanded");
-      moreToggle.setAttribute(
-        "aria-expanded",
-        "false",
-      );
-      label.textContent = "Show More";
-    } else {
-      details.hidden = false;
-      card.classList.add("is-expanded");
-      moreToggle.setAttribute(
-        "aria-expanded",
-        "true",
-      );
-      label.textContent = "Show Less";
-    }
-
+    const isExpanded = moreToggle.getAttribute("aria-expanded") === "true";
+    details.hidden = isExpanded;
+    card.classList.toggle("is-expanded", !isExpanded);
+    moreToggle.setAttribute("aria-expanded", String(!isExpanded));
     return;
   }
 
   if (galleryButton) {
     const registrationNumber =
-      galleryButton.dataset.id || galleryButton.dataset.reg || galleryButton.dataset.name;
+      galleryButton.dataset.id ||
+      galleryButton.dataset.reg ||
+      galleryButton.dataset.name;
 
     if (!registrationNumber) {
       return;
     }
 
-    window.location.href =
-      `vehicle.html?id=${encodeURIComponent(
-        registrationNumber,
-      )}`;
+    window.location.href = `vehicle.html?id=${encodeURIComponent(
+      registrationNumber,
+    )}`;
 
     return;
   }
 
   if (bookButton && !bookButton.disabled) {
     const registrationNumber =
-      bookButton.dataset.id || bookButton.dataset.reg || bookButton.dataset.name;
+      bookButton.dataset.id ||
+      bookButton.dataset.reg ||
+      bookButton.dataset.name;
 
     if (!registrationNumber) {
       return;
     }
 
-    window.location.href =
-      `booking.html?id=${encodeURIComponent(
-        registrationNumber,
-      )}${bookingDateParams()}`;
+    window.location.href = `booking.html?id=${encodeURIComponent(
+      registrationNumber,
+    )}${bookingDateParams()}`;
   }
 });
 
@@ -492,15 +518,15 @@ function bookingDateParams() {
 
 async function applyFleetAvailabilityOverrides() {
   try {
-    const snapshot = await getDocs(
-      collection(db, "vehicles")
-    );
+    const snapshot = await getDocs(collection(db, "vehicles"));
     const overrides = new Map(
-      snapshot.docs.map((item) => [item.id, item.data()])
+      snapshot.docs.map((item) => [item.id, item.data()]),
     );
 
     const catalog = window.fleetVehicles || [];
-    const catalogRegistrations = new Set(catalog.map((vehicle) => vehicle.regNo));
+    const catalogRegistrations = new Set(
+      catalog.map((vehicle) => vehicle.regNo),
+    );
 
     catalog.forEach((vehicle) => {
       const override = overrides.get(vehicle.regNo);
@@ -517,7 +543,12 @@ async function applyFleetAvailabilityOverrides() {
 
     snapshot.docs
       .map((item) => ({ regNo: item.id, ...item.data() }))
-      .filter((vehicle) => vehicle.isCustomFleet && !vehicle.removed && !catalogRegistrations.has(vehicle.regNo))
+      .filter(
+        (vehicle) =>
+          vehicle.isCustomFleet &&
+          !vehicle.removed &&
+          !catalogRegistrations.has(vehicle.regNo),
+      )
       .forEach((vehicle) => catalog.push(vehicle));
 
     window.fleetVehicles = catalog.filter((vehicle) => !vehicle.removed);
@@ -543,20 +574,12 @@ applyFleetAvailabilityOverrides().then(() => {
    ========================================================= */
 
 const sortDropdown = document.getElementById("sortDropdown");
-const sortDropdownButton = document.getElementById(
-  "sortDropdownButton",
-);
-const sortDropdownLabel = document.getElementById(
-  "sortDropdownLabel",
-);
-const sortDropdownMenu = document.getElementById(
-  "sortDropdownMenu",
-);
+const sortDropdownButton = document.getElementById("sortDropdownButton");
+const sortDropdownLabel = document.getElementById("sortDropdownLabel");
+const sortDropdownMenu = document.getElementById("sortDropdownMenu");
 
 const sortOptions = [
-  ...document.querySelectorAll(
-    ".fleet-custom-select__option",
-  ),
+  ...document.querySelectorAll(".fleet-custom-select__option"),
 ];
 
 function closeSortDropdown() {
@@ -565,10 +588,7 @@ function closeSortDropdown() {
   }
 
   sortDropdown.classList.remove("is-open");
-  sortDropdownButton.setAttribute(
-    "aria-expanded",
-    "false",
-  );
+  sortDropdownButton.setAttribute("aria-expanded", "false");
 }
 
 function openSortDropdown() {
@@ -577,10 +597,7 @@ function openSortDropdown() {
   }
 
   sortDropdown.classList.add("is-open");
-  sortDropdownButton.setAttribute(
-    "aria-expanded",
-    "true",
-  );
+  sortDropdownButton.setAttribute("aria-expanded", "true");
 }
 
 function updateSortDropdown(value) {
@@ -595,48 +612,30 @@ function updateSortDropdown(value) {
   const label = selectedOption.querySelector("span");
 
   if (label && sortDropdownLabel) {
-    sortDropdownLabel.textContent =
-      label.textContent.trim();
+    sortDropdownLabel.textContent = label.textContent.trim();
   }
 
   sortOptions.forEach((option) => {
-    const isSelected =
-      option.dataset.value === value;
+    const isSelected = option.dataset.value === value;
 
-    option.classList.toggle(
-      "is-selected",
-      isSelected,
-    );
+    option.classList.toggle("is-selected", isSelected);
 
-    option.setAttribute(
-      "aria-selected",
-      String(isSelected),
-    );
+    option.setAttribute("aria-selected", String(isSelected));
   });
 }
 
-if (
-  sortDropdown &&
-  sortDropdownButton &&
-  sortDropdownMenu
-) {
-  sortDropdownButton.addEventListener(
-    "click",
-    (event) => {
-      event.stopPropagation();
+if (sortDropdown && sortDropdownButton && sortDropdownMenu) {
+  sortDropdownButton.addEventListener("click", (event) => {
+    event.stopPropagation();
 
-      const isOpen =
-        sortDropdown.classList.contains(
-          "is-open",
-        );
+    const isOpen = sortDropdown.classList.contains("is-open");
 
-      if (isOpen) {
-        closeSortDropdown();
-      } else {
-        openSortDropdown();
-      }
-    },
-  );
+    if (isOpen) {
+      closeSortDropdown();
+    } else {
+      openSortDropdown();
+    }
+  });
 
   sortOptions.forEach((option) => {
     option.addEventListener("click", () => {
@@ -669,21 +668,16 @@ if (
   });
 
   document.addEventListener("click", (event) => {
-    if (
-      !sortDropdown.contains(event.target)
-    ) {
+    if (!sortDropdown.contains(event.target)) {
       closeSortDropdown();
     }
   });
 
-  document.addEventListener(
-    "keydown",
-    (event) => {
-      if (event.key === "Escape") {
-        closeSortDropdown();
-      }
-    },
-  );
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeSortDropdown();
+    }
+  });
 
   updateSortDropdown(sort.value);
 }
