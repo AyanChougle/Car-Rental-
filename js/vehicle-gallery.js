@@ -4,7 +4,9 @@
 	"use strict";
 
 	const params = new URLSearchParams(window.location.search);
-	const query = params.get("id") || params.get("car") || params.get("reg") || params.get("vehicle");
+	let query = params.get("id") || params.get("car") || params.get("reg") || params.get("vehicle");
+	if (query === "undefined" || query === "null" || query === "") query = null;
+
 	const catalog = window.fleetVehicles || [];
 	const vehicle = (typeof window.getFleetVehicle === "function" && window.getFleetVehicle(query)) ||
 		catalog.find((v) =>

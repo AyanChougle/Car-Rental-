@@ -19,7 +19,7 @@ import {
   calculateDuration,
   formatCurrency,
   formatHumanDateTime,
-  parseDateTime
+  parseDateTime,
 } from "./booking-calculator.js";
 import { validateCoupon } from "./coupon-service.js";
 
@@ -28,7 +28,17 @@ function padDatePart(value) {
 }
 
 function toLocalDateTime(date) {
-  return date.getFullYear() + "-" + padDatePart(date.getMonth() + 1) + "-" + padDatePart(date.getDate()) + "T" + padDatePart(date.getHours()) + ":" + padDatePart(date.getMinutes());
+  return (
+    date.getFullYear() +
+    "-" +
+    padDatePart(date.getMonth() + 1) +
+    "-" +
+    padDatePart(date.getDate()) +
+    "T" +
+    padDatePart(date.getHours()) +
+    ":" +
+    padDatePart(date.getMinutes())
+  );
 }
 
 function sessionStorageGet(key) {
@@ -40,12 +50,26 @@ function sessionStorageGet(key) {
 }
 
 const params = new URLSearchParams(window.location.search);
-const queryId = params.get("id") || params.get("car") || params.get("reg") || params.get("vehicle");
+let queryId =
+  params.get("id") ||
+  params.get("car") ||
+  params.get("reg") ||
+  params.get("vehicle");
+if (queryId === "undefined" || queryId === "null" || queryId === "")
+  queryId = null;
+
 const catalog = Array.isArray(window.fleetVehicles) ? window.fleetVehicles : [];
-const vehicle = (typeof window.getFleetVehicle === "function" && window.getFleetVehicle(queryId)) ||
-  catalog.find((item) =>
-    (queryId && (item.id === queryId || item.slug === queryId || item.regNo === queryId)) ||
-    (queryId && `${item.brand} ${item.model}`.toLowerCase() === queryId.toLowerCase())
+const vehicle =
+  (typeof window.getFleetVehicle === "function" &&
+    window.getFleetVehicle(queryId)) ||
+  catalog.find(
+    (item) =>
+      (queryId &&
+        (item.id === queryId ||
+          item.slug === queryId ||
+          item.regNo === queryId)) ||
+      (queryId &&
+        `${item.brand} ${item.model}`.toLowerCase() === queryId.toLowerCase()),
   ) ||
   catalog[0];
 
@@ -71,10 +95,15 @@ function showUnavailable(message) {
 }
 
 if (!vehicle) {
-  showUnavailable("We couldn't find that car. Please return to the fleet and choose another vehicle.");
+  showUnavailable(
+    "We couldn't find that car. Please return to the fleet and choose another vehicle.",
+  );
 } else if (!vehicle.available) {
-  if (vehicleName) vehicleName.textContent = vehicle.brand + " " + vehicle.model;
-  showUnavailable("This car is currently booked. Please choose another vehicle from the fleet.");
+  if (vehicleName)
+    vehicleName.textContent = vehicle.brand + " " + vehicle.model;
+  showUnavailable(
+    "This car is currently booked. Please choose another vehicle from the fleet.",
+  );
 } else {
   initBooking(vehicle);
 }
@@ -83,13 +112,22 @@ function initBooking(vehicle) {
   let currentUser = null;
   let appliedCoupons = [];
 
-  if (bookingTitle) bookingTitle.textContent = "Book the " + vehicle.brand + " " + vehicle.model;
-  if (vehicleName) vehicleName.textContent = vehicle.brand + " " + vehicle.model;
-  if (vehicleMeta) vehicleMeta.textContent = vehicle.category + " • " + vehicle.transmission + " • " + vehicle.fuel;
+  if (bookingTitle)
+    bookingTitle.textContent =
+      "Book the " + vehicle.brand + " " + vehicle.model;
+  if (vehicleName)
+    vehicleName.textContent = vehicle.brand + " " + vehicle.model;
+  if (vehicleMeta)
+    vehicleMeta.textContent =
+      vehicle.category + " • " + vehicle.transmission + " • " + vehicle.fuel;
   if (dayRate) dayRate.textContent = "₹" + formatCurrency(vehicle.priceDay);
-  if (driverRate) driverRate.textContent = "₹" + formatCurrency(vehicle.driverPrice || 2000);
-  if (deposit) deposit.textContent = "₹" + formatCurrency(vehicle.securityDeposit);
-  if (location) location.textContent = vehicle.location || "Gavson Business Park, Ghansoli, Navi Mumbai.";
+  if (driverRate)
+    driverRate.textContent = "₹" + formatCurrency(vehicle.driverPrice || 2000);
+  if (deposit)
+    deposit.textContent = "₹" + formatCurrency(vehicle.securityDeposit);
+  if (location)
+    location.textContent =
+      vehicle.location || "Gavson Business Park, Ghansoli, Navi Mumbai.";
 
   const imagePath = window.fleetImagePath ? window.fleetImagePath(vehicle) : "";
   if (imagePath && vehicleImage) {
@@ -111,13 +149,17 @@ function initBooking(vehicle) {
   const pickupInput = document.getElementById("pickupDate");
   const dropInput = document.getElementById("dropDate");
   const driverInput = document.getElementById("withDriver");
-  const paymentPlanInputs = Array.from(document.querySelectorAll('input[name="paymentPlan"]'));
+  const paymentPlanInputs = Array.from(
+    document.querySelectorAll('input[name="paymentPlan"]'),
+  );
   const submitBtn = document.getElementById("bookingSubmitBtn");
   const couponInput = document.getElementById("couponInput");
   const couponApplyBtn = document.getElementById("couponApplyBtn");
   const couponMsg = document.getElementById("couponMsg");
   const appliedCouponsWrap = document.getElementById("appliedCouponsWrap");
-  const couponSuggestionsGrid = document.getElementById("couponSuggestionsGrid");
+  const couponSuggestionsGrid = document.getElementById(
+    "couponSuggestionsGrid",
+  );
   const resetBookingTimes = document.getElementById("resetBookingTimes");
 
   function renderAppliedCoupons() {
@@ -129,15 +171,20 @@ function initBooking(vehicle) {
     }
 
     appliedCouponsWrap.hidden = false;
-    appliedCouponsWrap.innerHTML = appliedCoupons.map((c) => {
-      const discountTxt = c.discountType === "percent" ? `${c.discountValue}% OFF` : `₹${c.discountValue} OFF`;
-      return `
+    appliedCouponsWrap.innerHTML = appliedCoupons
+      .map((c) => {
+        const discountTxt =
+          c.discountType === "percent"
+            ? `${c.discountValue}% OFF`
+            : `₹${c.discountValue} OFF`;
+        return `
         <span class="applied-coupon-tag">
           <strong>${c.code}</strong> (${discountTxt})
           <button type="button" class="remove-coupon-btn" data-code="${c.code}" aria-label="Remove coupon ${c.code}">✕</button>
         </span>
       `;
-    }).join("");
+      })
+      .join("");
 
     appliedCouponsWrap.querySelectorAll(".remove-coupon-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -154,7 +201,9 @@ function initBooking(vehicle) {
   }
 
   async function applyCouponCode(rawCode) {
-    const code = String(rawCode || "").trim().toUpperCase();
+    const code = String(rawCode || "")
+      .trim()
+      .toUpperCase();
     if (!code) {
       if (couponMsg) {
         couponMsg.textContent = "Please enter a coupon code.";
@@ -182,14 +231,14 @@ function initBooking(vehicle) {
       pickup: pickupInput.value,
       drop: dropInput.value,
       withDriver: Boolean(driverInput && driverInput.checked),
-      coupon: null
+      coupon: null,
     });
 
     const result = await validateCoupon({
       code,
       bookingAmount: baseCalc.rentalTotal || 0,
       userId: currentUser?.uid,
-      appliedCoupons
+      appliedCoupons,
     });
 
     if (couponApplyBtn) couponApplyBtn.disabled = false;
@@ -216,7 +265,8 @@ function initBooking(vehicle) {
     const pickup = pickupInput ? pickupInput.value : "";
     const drop = dropInput ? dropInput.value : "";
     const withDriver = Boolean(driverInput && driverInput.checked);
-    const paymentPlan = paymentPlanInputs.find((input) => input.checked)?.value || "advance";
+    const paymentPlan =
+      paymentPlanInputs.find((input) => input.checked)?.value || "advance";
 
     const calculation = calculateBookingPrice({
       vehicle,
@@ -224,11 +274,14 @@ function initBooking(vehicle) {
       drop,
       withDriver,
       coupon: appliedCoupons,
-      paymentPlan
+      paymentPlan,
     });
 
     if (!calculation.valid) {
-      totalsEl.innerHTML = '<div class="booking-error">' + (calculation.error || "Please select valid rental dates.") + '</div>';
+      totalsEl.innerHTML =
+        '<div class="booking-error">' +
+        (calculation.error || "Please select valid rental dates.") +
+        "</div>";
       return null;
     }
 
@@ -242,25 +295,60 @@ function initBooking(vehicle) {
       couponDiscount,
       finalAmount,
       advanceAmount,
-      remainingAmount
+      remainingAmount,
     } = calculation;
 
-    let html = '<div class="booking-totals__header"><span>PRICE BREAKDOWN</span><span>Duration: ' + duration.formattedDuration + '</span></div>';
-    html += '<div class="booking-total-row"><span>Rental Charges (' + days + ' day' + (days > 1 ? 's' : '') + ')</span><strong>₹' + formatCurrency(rentalTotal) + '</strong></div>';
+    let html =
+      '<div class="booking-totals__header"><span>PRICE BREAKDOWN</span><span>Duration: ' +
+      duration.formattedDuration +
+      "</span></div>";
+    html +=
+      '<div class="booking-total-row"><span>Rental Charges (' +
+      days +
+      " day" +
+      (days > 1 ? "s" : "") +
+      ")</span><strong>₹" +
+      formatCurrency(rentalTotal) +
+      "</strong></div>";
 
     if (withDriver) {
-      html += '<div class="booking-total-row"><span>Driver Allowance</span><strong>₹' + formatCurrency(driverTotal) + '</strong></div>';
+      html +=
+        '<div class="booking-total-row"><span>Driver Allowance</span><strong>₹' +
+        formatCurrency(driverTotal) +
+        "</strong></div>";
     }
 
-    html += '<div class="booking-total-row"><span>Security Deposit<small style="display:block; font-size:0.75rem; color:var(--text-sub)">(100% Refundable upon vehicle return)</small></span><strong>₹' + formatCurrency(securityDeposit) + '</strong></div>';
+    html +=
+      '<div class="booking-total-row"><span>Security Deposit<small style="display:block; font-size:0.75rem; color:var(--text-sub)">(100% Refundable upon vehicle return)</small></span><strong>₹' +
+      formatCurrency(securityDeposit) +
+      "</strong></div>";
 
     if (couponDiscount > 0) {
       const appliedLabels = appliedCoupons.map((c) => c.code).join(", ");
-      html += '<div class="booking-total-row" style="color: var(--kz-success, #34d399);"><span>Coupon Discount (' + appliedLabels + ')</span><strong style="color: var(--kz-success, #34d399);">-₹' + formatCurrency(couponDiscount) + '</strong></div>';
+      html +=
+        '<div class="booking-total-row" style="color: var(--kz-success, #34d399);"><span>Coupon Discount (' +
+        appliedLabels +
+        ')</span><strong style="color: var(--kz-success, #34d399);">-₹' +
+        formatCurrency(couponDiscount) +
+        "</strong></div>";
     }
 
-    html += '<div class="booking-total-row booking-total-row--grand"><span>Total Estimated Amount</span><strong>₹' + formatCurrency(finalAmount) + '</strong></div>';
-    html += '<div class="booking-total-row booking-total-row--payment"><span>' + (paymentPlan === "advance" ? "Advance Payable Now" : "Full Amount Payable Now") + '<small style="display:block; font-size:0.75rem; color:var(--text-sub)">' + (paymentPlan === "advance" ? ("Balance due at pickup: ₹" + formatCurrency(remainingAmount)) : "100% booking confirmation") + '</small></span><strong>₹' + formatCurrency(advanceAmount) + '</strong></div>';
+    html +=
+      '<div class="booking-total-row booking-total-row--grand"><span>Total Estimated Amount</span><strong>₹' +
+      formatCurrency(finalAmount) +
+      "</strong></div>";
+    html +=
+      '<div class="booking-total-row booking-total-row--payment"><span>' +
+      (paymentPlan === "advance"
+        ? "Advance Payable Now"
+        : "Full Amount Payable Now") +
+      '<small style="display:block; font-size:0.75rem; color:var(--text-sub)">' +
+      (paymentPlan === "advance"
+        ? "Balance due at pickup: ₹" + formatCurrency(remainingAmount)
+        : "100% booking confirmation") +
+      "</small></span><strong>₹" +
+      formatCurrency(advanceAmount) +
+      "</strong></div>";
 
     totalsEl.innerHTML = html;
     return calculation;
@@ -305,7 +393,10 @@ function initBooking(vehicle) {
       });
       document.querySelectorAll(".booking-payment-option").forEach((option) => {
         const radio = option.querySelector('input[name="paymentPlan"]');
-        option.classList.toggle("booking-payment-option--selected", radio && radio.value === "advance");
+        option.classList.toggle(
+          "booking-payment-option--selected",
+          radio && radio.value === "advance",
+        );
       });
 
       appliedCoupons = [];
@@ -326,7 +417,8 @@ function initBooking(vehicle) {
       if (window.history && window.history.replaceState) {
         const cleanParams = new URLSearchParams();
         if (vehicle && vehicle.regNo) cleanParams.set("reg", vehicle.regNo);
-        const cleanUrl = window.location.pathname + "?" + cleanParams.toString();
+        const cleanUrl =
+          window.location.pathname + "?" + cleanParams.toString();
         window.history.replaceState({}, document.title, cleanUrl);
       }
 
@@ -349,7 +441,7 @@ function initBooking(vehicle) {
       document.querySelectorAll(".booking-payment-option").forEach((option) => {
         option.classList.toggle(
           "booking-payment-option--selected",
-          option.contains(input) && input.checked
+          option.contains(input) && input.checked,
         );
       });
       calculateBooking();
@@ -362,7 +454,8 @@ function initBooking(vehicle) {
     currentUser = user;
 
     if (!user) {
-      if (statusEl) statusEl.textContent = "Please log in to continue with your booking.";
+      if (statusEl)
+        statusEl.textContent = "Please log in to continue with your booking.";
       return;
     }
 
@@ -370,15 +463,21 @@ function initBooking(vehicle) {
 
     try {
       const vehicleOverride = await getDoc(doc(db, "vehicles", vehicle.regNo));
-      if (vehicleOverride.exists() && vehicleOverride.data().available === false) {
-        throw new Error("This vehicle was just marked unavailable. Please choose another car.");
+      if (
+        vehicleOverride.exists() &&
+        vehicleOverride.data().available === false
+      ) {
+        throw new Error(
+          "This vehicle was just marked unavailable. Please choose another car.",
+        );
       }
 
       const userSnapshot = await getDoc(doc(db, "users", user.uid));
       const userData = userSnapshot.exists() ? userSnapshot.data() : {};
 
       if (userData.licenseStatus !== "verified" && licenseNote) {
-        licenseNote.innerHTML = "<strong>Please Note</strong><span>Your driving licence is not verified yet. You can continue with booking, but please upload and verify it from your profile before pickup.</span>";
+        licenseNote.innerHTML =
+          "<strong>Please Note</strong><span>Your driving licence is not verified yet. You can continue with booking, but please upload and verify it from your profile before pickup.</span>";
         licenseNote.classList.add("booking-license-note--warning");
       }
     } catch (error) {
@@ -402,7 +501,9 @@ function initBooking(vehicle) {
     const calculation = calculateBooking();
     if (!calculation || !calculation.valid) {
       if (statusEl) {
-        statusEl.textContent = calculation ? calculation.error : "Please review the booking schedule before proceeding.";
+        statusEl.textContent = calculation
+          ? calculation.error
+          : "Please review the booking schedule before proceeding.";
         statusEl.classList.add("form-status--error");
       }
       return;
@@ -433,14 +534,17 @@ function initBooking(vehicle) {
       }
 
       if (!bookingRef) {
-        throw new Error("Could not generate a unique booking number. Please try again.");
+        throw new Error(
+          "Could not generate a unique booking number. Please try again.",
+        );
       }
 
       const bookingRecord = {
         bookingId: bookingRef.id,
         bookingNumber: bookingRef.id,
         userId: currentUser.uid,
-        userName: userData.name || currentUser.displayName || currentUser.email || "",
+        userName:
+          userData.name || currentUser.displayName || currentUser.email || "",
         userEmail: currentUser.email || "",
         userPhone: userData.phone || null,
 
@@ -464,8 +568,16 @@ function initBooking(vehicle) {
         driverHourlyRate: calculation.driverHourlyRate,
         securityDeposit: calculation.securityDeposit,
         baseAmount: calculation.rentalTotal,
-        couponCode: calculation.appliedCoupons?.length ? calculation.appliedCoupons.map((c) => c.code).join(", ") : (calculation.couponApplied ? calculation.couponApplied.code : null),
-        couponCodes: calculation.appliedCoupons?.length ? calculation.appliedCoupons.map((c) => c.code) : (calculation.couponApplied ? [calculation.couponApplied.code] : []),
+        couponCode: calculation.appliedCoupons?.length
+          ? calculation.appliedCoupons.map((c) => c.code).join(", ")
+          : calculation.couponApplied
+            ? calculation.couponApplied.code
+            : null,
+        couponCodes: calculation.appliedCoupons?.length
+          ? calculation.appliedCoupons.map((c) => c.code)
+          : calculation.couponApplied
+            ? [calculation.couponApplied.code]
+            : [],
         appliedCoupons: calculation.appliedCoupons || [],
         couponDiscount: calculation.couponDiscount || 0,
         finalAmount: calculation.finalAmount,
@@ -486,7 +598,7 @@ function initBooking(vehicle) {
         paymentStatus: "unpaid",
         paymentRef: null,
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
       };
 
       await setDoc(bookingRef, bookingRecord);
@@ -502,7 +614,9 @@ function initBooking(vehicle) {
     } catch (error) {
       console.error("Booking creation failed:", error);
       if (statusEl) {
-        statusEl.textContent = (error && error.message) || "Couldn't create the booking. Please try again.";
+        statusEl.textContent =
+          (error && error.message) ||
+          "Couldn't create the booking. Please try again.";
         statusEl.classList.add("form-status--error");
       }
       if (submitButton) submitButton.disabled = false;

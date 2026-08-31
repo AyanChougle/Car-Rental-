@@ -37,7 +37,8 @@ app.use(
 const defaultOrigins = [
   "http://localhost:5500",
   "http://127.0.0.1:5500",
-  "https://ayanchougle.github.io"
+  "https://ayanchougle.github.io",
+  "https://ayanchougle.github.io/Car-Rental-/"
 ];
 
 const envOrigins = (process.env.ALLOWED_ORIGINS || process.env.ALLOWED_ORIGIN || "")

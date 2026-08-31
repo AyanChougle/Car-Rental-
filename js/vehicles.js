@@ -1090,7 +1090,7 @@ function fleetImagePath(vehicle) {
 }
 
 function getFleetVehicle(query) {
-  if (!query) return null;
+  if (!query || query === "undefined" || query === "null") return fleetVehicles[0] || null;
   const q = String(query).trim().toLowerCase();
   return (
     fleetVehicles.find(
@@ -1102,7 +1102,7 @@ function getFleetVehicle(query) {
         `${v.brand}-${v.model}`.toLowerCase().replace(/\s+/g, "-") === q ||
         v.brand.toLowerCase() === q ||
         v.model.toLowerCase() === q
-    ) || null
+    ) || fleetVehicles[0] || null
   );
 }
 
