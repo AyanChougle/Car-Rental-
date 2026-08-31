@@ -442,6 +442,8 @@ span.flatpickr-weekday {
   border-radius: 8px !important;
   margin-left: 6px !important;
   cursor: pointer !important;
+}
+
 .flatpickr-time .flatpickr-am-pm:hover {
   background: var(--kr-surface-control-hover) !important;
   color: #ffffff !important;
