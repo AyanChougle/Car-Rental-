@@ -38,6 +38,14 @@ const requireOwnerOrStaff = a(async (req, res, next) => {
   next();
 });
 
+r.get("/payment-approved/:bookingId", (req, res) => {
+  res.status(405).json({
+    success: false,
+    message: "Method Not Allowed. Creating an invoice on payment approval requires a POST request.",
+    hint: "This endpoint is automatically called by the Admin / Manager dashboard when payment is approved."
+  });
+});
+
 r.post("/payment-approved/:bookingId", requireAuth, requireRole(...STAFF_ROLES), a(async (req, res) => {
   const invoice = await createBookingInvoice(req.params.bookingId);
   let pdfBuffer;
@@ -121,6 +129,15 @@ r.put("/:invoiceId", requireAuth, requireRole(...STAFF_ROLES), a(async (req,res)
   await db.collection("invoices").doc(invoice.invoiceId).set(invoice, { merge:true });
   res.json({ success:true, invoice });
 }));
+
+r.get("/:invoiceId/send", (req, res) => {
+  res.status(405).json({
+    success: false,
+    message: "Method Not Allowed. Sending an invoice requires a POST request.",
+    pdfUrl: `/api/invoices/${req.params.invoiceId}/pdf`,
+    hint: "Use the '✉️ Send to Customer Email' button in the Admin Dashboard to trigger email dispatch, or visit /pdf to view the PDF."
+  });
+});
 
 r.post("/:invoiceId/send", requireAuth, requireRole(...STAFF_ROLES), a(async (req,res) => {
   const invoice = await getInvoice(req.params.invoiceId);
