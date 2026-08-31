@@ -652,9 +652,9 @@ function initBooking(vehicle) {
         pickupLocation: vehicle.location || "Gavson Business Park, Ghansoli",
         dropLocation: vehicle.location || "Gavson Business Park, Ghansoli",
 
-        status: "pending_verification",
-        bookingStatus: "pending_verification",
-        paymentStatus: "pending_verification",
+        status: "pending_payment",
+        bookingStatus: "pending_payment",
+        paymentStatus: "pending_payment",
         paymentRef: null,
       };
 

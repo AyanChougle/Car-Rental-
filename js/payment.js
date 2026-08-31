@@ -1002,7 +1002,7 @@ async function initialisePaymentUI(
     const priceDay = Number(booking.priceDay || vehicle.priceDay || 2600);
     const depositVal = Number(booking.securityDeposit || vehicle.securityDeposit || 3000);
     const driverVal = booking.withDriver ? Number(booking.driverPrice || vehicle.driverPrice || 1500) : 0;
-    const numDays = Number(duration || 1);
+    const numDays = Number(booking.days || booking.durationDays || 1);
 
     totalAmount = Math.max(0, (priceDay * numDays) + (driverVal * numDays) + depositVal);
     paymentAmount = booking.paymentPlan === "advance" ? 500 : totalAmount;
@@ -1915,7 +1915,7 @@ async function startPaymentPage() {
           const rawPending = sessionStorage.getItem("kruizly_pending_booking");
           if (rawPending) {
             const parsed = JSON.parse(rawPending);
-            if (parsed && (parsed.bookingId === bookingId || !bookingId)) {
+            if (parsed) {
               booking = parsed;
             }
           }
@@ -1929,88 +1929,70 @@ async function startPaymentPage() {
         return;
       }
 
-
       console.log(
         "BOOKING LOADED:",
         booking
       );
-
 
       // --------------------------------------------------------
       // SECURITY
       // --------------------------------------------------------
 
       if (
-        booking.userId !==
-        user.uid
+        booking.userId &&
+        booking.userId !== user.uid
       ) {
         showError(
           "This booking does not belong to your account."
         );
-
         return;
       }
-
 
       // --------------------------------------------------------
       // ALREADY PAID
       // --------------------------------------------------------
 
       if (
-        booking.paymentStatus ===
-          "paid" ||
-        booking.paymentStatus ===
-          "advance_paid" ||
-        booking.paymentStatus ===
-          "pay_at_pickup"
+        booking.paymentStatus === "paid" ||
+        booking.paymentStatus === "advance_paid" ||
+        booking.paymentStatus === "pay_at_pickup"
       ) {
         if (paymentVehicleName) {
           paymentVehicleName.textContent =
-            booking.vehicleName ||
-            "Your vehicle";
+            booking.vehicleName || "Your vehicle";
         }
-
 
         setStatus(
           "This booking is already confirmed. Check My Bookings for details."
         );
 
-
         hidePaymentInterface();
 
-        redirectToBookings(
-          900
-        );
+        redirectToBookings(900);
 
         return;
       }
 
-
       // --------------------------------------------------------
-      // ALREADY SUBMITTED
+      // ALREADY SUBMITTED WITH TRANSACTION ID & SCREENSHOT
       // --------------------------------------------------------
 
       if (
-        booking.paymentStatus ===
-        "pending_verification"
+        booking.paymentStatus === "pending_verification" &&
+        booking.paymentRef
       ) {
         if (paymentVehicleName) {
           paymentVehicleName.textContent =
-            booking.vehicleName ||
-            "Your vehicle";
+            booking.vehicleName || "Your vehicle";
         }
-
 
         setStatus(
           "We've received your payment reference and are verifying it. Check My Bookings for the latest status."
         );
 
-
         hidePaymentInterface();
 
-        redirectToBookings(
-          900
-        );
+        redirectToBookings(900);
 
         return;
       }
