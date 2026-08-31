@@ -1207,10 +1207,22 @@ function initEditProfile(
       const name =
         nameInput?.value.trim() || "";
 
-
       const phone =
         phoneInput?.value.trim() || "";
 
+      let cleanPhone = phone.replace(/\D/g, "");
+      if (cleanPhone.length === 12 && cleanPhone.startsWith("91")) {
+        cleanPhone = cleanPhone.slice(2);
+      }
+      if (cleanPhone && !/^[6-9]\d{9}$/.test(cleanPhone)) {
+        if (status) {
+          status.textContent =
+            "Please enter a valid 10-digit Indian mobile number (e.g. 9876543210).";
+          status.className =
+            "form-status error";
+        }
+        return;
+      }
 
       const ageRaw =
         ageInput?.value.trim() || "";
@@ -1285,11 +1297,8 @@ function initEditProfile(
             ),
 
             {
-
-              name,
-
               phone:
-                phone || null,
+                cleanPhone || null,
 
               age:
                 age || null,
@@ -1303,11 +1312,12 @@ function initEditProfile(
             },
 
             {
-              merge: true
+              merge:
+                true
             }
-          ),
 
-          10000
+          )
+
         );
 
 
@@ -1325,7 +1335,7 @@ function initEditProfile(
 
         if ($("profilePhone")) {
           $("profilePhone").textContent =
-            phone ||
+            cleanPhone ||
             "Phone not added";
         }
 
@@ -1333,18 +1343,20 @@ function initEditProfile(
           $("profileAge").textContent =
             age
               ? `${age} yrs`
-              : "Not added";
+              : "Age not set";
         }
 
 
-        profileData.name =
-          name;
+        if (profileData) {
+          profileData.name =
+            name;
 
-        profileData.phone =
-          phone || null;
+          profileData.phone =
+            cleanPhone || null;
 
-        profileData.age =
-          age || null;
+          profileData.age =
+            age || null;
+        }
 
 
         if (status) {

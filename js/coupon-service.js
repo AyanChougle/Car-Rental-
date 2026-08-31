@@ -20,52 +20,52 @@ import {
   runTransaction
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 
-// export const DEFAULT_COUPONS = [
-//   {
-//     id: "WELCOME500",
-//     code: "WELCOME500",
-//     label: "₹500 Flat Off",
-//     discountType: "flat",
-//     discountValue: 500,
-//     minimumBookingAmount: 0,
-//     description: "₹500 Flat Off",
-//     status: "active",
-//     active: true
-//   },
-//   {
-//     id: "FIRST500",
-//     code: "FIRST500",
-//     label: "₹500 Flat Off",
-//     discountType: "flat",
-//     discountValue: 500,
-//     minimumBookingAmount: 0,
-//     description: "₹500 Flat Off",
-//     status: "active",
-//     active: true
-//   },
-//   {
-//     id: "KRUIZLY10",
-//     code: "KRUIZLY10",
-//     label: "10% Off Rental",
-//     discountType: "percent",
-//     discountValue: 10,
-//     minimumBookingAmount: 0,
-//     description: "10% Off Rental",
-//     status: "active",
-//     active: true
-//   },
-//   {
-//     id: "KRUIZLY20",
-//     code: "KRUIZLY20",
-//     label: "20% Off Rental",
-//     discountType: "percent",
-//     discountValue: 20,
-//     minimumBookingAmount: 0,
-//     description: "20% Off Rental",
-//     status: "active",
-//     active: true
-//   }
-// ];
+export const DEFAULT_COUPONS = [
+  {
+    id: "WELCOME500",
+    code: "WELCOME500",
+    label: "₹500 Flat Off",
+    discountType: "flat",
+    discountValue: 500,
+    minimumBookingAmount: 0,
+    description: "₹500 Flat Off",
+    status: "active",
+    active: true
+  },
+  {
+    id: "FIRST500",
+    code: "FIRST500",
+    label: "₹500 Flat Off",
+    discountType: "flat",
+    discountValue: 500,
+    minimumBookingAmount: 0,
+    description: "₹500 Flat Off",
+    status: "active",
+    active: true
+  },
+  {
+    id: "KRUIZLY10",
+    code: "KRUIZLY10",
+    label: "10% Off Rental",
+    discountType: "percent",
+    discountValue: 10,
+    minimumBookingAmount: 0,
+    description: "10% Off Rental",
+    status: "active",
+    active: true
+  },
+  {
+    id: "KRUIZLY20",
+    code: "KRUIZLY20",
+    label: "20% Off Rental",
+    discountType: "percent",
+    discountValue: 20,
+    minimumBookingAmount: 0,
+    description: "20% Off Rental",
+    status: "active",
+    active: true
+  }
+];
 
 /**
  * Fetches all active available coupons for suggestion in the UI.

@@ -261,6 +261,55 @@ function initBooking(vehicle) {
     }
   }
 
+  function roundToNextHour(d) {
+    const date = new Date(d.getTime());
+    date.setMinutes(0, 0, 0);
+    date.setHours(date.getHours() + 1);
+    return date;
+  }
+
+  function synchroniseRentalDates(isInitial = false) {
+    const now = new Date();
+
+    let pDate = parseDateTime(pickupInput);
+    let dDate = parseDateTime(dropInput);
+
+    if (isInitial) {
+      const urlPickup = params.get("pickup") || sessionStorageGet("crp_pickupDate");
+      const urlDrop = params.get("drop") || sessionStorageGet("crp_dropDate");
+      if (urlPickup) pDate = parseDateTime(urlPickup);
+      if (urlDrop) dDate = parseDateTime(urlDrop);
+    }
+
+    if (!pDate || isNaN(pDate.getTime()) || pDate < now) {
+      pDate = roundToNextHour(now);
+    }
+
+    if (!dDate || isNaN(dDate.getTime()) || dDate <= pDate) {
+      dDate = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
+    }
+
+    if (pickupInput._flatpickr) {
+      pickupInput._flatpickr.setDate(pDate, false);
+    } else {
+      pickupInput.value = toLocalDateTime(pDate);
+    }
+    pickupInput.min = toLocalDateTime(now);
+
+    if (dropInput._flatpickr) {
+      dropInput._flatpickr.set("minDate", new Date(pDate.getTime() + 60 * 60 * 1000));
+      dropInput._flatpickr.setDate(dDate, false);
+    } else {
+      dropInput.min = toLocalDateTime(new Date(pDate.getTime() + 60 * 60 * 1000));
+      dropInput.value = toLocalDateTime(dDate);
+    }
+
+    try {
+      sessionStorage.setItem("crp_pickupDate", pickupInput.value);
+      sessionStorage.setItem("crp_dropDate", dropInput.value);
+    } catch (_) {}
+  }
+
   function calculateBooking() {
     const pickup = pickupInput ? pickupInput.value : "";
     const drop = dropInput ? dropInput.value : "";

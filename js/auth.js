@@ -6,6 +6,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
+  sendEmailVerification,
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
@@ -129,14 +130,43 @@ function wireSignupForm() {
   const form = document.getElementById("signupForm");
   if (!form) return;
 
+  const phoneInput = document.getElementById("signupPhone");
+  if (phoneInput) {
+    phoneInput.setAttribute("maxlength", "10");
+    phoneInput.setAttribute("inputmode", "numeric");
+    phoneInput.addEventListener("input", () => {
+      phoneInput.value = phoneInput.value.replace(/\D/g, "").slice(0, 10);
+    });
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = document.getElementById("signupName").value.trim();
     const email = document.getElementById("signupEmail").value.trim();
-    const phone = document.getElementById("signupPhone").value.trim();
+    const rawPhone = document.getElementById("signupPhone")?.value.trim() || "";
     const password = document.getElementById("signupPassword").value;
     const confirmPassword = document.getElementById("confirmPassword").value;
     const submitBtn = form.querySelector('button[type="submit"]');
+
+    if (!name || name.length < 2) {
+      setStatus(form, "Please enter your full name.", true);
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      setStatus(form, "Please enter a valid email address.", true);
+      return;
+    }
+
+    let cleanPhone = rawPhone.replace(/\D/g, "");
+    if (cleanPhone.length === 12 && cleanPhone.startsWith("91")) {
+      cleanPhone = cleanPhone.slice(2);
+    }
+    if (cleanPhone && !/^[6-9]\d{9}$/.test(cleanPhone)) {
+      setStatus(form, "Please enter a valid 10-digit Indian mobile number (e.g. 9876543210).", true);
+      return;
+    }
 
     if (password !== confirmPassword) {
       setStatus(form, "Passwords don't match.", true);
@@ -152,10 +182,18 @@ function wireSignupForm() {
 
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
+
+      // Send Firebase verification email
+      try {
+        await sendEmailVerification(credential.user);
+      } catch (verErr) {
+        console.warn("Could not send verification email:", verErr);
+      }
+
       await setDoc(doc(db, "users", credential.user.uid), {
         name,
         email,
-        phone: phone || null,
+        phone: cleanPhone || null,
         licenseURL: null,
         licenseFrontURL: null,
         licenseBackURL: null,
