@@ -500,3 +500,20 @@
     gap: 8px;
   }
 }
+
+/* White Calendar & Date Picker Icons */
+.partner-field input[type="date"],
+.partner-field input[type="datetime-local"] {
+  color-scheme: dark;
+}
+
+.partner-field input[type="date"]::-webkit-calendar-picker-indicator,
+.partner-field input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  display: block !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
+  width: 18px !important;
+  height: 18px !important;
+  filter: invert(1) brightness(100%) !important;
+}
+

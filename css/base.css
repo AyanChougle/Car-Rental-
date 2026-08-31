@@ -422,9 +422,38 @@ span.flatpickr-weekday {
   border-radius: 8px !important;
   margin-left: 6px !important;
   cursor: pointer !important;
-}
-
 .flatpickr-time .flatpickr-am-pm:hover {
   background: var(--kr-surface-control-hover) !important;
   color: #ffffff !important;
 }
+
+/* =========================================================
+   GLOBAL WHITE CALENDAR & TIME PICKER ICONS
+   ========================================================= */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"] {
+  color-scheme: dark !important;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input::-webkit-calendar-picker-indicator {
+  display: block !important;
+  opacity: 1 !important;
+  cursor: pointer !important;
+  width: 18px !important;
+  height: 18px !important;
+  filter: invert(1) brightness(100%) !important;
+  transition: transform 160ms ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
+input[type="time"]::-webkit-calendar-picker-indicator:hover,
+input::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.15);
+  filter: invert(1) brightness(120%) !important;
+}
+
