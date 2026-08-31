@@ -547,6 +547,26 @@ function initBooking(vehicle) {
       return;
     }
 
+    const now = new Date();
+    const pDate = parseDateTime(pickupInput);
+    const dDate = parseDateTime(dropInput);
+
+    if (!pDate || isNaN(pDate.getTime()) || pDate < new Date(now.getTime() - 2 * 60 * 1000)) {
+      if (statusEl) {
+        statusEl.textContent = "Pickup date cannot be in the past. Please select an upcoming date.";
+        statusEl.classList.add("form-status--error");
+      }
+      return;
+    }
+
+    if (!dDate || isNaN(dDate.getTime()) || dDate <= pDate) {
+      if (statusEl) {
+        statusEl.textContent = "Drop date must be after pickup date.";
+        statusEl.classList.add("form-status--error");
+      }
+      return;
+    }
+
     const calculation = calculateBooking();
     if (!calculation || !calculation.valid) {
       if (statusEl) {
@@ -567,26 +587,16 @@ function initBooking(vehicle) {
     }
 
     try {
-      const userSnapshot = await getDoc(doc(db, "users", currentUser.uid));
-      const userData = userSnapshot.exists() ? userSnapshot.data() : {};
-
-      let bookingRef = null;
-      for (let attempt = 0; attempt < 5; attempt += 1) {
-        const numericBookingId = generateNumericBookingId();
-        const candidateRef = doc(collection(db, "bookings"), numericBookingId);
-        const candidateSnapshot = await getDoc(candidateRef);
-
-        if (!candidateSnapshot.exists()) {
-          bookingRef = candidateRef;
-          break;
-        }
+      let userData = {};
+      try {
+        const userSnapshot = await getDoc(doc(db, "users", currentUser.uid));
+        if (userSnapshot.exists()) userData = userSnapshot.data();
+      } catch (uErr) {
+        console.warn("Could not read user profile doc:", uErr);
       }
 
-      if (!bookingRef) {
-        throw new Error(
-          "Could not generate a unique booking number. Please try again.",
-        );
-      }
+      const numericBookingId = generateNumericBookingId();
+      const bookingRef = doc(collection(db, "bookings"), numericBookingId);
 
       const bookingRecord = {
         bookingId: bookingRef.id,

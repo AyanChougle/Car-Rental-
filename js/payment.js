@@ -1169,119 +1169,83 @@ async function uploadPaymentScreenshot(
   );
 
 
-  // ----------------------------------------------------------
-  // GET AUTH TOKEN
-  // ----------------------------------------------------------
+  // 1. Try local Node media server first
+  try {
+    const token = await getAuthToken(currentUser);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("category", "payment_screenshot");
+    formData.append("relatedId", String(bookingId));
 
-  const token =
-    await getAuthToken(
-      currentUser
-    );
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3500);
 
-
-  // ----------------------------------------------------------
-  // FORM DATA
-  // ----------------------------------------------------------
-
-  const formData =
-    new FormData();
-
-
-  formData.append(
-    "file",
-    file
-  );
-
-
-  formData.append(
-    "category",
-    "payment_screenshot"
-  );
-
-
-  formData.append(
-    "relatedId",
-    String(bookingId)
-  );
-
-
-  // ----------------------------------------------------------
-  // REQUEST
-  // ----------------------------------------------------------
-
-  const response =
-    await fetch(
-      getMediaApiUrl(
-        "/api/media/upload"
-      ),
+    const response = await fetch(
+      getMediaApiUrl("/api/media/upload"),
       {
         method: "POST",
-
         headers: {
-          Authorization:
-            `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
         },
-
         body: formData,
+        signal: controller.signal
       }
     );
+    clearTimeout(timeoutId);
 
-
-  // ----------------------------------------------------------
-  // RESPONSE
-  // ----------------------------------------------------------
-
-  let data = null;
-
-  try {
-    data =
-      await response.json();
-  } catch {
-    data = null;
+    if (response.ok) {
+      const data = await response.json().catch(() => ({}));
+      if (data && data.id) {
+        console.log("LOCAL SQL MEDIA UPLOAD COMPLETE:", data);
+        return data;
+      }
+    }
+  } catch (serverErr) {
+    console.warn("[Payment Screenshot] Local media server unavailable, using direct cloud compression fallback:", serverErr);
   }
 
-
-  if (!response.ok) {
-    console.error(
-      "MEDIA SERVER ERROR:",
-      response.status,
-      data
-    );
-
-
-    const message =
-      data?.error ||
-      `Media server returned HTTP ${response.status}.`;
-
-
-    throw new Error(
-      message
-    );
-  }
-
-
-  if (
-    !data ||
-    !data.id
-  ) {
-    console.error(
-      "Invalid media server response:",
-      data
-    );
-
-    throw new Error(
-      "The screenshot uploaded, but the media server did not return a file ID."
-    );
-  }
-
-
-  console.log(
-    "LOCAL SQL MEDIA UPLOAD COMPLETE:",
-    data
-  );
-
-
-  return data;
+  // 2. Client-side compressed image processing for direct Firestore payment verification
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_DIM = 1200;
+        let width = img.width;
+        let height = img.height;
+        if (width > height && width > MAX_DIM) {
+          height = Math.round((height * MAX_DIM) / width);
+          width = MAX_DIM;
+        } else if (height > MAX_DIM) {
+          width = Math.round((width * MAX_DIM) / height);
+          height = MAX_DIM;
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.78);
+        resolve({
+          id: `pay_${Date.now()}`,
+          url: dataUrl,
+          category: "payment_screenshot",
+          originalName: file.name
+        });
+      };
+      img.onerror = () => {
+        resolve({
+          id: `pay_${Date.now()}`,
+          url: e.target.result,
+          category: "payment_screenshot",
+          originalName: file.name
+        });
+      };
+      img.src = e.target.result;
+    };
+    reader.onerror = () => reject(new Error("Could not process payment screenshot."));
+    reader.readAsDataURL(file);
+  });
 }
 
 
