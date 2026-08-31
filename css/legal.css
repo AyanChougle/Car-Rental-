@@ -1,40 +1,296 @@
 /* =========================================================
    KRUIZLY LEGAL & POLICIES (css/legal.css)
-   Clean Page-Specific Rules | Zero Gradients
+   Spacious Layout | High-Contrast Typography | Luxury Dark Glass
    ========================================================= */
 
 @import url('base.css');
 @import url('components.css');
 
+/* Main Page Container */
 .legal-page {
-  padding: 48px 0 80px;
+  padding: 40px 0 100px;
+  position: relative;
+  z-index: 1;
 }
 
-.legal-card {
-  max-width: 860px;
+/* =========================================================
+   POLICY HERO & NAVIGATION
+   ========================================================= */
+.policy-hero {
+  text-align: center;
+  padding: 30px 0 40px;
+  margin-bottom: 20px;
+}
+
+.policy-hero .section-label {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--kr-cyan, #00d4ff);
+  margin-bottom: 10px;
+}
+
+.policy-hero .section-title {
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+  margin: 0 0 14px;
+}
+
+.policy-hero .hero-text {
+  font-size: 1.05rem;
+  color: var(--kr-text-secondary, #94a3b8);
+  max-width: 640px;
+  margin: 0 auto 28px;
+  line-height: 1.6;
+}
+
+/* Policy Tabs Navigation */
+.policy-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px;
+  background: rgba(11, 18, 28, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.policy-nav a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--kr-text-secondary, #94a3b8);
+  text-decoration: none;
+  border-radius: 10px;
+  transition: all 180ms ease;
+}
+
+.policy-nav a:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.policy-nav a[aria-current="page"] {
+  color: #041017;
+  background: var(--kr-cyan, #00d4ff);
+  font-weight: 800;
+  box-shadow: 0 4px 16px rgba(0, 212, 255, 0.35);
+}
+
+/* =========================================================
+   POLICY CARDS & CONTENT SECTIONS
+   ========================================================= */
+.policy-card {
+  padding: 0 0 24px !important;
+  margin: 0 !important;
+}
+
+.policy-card .container {
+  max-width: 880px;
   margin: 0 auto;
-  padding: 48px;
+  padding: 36px 42px;
+  background: rgba(11, 18, 28, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 18px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
 }
 
-.legal-card h1 {
-  margin-bottom: 24px;
+.policy-card .container:hover {
+  border-color: rgba(0, 212, 255, 0.2);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
 }
 
-.legal-card h2 {
-  font-size: 1.4rem;
-  margin: 32px 0 12px;
+/* Section Headings */
+.policy-card h2 {
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  margin: 0 0 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.policy-card h2::before {
+  content: "";
+  display: inline-block;
+  width: 4px;
+  height: 20px;
+  background: var(--kr-cyan, #00d4ff);
+  border-radius: 4px;
+}
+
+.policy-card h3 {
+  font-size: 1.08rem;
+  font-weight: 700;
+  color: var(--kr-cyan, #00d4ff);
+  margin: 22px 0 10px;
+  letter-spacing: 0.01em;
+}
+
+/* Body Text & Paragraphs */
+.policy-card p {
+  font-size: 0.98rem;
+  line-height: 1.85;
+  color: var(--kr-text-secondary, #94a3b8);
+  margin-bottom: 16px;
+}
+
+.policy-card p:last-child {
+  margin-bottom: 0;
+}
+
+.policy-card strong {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* Lists */
+.policy-card ul,
+.policy-card ol {
+  padding-left: 20px;
+  margin: 12px 0 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.policy-card li {
+  font-size: 0.96rem;
+  line-height: 1.75;
+  color: var(--kr-text-secondary, #cbd5e1);
+  padding-left: 6px;
+}
+
+.policy-card li strong {
   color: #ffffff;
 }
 
-.legal-card p,
-.legal-card li {
-  font-size: 0.96rem;
-  line-height: 1.75;
-  color: var(--text-muted);
-  margin-bottom: 14px;
+/* Highlight / Note Callouts */
+.policy-note,
+.policy-card .note-box {
+  background: rgba(0, 212, 255, 0.06);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-left: 4px solid var(--kr-cyan, #00d4ff);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin: 20px 0;
 }
 
-.legal-card ul {
-  padding-left: 24px;
-  margin-bottom: 18px;
+.policy-note p,
+.policy-card .note-box p {
+  color: #e2e8f0;
+  font-size: 0.94rem;
+  line-height: 1.7;
+  margin: 0;
 }
+
+/* Tables in Policies */
+.policy-card table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.policy-card th,
+.policy-card td {
+  padding: 14px 18px;
+  font-size: 0.92rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.policy-card th {
+  background: rgba(255, 255, 255, 0.04);
+  color: #ffffff;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+}
+
+.policy-card td {
+  color: var(--kr-text-secondary, #cbd5e1);
+}
+
+.policy-card tr:last-child td {
+  border-bottom: none;
+}
+
+/* =========================================================
+   RESPONSIVE ADJUSTMENTS
+   ========================================================= */
+@media (max-width: 768px) {
+  .legal-page {
+    padding: 24px 0 60px;
+  }
+
+  .policy-hero {
+    padding: 16px 0 28px;
+    margin-bottom: 10px;
+  }
+
+  .policy-hero .section-title {
+    font-size: 1.85rem;
+  }
+
+  .policy-hero .hero-text {
+    font-size: 0.95rem;
+    margin-bottom: 20px;
+  }
+
+  .policy-nav {
+    width: 100%;
+    max-width: 360px;
+    box-sizing: border-box;
+  }
+
+  .policy-nav a {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .policy-card .container {
+    padding: 24px 20px;
+    border-radius: 14px;
+  }
+
+  .policy-card h2 {
+    font-size: 1.18rem;
+    margin-bottom: 14px;
+  }
+
+  .policy-card p,
+  .policy-card li {
+    font-size: 0.92rem;
+    line-height: 1.7;
+  }
+
+  .policy-card ul,
+  .policy-card ol {
+    gap: 8px;
+  }
+}
+
