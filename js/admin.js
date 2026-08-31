@@ -6034,6 +6034,14 @@ async function openPaymentModal(
       `Booking #${formatBookingNumber(booking)}`;
   }
 
+  const screenshotSrc =
+    booking.paymentScreenshotDataUrl ||
+    booking.paymentScreenshotURL ||
+    booking.paymentScreenshotUrl ||
+    booking.screenshotUrl ||
+    booking.screenshotURL ||
+    (typeof booking.paymentScreenshot === "string" ? booking.paymentScreenshot : null);
+
   const body =
     $("paymentModalBody");
 
@@ -6100,11 +6108,11 @@ async function openPaymentModal(
         </div>
 
         ${
-          booking.paymentScreenshotURL
+          screenshotSrc
             ? `
               <img
                 src="${escapeHtml(
-                  booking.paymentScreenshotURL
+                  screenshotSrc
                 )}"
                 alt="Payment screenshot"
                 style="
@@ -6155,7 +6163,7 @@ async function openPaymentModal(
 
   if (
     booking.paymentScreenshotMediaId &&
-    !booking.paymentScreenshotURL
+    !screenshotSrc
   ) {
     const preview =
       $("paymentScreenshotPreview");

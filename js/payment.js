@@ -1595,8 +1595,11 @@ async function submitPayment(
       updatedAt: serverTimestamp(),
     };
 
-    if (media?.url && media.url.startsWith("data:")) {
+    if (media?.url) {
       finalBookingRecord.paymentScreenshotDataUrl = media.url;
+      finalBookingRecord.paymentScreenshotURL = media.url;
+      finalBookingRecord.paymentScreenshotUrl = media.url;
+      finalBookingRecord.screenshotUrl = media.url;
     }
 
     await setDoc(
