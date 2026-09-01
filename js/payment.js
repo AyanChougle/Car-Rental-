@@ -36,19 +36,12 @@
 //
 // ============================================================
 
-import { auth, db } from "./firebase-init.js";
+import { auth } from "./firebase-init.js";
+import { api } from "./kruizly-api.js";
 
 import {
   onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
-
-import {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 
 import { PAYMENT_CONFIG } from "./payment-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
@@ -1589,10 +1582,8 @@ async function submitPayment(
       paymentStatus: "pending_verification",
       status: "pending_verification",
       bookingStatus: "pending_verification",
-      paymentSubmittedAt: serverTimestamp(),
+      paymentSubmittedAt: new Date().toISOString(),
       paymentSubmittedBy: currentUser.uid,
-      createdAt: booking.createdAt || serverTimestamp(),
-      updatedAt: serverTimestamp(),
     };
 
     if (media?.url) {
@@ -1602,41 +1593,26 @@ async function submitPayment(
       finalBookingRecord.screenshotUrl = media.url;
     }
 
-    await setDoc(
-      doc(
-        db,
-        "bookings",
-        bookingId
-      ),
-      finalBookingRecord,
-      { merge: true }
-    );
+    // Save/sync booking to MySQL
+    await api.post("/bookings", finalBookingRecord);
+
+    // Record payment submission
+    await api.post("/payments/submit", {
+      bookingId,
+      amount: paymentAmount,
+      method: "upi",
+      utr,
+      screenshotUrl: media?.url || null,
+      screenshotMediaId: media?.mediaId || null
+    });
 
     try {
       sessionStorage.removeItem("kruizly_pending_booking");
     } catch (_) {}
 
     console.log(
-      "FIRESTORE PAYMENT UPDATE COMPLETE"
+      "MYSQL PAYMENT UPDATE COMPLETE"
     );
-
-    // Record atomic coupon consumption in Firestore for all applied coupons
-    if (currentUser?.uid) {
-      const codes = Array.isArray(booking.couponCodes)
-        ? booking.couponCodes
-        : (booking.couponCode ? String(booking.couponCode).split(",").map((s) => s.trim()) : []);
-
-      codes.forEach((cCode) => {
-        if (cCode) {
-          recordCouponUsage({
-            couponCode: cCode,
-            userId: currentUser.uid,
-            bookingId: bookingId,
-            discountAmount: Number(booking.couponDiscount || 0)
-          }).catch((cErr) => console.warn("[payment] Coupon usage record notice:", cErr));
-        }
-      });
-    }
 
 
     // ========================================================
@@ -1899,30 +1875,24 @@ async function startPaymentPage() {
       let booking = null;
 
       try {
-        const snap = await getDoc(
-          doc(
-            db,
-            "bookings",
-            bookingId
-          )
-        );
-        if (snap.exists()) {
-          booking = snap.data();
+        const rawPending = sessionStorage.getItem("kruizly_pending_booking");
+        if (rawPending) {
+          const parsed = JSON.parse(rawPending);
+          if (parsed && String(parsed.bookingId || parsed.bookingNumber) === String(bookingId)) {
+            booking = parsed;
+          }
         }
-      } catch (error) {
-        console.warn("Firestore booking read fallback:", error.message);
-      }
+      } catch (_) {}
 
       if (!booking) {
         try {
-          const rawPending = sessionStorage.getItem("kruizly_pending_booking");
-          if (rawPending) {
-            const parsed = JSON.parse(rawPending);
-            if (parsed) {
-              booking = parsed;
-            }
+          const bRes = await api.get(`/bookings/${bookingId}`);
+          if (bRes?.booking) {
+            booking = bRes.booking;
           }
-        } catch (_) {}
+        } catch (error) {
+          console.warn("Backend booking read fallback:", error.message);
+        }
       }
 
       if (!booking) {

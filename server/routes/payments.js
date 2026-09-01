@@ -1,1114 +1,213 @@
-// routes/payments.js
+﻿// server/routes/payments.js
+"use strict";
 
 const express = require("express");
-const crypto = require("crypto");
-const rateLimit = require("express-rate-limit");
-
-const db = require("../db");
-const admin = require("../firebaseAdmin");
-
-const {
-  requireAuth,
-  requireRole,
-} = require("../middleware/auth");
+const db = require("../config/database");
+const { requireAuth, requireRole } = require("../middleware/auth");
 
 const router = express.Router();
 
-const paymentLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
+/**
+ * POST /api/payments/submit
+ * User submits manual UPI UTR & payment screenshot
+ */
+router.post("/submit", requireAuth, async (req, res) => {
+  const {
+    bookingId,
+    amount,
+    method,
+    utr,
+    screenshotMediaId,
+    screenshotUrl
+  } = req.body || {};
 
-  message: {
-    error:
-      "Too many payment attempts. Please try again later.",
-  },
+  const cleanBookingId = String(bookingId || "").trim();
+  const cleanUtr = String(utr || "").trim();
+  const numAmount = Number(amount || 0);
+
+  if (!cleanBookingId) {
+    return res.status(400).json({ success: false, error: "Booking ID is required." });
+  }
+
+  if (!cleanUtr && !screenshotUrl && !screenshotMediaId) {
+    return res.status(400).json({
+      success: false,
+      error: "Payment proof required. Please provide UTR number or upload a screenshot."
+    });
+  }
+
+  try {
+    const [userRows] = await db.query(
+      "SELECT id FROM users WHERE firebase_uid = ? LIMIT 1",
+      [req.user.firebaseUid]
+    );
+    const userId = userRows?.[0]?.id || null;
+
+    await db.transaction(async (conn) => {
+      // 1. Insert or update payment record
+      await conn.query(
+        `INSERT INTO payments (
+          booking_id, user_id, firebase_uid, amount, currency, method,
+          utr, screenshot_media_id, screenshot_url, status
+        ) VALUES (?, ?, ?, ?, 'INR', ?, ?, ?, ?, 'pending_verification')
+        ON DUPLICATE KEY UPDATE
+          amount = VALUES(amount),
+          utr = VALUES(utr),
+          screenshot_url = VALUES(screenshot_url),
+          status = 'pending_verification',
+          updated_at = CURRENT_TIMESTAMP`,
+        [
+          cleanBookingId,
+          userId,
+          req.user.firebaseUid,
+          numAmount,
+          method || "upi",
+          cleanUtr || null,
+          screenshotMediaId || null,
+          screenshotUrl || null
+        ]
+      );
+
+      // 2. Update booking status
+      await conn.query(
+        `UPDATE bookings SET
+          payment_ref = COALESCE(?, payment_ref),
+          payment_status = 'pending_verification',
+          status = 'pending_verification',
+          booking_status = 'pending_verification',
+          payment_screenshot_media_id = COALESCE(?, payment_screenshot_media_id),
+          payment_screenshot_url = COALESCE(?, payment_screenshot_url),
+          payment_submitted_at = CURRENT_TIMESTAMP,
+          payment_submitted_by = ?,
+          payment_amount_paid = IF(payment_amount_paid > 0, payment_amount_paid, ?),
+          updated_at = CURRENT_TIMESTAMP
+         WHERE booking_id = ?`,
+        [
+          cleanUtr || null,
+          screenshotMediaId || null,
+          screenshotUrl || null,
+          req.user.firebaseUid,
+          numAmount,
+          cleanBookingId
+        ]
+      );
+    });
+
+    res.json({
+      success: true,
+      message: "Payment proof submitted successfully. Your booking is under verification."
+    });
+  } catch (err) {
+    console.error("[POST /api/payments/submit error]", err);
+    res.status(500).json({ success: false, error: "Failed to submit payment proof." });
+  }
 });
 
-// ------------------------------------------------------------
-// FIRESTORE
-// ------------------------------------------------------------
+/**
+ * GET /api/payments
+ * Admin/Staff: List all payment submissions
+ */
+router.get("/", requireAuth, requireRole("admin", "manager", "executive"), async (req, res) => {
+  try {
+    const rows = await db.query(
+      `SELECT p.*, b.vehicle_name, b.user_name, b.user_email, b.user_phone, b.total_amount, b.payment_plan
+       FROM payments p
+       LEFT JOIN bookings b ON p.booking_id = b.booking_id
+       ORDER BY p.created_at DESC`
+    );
 
-const firestore =
-  admin.firestore();
-
-const bookingsCollection =
-  firestore.collection("bookings");
-
-// ------------------------------------------------------------
-// GET BOOKING
-// ------------------------------------------------------------
-
-router.get(
-  "/booking/:bookingId",
-  requireAuth,
-  async (req, res) => {
-    const bookingId =
-      String(req.params.bookingId || "").trim();
-
-    if (
-      !bookingId ||
-      bookingId.length > 150
-    ) {
-      return res.status(400).json({
-        error: "Invalid booking ID.",
-      });
-    }
-
-    try {
-      const booking =
-        await findBooking(bookingId);
-
-      if (!booking) {
-        return res.status(404).json({
-          error: "Booking not found.",
-        });
-      }
-
-      const ownerUid =
-        getBookingUserId(booking.data);
-
-      const isOwner =
-        ownerUid === req.user.uid;
-
-      const isStaff =
-        req.user.role === "admin" ||
-        req.user.role === "manager";
-
-      if (!isOwner && !isStaff) {
-        return res.status(403).json({
-          error:
-            "You do not have permission to view this booking.",
-        });
-      }
-
-      const amount =
-        getBookingAmount(booking.data);
-
-      if (amount === null) {
-        return res.status(500).json({
-          error:
-            "Booking does not contain a valid payable amount.",
-        });
-      }
-
-      const existingPayment =
-        db.prepare(`
-          SELECT *
-          FROM payments
-          WHERE booking_id = ?
-          ORDER BY id DESC
-          LIMIT 1
-        `).get(booking.id);
-
-      return res.json({
-        success: true,
-
-        booking: {
-          id: booking.id,
-
-          vehicleName:
-            getVehicleName(booking.data),
-
-          vehicleMeta:
-            getVehicleMeta(booking.data),
-
-          pickup:
-            getFirstValue(
-              booking.data,
-              [
-                "pickup",
-                "pickupDate",
-                "startDate",
-                "pickup_datetime",
-                "pickupDateTime",
-              ]
-            ),
-
-          drop:
-            getFirstValue(
-              booking.data,
-              [
-                "drop",
-                "dropDate",
-                "endDate",
-                "returnDate",
-                "drop_datetime",
-                "dropDateTime",
-              ]
-            ),
-
-          duration:
-            getFirstValue(
-              booking.data,
-              [
-                "duration",
-                "durationText",
-                "days",
-                "rentalDays",
-              ]
-            ),
-
-          amount,
-
-          currency: "INR",
-
-          status:
-            booking.data.status ||
-            "pending",
-
-          paymentStatus:
-            booking.data.paymentStatus ||
-            null,
-        },
-
-        payment: existingPayment
-          ? sanitizePayment(existingPayment)
-          : null,
-      });
-    } catch (error) {
-      console.error(
-        "[get booking]",
-        error
-      );
-
-      res.status(500).json({
-        error:
-          "Unable to load booking.",
-      });
-    }
+    res.json({ success: true, count: rows.length, payments: rows });
+  } catch (err) {
+    console.error("[GET /api/payments error]", err);
+    res.status(500).json({ success: false, error: "Failed to list payments." });
   }
-);
-
-// ------------------------------------------------------------
-// SUBMIT PAYMENT
-// ------------------------------------------------------------
-
-router.post(
-  "/submit",
-  requireAuth,
-  paymentLimiter,
-  async (req, res) => {
-    const bookingId =
-      typeof req.body.bookingId === "string"
-        ? req.body.bookingId.trim()
-        : "";
-
-    const utr =
-      typeof req.body.utr === "string"
-        ? req.body.utr.trim()
-        : "";
-
-    const screenshotMediaId =
-      Number(req.body.screenshotMediaId);
-
-    if (
-      !bookingId ||
-      bookingId.length > 150
-    ) {
-      return res.status(400).json({
-        error: "Invalid booking ID.",
-      });
-    }
-
-    if (
-      !utr ||
-      utr.length < 6 ||
-      utr.length > 100
-    ) {
-      return res.status(400).json({
-        error:
-          "Enter a valid UTR / transaction reference.",
-      });
-    }
-
-    if (
-      !Number.isInteger(screenshotMediaId) ||
-      screenshotMediaId <= 0
-    ) {
-      return res.status(400).json({
-        error:
-          "Payment screenshot is required.",
-      });
-    }
-
-    try {
-      // ------------------------------------------------------
-      // FIND BOOKING
-      // ------------------------------------------------------
-
-      const booking =
-        await findBooking(bookingId);
-
-      if (!booking) {
-        return res.status(404).json({
-          error: "Booking not found.",
-        });
-      }
-
-      const bookingData =
-        booking.data;
-
-      // ------------------------------------------------------
-      // OWNERSHIP
-      // ------------------------------------------------------
-
-      const ownerUid =
-        getBookingUserId(bookingData);
-
-      if (
-        ownerUid &&
-        ownerUid !== req.user.uid
-      ) {
-        return res.status(403).json({
-          error:
-            "This booking does not belong to your account.",
-        });
-      }
-
-      if (!ownerUid) {
-        return res.status(500).json({
-          error:
-            "Booking owner could not be verified.",
-        });
-      }
-
-      // ------------------------------------------------------
-      // AMOUNT FROM DATABASE
-      // ------------------------------------------------------
-
-      const amount =
-        getBookingAmount(bookingData);
-
-      if (
-        amount === null ||
-        amount <= 0
-      ) {
-        return res.status(400).json({
-          error:
-            "Booking amount is invalid.",
-        });
-      }
-
-      // ------------------------------------------------------
-      // BOOKING STATUS
-      // ------------------------------------------------------
-
-      const bookingStatus =
-        String(
-          bookingData.status || ""
-        ).toLowerCase();
-
-      if (
-        [
-          "cancelled",
-          "canceled",
-          "completed",
-          "rejected",
-        ].includes(bookingStatus)
-      ) {
-        return res.status(409).json({
-          error:
-            "This booking cannot accept a payment.",
-        });
-      }
-
-      // ------------------------------------------------------
-      // VERIFY SCREENSHOT OWNERSHIP
-      // ------------------------------------------------------
-
-      const media =
-        db.prepare(`
-          SELECT *
-          FROM media
-          WHERE id = ?
-          AND deleted_at IS NULL
-        `).get(screenshotMediaId);
-
-      if (!media) {
-        return res.status(404).json({
-          error:
-            "Payment screenshot not found.",
-        });
-      }
-
-      if (
-        media.user_id !== req.user.uid
-      ) {
-        return res.status(403).json({
-          error:
-            "Payment screenshot does not belong to your account.",
-        });
-      }
-
-      if (
-        media.category !==
-        "payment_screenshot"
-      ) {
-        return res.status(400).json({
-          error:
-            "Invalid payment screenshot.",
-        });
-      }
-
-      // ------------------------------------------------------
-      // DUPLICATE UTR
-      // ------------------------------------------------------
-
-      const duplicateUtr =
-        db.prepare(`
-          SELECT *
-          FROM payments
-          WHERE LOWER(utr) = LOWER(?)
-          LIMIT 1
-        `).get(utr);
-
-      if (duplicateUtr) {
-        return res.status(409).json({
-          error:
-            "This transaction reference has already been submitted.",
-        });
-      }
-
-      // ------------------------------------------------------
-      // EXISTING BOOKING PAYMENT
-      // ------------------------------------------------------
-
-      const existingPayment =
-        db.prepare(`
-          SELECT *
-          FROM payments
-          WHERE booking_id = ?
-          AND status IN (
-            'pending_verification',
-            'verified'
-          )
-          LIMIT 1
-        `).get(booking.id);
-
-      if (existingPayment) {
-        return res.status(409).json({
-          error:
-            "A payment has already been submitted for this booking.",
-        });
-      }
-
-      // ------------------------------------------------------
-      // INSERT PAYMENT
-      // ------------------------------------------------------
-
-      const paymentId =
-        `PAY-${Date.now()}-${crypto
-          .randomBytes(4)
-          .toString("hex")
-          .toUpperCase()}`;
-
-      let insertedPayment;
-
-      try {
-        const transaction =
-          db.transaction(() => {
-            db.prepare(`
-              INSERT INTO payments (
-                booking_id,
-                user_id,
-                amount,
-                currency,
-                method,
-                utr,
-                screenshot_media_id,
-                status,
-                payment_ref
-              )
-              VALUES (?, ?, ?, 'INR', 'upi', ?, ?, 'pending_verification', ?)
-            `).run(
-              booking.id,
-              req.user.uid,
-              amount,
-              utr,
-              screenshotMediaId,
-              paymentId
-            );
-          });
-
-        transaction();
-
-        insertedPayment =
-          db.prepare(`
-            SELECT *
-            FROM payments
-            WHERE booking_id = ?
-            AND utr = ?
-            ORDER BY id DESC
-            LIMIT 1
-          `).get(
-            booking.id,
-            utr
-          );
-      } catch (insertError) {
-        if (
-          String(insertError.message)
-            .toLowerCase()
-            .includes("unique")
-        ) {
-          return res.status(409).json({
-            error:
-              "This transaction reference has already been submitted.",
-          });
-        }
-
-        throw insertError;
-      }
-
-      // ------------------------------------------------------
-      // UPDATE FIRESTORE BOOKING
-      // ------------------------------------------------------
-
-      try {
-        await bookingsCollection
-          .doc(booking.id)
-          .update({
-            paymentStatus:
-              "pending_verification",
-
-            paymentSubmittedAt:
-              admin.firestore.FieldValue.serverTimestamp(),
-
-            paymentId,
-
-            paymentMethod:
-              "upi",
-
-            paymentAmount:
-              amount,
-
-            paymentReference:
-              utr,
-
-            paymentScreenshotMediaId:
-              screenshotMediaId,
-
-            updatedAt:
-              admin.firestore.FieldValue.serverTimestamp(),
-          });
-      } catch (firestoreError) {
-        console.error(
-          "[payment firestore update]",
-          firestoreError
-        );
-
-        // Compensation if Firestore update failed.
-        db.prepare(`
-          DELETE FROM payments
-          WHERE id = ?
-        `).run(insertedPayment.id);
-
-        return res.status(500).json({
-          error:
-            "Payment could not be registered. Please try again.",
-        });
-      }
-
-      // ------------------------------------------------------
-      // PHASE 3 — BEST-EFFORT MIRROR TO FIRESTORE
-      //
-      // SQLite is still authoritative. This just keeps a Firestore copy
-      // in payments/{paymentId} warm so the eventual read-cutover (see
-      // docs/MIGRATION_PLAN.md) has current data, and marks
-      // firestore_synced_at so scripts/backfill-payments-to-firestore.js
-      // can skip already-synced rows.
-      // ------------------------------------------------------
-
-      try {
-        const { syncPaymentToFirestore } = require(
-          "../services/firestorePaymentSync"
-        );
-
-        await syncPaymentToFirestore(insertedPayment);
-
-        db.prepare(`
-          UPDATE payments
-          SET firestore_synced_at = datetime('now')
-          WHERE id = ?
-        `).run(insertedPayment.id);
-      } catch (syncError) {
-        console.warn(
-          "[payment submit] Firestore mirror failed (non-fatal, SQLite is still authoritative):",
-          syncError.message
-        );
-      }
-
-      return res.status(201).json({
-        success: true,
-
-        payment: {
-          id: paymentId,
-
-          bookingId: booking.id,
-
-          amount,
-
-          currency: "INR",
-
-          method: "upi",
-
-          status:
-            "pending_verification",
-
-          submittedAt:
-            insertedPayment.submitted_at,
-        },
-
-        message:
-          "Payment submitted successfully. Your booking is pending verification.",
-      });
-    } catch (error) {
-      console.error(
-        "[payment submit]",
-        error
-      );
-
-      return res.status(500).json({
-        error:
-          "Unable to submit payment.",
-      });
-    }
+});
+
+/**
+ * POST /api/payments/:id/verify
+ * Admin/Staff: Approve or Reject a payment
+ */
+router.post("/:id/verify", requireAuth, requireRole("admin", "manager"), async (req, res) => {
+  const paymentId = req.params.id;
+  const { action, reason, bookingId } = req.body || {}; // action: approve, reject
+
+  if (!["approve", "reject"].includes(action)) {
+    return res.status(400).json({ success: false, error: "Action must be 'approve' or 'reject'." });
   }
-);
 
-// ------------------------------------------------------------
-// ADMIN — PAYMENT QUEUE
-// ------------------------------------------------------------
+  try {
+    const [pRows] = await db.query(
+      "SELECT * FROM payments WHERE id = ? OR booking_id = ? ORDER BY id DESC LIMIT 1",
+      [paymentId, bookingId || paymentId]
+    );
 
-router.get(
-  "/admin/pending",
-  requireAuth,
-  requireRole("admin"),
-  async (req, res) => {
-    try {
-      const rows =
-        db.prepare(`
-          SELECT *
-          FROM payments
-          WHERE status = 'pending_verification'
-          ORDER BY submitted_at ASC
-        `).all();
-
-      res.json({
-        success: true,
-
-        payments:
-          rows.map(sanitizePayment),
-      });
-    } catch (error) {
-      console.error(
-        "[payment admin queue]",
-        error
-      );
-
-      res.status(500).json({
-        error:
-          "Unable to load payment queue.",
-      });
-    }
-  }
-);
-
-// ------------------------------------------------------------
-// ADMIN — VERIFY
-// ------------------------------------------------------------
-
-router.post(
-  "/admin/:id/verify",
-  requireAuth,
-  requireRole("admin"),
-  async (req, res) => {
-    const paymentId =
-      Number(req.params.id);
-
-    if (
-      !Number.isInteger(paymentId)
-    ) {
-      return res.status(400).json({
-        error: "Invalid payment ID.",
-      });
+    if (!pRows.length) {
+      return res.status(404).json({ success: false, error: "Payment record not found." });
     }
 
-    const payment =
-      db.prepare(`
-        SELECT *
-        FROM payments
-        WHERE id = ?
-      `).get(paymentId);
+    const payment = pRows[0];
+    const targetBookingId = payment.booking_id;
+    const isApproved = action === "approve";
 
-    if (!payment) {
-      return res.status(404).json({
-        error: "Payment not found.",
-      });
-    }
-
-    if (
-      payment.status !==
-      "pending_verification"
-    ) {
-      return res.status(409).json({
-        error:
-          "This payment has already been processed.",
-      });
-    }
-
-    try {
-      const booking =
-        await findBooking(
-          payment.booking_id
-        );
-
-      if (!booking) {
-        return res.status(404).json({
-          error:
-            "Booking associated with payment was not found.",
-        });
-      }
-
-      const batch =
-        firestore.batch();
-
-      batch.update(
-        bookingsCollection.doc(
-          booking.id
-        ),
-        {
-          paymentStatus:
-            "verified",
-
-          paymentVerifiedAt:
-            admin.firestore.FieldValue.serverTimestamp(),
-
-          paymentVerifiedBy:
-            req.user.uid,
-
-          status:
-            "confirmed",
-
-          updatedAt:
-            admin.firestore.FieldValue.serverTimestamp(),
-        }
-      );
-
-      // Record coupon usage in Firestore if coupon was applied
-      if (booking.data && booking.data.couponCode) {
-        const couponCode = String(booking.data.couponCode).trim().toUpperCase();
-        const bUserId = booking.data.userId || req.user.uid;
-        const bId = booking.id;
-        const discountAmount = Number(booking.data.couponDiscount || 0);
-
-        const usageDocId = `${couponCode}_${bUserId}_${bId}`;
-        const usageRef = firestore.collection("couponUsage").doc(usageDocId);
-        const couponRef = firestore.collection("coupons").doc(couponCode);
-
-        batch.set(usageRef, {
-          usageId: usageDocId,
-          couponCode,
-          userId: bUserId,
-          bookingId: bId,
-          discountAmount,
-          usedAt: admin.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-
-        batch.update(couponRef, {
-          usedCount: admin.firestore.FieldValue.increment(1),
-          updatedAt: admin.firestore.FieldValue.serverTimestamp()
-        });
-      }
-
-      await batch.commit();
-
-      db.prepare(`
-        UPDATE payments
-        SET
-          status = 'verified',
-          verified_at = datetime('now'),
+    await db.transaction(async (conn) => {
+      // 1. Update payment status
+      await conn.query(
+        `UPDATE payments SET
+          status = ?,
+          rejection_reason = ?,
+          verified_at = CURRENT_TIMESTAMP,
           verified_by = ?
-        WHERE id = ?
-      `).run(
-        req.user.uid,
-        paymentId
+         WHERE id = ?`,
+        [
+          isApproved ? "verified" : "rejected",
+          isApproved ? null : (reason || "Payment could not be verified."),
+          req.user.firebaseUid,
+          payment.id
+        ]
       );
 
-      try {
-        const { syncPaymentToFirestore } = require(
-          "../services/firestorePaymentSync"
-        );
-        const updatedRow = db
-          .prepare("SELECT * FROM payments WHERE id = ?")
-          .get(paymentId);
-        await syncPaymentToFirestore(updatedRow);
-        db.prepare(`
-          UPDATE payments SET firestore_synced_at = datetime('now') WHERE id = ?
-        `).run(paymentId);
-      } catch (syncError) {
-        console.warn(
-          "[payment verify] Firestore mirror failed (non-fatal):",
-          syncError.message
-        );
-      }
-
-      // Auto-generate booking invoice
-      try {
-        const { createBookingInvoice } = require("../services/invoiceService");
-        await createBookingInvoice(booking.id);
-      } catch (invErr) {
-        console.warn("[payment verify] Invoice generation notice:", invErr.message);
-      }
-
-      return res.json({
-        success: true,
-
-        message:
-          "Payment verified and booking confirmed.",
-      });
-    } catch (error) {
-      console.error(
-        "[payment verify]",
-        error
+      // 2. Fetch booking to check payment plan
+      const [bRows] = await conn.query(
+        "SELECT * FROM bookings WHERE booking_id = ? LIMIT 1",
+        [targetBookingId]
       );
 
-      return res.status(500).json({
-        error:
-          "Unable to verify payment.",
-      });
-    }
-  }
-);
+      if (bRows.length) {
+        const booking = bRows[0];
+        const newPaymentStatus = isApproved
+          ? (booking.payment_plan === "advance" ? "advance_paid" : "paid")
+          : "rejected";
+        const newBookingStatus = isApproved ? "confirmed" : "pending_payment";
 
-// ------------------------------------------------------------
-// ADMIN — REJECT
-// ------------------------------------------------------------
-
-router.post(
-  "/admin/:id/reject",
-  requireAuth,
-  requireRole("admin"),
-  async (req, res) => {
-    const paymentId =
-      Number(req.params.id);
-
-    const reason =
-      typeof req.body.reason === "string"
-        ? req.body.reason.trim().slice(0, 500)
-        : "Payment could not be verified.";
-
-    if (
-      !Number.isInteger(paymentId)
-    ) {
-      return res.status(400).json({
-        error: "Invalid payment ID.",
-      });
-    }
-
-    const payment =
-      db.prepare(`
-        SELECT *
-        FROM payments
-        WHERE id = ?
-      `).get(paymentId);
-
-    if (!payment) {
-      return res.status(404).json({
-        error: "Payment not found.",
-      });
-    }
-
-    if (
-      payment.status !==
-      "pending_verification"
-    ) {
-      return res.status(409).json({
-        error:
-          "This payment has already been processed.",
-      });
-    }
-
-    try {
-      const booking =
-        await findBooking(
-          payment.booking_id
-        );
-
-      if (!booking) {
-        return res.status(404).json({
-          error:
-            "Booking associated with payment was not found.",
-        });
-      }
-
-      await bookingsCollection
-        .doc(booking.id)
-        .update({
-          paymentStatus:
-            "rejected",
-
-          paymentRejectedAt:
-            admin.firestore.FieldValue.serverTimestamp(),
-
-          paymentRejectedBy:
-            req.user.uid,
-
-          paymentRejectionReason:
-            reason,
-
-          updatedAt:
-            admin.firestore.FieldValue.serverTimestamp(),
-        });
-
-      db.prepare(`
-        UPDATE payments
-        SET
-          status = 'rejected',
-          verified_at = datetime('now'),
-          verified_by = ?,
-          rejection_reason = ?
-        WHERE id = ?
-      `).run(
-        req.user.uid,
-        reason,
-        paymentId
-      );
-
-      try {
-        const { syncPaymentToFirestore } = require(
-          "../services/firestorePaymentSync"
-        );
-        const updatedRow = db
-          .prepare("SELECT * FROM payments WHERE id = ?")
-          .get(paymentId);
-        await syncPaymentToFirestore(updatedRow);
-        db.prepare(`
-          UPDATE payments SET firestore_synced_at = datetime('now') WHERE id = ?
-        `).run(paymentId);
-      } catch (syncError) {
-        console.warn(
-          "[payment reject] Firestore mirror failed (non-fatal):",
-          syncError.message
+        await conn.query(
+          `UPDATE bookings SET
+            payment_status = ?,
+            status = ?,
+            booking_status = ?,
+            payment_verified_at = CURRENT_TIMESTAMP,
+            payment_verified_by = ?,
+            updated_at = CURRENT_TIMESTAMP
+           WHERE booking_id = ?`,
+          [
+            newPaymentStatus,
+            newBookingStatus,
+            newBookingStatus,
+            req.user.firebaseUid,
+            targetBookingId
+          ]
         );
       }
+    });
 
-      return res.json({
-        success: true,
-
-        message:
-          "Payment rejected.",
-      });
-    } catch (error) {
-      console.error(
-        "[payment reject]",
-        error
-      );
-
-      return res.status(500).json({
-        error:
-          "Unable to reject payment.",
-      });
-    }
+    res.json({
+      success: true,
+      message: `Payment ${isApproved ? "approved and booking confirmed" : "marked as rejected"}.`,
+      bookingId: targetBookingId
+    });
+  } catch (err) {
+    console.error("[POST /api/payments/:id/verify error]", err);
+    res.status(500).json({ success: false, error: "Failed to verify payment." });
   }
-);
-
-// ------------------------------------------------------------
-// HELPERS
-// ------------------------------------------------------------
-
-async function findBooking(bookingId) {
-  // First: normal Firestore document ID.
-  const direct =
-    await bookingsCollection
-      .doc(bookingId)
-      .get();
-
-  if (direct.exists) {
-    return {
-      id: direct.id,
-      data: direct.data(),
-    };
-  }
-
-  // Fallback for systems where booking IDs are stored
-  // inside a field rather than used as document IDs.
-  const possibleFields = [
-    "bookingId",
-    "booking_id",
-    "reference",
-    "reservationId",
-  ];
-
-  for (const field of possibleFields) {
-    const snapshot =
-      await bookingsCollection
-        .where(field, "==", bookingId)
-        .limit(1)
-        .get();
-
-    if (!snapshot.empty) {
-      const doc =
-        snapshot.docs[0];
-
-      return {
-        id: doc.id,
-        data: doc.data(),
-      };
-    }
-  }
-
-  return null;
-}
-
-function getBookingUserId(data) {
-  return (
-    data.userId ||
-    data.user_id ||
-    data.uid ||
-    data.customerId ||
-    data.customer_id ||
-    data.user?.uid ||
-    null
-  );
-}
-
-function getBookingAmount(data) {
-  const candidates = [
-    data.totalAmount,
-    data.total,
-    data.amountToPay,
-    data.amount,
-    data.finalAmount,
-    data.payableAmount,
-    data.grandTotal,
-  ];
-
-  for (const value of candidates) {
-    const number =
-      typeof value === "string"
-        ? Number(
-            value.replace(/[₹,\s]/g, "")
-          )
-        : Number(value);
-
-    if (
-      Number.isFinite(number) &&
-      number > 0
-    ) {
-      return Math.round(number * 100) / 100;
-    }
-  }
-
-  return null;
-}
-
-function getVehicleName(data) {
-  if (typeof data.vehicleName === "string") {
-    return data.vehicleName;
-  }
-
-  if (typeof data.carName === "string") {
-    return data.carName;
-  }
-
-  if (typeof data.vehicle === "string") {
-    return data.vehicle;
-  }
-
-  if (data.vehicle?.name) {
-    return String(data.vehicle.name);
-  }
-
-  const brand =
-    data.brand ||
-    data.carBrand ||
-    "";
-
-  const model =
-    data.model ||
-    data.carModel ||
-    "";
-
-  const combined =
-    `${brand} ${model}`.trim();
-
-  return combined || "Rental vehicle";
-}
-
-function getVehicleMeta(data) {
-  const parts = [];
-
-  if (data.year) {
-    parts.push(String(data.year));
-  }
-
-  if (data.fuel) {
-    parts.push(String(data.fuel));
-  }
-
-  if (data.transmission) {
-    parts.push(String(data.transmission));
-  }
-
-  return parts.join(" · ");
-}
-
-function getFirstValue(data, keys) {
-  for (const key of keys) {
-    if (
-      data[key] !== undefined &&
-      data[key] !== null &&
-      String(data[key]).trim() !== ""
-    ) {
-      return String(data[key]);
-    }
-  }
-
-  return "—";
-}
-
-function sanitizePayment(row) {
-  return {
-    id: row.id,
-
-    bookingId:
-      row.booking_id,
-
-    userId:
-      row.user_id,
-
-    amount:
-      row.amount,
-
-    currency:
-      row.currency,
-
-    method:
-      row.method,
-
-    utr:
-      row.utr,
-
-    screenshotMediaId:
-      row.screenshot_media_id,
-
-    status:
-      row.status,
-
-    submittedAt:
-      row.submitted_at,
-
-    verifiedAt:
-      row.verified_at,
-
-    verifiedBy:
-      row.verified_by,
-
-    rejectionReason:
-      row.rejection_reason,
-  };
-}
+});
 
 module.exports = router;

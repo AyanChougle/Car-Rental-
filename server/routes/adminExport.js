@@ -1,351 +1,172 @@
+﻿// server/routes/adminExport.js
+"use strict";
+
 const express = require("express");
 const XLSX = require("xlsx");
-const admin = require("../firebaseAdmin");
+const db = require("../config/database");
+const { requireAuth, requireRole } = require("../middleware/auth");
 
 const router = express.Router();
 
-const db = admin.firestore();
-
-// ------------------------------------------------------------
-// Convert Firestore values into Excel-safe values
-// ------------------------------------------------------------
-
-function convertValue(value) {
-  if (value === null || value === undefined) {
-    return "";
-  }
-
-  // Firestore Timestamp
-  if (value && typeof value.toDate === "function") {
-    return value.toDate().toISOString();
-  }
-
-  // Firestore DocumentReference
-  if (
-    value &&
-    typeof value.path === "string" &&
-    value.constructor &&
-    value.constructor.name === "DocumentReference"
-  ) {
-    return value.path;
-  }
-
-  // Arrays
-  if (Array.isArray(value)) {
-    return value.map(convertValue).join(", ");
-  }
-
-  // Objects / maps
-  if (typeof value === "object") {
-    return JSON.stringify(value);
-  }
-
-  return value;
+function safeCell(val) {
+  if (val === null || val === undefined) return "";
+  if (typeof val === "object") return JSON.stringify(val);
+  return val;
 }
 
-function flattenRecord(value, prefix = "", output = {}) {
-  if (
-    value &&
-    typeof value === "object" &&
-    !Array.isArray(value) &&
-    typeof value.toDate !== "function" &&
-    !(typeof value.path === "string" && value.constructor?.name === "DocumentReference")
-  ) {
-    for (const [key, nestedValue] of Object.entries(value)) {
-      flattenRecord(
-        nestedValue,
-        prefix ? `${prefix}.${key}` : key,
-        output
-      );
-    }
-    return output;
-  }
-
-  output[prefix] = Array.isArray(value)
-    ? JSON.stringify(value.map(convertValue))
-    : convertValue(value);
-  return output;
-}
-
-// ------------------------------------------------------------
-// Convert Firestore snapshot to rows
-// ------------------------------------------------------------
-
-function snapshotToRows(snapshot) {
-  return snapshot.docs.map((doc) => {
-    const data = doc.data();
-
-    const row = {
-      documentId: doc.id,
-    };
-
-    Object.assign(row, flattenRecord(data));
-
-    return row;
-  });
-}
-
-// ------------------------------------------------------------
-// Create Excel worksheet
-// ------------------------------------------------------------
-
-function createWorksheet(rows) {
-  if (!rows.length) {
-    return XLSX.utils.aoa_to_sheet([
-      ["No records found"],
-    ]);
-  }
-
-  const columns = [
-    ...new Set(rows.flatMap((row) => Object.keys(row))),
-  ];
-  const worksheet = XLSX.utils.json_to_sheet(rows, {
-    header: columns,
-  });
-
-  worksheet["!cols"] = columns.map((column) => {
-    let width = column.length + 2;
-
-    for (const row of rows) {
-      const value = String(row[column] ?? "");
-
-      width = Math.max(width, value.length + 2);
-    }
-
-    return {
-      wch: Math.min(Math.max(width, 12), 45),
-    };
-  });
-
-  worksheet["!autofilter"] = {
-    ref: `A1:${XLSX.utils.encode_col(columns.length - 1)}${rows.length + 1}`,
-  };
-
-  return worksheet;
-}
-
-// ------------------------------------------------------------
-// Verify Firebase ID token
-// ------------------------------------------------------------
-
-async function verifyAdmin(req, res, next) {
+/**
+ * GET /api/admin/export/excel
+ * Export all MySQL data as an Excel workbook
+ */
+router.get("/export/excel", requireAuth, requireRole("admin", "manager"), async (req, res) => {
   try {
-    const authHeader = req.headers.authorization || "";
+    const workbook = XLSX.utils.book_new();
 
-    if (!authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({
-        error: "Authentication required.",
-      });
-    }
-
-    const idToken = authHeader.substring(7).trim();
-
-    if (!idToken) {
-      return res.status(401).json({
-        error: "Authentication token missing.",
-      });
-    }
-
-    const decodedToken = await admin
-      .auth()
-      .verifyIdToken(idToken);
-
-    req.user = decodedToken;
-
-    // Check admin role from Firestore
-    const userSnapshot = await db
-      .collection("users")
-      .doc(decodedToken.uid)
-      .get();
-
-    if (!userSnapshot.exists) {
-      return res.status(403).json({
-        error: "Admin account not found.",
-      });
-    }
-
-    const userData = userSnapshot.data();
-
-    if (userData.role !== "admin") {
-      return res.status(403).json({
-        error: "Admin access required.",
-      });
-    }
-
-    next();
-  } catch (error) {
-    console.error(
-      "[admin export] Authentication error:",
-      error
+    // 1. Users Sheet (sanitize sensitive fields)
+    const [users] = await db.query(
+      `SELECT id, firebase_uid, email, name, phone, age, role, status,
+              license_status, aadhar_status, pan_status, ip_address, created_at, updated_at
+       FROM users ORDER BY id ASC`
     );
+    const usersSheet = XLSX.utils.json_to_sheet(users.map((u) => ({
+      ID: u.id,
+      "Firebase UID": u.firebase_uid,
+      Email: u.email,
+      Name: u.name || "",
+      Phone: u.phone || "",
+      Age: u.age || "",
+      Role: u.role,
+      Status: u.status,
+      "License Status": u.license_status,
+      "Aadhaar Status": u.aadhar_status,
+      "PAN Status": u.pan_status,
+      "Created At": u.created_at
+    })));
+    XLSX.utils.book_append_sheet(workbook, usersSheet, "Users");
 
-    return res.status(401).json({
-      error: "Invalid or expired authentication token.",
-    });
+    // 2. Bookings Sheet
+    const [bookings] = await db.query(
+      `SELECT * FROM bookings ORDER BY id DESC`
+    );
+    const bookingsSheet = XLSX.utils.json_to_sheet(bookings.map((b) => ({
+      "Booking ID": b.booking_id,
+      "Booking Number": b.booking_number,
+      "Customer Name": b.user_name || "",
+      "Customer Email": b.user_email || "",
+      "Customer Phone": b.user_phone || "",
+      Vehicle: b.vehicle_name || "",
+      Registration: b.vehicle_reg || "",
+      Category: b.vehicle_category || "",
+      "Pickup Date": b.pickup_date,
+      "Drop Date": b.drop_date,
+      Location: b.pickup_location || "",
+      Duration: b.duration || "",
+      "Total Amount (INR)": Number(b.total_amount),
+      "Paid Amount (INR)": Number(b.payment_amount_paid),
+      "Remaining Balance (INR)": Number(b.remaining_balance),
+      "Payment Plan": b.payment_plan,
+      "Payment Status": b.payment_status,
+      "Booking Status": b.status,
+      "Payment Reference / UTR": b.payment_ref || "",
+      "Created At": b.created_at
+    })));
+    XLSX.utils.book_append_sheet(workbook, bookingsSheet, "Bookings");
+
+    // 3. Vehicles Fleet Sheet
+    const [vehicles] = await db.query(
+      `SELECT * FROM vehicles ORDER BY id ASC`
+    );
+    const vehiclesSheet = XLSX.utils.json_to_sheet(vehicles.map((v) => ({
+      Registration: v.reg_no,
+      Brand: v.brand,
+      Model: v.model,
+      Category: v.category,
+      Year: v.year,
+      Fuel: v.fuel,
+      Transmission: v.transmission,
+      Seats: v.seats,
+      "Daily Rate (INR)": Number(v.price_day),
+      "Hourly Rate (INR)": Number(v.price_hour),
+      "Driver Rate (INR)": Number(v.driver_price),
+      "Security Deposit (INR)": Number(v.security_deposit),
+      "Free KM": v.free_km,
+      "Extra KM Rate (INR)": Number(v.extra_km),
+      Available: v.available === 1 ? "Yes" : "No",
+      Status: v.status,
+      Location: v.location || ""
+    })));
+    XLSX.utils.book_append_sheet(workbook, vehiclesSheet, "Fleet");
+
+    // 4. Payments Sheet
+    const [payments] = await db.query(
+      `SELECT * FROM payments ORDER BY id DESC`
+    );
+    const paymentsSheet = XLSX.utils.json_to_sheet(payments.map((p) => ({
+      ID: p.id,
+      "Booking ID": p.booking_id,
+      "Firebase UID": p.firebase_uid,
+      "Amount (INR)": Number(p.amount),
+      Method: p.method,
+      UTR: p.utr || "",
+      Status: p.status,
+      "Verified At": p.verified_at || "",
+      "Verified By": p.verified_by || "",
+      "Rejection Reason": p.rejection_reason || "",
+      "Submitted At": p.submitted_at
+    })));
+    XLSX.utils.book_append_sheet(workbook, paymentsSheet, "Payments");
+
+    // 5. Coupons Sheet
+    const [coupons] = await db.query(
+      `SELECT * FROM coupons ORDER BY id ASC`
+    );
+    const couponsSheet = XLSX.utils.json_to_sheet(coupons.map((c) => ({
+      Code: c.code,
+      Type: c.type,
+      "Discount Value": Number(c.discount_value),
+      "Min Order (INR)": Number(c.min_order),
+      "Max Discount (INR)": Number(c.max_discount),
+      "Used Count": c.used_count,
+      "Usage Limit": c.usage_limit,
+      Active: c.active === 1 ? "Yes" : "No",
+      Status: c.status
+    })));
+    XLSX.utils.book_append_sheet(workbook, couponsSheet, "Coupons");
+
+    // 6. Invoices Sheet
+    const [invoices] = await db.query(
+      `SELECT * FROM invoices ORDER BY id DESC`
+    );
+    const invoicesSheet = XLSX.utils.json_to_sheet(invoices.map((inv) => ({
+      "Invoice Number": inv.invoice_number,
+      "Booking ID": inv.booking_id,
+      "Invoice Date": inv.invoice_date,
+      "Subtotal (INR)": Number(inv.subtotal),
+      "Tax (INR)": Number(inv.tax),
+      "Total Amount (INR)": Number(inv.total),
+      "Amount Paid (INR)": Number(inv.amount_paid),
+      "Balance Due (INR)": Number(inv.balance_due),
+      Status: inv.status,
+      "Payment Status": inv.payment_status,
+      "Payment Mode": inv.payment_mode || "",
+      "Payment Ref": inv.payment_ref || "",
+      "Email Recipient": inv.email_recipient || "",
+      "Email Status": inv.email_status
+    })));
+    XLSX.utils.book_append_sheet(workbook, invoicesSheet, "Invoices");
+
+    const excelBuffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
+
+    const timestamp = new Date().toISOString().slice(0, 10);
+    const fileName = `KRUIZLY_Production_Database_Export_${timestamp}.xlsx`;
+
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    res.send(excelBuffer);
+  } catch (err) {
+    console.error("[GET /api/admin/export/excel error]", err);
+    res.status(500).json({ success: false, error: "Failed to generate Excel export." });
   }
-}
-
-// ------------------------------------------------------------
-// GET /api/admin/export/excel
-// ------------------------------------------------------------
-
-router.get(
-  "/export/excel",
-  verifyAdmin,
-  async (req, res) => {
-    try {
-      console.log(
-        `[admin export] Export requested by ${req.user.uid}`
-      );
-
-      const collections = [
-        {
-          name: "users",
-          sheet: "Users",
-        },
-        {
-          name: "bookings",
-          sheet: "Bookings",
-        },
-        {
-          name: "partner_cars",
-          sheet: "Partner Cars",
-        },
-        {
-          name: "payments",
-          sheet: "Payments",
-        },
-        {
-          name: "contact_messages",
-          sheet: "Contact Messages",
-        },
-        {
-          name: "vehicles",
-          sheet: "Vehicles",
-        },
-      ];
-
-      const workbook = XLSX.utils.book_new();
-
-      const summaryRows = [
-        {
-          Collection: "Export Information",
-          Records: "",
-          Information: `Generated ${new Date().toLocaleString(
-            "en-IN"
-          )}`,
-        },
-      ];
-
-      for (const collection of collections) {
-        console.log(
-          `[admin export] Reading ${collection.name}...`
-        );
-
-        try {
-          const snapshot = await db
-            .collection(collection.name)
-            .get();
-
-          const rows = snapshotToRows(snapshot);
-
-          console.log(
-            `[admin export] ${collection.name}: ${rows.length}`
-          );
-
-          summaryRows.push({
-            Collection: collection.name,
-            Records: rows.length,
-            Information: "Exported successfully",
-          });
-
-          XLSX.utils.book_append_sheet(
-            workbook,
-            createWorksheet(rows),
-            collection.sheet
-          );
-        } catch (error) {
-          console.error(
-            `[admin export] Failed collection ${collection.name}:`,
-            error
-          );
-
-          summaryRows.push({
-            Collection: collection.name,
-            Records: 0,
-            Information: `Failed: ${error.message}`,
-          });
-        }
-      }
-
-      // --------------------------------------------------------
-      // Summary sheet
-      // --------------------------------------------------------
-
-      const summarySheet =
-        XLSX.utils.json_to_sheet(summaryRows);
-
-      summarySheet["!cols"] = [
-        { wch: 25 },
-        { wch: 12 },
-        { wch: 60 },
-      ];
-
-      XLSX.utils.book_append_sheet(
-        workbook,
-        summarySheet,
-        "Summary"
-      );
-
-      workbook.SheetNames = [
-        "Summary",
-        ...workbook.SheetNames.filter((name) => name !== "Summary"),
-      ];
-
-      // --------------------------------------------------------
-      // Generate Excel buffer
-      // --------------------------------------------------------
-
-      const excelBuffer = XLSX.write(workbook, {
-        type: "buffer",
-        bookType: "xlsx",
-        compression: true,
-      });
-
-      const date = new Date()
-        .toISOString()
-        .slice(0, 10);
-
-      const filename =
-        `CARRENTPE_Firebase_${date}.xlsx`;
-
-      res.setHeader(
-        "Content-Type",
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      );
-
-      res.setHeader(
-        "Content-Disposition",
-        `attachment; filename="${filename}"`
-      );
-
-      res.setHeader(
-        "Content-Length",
-        excelBuffer.length
-      );
-
-      return res.status(200).send(excelBuffer);
-    } catch (error) {
-      console.error(
-        "[admin export] Export failed:",
-        error
-      );
-
-      return res.status(500).json({
-        error: "Could not create Excel export.",
-      });
-    }
-  }
-);
+});
 
 module.exports = router;

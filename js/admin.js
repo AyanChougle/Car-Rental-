@@ -4,6 +4,7 @@
 // ============================================================================
 
 import { auth, db, storage } from "./firebase-init.js";
+import { api } from "./kruizly-api.js";
 
 import {
   onAuthStateChanged,
@@ -747,24 +748,8 @@ async function loadFleetManagement() {
   if (!fleetManagementWrap) return;
 
   try {
-    const catalog = Array.isArray(window.fleetVehicles)
-      ? window.fleetVehicles
-      : [];
-    const snapshot = await getDocs(collection(db, "vehicles"));
-    const overrides = new Map(
-      snapshot.docs.map((item) => [item.id, item.data()])
-    );
-    const catalogRegistrations = new Set(catalog.map((vehicle) => vehicle.regNo));
-    const vehicles = [
-      ...catalog.map((vehicle) => ({
-        ...vehicle,
-        ...(overrides.get(vehicle.regNo) || {}),
-        regNo: vehicle.regNo,
-      })),
-      ...snapshot.docs
-        .map((item) => ({ regNo: item.id, ...item.data() }))
-        .filter((vehicle) => vehicle.isCustomFleet && !catalogRegistrations.has(vehicle.regNo)),
-    ].filter((vehicle) => !vehicle.removed);
+    const res = await api.get("/vehicles");
+    const vehicles = Array.isArray(res.vehicles) ? res.vehicles : [];
 
     if (!vehicles.length) {
       fleetManagementWrap.innerHTML =
@@ -789,12 +774,13 @@ async function loadFleetManagement() {
           <tbody>
             ${vehicles.map((vehicle) => {
               const available = Boolean(vehicle.available);
+              const imgUrl = (Array.isArray(vehicle.gallery) && vehicle.gallery[0]) || vehicle.imageUrl || "";
               return `
                 <tr style="border-bottom:1px solid rgba(255,255,255,.06);">
                   <td style="padding:12px;"><strong>${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}</strong></td>
                   <td style="padding:12px;">
-                    ${vehicle.imageUrl
-                      ? `<img src="${escapeHtml(vehicle.imageUrl)}" alt="${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}" style="display:block;width:72px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--line);" />`
+                    ${imgUrl
+                      ? `<img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}" style="display:block;width:72px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--line);" />`
                       : `<span style="color:var(--sub);font-size:.8rem;">Catalog image</span>`}
                   </td>
                   <td style="padding:12px;font-family:monospace;">${escapeHtml(vehicle.regNo)}</td>
@@ -826,7 +812,6 @@ async function loadFleetManagement() {
                       type="button"
                       class="btn btn-outline admin-fleet-remove"
                       data-reg="${escapeHtml(vehicle.regNo)}"
-                      data-custom="${String(Boolean(vehicle.isCustomFleet))}"
                       style="margin-left:6px;border-color:#ef476f;color:#ef476f;"
                     >
                       Remove
@@ -884,23 +869,10 @@ async function loadFleetManagement() {
           button.textContent = "Saving...";
 
           try {
-            await setDoc(
-              doc(db, "vehicles", regNo),
-              {
-                regNo,
-                brand: vehicle.brand,
-                model: vehicle.model,
-                category: vehicle.category,
-                available: nextAvailable,
-                status: nextAvailable ? "available" : "unavailable",
-                updatedAt: serverTimestamp(),
-                updatedBy: currentUser?.uid || null,
-              },
-              { merge: true }
-            );
-
-            const sourceVehicle = catalog.find((item) => item.regNo === regNo);
-            if (sourceVehicle) sourceVehicle.available = nextAvailable ? 1 : 0;
+            await api.put(`/vehicles/${regNo}`, {
+              available: nextAvailable ? 1 : 0,
+              status: nextAvailable ? "available" : "unavailable"
+            });
             await loadFleetManagement();
           } catch (error) {
             console.error("FLEET AVAILABILITY ERROR:", error);
@@ -919,17 +891,7 @@ async function loadFleetManagement() {
 
           button.disabled = true;
           try {
-            if (button.dataset.custom === "true") {
-              await deleteDoc(doc(db, "vehicles", regNo));
-            } else {
-              await setDoc(doc(db, "vehicles", regNo), {
-                removed: true,
-                available: false,
-                status: "removed",
-                updatedAt: serverTimestamp(),
-                updatedBy: currentUser?.uid || null,
-              }, { merge: true });
-            }
+            await api.delete(`/vehicles/${regNo}`);
             await loadFleetManagement();
           } catch (error) {
             console.error("FLEET REMOVE ERROR:", error);
@@ -977,91 +939,59 @@ function initialiseFleetUpload() {
     }
 
     const isEditing = Boolean(editingFleetRegNo);
-    fleetUploadSubmit.disabled = true;
+    if (fleetUploadSubmit) fleetUploadSubmit.disabled = true;
     if (fleetUploadStatus) fleetUploadStatus.textContent = isEditing ? "Updating vehicle data..." : "Saving vehicle to fleet...";
 
     try {
       let imageUrl = null;
       if (image) {
         try {
-          const imageRef = ref(storage, `fleet/${regNo}/${Date.now()}-${image.name}`);
-          await uploadBytes(imageRef, image, { contentType: image.type });
-          imageUrl = await getDownloadURL(imageRef);
+          const fd = new FormData();
+          fd.append("file", image);
+          fd.append("category", "vehicle_gallery");
+          fd.append("relatedId", regNo);
+          const uploadRes = await api.upload("/media/upload", fd);
+          imageUrl = uploadRes.url || uploadRes.mediaUrl;
         } catch (uploadErr) {
-          console.warn("Storage upload failed/unconfigured, converting file to Data URL:", uploadErr);
-          imageUrl = await new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result);
-            reader.onerror = () => resolve("assets/fleet/BMW.png");
-            reader.readAsDataURL(image);
-          });
+          console.warn("Storage upload error:", uploadErr);
         }
       }
 
-      const priceDay = Number(getValue("fleetPriceDay"));
-      const catalog = Array.isArray(window.fleetVehicles) ? window.fleetVehicles : [];
-      const existingVehicle = catalog.find((v) => v.regNo === regNo) || {};
+      const priceDay = Number(getValue("fleetPriceDay") || 0);
 
       const vehicleData = {
         regNo,
         brand: getValue("fleetBrand"),
         model: getValue("fleetModel"),
-        year: Number(getValue("fleetYear")),
-        category: getValue("fleetCategory"),
-        transmission: getValue("fleetTransmission"),
-        fuel: getValue("fleetFuel"),
-        seats: Number(getValue("fleetSeats")),
+        year: Number(getValue("fleetYear") || 2024),
+        category: getValue("fleetCategory") || "economy",
+        transmission: getValue("fleetTransmission") || "Automatic",
+        fuel: getValue("fleetFuel") || "Petrol",
+        seats: Number(getValue("fleetSeats") || 5),
         priceDay,
         priceHour: Math.max(1, Math.round(priceDay / 24)),
-        updatedAt: serverTimestamp(),
-        updatedBy: currentUser?.uid || null,
+        available: 1,
+        status: "available"
       };
 
       if (imageUrl) {
-        vehicleData.imageUrl = imageUrl;
+        vehicleData.gallery = [imageUrl];
       }
 
-      if (!isEditing) {
-        vehicleData.bags = 2;
-        vehicleData.driverPrice = 0;
-        vehicleData.securityDeposit = 0;
-        vehicleData.freeKm = 250;
-        vehicleData.extraKm = 0;
-        vehicleData.location = "Contact KRUIZLY for pickup location";
-        vehicleData.isCustomFleet = true;
-        vehicleData.available = true;
-        vehicleData.status = "available";
-        vehicleData.removed = false;
-        vehicleData.createdAt = serverTimestamp();
-        vehicleData.createdBy = currentUser?.uid || null;
-        if (!imageUrl) {
-          vehicleData.imageUrl = existingVehicle.imageUrl || "assets/fleet/BMW.png";
-        }
-      }
-
-      try {
-        await setDoc(doc(db, "vehicles", regNo), vehicleData, { merge: true });
-      } catch (dbErr) {
-        console.warn("Firestore vehicle save warning:", dbErr);
-      }
-
-      // Update in-memory catalog for instant responsiveness
-      const sourceVehicle = catalog.find((item) => item.regNo === regNo);
-      if (sourceVehicle) {
-        Object.assign(sourceVehicle, vehicleData);
+      if (isEditing) {
+        await api.put(`/vehicles/${regNo}`, vehicleData);
       } else {
-        catalog.push(vehicleData);
+        await api.post("/vehicles", vehicleData);
       }
-      window.fleetVehicles = catalog;
 
       resetFleetForm();
       if (fleetUploadStatus) fleetUploadStatus.textContent = isEditing ? `Vehicle ${regNo} updated successfully.` : `Vehicle ${regNo} added to fleet.`;
       await loadFleetManagement();
-    } catch (error) {
-      console.error("FLEET SAVE ERROR:", error);
-      if (fleetUploadStatus) fleetUploadStatus.textContent = `Could not save vehicle: ${error.message}`;
+    } catch (err) {
+      console.error("FLEET SAVE ERROR:", err);
+      if (fleetUploadStatus) fleetUploadStatus.textContent = `Error: ${err.message}`;
     } finally {
-      fleetUploadSubmit.disabled = false;
+      if (fleetUploadSubmit) fleetUploadSubmit.disabled = false;
     }
   });
 }
@@ -1084,45 +1014,12 @@ async function loadCoupons() {
   const wrap = $("couponsTableWrap");
   if (!wrap) return;
 
-  let localCached = [];
   try {
-    const rawLocal = localStorage.getItem("kruizly_coupons");
-    if (rawLocal) {
-      localCached = JSON.parse(rawLocal);
-    }
-  } catch (_) {}
-
-  try {
-    const snapshot = await getDocs(collection(db, "coupons"));
-    let fetched = snapshot.docs.map(docItem => ({ id: docItem.id, ...docItem.data() }));
-
-    if (!fetched.length && !localCached.length) {
-      for (const coupon of DEFAULT_COUPONS) {
-        try {
-          await setDoc(doc(db, "coupons", coupon.id), coupon, { merge: true });
-        } catch (_) {}
-      }
-      fetched = [...DEFAULT_COUPONS];
-    } else if (!fetched.length && localCached.length) {
-      fetched = localCached;
-    } else if (localCached.length) {
-      const localMap = new Map(localCached.map(item => [item.id || item.code, item]));
-      fetched = fetched.map(item => {
-        const localItem = localMap.get(item.id || item.code);
-        if (localItem && localItem.status) {
-          return { ...item, status: localItem.status };
-        }
-        return item;
-      });
-    }
-
-    couponsData = fetched.sort((a, b) => (a.code || "").localeCompare(b.code || ""));
-    try {
-      localStorage.setItem("kruizly_coupons", JSON.stringify(couponsData));
-    } catch (_) {}
+    const res = await api.get("/coupons");
+    couponsData = Array.isArray(res.coupons) ? res.coupons : [];
     renderCouponsTable();
   } catch (error) {
-    couponsData = localCached.length ? localCached : [...DEFAULT_COUPONS];
+    console.error("COUPONS LOAD ERROR:", error);
     renderCouponsTable();
   }
 }
@@ -1131,7 +1028,7 @@ function renderCouponsTable() {
   const wrap = $("couponsTableWrap");
   const activeStatEl = $("activeCouponsCount");
   
-  const activeCount = couponsData.filter(c => c.status === "active").length;
+  const activeCount = couponsData.filter(c => c.status === "active" || c.active === true).length;
   if (activeStatEl) activeStatEl.textContent = String(activeCount);
 
   if (!wrap) return;
@@ -1156,14 +1053,16 @@ function renderCouponsTable() {
         </thead>
         <tbody>
           ${couponsData.map((c) => {
-            const active = c.status === "active";
-            const discountLabel = c.type === "percent" ? `${c.val}% Off` : `₹${Number(c.val).toLocaleString("en-IN")} Off`;
+            const active = c.status === "active" || c.active === true;
+            const discountLabel = c.type === "percent" || c.type === "percentage" || c.discountType === "percent" || c.discountType === "percentage"
+              ? `${c.val || c.discountValue}% Off`
+              : `₹${Number(c.val || c.discountValue || 0).toLocaleString("en-IN")} Off`;
             return `
               <tr>
                 <td><span class="coupon-code-tag">${escapeHtml(c.code)}</span></td>
                 <td><strong style="color:var(--kz-cyan);">${escapeHtml(discountLabel)}</strong></td>
                 <td style="color:var(--kz-text);">${escapeHtml(c.label || "—")}</td>
-                <td style="color:var(--kz-sub);">₹${Number(c.minOrder || 0).toLocaleString("en-IN")}</td>
+                <td style="color:var(--kz-sub);">₹${Number(c.minOrder || c.minimumBookingAmount || 0).toLocaleString("en-IN")}</td>
                 <td>
                   <span class="status-pill ${active ? "verified" : "rejected"}">
                     ${active ? "Active" : "Inactive"}
@@ -1171,13 +1070,13 @@ function renderCouponsTable() {
                 </td>
                 <td style="text-align:right;">
                   <div style="display:inline-flex;gap:8px;justify-content:flex-end;">
-                    <button type="button" class="admin-upload-replacement-btn admin-coupon-edit" data-id="${escapeHtml(c.id)}">
+                    <button type="button" class="admin-upload-replacement-btn admin-coupon-edit" data-id="${escapeHtml(c.code || c.id)}">
                       Edit
                     </button>
-                    <button type="button" class="${active ? "admin-btn-reject" : "admin-btn-approve"} admin-coupon-toggle" data-id="${escapeHtml(c.id)}" style="padding:8px 14px;font-size:0.78rem;">
+                    <button type="button" class="${active ? "admin-btn-reject" : "admin-btn-approve"} admin-coupon-toggle" data-id="${escapeHtml(c.code || c.id)}" style="padding:8px 14px;font-size:0.78rem;">
                       ${active ? "Deactivate" : "Activate"}
                     </button>
-                    <button type="button" class="admin-btn-reject admin-coupon-delete" data-id="${escapeHtml(c.id)}" style="padding:8px 14px;font-size:0.78rem;">
+                    <button type="button" class="admin-btn-reject admin-coupon-delete" data-id="${escapeHtml(c.code || c.id)}" style="padding:8px 14px;font-size:0.78rem;">
                       Delete
                     </button>
                   </div>
@@ -1194,15 +1093,15 @@ function renderCouponsTable() {
 
   wrap.querySelectorAll(".admin-coupon-edit").forEach(btn => {
     btn.addEventListener("click", () => {
-      const c = couponsData.find(item => item.id === btn.dataset.id);
+      const c = couponsData.find(item => item.code === btn.dataset.id || item.id === btn.dataset.id);
       if (!c) return;
-      editingCouponId = c.id;
+      editingCouponId = c.code || c.id;
       if ($("couponCodeInput")) $("couponCodeInput").value = c.code || "";
-      if ($("couponTypeSelect")) $("couponTypeSelect").value = c.type || "flat";
-      if ($("couponValueInput")) $("couponValueInput").value = c.val || "";
+      if ($("couponTypeSelect")) $("couponTypeSelect").value = c.type || c.discountType || "flat";
+      if ($("couponValueInput")) $("couponValueInput").value = c.val || c.discountValue || "";
       if ($("couponLabelInput")) $("couponLabelInput").value = c.label || "";
-      if ($("couponMinOrderInput")) $("couponMinOrderInput").value = c.minOrder || 0;
-      if ($("couponStatusSelect")) $("couponStatusSelect").value = c.status || "active";
+      if ($("couponMinOrderInput")) $("couponMinOrderInput").value = c.minOrder || c.minimumBookingAmount || 0;
+      if ($("couponStatusSelect")) $("couponStatusSelect").value = c.status || (c.active ? "active" : "inactive");
 
       if ($("couponBoxHeading")) $("couponBoxHeading").textContent = `Editing Coupon "${c.code}"`;
       if ($("couponFormSubmit")) $("couponFormSubmit").textContent = "Update Coupon";
@@ -1213,48 +1112,36 @@ function renderCouponsTable() {
 
   wrap.querySelectorAll(".admin-coupon-toggle").forEach(btn => {
     btn.addEventListener("click", async () => {
-      const c = couponsData.find(item => item.id === btn.dataset.id);
+      const c = couponsData.find(item => item.code === btn.dataset.id || item.id === btn.dataset.id);
       if (!c) return;
       const isActive = c.status === "active" || c.active === true;
       const nextActive = !isActive;
       const nextStatus = nextActive ? "active" : "inactive";
       btn.disabled = true;
 
-      c.active = nextActive;
-      c.status = nextStatus;
-      c.updatedAt = new Date().toISOString();
-
       try {
-        await setDoc(doc(db, "coupons", c.id), { active: nextActive, status: nextStatus, updatedAt: serverTimestamp() }, { merge: true });
-      } catch (_) {}
-
-      try {
-        localStorage.setItem("kruizly_coupons", JSON.stringify(couponsData));
-      } catch (_) {}
-
-      renderCouponsTable();
+        await api.put(`/coupons/${c.code || c.id}`, { active: nextActive, status: nextStatus });
+        await loadCoupons();
+      } catch (err) {
+        alert("Could not update coupon: " + err.message);
+        btn.disabled = false;
+      }
     });
   });
 
   wrap.querySelectorAll(".admin-coupon-delete").forEach(btn => {
     btn.addEventListener("click", async () => {
-      const c = couponsData.find(item => item.id === btn.dataset.id);
-      if (!c || !confirm(`Delete coupon "${c.code}"?`)) return;
+      const c = couponsData.find(item => item.code === btn.dataset.id || item.id === btn.dataset.id);
+      if (!c || !confirm(`Delete coupon "${c.code}" from server database?`)) return;
       btn.disabled = true;
 
-      couponsData = couponsData.filter(item => item.id !== c.id);
-
       try {
-        await deleteDoc(doc(db, "coupons", c.id));
-      } catch (fsErr) {
-        console.warn("Firestore coupon delete warning, applying local fallback:", fsErr);
+        await api.delete(`/coupons/${c.code || c.id}`);
+        await loadCoupons();
+      } catch (err) {
+        alert("Could not delete coupon: " + err.message);
+        btn.disabled = false;
       }
-
-      try {
-        localStorage.setItem("kruizly_coupons", JSON.stringify(couponsData));
-      } catch (_) {}
-
-      renderCouponsTable();
     });
   });
 }
@@ -1290,7 +1177,6 @@ function initialiseCouponManagement() {
     if (statusMsg) statusMsg.textContent = "Saving coupon code...";
 
     try {
-      const couponId = editingCouponId || code;
       const isActive = status === "active";
       const data = {
         code,
@@ -1302,34 +1188,17 @@ function initialiseCouponManagement() {
         discountValue: val,
         label,
         minOrder,
-        minimumBookingAmount: minOrder,
-        updatedAt: serverTimestamp(),
-        updatedBy: currentUser?.uid || "admin",
+        minimumBookingAmount: minOrder
       };
 
-      try {
-        await setDoc(doc(db, "coupons", couponId), data, { merge: true });
-      } catch (fsErr) {
-        console.warn("Firestore coupon save warning, applying local fallback:", fsErr);
-      }
-      
-      const existingIndex = couponsData.findIndex(item => item.id === couponId);
-      if (existingIndex >= 0) {
-        couponsData[existingIndex] = { id: couponId, ...data };
-      } else {
-        couponsData.push({ id: couponId, ...data });
-      }
-
-      try {
-        localStorage.setItem("kruizly_coupons", JSON.stringify(couponsData));
-      } catch (_) {}
+      await api.post("/coupons", data);
 
       resetCouponForm();
       if (statusMsg) {
         statusMsg.textContent = `Coupon "${code}" saved successfully!`;
         statusMsg.style.color = "#00f0a0";
       }
-      renderCouponsTable();
+      await loadCoupons();
     } catch (err) {
       console.error("COUPON SAVE ERROR:", err);
       if (statusMsg) {
@@ -1343,41 +1212,54 @@ function initialiseCouponManagement() {
 }
 
 // ============================================================================
-// FIREBASE EXCEL EXPORT
+// DATABASE EXCEL EXPORT
 // ============================================================================
 
-const FIRESTORE_EXPORT_COLLECTIONS = [
-  {
-    collectionName: "users",
-    sheetName: "Users",
-  },
-  {
-    collectionName: "bookings",
-    sheetName: "Bookings",
-  },
-  {
-    collectionName: "partner_cars",
-    sheetName: "Partner Cars",
-  },
-  {
-    collectionName: "contact_messages",
-    sheetName: "Contact Messages",
-  },
-  {
-    collectionName: "vehicles",
-    sheetName: "Vehicles",
-  },
-];
-
 function initialiseFirebaseExport() {
-  if (!exportFirebaseExcelBtn) {
-    return;
-  }
+  if (!exportFirebaseExcelBtn) return;
 
-  exportFirebaseExcelBtn.addEventListener(
-    "click",
-    exportFirebaseToExcel
-  );
+  exportFirebaseExcelBtn.addEventListener("click", async () => {
+    exportFirebaseExcelBtn.disabled = true;
+    if (firebaseExportStatus) firebaseExportStatus.textContent = "Generating database Excel export...";
+
+    try {
+      const token = currentUser ? await currentUser.getIdToken() : "";
+      const exportUrl = `${API_BASE_URL}/admin/export/excel`;
+      
+      const response = await fetch(exportUrl, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("Export failed with status " + response.status);
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `KRUIZLY_Production_Database_Export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+
+      if (firebaseExportStatus) {
+        firebaseExportStatus.textContent = "Excel export downloaded successfully.";
+        firebaseExportStatus.style.color = "#00f0a0";
+      }
+    } catch (err) {
+      console.error("EXCEL EXPORT ERROR:", err);
+      if (firebaseExportStatus) {
+        firebaseExportStatus.textContent = "Export error: " + err.message;
+        firebaseExportStatus.style.color = "#ef476f";
+      }
+    } finally {
+      exportFirebaseExcelBtn.disabled = false;
+    }
+  });
 }
 
 function normaliseFirestoreValue(value) {

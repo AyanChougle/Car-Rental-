@@ -1,4 +1,5 @@
-// server.js
+﻿// server/server.js
+"use strict";
 
 require("dotenv").config();
 
@@ -6,11 +7,17 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const db = require("./config/database");
 
 const mediaRoutes = require("./routes/media");
 const paymentRoutes = require("./routes/payments");
 const adminExportRoutes = require("./routes/adminExport");
 const invoiceRoutes = require("./routes/invoice");
+const userRoutes = require("./routes/users");
+const vehicleRoutes = require("./routes/vehicles");
+const bookingRoutes = require("./routes/bookings");
+const couponRoutes = require("./routes/coupons");
+const verificationRoutes = require("./routes/verification");
 
 const app = express();
 
@@ -27,6 +34,7 @@ app.set("trust proxy", 1);
 app.use(
   helmet({
     crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
+    crossOriginResourcePolicy: { policy: "cross-origin" }
   })
 );
 
@@ -37,6 +45,8 @@ app.use(
 const defaultOrigins = [
   "http://localhost:5500",
   "http://127.0.0.1:5500",
+  "http://localhost:5501",
+  "http://127.0.0.1:5501",
   "https://ayanchougle.github.io",
   "https://ayanchougle.github.io/Car-Rental-/"
 ];
@@ -51,7 +61,6 @@ const configuredOrigins = Array.from(new Set([...defaultOrigins, ...envOrigins])
 app.use(
   cors({
     origin(origin, callback) {
-      // Allow non-browser requests such as curl/Postman.
       if (!origin) return callback(null, true);
 
       const isAllowed =
@@ -66,16 +75,7 @@ app.use(
 
       return callback(null, false);
     },
-
-    methods: [
-      "GET",
-      "POST",
-      "PUT",
-      "PATCH",
-      "DELETE",
-      "OPTIONS",
-    ],
-
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: [
       "Content-Type",
       "Authorization",
@@ -83,9 +83,8 @@ app.use(
       "Accept",
       "Origin"
     ],
-
     credentials: true,
-    maxAge: 600,
+    maxAge: 600
   })
 );
 
@@ -93,18 +92,8 @@ app.use(
 // BODY LIMIT
 // ------------------------------------------------------------
 
-app.use(
-  express.json({
-    limit: "100kb",
-  })
-);
-
-app.use(
-  express.urlencoded({
-    extended: false,
-    limit: "100kb",
-  })
-);
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
 // ------------------------------------------------------------
 // GLOBAL API RATE LIMIT
@@ -112,55 +101,60 @@ app.use(
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 300,
+  max: 600,
   standardHeaders: true,
   legacyHeaders: false,
-
   message: {
-    error:
-      "Too many requests. Please slow down and try again shortly.",
-  },
+    success: false,
+    error: "Too many requests. Please slow down and try again shortly."
+  }
 });
 
 app.use("/api", apiLimiter);
 
 // ------------------------------------------------------------
-// HEALTH
+// HEALTH CHECK WITH MYSQL POOL STATUS
 // ------------------------------------------------------------
 
-app.get("/api/health", (req, res) => {
+app.get("/api/health", async (req, res) => {
+  const dbHealth = await db.testConnection();
   res.json({
     ok: true,
-    service: "KRUIZLY API",
+    service: "KRUIZLY Production Backend",
     environment: NODE_ENV,
     time: new Date().toISOString(),
+    database: {
+      connected: dbHealth.connected,
+      serverTime: dbHealth.serverTime || null,
+      error: dbHealth.error || null
+    }
   });
 });
 
 // ------------------------------------------------------------
-// ROUTES
+// ROUTE MOUNTING
 // ------------------------------------------------------------
 
-app.use("/api/media", mediaRoutes);
-
+app.use("/api/users", userRoutes);
+app.use("/api/vehicles", vehicleRoutes);
+app.use("/api/bookings", bookingRoutes);
+app.use("/api/coupons", couponRoutes);
+app.use("/api/verification", verificationRoutes);
 app.use("/api/payments", paymentRoutes);
-
+app.use("/api/media", mediaRoutes);
+app.use("/api/invoices", invoiceRoutes);
 app.use("/api/admin", adminExportRoutes);
 
-// IMPORTANT:
-// Frontend uses /api/invoices/...
-// Therefore this must be plural: /api/invoices
-app.use("/api/invoices", invoiceRoutes);
-
 // ------------------------------------------------------------
-// 404
+// 404 HANDLER
 // ------------------------------------------------------------
 
 app.use((req, res) => {
   res.status(404).json({
+    success: false,
     error: "API endpoint not found.",
     path: req.originalUrl,
-    method: req.method,
+    method: req.method
   });
 });
 
@@ -169,67 +163,46 @@ app.use((req, res) => {
 // ------------------------------------------------------------
 
 app.use((err, req, res, next) => {
-  console.error("[server error]", err);
+  console.error("[Server Uncaught Error]", err);
 
-  if (
-    err.message &&
-    err.message.startsWith("CORS blocked")
-  ) {
-    return res.status(403).json({
-      error: "Origin not allowed.",
-    });
+  if (err.message && err.message.startsWith("CORS blocked")) {
+    return res.status(403).json({ success: false, error: "Origin not allowed." });
   }
 
-  const status =
-    Number(err.statusCode) >= 400 &&
-    Number(err.statusCode) < 600
-      ? Number(err.statusCode)
-      : 500;
+  const status = Number(err.statusCode) >= 400 && Number(err.statusCode) < 600 ? Number(err.statusCode) : 500;
 
   return res.status(status).json({
-    error:
-      status === 500
-        ? "Something went wrong on the server."
-        : err.message || "Request failed.",
+    success: false,
+    error: status === 500 ? "Something went wrong on the server." : err.message || "Request failed."
   });
 });
 
 // ------------------------------------------------------------
-// START
+// START & GRACEFUL SHUTDOWN
 // ------------------------------------------------------------
 
-app.listen(PORT, () => {
-  console.log("");
-  console.log("========================================");
-  console.log("       KRUIZLY BACKEND");
+const server = app.listen(PORT, () => {
+  console.log("\n========================================");
+  console.log("       KRUIZLY PRODUCTION BACKEND");
   console.log("========================================");
   console.log(`Environment : ${NODE_ENV}`);
   console.log(`Port        : ${PORT}`);
-  console.log(`API         : http://localhost:${PORT}`);
-  console.log("");
-  console.log("Invoice API :");
-  console.log(
-    `  POST http://localhost:${PORT}/api/invoices/payment-approved/:bookingId`
-  );
-  console.log(
-    `  GET  http://localhost:${PORT}/api/invoices/:invoiceId`
-  );
-  console.log(
-    `  PUT  http://localhost:${PORT}/api/invoices/:invoiceId`
-  );
-  console.log(
-    `  POST http://localhost:${PORT}/api/invoices/:invoiceId/send`
-  );
-  console.log(
-    `  GET  http://localhost:${PORT}/api/invoices/:invoiceId/pdf`
-  );
-  console.log("");
-  console.log("Allowed origins:");
-
-  for (const origin of configuredOrigins) {
-    console.log(`  - ${origin}`);
-  }
-
-  console.log("========================================");
-  console.log("");
+  console.log(`API URL     : http://localhost:${PORT}/api`);
+  console.log("Database    : Hostinger MySQL Pool");
+  console.log("Auth        : Firebase Authentication Only");
+  console.log("========================================\n");
 });
+
+function gracefulShutdown(signal) {
+  console.log(`\n[Server] Received ${signal}. Closing HTTP server and MySQL connection pool...`);
+  server.close(async () => {
+    await db.closePool();
+    console.log("[Server] Server stopped gracefully.");
+    process.exit(0);
+  });
+}
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+
+module.exports = app;

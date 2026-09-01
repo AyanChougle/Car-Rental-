@@ -1,10 +1,4 @@
-"use strict";
-
-import { db } from "./firebase-init.js";
-import {
-  collection,
-  getDocs,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
+import { api } from "./kruizly-api.js";
 import "./nav-helper.js";
 
 // Fleet page: card rendering, searching, filtering,
@@ -518,42 +512,40 @@ function bookingDateParams() {
 
 async function applyFleetAvailabilityOverrides() {
   try {
-    const snapshot = await getDocs(collection(db, "vehicles"));
-    const overrides = new Map(
-      snapshot.docs.map((item) => [item.id, item.data()]),
-    );
+    const res = await api.get("/vehicles");
+    const serverVehicles = Array.isArray(res.vehicles) ? res.vehicles : [];
 
-    const catalog = window.fleetVehicles || [];
-    const catalogRegistrations = new Set(
-      catalog.map((vehicle) => vehicle.regNo),
-    );
+    if (serverVehicles.length > 0) {
+      const overrides = new Map(
+        serverVehicles.map((item) => [item.regNo, item])
+      );
 
-    catalog.forEach((vehicle) => {
-      const override = overrides.get(vehicle.regNo);
-      if (override?.removed) {
-        vehicle.removed = true;
-      } else if (override) {
-        Object.assign(vehicle, override);
-        if (typeof override.available === "boolean") {
-          vehicle.available = override.available ? 1 : 0;
-          vehicle.status = override.available ? "available" : "unavailable";
+      const catalog = window.fleetVehicles || [];
+      const catalogRegistrations = new Set(
+        catalog.map((vehicle) => vehicle.regNo)
+      );
+
+      catalog.forEach((vehicle) => {
+        const override = overrides.get(vehicle.regNo);
+        if (override?.removed || override?.status === "removed" || override?.status === "disabled") {
+          vehicle.removed = true;
+        } else if (override) {
+          Object.assign(vehicle, override);
+          if (typeof override.available === "boolean" || typeof override.available === "number") {
+            vehicle.available = Boolean(override.available) ? 1 : 0;
+            vehicle.status = override.available ? "available" : "unavailable";
+          }
         }
-      }
-    });
+      });
 
-    snapshot.docs
-      .map((item) => ({ regNo: item.id, ...item.data() }))
-      .filter(
-        (vehicle) =>
-          vehicle.isCustomFleet &&
-          !vehicle.removed &&
-          !catalogRegistrations.has(vehicle.regNo),
-      )
-      .forEach((vehicle) => catalog.push(vehicle));
+      serverVehicles
+        .filter((v) => !catalogRegistrations.has(v.regNo) && v.status !== "removed" && v.status !== "disabled")
+        .forEach((v) => catalog.push(v));
 
-    window.fleetVehicles = catalog.filter((vehicle) => !vehicle.removed);
+      window.fleetVehicles = catalog.filter((vehicle) => !vehicle.removed);
+    }
   } catch (error) {
-    console.warn("Could not load fleet availability overrides:", error);
+    console.warn("Could not load MySQL fleet overrides:", error);
   }
 }
 

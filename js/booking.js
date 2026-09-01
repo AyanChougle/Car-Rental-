@@ -2,16 +2,9 @@
 // KRUIZLY — BOOKING PAGE
 // ============================================================
 
-import { auth, db } from "./firebase-init.js";
+import { auth } from "./firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
-import {
-  doc,
-  getDoc,
-  collection,
-  setDoc,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
-
+import { api } from "./kruizly-api.js";
 import "./nav-helper.js";
 import { generateNumericBookingId } from "./booking-reference.js";
 import {
@@ -511,18 +504,15 @@ function initBooking(vehicle) {
     if (statusEl) statusEl.textContent = "";
 
     try {
-      const vehicleOverride = await getDoc(doc(db, "vehicles", vehicle.regNo));
-      if (
-        vehicleOverride.exists() &&
-        vehicleOverride.data().available === false
-      ) {
+      const vRes = await api.get(`/vehicles/${vehicle.regNo}`).catch(() => null);
+      if (vRes?.vehicle && (vRes.vehicle.available === 0 || vRes.vehicle.available === false)) {
         throw new Error(
           "This vehicle was just marked unavailable. Please choose another car.",
         );
       }
 
-      const userSnapshot = await getDoc(doc(db, "users", user.uid));
-      const userData = userSnapshot.exists() ? userSnapshot.data() : {};
+      const uRes = await api.get("/users/me").catch(() => null);
+      const userData = uRes?.user || {};
 
       if (userData.licenseStatus !== "verified" && licenseNote) {
         licenseNote.innerHTML =
@@ -589,18 +579,17 @@ function initBooking(vehicle) {
     try {
       let userData = {};
       try {
-        const userSnapshot = await getDoc(doc(db, "users", currentUser.uid));
-        if (userSnapshot.exists()) userData = userSnapshot.data();
+        const uRes = await api.get("/users/me").catch(() => null);
+        if (uRes?.user) userData = uRes.user;
       } catch (uErr) {
-        console.warn("Could not read user profile doc:", uErr);
+        console.warn("Could not read user profile:", uErr);
       }
 
       const numericBookingId = generateNumericBookingId();
-      const bookingRef = doc(collection(db, "bookings"), numericBookingId);
 
       const bookingRecord = {
-        bookingId: bookingRef.id,
-        bookingNumber: bookingRef.id,
+        bookingId: numericBookingId,
+        bookingNumber: numericBookingId,
         userId: currentUser.uid,
         userName:
           userData.name || currentUser.displayName || currentUser.email || "",

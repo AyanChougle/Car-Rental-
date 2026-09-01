@@ -1,14 +1,7 @@
-import { auth, db } from "./firebase-init.js";
+import { auth } from "./firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
+import { api } from "./kruizly-api.js";
 import "./nav-helper.js";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  doc,
-  updateDoc,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 
 import {
   calculateDuration,
@@ -48,6 +41,8 @@ function paymentStatusLabel(booking) {
       return "Pay at pickup";
     case "pending_verification":
       return `Verifying payment • ${booking.paymentRef || ""}`;
+    case "refunded":
+      return `Refunded • Booking cancelled`;
     case "rejected":
       return `Payment rejected${booking.paymentRejectionReason ? ` — ${booking.paymentRejectionReason}` : ""}. Please resubmit.`;
     default:
@@ -58,82 +53,52 @@ function paymentStatusLabel(booking) {
 const liveEl = document.getElementById("liveBookings");
 const pastEl = document.getElementById("pastBookings");
 
-function bookingCard(booking, isLive) {
-  const info = STATUS_COPY[booking.status] || {
-    label: booking.status,
+function bookingCard(b, isLive) {
+  const statusInfo = STATUS_COPY[b.status] || {
+    label: b.status,
     className: "",
   };
-  const vehicle = (window.fleetVehicles || []).find(
-    (v) => v.regNo === booking.vehicleReg,
-  );
-  const imgPath =
-    vehicle && window.fleetImagePath ? window.fleetImagePath(vehicle) : "";
+
+  const isPending = b.status === "pending_payment";
+  const vehicleName = b.vehicleName || "KRUIZLY Rental Vehicle";
+  const vehicleCategory = b.vehicleCategory || "Sedan";
 
   let actionsHtml = "";
-  if (isLive && booking.status === "pending_payment") {
-    actionsHtml = `<button class="btn btn-dark booking-pay-btn" data-id="${booking.id}">Complete Payment</button>`;
-  }
-  if (isLive && booking.status === "confirmed") {
-    actionsHtml = `<button class="btn btn-outline booking-cancel-btn" data-id="${booking.id}">Cancel Booking</button>`;
-  }
-  if (!isLive && booking.status !== "cancelled") {
-    actionsHtml = `<a class="btn btn-light" href="booking.html?reg=${encodeURIComponent(booking.vehicleReg)}">Book Again</a>`;
-  }
-
-  const returnInfo = booking.returnInspection;
-  const returnHtml =
-    booking.status === "completed" && returnInfo
-      ? `
-    <div class="card" style="padding: 14px; margin-top: 12px; background: rgba(255,255,255,0.02);">
-      <strong style="font-size: 0.85rem;">Return &amp; Deposit Settlement</strong>
-      ${
-        returnInfo.deductionTotal > 0
-          ? `<ul style="margin: 8px 0; padding-left: 18px; color: var(--sub); font-size: 0.85rem;">
-              ${returnInfo.items
-                .filter((i) => i.checked)
-                .map((i) => `<li>${i.label}: ₹${Math.round(i.amount).toLocaleString("en-IN")}</li>`)
-                .join("")}
-            </ul>`
-          : `<p style="margin: 8px 0; color: var(--sub); font-size: 0.85rem;">No deductions — vehicle returned in good condition.</p>`
-      }
-      ${returnInfo.notes ? `<p style="margin: 8px 0; font-size: 0.85rem;">${returnInfo.notes}</p>` : ""}
-      <div class="booking-summary__row" style="border-top: 1px dashed var(--line); margin-top: 8px; padding-top: 8px;">
-        <span>Deposit Refunded</span>
-        <strong style="color: var(--accent);">₹${Math.round(returnInfo.depositRefund).toLocaleString("en-IN")}</strong>
+  if (isPending) {
+    actionsHtml = `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+        <button class="btn btn-primary booking-pay-btn" data-id="${escapeHtml(b.id || b.bookingId)}">Complete Payment</button>
+        <button class="btn btn-outline booking-cancel-btn" data-id="${escapeHtml(b.id || b.bookingId)}">Cancel Booking</button>
       </div>
-    </div>
-  `
-      : "";
+    `;
+  } else if (isLive && b.status !== "cancelled") {
+    actionsHtml = `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
+        <button class="btn btn-outline booking-cancel-btn" data-id="${escapeHtml(b.id || b.bookingId)}" style="border-color:#ef476f;color:#ef476f;">Cancel Booking</button>
+      </div>
+    `;
+  }
 
   return `
-		<article class="booking-card">
-			<div class="booking-card__image">
-				${imgPath ? `<img src="${imgPath}" alt="${booking.vehicleName}" onload="this.nextElementSibling.style.display='none'" onerror="this.remove()" />` : ""}
-				<span aria-hidden="true"></span>
-			</div>
-			<div class="booking-card__body">
-				<div class="booking-card__top">
-					<h3>${booking.vehicleName}</h3>
-					<span class="fleet-status ${info.className}">${info.label}</span>
-				</div>
-				<div class="booking-card__dates">
-					<span>Pickup: ${formatDate(booking.pickupDate)}</span>
-					<span>Drop: ${formatDate(booking.dropDate)}</span>
-					<span>Duration: ${booking.duration || (booking.days ? `${booking.days} Day${booking.days > 1 ? "s" : ""}` : "1 Day")}${booking.withDriver ? " • With driver" : ""}</span>
-				</div>
-				<div class="booking-card__meta">
-					<span>${booking.location || "Gavson Business Park, Ghansoli"}</span>
-					<span>${paymentStatusLabel(booking)}</span>
-					${booking.couponCode ? `<span style="color:var(--accent,#4fd7ff);font-weight:600;">Coupon: ${escapeHtml(booking.couponCode)} (-₹${formatCurrency(booking.couponDiscount)})</span>` : ""}
-				</div>
-				<div class="booking-card__bottom">
-					<div class="fleet-price">₹${formatCurrency(booking.totalAmount)}</div>
-					<div class="booking-card__actions">${actionsHtml}</div>
-				</div>
-				${returnHtml}
-			</div>
-		</article>
-	`;
+    <div class="booking-item-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
+        <div>
+          <span style="font-size:0.8rem;color:var(--kz-sub,#7b8798);text-transform:uppercase;letter-spacing:1px;font-weight:700;">Booking #${escapeHtml(b.bookingNumber || b.bookingId || b.id)}</span>
+          <h3 style="margin:4px 0 0;font-size:1.2rem;color:#fff;">${escapeHtml(vehicleName)} <span style="font-size:0.85rem;color:var(--kz-cyan,#4fd7ff);font-weight:normal;">(${escapeHtml(vehicleCategory)})</span></h3>
+        </div>
+        <span class="status-pill ${statusInfo.className}">${escapeHtml(statusInfo.label)}</span>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;padding:12px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;margin-bottom:12px;font-size:0.9rem;">
+        <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">PICKUP</strong> ${formatDate(b.pickupDate)}</div>
+        <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">DROP</strong> ${formatDate(b.dropDate)}</div>
+        <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">TOTAL</strong> ₹${formatCurrency(b.totalAmount || b.finalAmount || 0)}</div>
+        <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">PAYMENT STATUS</strong> ${paymentStatusLabel(b)}</div>
+      </div>
+
+      ${actionsHtml}
+    </div>
+  `;
 }
 
 function render(liveList, pastList) {
@@ -156,30 +121,32 @@ function render(liveList, pastList) {
 }
 
 async function loadBookings(uid) {
-  const q = query(collection(db, "bookings"), where("userId", "==", uid));
-  const snap = await getDocs(q);
+  try {
+    const res = await api.get("/bookings/my-bookings");
+    const bookings = Array.isArray(res.bookings) ? res.bookings : [];
+    bookings.sort((a, b) => (a.pickupDate < b.pickupDate ? 1 : -1));
 
-  const bookings = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-  bookings.sort((a, b) => (a.pickupDate < b.pickupDate ? 1 : -1));
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const live = [];
+    const past = [];
 
-  const todayISO = new Date().toISOString().slice(0, 10);
-  const live = [];
-  const past = [];
+    bookings.forEach((b) => {
+      const isOngoingOrUpcoming =
+        b.status !== "cancelled" &&
+        b.status !== "completed" &&
+        b.dropDate >= todayISO;
+      if (isOngoingOrUpcoming) {
+        live.push(b);
+      } else {
+        past.push(b);
+      }
+    });
 
-  bookings.forEach((b) => {
-    const isOngoingOrUpcoming =
-      b.status !== "cancelled" &&
-      b.status !== "completed" &&
-      b.dropDate >= todayISO;
-    if (isOngoingOrUpcoming) {
-      live.push(b);
-    } else {
-      past.push(b);
-    }
-  });
-
-  render(live, past);
-  wireActions(bookings);
+    render(live, past);
+    wireActions(bookings);
+  } catch (err) {
+    console.error("Failed to load user bookings:", err);
+  }
 }
 
 function wireActions(bookings) {
@@ -191,16 +158,15 @@ function wireActions(bookings) {
 
   document.querySelectorAll(".booking-cancel-btn").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      if (!window.confirm("Cancel this booking? This can't be undone.")) return;
+      if (!window.confirm("Cancel this booking? This will restore vehicle availability and process applicable refunds.")) return;
       btn.disabled = true;
       btn.textContent = "Cancelling...";
       try {
-        await updateDoc(doc(db, "bookings", btn.dataset.id), {
-          status: "cancelled",
-        });
+        await api.post(`/bookings/${btn.dataset.id}/cancel`);
         const uid = auth.currentUser && auth.currentUser.uid;
         if (uid) loadBookings(uid);
       } catch (error) {
+        alert("Could not cancel booking: " + error.message);
         btn.disabled = false;
         btn.textContent = "Cancel Booking";
       }

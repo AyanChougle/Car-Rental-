@@ -1,1330 +1,302 @@
-// server/routes/media.js
+﻿// server/routes/media.js
+"use strict";
 
 const express = require("express");
 const multer = require("multer");
 const crypto = require("crypto");
 const path = require("path");
 const fs = require("fs");
-const rateLimit = require("express-rate-limit");
 const { fileTypeFromFile } = require("file-type");
-
-const db = require("../db");
-const { requireAuth } = require("../middleware/auth");
+const db = require("../config/database");
+const { requireAuth, requireRole, optionalAuth } = require("../middleware/auth");
 
 const router = express.Router();
 
-const UPLOAD_ROOT =
-  process.env.MEDIA_UPLOAD_DIR ||
-  path.join(__dirname, "..", "uploads");
-
+const UPLOAD_ROOT = process.env.MEDIA_UPLOAD_DIR || path.join(__dirname, "..", "uploads");
 const TEMP_UPLOAD_ROOT = path.join(UPLOAD_ROOT, "_tmp");
 
 fs.mkdirSync(UPLOAD_ROOT, { recursive: true });
 fs.mkdirSync(TEMP_UPLOAD_ROOT, { recursive: true });
 
-console.log(`[media] Upload directory: ${UPLOAD_ROOT}`);
-
-// ------------------------------------------------------------
-// CONFIG
-// ------------------------------------------------------------
-
-const ALLOWED_CATEGORIES = new Set([
-  "profile_photo",
-  "license_doc",
-  "aadhar_doc",
-  "pan_doc",
-  "partner_car_photo",
-  "partner_car_video",
-  "payment_screenshot",
-  "inspection_photo",
-  "personal_media",
-]);
+console.log(`[media] Hostinger Media Storage Root: ${UPLOAD_ROOT}`);
 
 const ALLOWED_MIME = new Map([
-  ["image/jpeg", ["jpg", "jpeg"]],
-  ["image/png", ["png"]],
-  ["image/webp", ["webp"]],
-  ["image/heic", ["heic"]],
-  ["video/mp4", ["mp4"]],
-  ["video/quicktime", ["mov"]],
-  ["video/webm", ["webm"]],
+  ["image/jpeg", "jpg"],
+  ["image/png", "png"],
+  ["image/webp", "webp"],
+  ["image/heic", "heic"],
+  ["application/pdf", "pdf"],
+  ["video/mp4", "mp4"],
+  ["video/quicktime", "mov"],
+  ["video/webm", "webm"]
 ]);
 
-const MAX_FILE_BYTES = 50 * 1024 * 1024;
-const PAYMENT_SCREENSHOT_MAX_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB
 
-// ------------------------------------------------------------
-// HELPERS
-// ------------------------------------------------------------
-
-function safeSegment(value, fallback = "unknown") {
-  const cleaned = String(value ?? "")
-    .trim()
-    .replace(/[^a-zA-Z0-9._-]/g, "_")
-    .replace(/^\.+/, "")
-    .slice(0, 120);
-
-  return cleaned || fallback;
-}
-
-function firstValue(req, keys) {
-  for (const key of keys) {
-    const value = req.body?.[key];
-
-    if (
-      value !== undefined &&
-      value !== null &&
-      String(value).trim()
-    ) {
-      return String(value).trim();
-    }
-
-    const queryValue = req.query?.[key];
-
-    if (
-      queryValue !== undefined &&
-      queryValue !== null &&
-      String(queryValue).trim()
-    ) {
-      return String(queryValue).trim();
-    }
-  }
-
-  return "";
-}
-
-function normalizeDocumentType(category, raw) {
-  const value = String(raw || "")
-    .trim()
-    .toLowerCase();
-
-  const aliases = {
-    license: "license",
-    "driving-license": "license",
-    driving_license: "license",
-    dl: "license",
-    license_doc: "license",
-
-    aadhaar: "aadhaar",
-    aadhar: "aadhaar",
-    aadhaar_doc: "aadhaar",
-    aadhar_doc: "aadhaar",
-
-    pan: "pan",
-    pan_doc: "pan",
-  };
-
-  if (aliases[value]) {
-    return aliases[value];
-  }
-
-  const categoryValue = String(category || "")
-    .trim()
-    .toLowerCase();
-
-  if (categoryValue === "license_doc") {
-    return "license";
-  }
-
-  if (
-    categoryValue === "aadhar_doc" ||
-    categoryValue === "aadhaar_doc"
-  ) {
-    return "aadhaar";
-  }
-
-  if (categoryValue === "pan_doc") {
-    return "pan";
-  }
-
-  return value ? safeSegment(value) : "";
-}
-
-function normalizeSide(raw) {
-  const value = String(raw || "")
-    .trim()
-    .toLowerCase();
-
-  if (value === "front") return "front";
-  if (value === "back") return "back";
-
-  return "";
-}
-
-function isIdentityDocument(category, documentType) {
-  const c = String(category || "").toLowerCase();
-
-  return (
-    [
-      "license_doc",
-      "aadhar_doc",
-      "aadhaar_doc",
-      "pan_doc",
-    ].includes(c) ||
-    ["license", "aadhaar", "pan"].includes(documentType)
-  );
-}
-
-// ------------------------------------------------------------
-// DETERMINE STORAGE
-// ------------------------------------------------------------
-
-function getStorageContext(req) {
-  const category = firstValue(req, ["category"]);
-
-  const bookingId = firstValue(req, [
-    "bookingId",
-    "bookingID",
-  ]);
-
-  const verificationId = firstValue(req, [
-    "verificationId",
-    "verificationID",
-  ]);
-
-  const fleetId = firstValue(req, [
-    "fleetId",
-    "fleetID",
-  ]);
-
-  const documentType = normalizeDocumentType(
-    category,
-    firstValue(req, [
-      "documentType",
-      "document",
-      "docType",
-      "type",
-    ])
-  );
-
-  const side = normalizeSide(
-    firstValue(req, [
-      "side",
-      "documentSide",
-      "document_side",
-    ])
-  );
-
-  const imageType = firstValue(req, [
-    "imageType",
-    "image_type",
-    "photoType",
-  ]);
-
-  const categoryLower = String(category).toLowerCase();
-
-  const identityDocument = isIdentityDocument(
-    category,
-    documentType
-  );
-
-  let storageType = firstValue(req, [
-    "storageType",
-    "storage",
-  ]).toLowerCase();
-
-  // Automatically determine storage type.
-  if (!storageType) {
-    if (fleetId || categoryLower.startsWith("partner_car_")) {
-      storageType = "fleet";
-    } else if (verificationId && identityDocument) {
-      storageType = "verification";
-    } else if (bookingId) {
-      storageType = "booking";
-    } else if (verificationId) {
-      storageType = "verification";
-    } else {
-      storageType = "user";
-    }
-  }
-
-  let root;
-  let relativeDir;
-
-  // ----------------------------------------------------------
-  // BOOKING
-  // ----------------------------------------------------------
-
-  if (storageType === "booking") {
-    if (!bookingId) {
-      throw new Error(
-        "bookingId is required for booking uploads."
-      );
-    }
-
-    root = path.join(
-      UPLOAD_ROOT,
-      "bookings",
-      safeSegment(bookingId),
-      documentType || "documents",
-      side || "files"
-    );
-
-    relativeDir = path.relative(
-      UPLOAD_ROOT,
-      root
-    );
-  }
-
-  // ----------------------------------------------------------
-  const rawUsername =
-    firstValue(req, ["username", "userName", "user_name"]) ||
-    req.user.name ||
-    req.user.displayName ||
-    (req.user.email ? req.user.email.split("@")[0] : null) ||
-    req.user.uid;
-
-  const usernameSlug = safeSegment(rawUsername);
-
-  // ----------------------------------------------------------
-  // VERIFICATION
-  // ----------------------------------------------------------
-
-  if (storageType === "verification" || identityDocument) {
-    const sessionOrUser = verificationId ? safeSegment(verificationId) : usernameSlug;
-    root = path.join(
-      UPLOAD_ROOT,
-      "users",
-      usernameSlug,
-      "verification",
-      documentType || "documents",
-      side || "files"
-    );
-
-    relativeDir = path.relative(
-      UPLOAD_ROOT,
-      root
-    );
-  }
-
-  // ----------------------------------------------------------
-  // FLEET
-  // ----------------------------------------------------------
-
-  else if (storageType === "fleet") {
-    if (!fleetId) {
-      throw new Error(
-        "fleetId is required for fleet uploads."
-      );
-    }
-
-    root = path.join(
-      UPLOAD_ROOT,
-      "fleets",
-      safeSegment(fleetId),
-      safeSegment(imageType || "gallery")
-    );
-
-    relativeDir = path.relative(
-      UPLOAD_ROOT,
-      root
-    );
-  }
-
-  // ----------------------------------------------------------
-  // USER (Personal Media vs General)
-  // ----------------------------------------------------------
-
-  else if (categoryLower === "personal_media") {
-    root = path.join(
-      UPLOAD_ROOT,
-      "users",
-      usernameSlug,
-      "personal_media"
-    );
-
-    relativeDir = path.relative(
-      UPLOAD_ROOT,
-      root
-    );
-  } else {
-    root = path.join(
-      UPLOAD_ROOT,
-      "users",
-      usernameSlug
-    );
-
-    relativeDir = path.relative(
-      UPLOAD_ROOT,
-      root
-    );
-  }
-
-  fs.mkdirSync(root, {
-    recursive: true,
-  });
-
-  return {
-    storageType,
-
-    root,
-
-    username: usernameSlug,
-
-    relativeDir: relativeDir
-      .split(path.sep)
-      .join("/"),
-
-    bookingId: bookingId
-      ? safeSegment(bookingId)
-      : null,
-
-    verificationId: verificationId
-      ? safeSegment(verificationId)
-      : null,
-
-    fleetId: fleetId
-      ? safeSegment(fleetId)
-      : null,
-
-    documentType:
-      documentType || null,
-
-    side:
-      side || null,
-
-    imageType:
-      imageType
-        ? safeSegment(imageType)
-        : null,
-  };
-}
-
-// ------------------------------------------------------------
-// TEMPORARY MULTER STORAGE
-//
-// IMPORTANT:
-// Do NOT determine the final directory here.
-//
-// Multipart form fields may not be available yet.
-// ------------------------------------------------------------
-
-const tempStorage = multer.diskStorage({
-  destination(req, file, cb) {
-    fs.mkdirSync(
-      TEMP_UPLOAD_ROOT,
-      { recursive: true }
-    );
-
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
     cb(null, TEMP_UPLOAD_ROOT);
   },
-
-  filename(req, file, cb) {
-    const ext =
-      path.extname(file.originalname)
-        .toLowerCase();
-
-    const safeExt =
-      ext.length <= 10
-        ? ext
-        : "";
-
-    const name =
-      `${Date.now()}-${crypto
-        .randomBytes(12)
-        .toString("hex")}${safeExt}`;
-
-    cb(null, name);
-  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase().slice(0, 10);
+    const rand = crypto.randomBytes(12).toString("hex");
+    cb(null, `tmp-${rand}${ext}`);
+  }
 });
 
 const upload = multer({
-  storage: tempStorage,
-
-  limits: {
-    fileSize: MAX_FILE_BYTES,
-  },
-
-  fileFilter(req, file, cb) {
-    if (!ALLOWED_MIME.has(file.mimetype)) {
-      return cb(
-        new Error(
-          `Unsupported file type: ${file.mimetype}`
-        )
-      );
-    }
-
-    cb(null, true);
-  },
+  storage,
+  limits: { fileSize: MAX_FILE_SIZE_BYTES }
 });
 
-// ------------------------------------------------------------
-// RATE LIMIT
-// ------------------------------------------------------------
-
-const uploadLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 60,
-
-  standardHeaders: true,
-  legacyHeaders: false,
-
-  message: {
-    error:
-      "Too many uploads. Please slow down and try again shortly.",
-  },
-});
-
-// ------------------------------------------------------------
-// BUILD FINAL FILE NAME
-// ------------------------------------------------------------
-
-function buildFinalFilename(
-  req,
-  file
-) {
-  const ext =
-    path.extname(
-      file.originalname
-    ).toLowerCase();
-
-  const category =
-    String(req.body.category || "")
-      .toLowerCase();
-
-  const documentType =
-    normalizeDocumentType(
-      category,
-      firstValue(req, [
-        "documentType",
-        "document",
-        "docType",
-        "type",
-      ])
-    );
-
-  const side =
-    normalizeSide(
-      firstValue(req, [
-        "side",
-        "documentSide",
-        "document_side",
-      ])
-    );
-
-  let logicalName = "";
-
-  if (
-    documentType &&
-    side
-  ) {
-    logicalName =
-      `${documentType}-${side}`;
-  } else if (documentType) {
-    logicalName =
-      documentType;
-  } else if (
-    category === "profile_photo"
-  ) {
-    logicalName =
-      "profile";
-  } else if (
-    category === "payment_screenshot"
-  ) {
-    logicalName =
-      "payment";
-  } else if (
-    category === "inspection_photo"
-  ) {
-    logicalName =
-      "inspection";
-  } else {
-    const imageType =
-      firstValue(req, [
-        "imageType",
-        "image_type",
-        "photoType",
-      ]);
-
-    logicalName =
-      imageType
-        ? safeSegment(imageType)
-        : "file";
-  }
-
-  return (
-    `${logicalName}-${crypto
-      .randomBytes(8)
-      .toString("hex")}${ext}`
-  );
+function sanitize(val, fallback = "default") {
+  return String(val || "").trim().replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 100) || fallback;
 }
 
-// ------------------------------------------------------------
-// MOVE TEMP FILE
-// ------------------------------------------------------------
-
-async function moveFile(
-  source,
-  destination
-) {
-  await fs.promises.mkdir(
-    path.dirname(destination),
-    {
-      recursive: true,
-    }
-  );
-
-  await fs.promises.rename(
-    source,
-    destination
-  );
-}
-
-// ------------------------------------------------------------
-// POST /api/media/upload
-// ------------------------------------------------------------
-
-router.post(
-  "/upload",
-  requireAuth,
-  uploadLimiter,
-  (req, res) => {
-    upload.single("file")(
-      req,
-      res,
-      async (err) => {
-        if (err) {
-          if (
-            err.code ===
-            "LIMIT_FILE_SIZE"
-          ) {
-            return res.status(413).json({
-              error:
-                "File is too large. Maximum size is 50 MB.",
-            });
-          }
-
-          return res.status(400).json({
-            error: err.message,
-          });
-        }
-
-        if (!req.file) {
-          return res.status(400).json({
-            error: "No file received.",
-          });
-        }
-
-        const tempPath =
-          req.file.path;
-
-        const cleanupTemp = async () => {
-          try {
-            await fs.promises.unlink(
-              tempPath
-            );
-          } catch {}
-        };
-
-        try {
-          // --------------------------------------------------
-          // CATEGORY
-          // --------------------------------------------------
-
-          const category =
-            String(
-              req.body.category || ""
-            ).trim();
-
-          if (
-            !ALLOWED_CATEGORIES.has(
-              category
-            )
-          ) {
-            await cleanupTemp();
-
-            return res.status(400).json({
-              error:
-                "Invalid upload category.",
-            });
-          }
-
-          // --------------------------------------------------
-          // PAYMENT SIZE
-          // --------------------------------------------------
-
-          if (
-            category ===
-              "payment_screenshot" &&
-            req.file.size >
-              PAYMENT_SCREENSHOT_MAX_BYTES
-          ) {
-            await cleanupTemp();
-
-            return res.status(413).json({
-              error:
-                "Payment screenshot must be 5 MB or smaller.",
-            });
-          }
-
-          // --------------------------------------------------
-          // MAGIC BYTE VALIDATION
-          // --------------------------------------------------
-
-          let detected = null;
-
-          try {
-            detected =
-              await fileTypeFromFile(
-                tempPath
-              );
-          } catch {
-            detected = null;
-          }
-
-          const allowedExts =
-            ALLOWED_MIME.get(
-              req.file.mimetype
-            ) || [];
-
-          const contentMatches =
-            detected &&
-            allowedExts.includes(
-              detected.ext
-            );
-
-          if (!contentMatches) {
-            await cleanupTemp();
-
-            return res.status(400).json({
-              error:
-                "File content does not match its declared type.",
-            });
-          }
-
-          // --------------------------------------------------
-          // DETERMINE FINAL STORAGE
-          //
-          // At this point Multer has finished parsing
-          // the multipart request, so req.body is available.
-          // --------------------------------------------------
-
-          const context =
-            getStorageContext(req);
-
-          // --------------------------------------------------
-          // FINAL FILE NAME
-          // --------------------------------------------------
-
-          const finalFilename =
-            buildFinalFilename(
-              req,
-              req.file
-            );
-
-          const finalPath =
-            path.join(
-              context.root,
-              finalFilename
-            );
-
-          // --------------------------------------------------
-          // MOVE TEMP → FINAL
-          // --------------------------------------------------
-
-          await moveFile(
-            tempPath,
-            finalPath
-          );
-
-          const storedName =
-            path
-              .relative(
-                UPLOAD_ROOT,
-                finalPath
-              )
-              .split(path.sep)
-              .join("/");
-
-          // --------------------------------------------------
-          // RELATIONSHIP METADATA
-          // --------------------------------------------------
-
-          const relatedId =
-            typeof req.body.relatedId ===
-              "string" &&
-            req.body.relatedId.trim()
-              ? req.body.relatedId
-                  .trim()
-                  .slice(0, 200)
-              : null;
-
-          const bookingId =
-            context.bookingId;
-
-          const verificationId =
-            context.verificationId;
-
-          const fleetId =
-            context.fleetId;
-
-          const documentType =
-            context.documentType;
-
-          const side =
-            context.side;
-
-          // --------------------------------------------------
-          // DATABASE
-          //
-          // Existing media table is preserved.
-          // related_id continues to work for the frontend.
-          //
-          // Booking/verification information is encoded
-          // into stored_name and relatedId.
-          // --------------------------------------------------
-
-          let result;
-
-          try {
-            result = db
-              .prepare(`
-                INSERT INTO media (
-                  user_id,
-                  category,
-                  related_id,
-                  original_name,
-                  stored_name,
-                  mime_type,
-                  size_bytes,
-                  username,
-                  doc_type,
-                  doc_side
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-              `)
-              .run(
-                req.user.uid,
-                category,
-
-                relatedId ||
-                  bookingId ||
-                  verificationId ||
-                  fleetId ||
-                  null,
-
-                req.file.originalname
-                  .slice(0, 255),
-
-                storedName,
-
-                req.file.mimetype,
-
-                req.file.size,
-
-                context.username || null,
-
-                documentType || null,
-
-                side || null
-              );
-          } catch (dbError) {
-            // Database failed after the file was moved.
-            // Remove the final file so we don't create
-            // orphaned uploads.
-            try {
-              await fs.promises.unlink(
-                finalPath
-              );
-            } catch {}
-
-            throw dbError;
-          }
-
-          const row =
-            db
-              .prepare(
-                "SELECT * FROM media WHERE id = ?"
-              )
-              .get(
-                result.lastInsertRowid
-              );
-
-          // --------------------------------------------------
-          // PHASE 3 — BEST-EFFORT MIRROR TO FIREBASE STORAGE
-          //
-          // Local disk + SQLite already succeeded above and remain
-          // authoritative. This mirrors the same bytes into the target
-          // Firebase Storage layout (Master Plan Section 5) so a future
-          // read-cutover has something to cut over to, and the backfill
-          // script can skip rows that are already synced.
-          //
-          // Deliberately non-fatal: if Storage is unreachable or
-          // misconfigured, the upload the user is waiting on still
-          // succeeds. storage_synced_at stays null and the backfill
-          // script will pick it up later.
-          // --------------------------------------------------
-
-          try {
-            const { uploadLocalFileToStorage } = require(
-              "../services/firebaseStorageSync"
-            );
-
-            const { storagePath, downloadURL } =
-              await uploadLocalFileToStorage({
-                localPath: finalPath,
-                category,
-                context,
-                uid: req.user.uid,
-                filename: finalFilename,
-                contentType: req.file.mimetype,
-              });
-
-            db.prepare(`
-              UPDATE media
-              SET storage_path = ?, storage_url = ?, storage_synced_at = datetime('now')
-              WHERE id = ?
-            `).run(storagePath, downloadURL, row.id);
-
-            row.storage_path = storagePath;
-            row.storage_url = downloadURL;
-          } catch (syncError) {
-            console.warn(
-              "[media upload] Firebase Storage mirror failed (non-fatal, local file is still authoritative):",
-              syncError.message
-            );
-          }
-
-          // --------------------------------------------------
-          // RESPONSE
-          // --------------------------------------------------
-
-          return res.status(201).json({
-            ...toPublicMedia(row),
-
-            storageType:
-              context.storageType,
-
-            bookingId:
-              bookingId || null,
-
-            verificationId:
-              verificationId || null,
-
-            fleetId:
-              fleetId || null,
-
-            documentType:
-              documentType || null,
-
-            side:
-              side || null,
-
-            storagePath:
-              storedName,
-
-            firebaseStoragePath:
-              row.storage_path || null,
-
-            firebaseStorageUrl:
-              row.storage_url || null,
-          });
-        } catch (error) {
-          await cleanupTemp();
-
-          console.error(
-            "[media upload]",
-            error
-          );
-
-          return res.status(500).json({
-            error:
-              error.message ||
-              "Unable to save uploaded file.",
-          });
-        }
-      }
-    );
+/**
+ * POST /api/media/upload
+ * Multi-category file upload storing to Hostinger filesystem & MySQL media table
+ */
+router.post("/upload", requireAuth, upload.single("file"), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: "No file uploaded." });
   }
-);
 
-// ------------------------------------------------------------
-// GET /api/media
-// ------------------------------------------------------------
+  const tempPath = req.file.path;
+  const category = String(req.body.category || "personal_media").toLowerCase();
+  const relatedId = sanitize(req.body.relatedId || req.body.bookingId || req.body.verificationId || req.user.firebaseUid);
+  const docType = req.body.docType || null;
+  const docSide = req.body.docSide || null;
 
-router.get(
-  "/",
-  requireAuth,
-  (req, res) => {
-    const isAdmin =
-      req.user.role === "admin";
+  try {
+    // 1. Verify file MIME type
+    const detected = await fileTypeFromFile(tempPath).catch(() => null);
+    const mime = detected?.mime || req.file.mimetype;
 
-    const isExecutive =
-      req.user.role === "executive";
-
-    const isStaff =
-      isAdmin || isExecutive;
-
-    if (
-      isExecutive &&
-      req.query.userId &&
-      String(req.query.userId) !==
-        req.user.uid &&
-      req.query.category !==
-        "inspection_photo"
-    ) {
-      return res.status(403).json({
-        error:
-          "Executives may only access operational inspection photos.",
-      });
+    if (!ALLOWED_MIME.has(mime) && !mime.startsWith("image/") && mime !== "application/pdf") {
+      try { fs.unlinkSync(tempPath); } catch (_) {}
+      return res.status(400).json({ success: false, error: `Unsupported file format (${mime}).` });
     }
 
-    const targetUser =
-      isStaff &&
-      (req.query.userId || req.query.uid)
-        ? String(req.query.userId || req.query.uid)
-        : isStaff && req.query.allUsers === "true"
-        ? null
-        : req.user.uid;
+    const ext = ALLOWED_MIME.get(mime) || (detected?.ext || "bin");
 
-    let query = `
-      SELECT *
-      FROM media
-      WHERE deleted_at IS NULL
-    `;
-
-    const params = [];
-
-    if (targetUser) {
-      query += " AND user_id = ?";
-      params.push(targetUser);
+    // 2. Determine target subdirectory on Hostinger server
+    let subDir = "personal";
+    if (category.startsWith("license_") || category.startsWith("aadhar_") || category.startsWith("pan_") || category === "verification") {
+      subDir = path.join("verification", relatedId);
+    } else if (category === "payment_screenshot" || category.startsWith("inspection_") || category.startsWith("booking_")) {
+      subDir = path.join("bookings", relatedId);
+    } else if (category.startsWith("vehicle_") || category === "partner_car_photo") {
+      subDir = path.join("vehicles", relatedId);
+    } else {
+      subDir = path.join("users", req.user.firebaseUid);
     }
 
-    if (req.query.username) {
-      query += " AND (username = ? OR user_id = ?)";
-      params.push(String(req.query.username), String(req.query.username));
-    }
+    const targetDir = path.join(UPLOAD_ROOT, subDir);
+    fs.mkdirSync(targetDir, { recursive: true });
 
-    if (req.query.category) {
-      const cat = String(req.query.category).toLowerCase();
-      if (cat === "verification") {
-        query += " AND category IN ('license_doc', 'aadhar_doc', 'aadhaar_doc', 'pan_doc')";
-      } else {
-        query += " AND category = ?";
-        params.push(String(req.query.category));
-      }
-    }
+    const safeStoredName = `${category}-${crypto.randomBytes(8).toString("hex")}.${ext}`;
+    const finalFilePath = path.join(targetDir, safeStoredName);
+    const relativeStoragePath = path.join(subDir, safeStoredName).replace(/\\/g, "/");
 
-    if (req.query.relatedId) {
-      query +=
-        " AND related_id = ?";
+    // 3. Move from temp to final destination
+    fs.renameSync(tempPath, finalFilePath);
 
-      params.push(
-        String(
-          req.query.relatedId
-        )
+    // 4. Look up MySQL user id
+    const [uRows] = await db.query("SELECT id FROM users WHERE firebase_uid = ? LIMIT 1", [req.user.firebaseUid]);
+    const userId = uRows?.[0]?.id || null;
+
+    // 5. Insert record into MySQL media table
+    const [mediaResult] = await db.query(
+      `INSERT INTO media (
+        user_id, firebase_uid, booking_id, verification_id, category,
+        doc_type, doc_side, original_name, stored_name, storage_path,
+        mime_type, size_bytes
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        userId,
+        req.user.firebaseUid,
+        category.includes("booking") || category === "payment_screenshot" ? relatedId : null,
+        category.includes("verification") || category.endsWith("_doc") ? relatedId : null,
+        category,
+        docType,
+        docSide,
+        req.file.originalname.slice(0, 250),
+        safeStoredName,
+        relativeStoragePath,
+        mime,
+        req.file.size
+      ]
+    );
+
+    const mediaId = mediaResult.insertId;
+    const mediaUrl = `/api/media/file/${mediaId}`;
+
+    // 6. Update user metadata if this is a KYC document
+    if (docType && docSide) {
+      const fieldName = `${docType}${docSide.charAt(0).toUpperCase() + docSide.slice(1)}URL`;
+      const [userMeta] = await db.query("SELECT metadata FROM users WHERE firebase_uid = ? LIMIT 1", [req.user.firebaseUid]);
+      let meta = {};
+      try {
+        meta = typeof userMeta?.[0]?.metadata === "string" ? JSON.parse(userMeta[0].metadata) : (userMeta?.[0]?.metadata || {});
+      } catch (_) {}
+      meta[fieldName] = mediaUrl;
+      meta[`${docType}Status`] = "pending";
+
+      await db.query(
+        `UPDATE users SET metadata = ?, ${docType}_status = 'pending', updated_at = CURRENT_TIMESTAMP WHERE firebase_uid = ?`,
+        [JSON.stringify(meta), req.user.firebaseUid]
       );
     }
 
-    query +=
-      " ORDER BY uploaded_at DESC";
-
-    const rows =
-      db
-        .prepare(query)
-        .all(...params);
-
-    res.json(
-      rows.map(toPublicMedia)
-    );
-  }
-);
-
-// ------------------------------------------------------------
-// GET /api/media/file/:id
-// ------------------------------------------------------------
-
-router.get(
-  "/file/:id",
-  requireAuth,
-  (req, res) => {
-    const id =
-      Number(req.params.id);
-
-    if (
-      !Number.isInteger(id)
-    ) {
-      return res.status(400).json({
-        error:
-          "Invalid media ID.",
-      });
-    }
-
-    const row =
-      db
-        .prepare(`
-          SELECT *
-          FROM media
-          WHERE id = ?
-          AND deleted_at IS NULL
-        `)
-        .get(id);
-
-    if (!row) {
-      return res.status(404).json({
-        error:
-          "File not found.",
-      });
-    }
-
-    const isOwner =
-      row.user_id ===
-      req.user.uid;
-
-    const isAdmin =
-      req.user.role === "admin";
-
-    const isExecutiveInspection =
-      req.user.role === "executive" &&
-      row.category ===
-        "inspection_photo";
-
-    if (
-      !isOwner &&
-      !isAdmin &&
-      !isExecutiveInspection
-    ) {
-      return res.status(403).json({
-        error:
-          "You do not have permission to access this file.",
-      });
-    }
-
-    const filePath =
-      resolveStoredFilePath(
-        row
-      );
-
-    if (
-      !fs.existsSync(filePath)
-    ) {
-      return res.status(404).json({
-        error:
-          "File missing on disk.",
-      });
-    }
-
-    res.setHeader(
-      "Content-Type",
-      row.mime_type
-    );
-
-    res.setHeader(
-      "X-Content-Type-Options",
-      "nosniff"
-    );
-
-    const disposition =
-      row.mime_type.startsWith(
-        "image/"
-      )
-        ? "inline"
-        : "attachment";
-
-    res.setHeader(
-      "Content-Disposition",
-      `${disposition}; filename="${sanitizeFilename(
-        row.original_name
-      )}"`
-    );
-
-    fs.createReadStream(
-      filePath
-    ).pipe(res);
-  }
-);
-
-// ------------------------------------------------------------
-// DELETE /api/media/:id
-// ------------------------------------------------------------
-
-router.delete(
-  ["/:id", "/file/:id"],
-  requireAuth,
-  async (req, res) => {
-    const id =
-      Number(req.params.id);
-
-    if (
-      !Number.isInteger(id)
-    ) {
-      return res.status(400).json({
-        error:
-          "Invalid media ID.",
-      });
-    }
-
-    const row =
-      db
-        .prepare(`
-          SELECT *
-          FROM media
-          WHERE id = ?
-          AND deleted_at IS NULL
-        `)
-        .get(id);
-
-    if (!row) {
-      return res.status(404).json({
-        error:
-          "File not found.",
-      });
-    }
-
-    const isOwner =
-      row.user_id ===
-      req.user.uid;
-
-    const isAdmin =
-      req.user.role === "admin";
-
-    const isExecutiveInspection =
-      req.user.role === "executive" &&
-      row.category ===
-        "inspection_photo";
-
-    if (
-      !isOwner &&
-      !isAdmin &&
-      !isExecutiveInspection
-    ) {
-      return res.status(403).json({
-        error:
-          "You do not have permission to delete this file.",
-      });
-    }
-
-    db.prepare(`
-      UPDATE media
-      SET deleted_at = datetime('now')
-      WHERE id = ?
-    `).run(row.id);
-
-    const filePath =
-      resolveStoredFilePath(
-        row
-      );
-
-    fs.unlink(
-      filePath,
-      () => {}
-    );
-
-    res.json({
+    res.status(201).json({
       success: true,
+      message: "File uploaded successfully.",
+      mediaId,
+      mediaIdStr: `media_${Date.now()}`,
+      url: mediaUrl,
+      mediaUrl,
+      downloadUrl: mediaUrl,
+      fileName: safeStoredName,
+      originalName: req.file.originalname,
+      mimeType: mime,
+      sizeBytes: req.file.size
     });
+  } catch (err) {
+    try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch (_) {}
+    console.error("[POST /api/media/upload error]", err);
+    res.status(500).json({ success: false, error: "Failed to upload file." });
   }
-);
+});
 
-// ------------------------------------------------------------
-// RESOLVE STORED FILE
-// ------------------------------------------------------------
+/**
+ * GET /api/media/file/:mediaId
+ * Stream authenticated media file safely
+ */
+router.get("/file/:mediaId", optionalAuth, async (req, res) => {
+  const mediaId = req.params.mediaId;
 
-function resolveStoredFilePath(
-  row
-) {
-  const stored =
-    String(
-      row.stored_name || ""
-    );
+  try {
+    const isNum = /^\d+$/.test(mediaId);
+    const sql = isNum
+      ? "SELECT * FROM media WHERE id = ? LIMIT 1"
+      : "SELECT * FROM media WHERE stored_name = ? OR booking_id = ? LIMIT 1";
 
-  const root =
-    path.resolve(
-      UPLOAD_ROOT
-    );
+    const rows = await db.query(sql, [mediaId]);
 
-  if (
-    stored.includes("/") ||
-    stored.includes("\\")
-  ) {
-    const candidate =
-      path.resolve(
-        UPLOAD_ROOT,
-        stored
-      );
-
-    if (
-      candidate !== root &&
-      candidate.startsWith(
-        root + path.sep
-      )
-    ) {
-      return candidate;
+    if (!rows.length) {
+      return res.status(404).json({ success: false, error: "Media file not found." });
     }
+
+    const record = rows[0];
+    const absPath = path.isAbsolute(record.storage_path)
+      ? record.storage_path
+      : path.join(UPLOAD_ROOT, record.storage_path);
+
+    if (!fs.existsSync(absPath)) {
+      return res.status(404).json({ success: false, error: "File not found on storage server." });
+    }
+
+    res.setHeader("Content-Type", record.mime_type || "application/octet-stream");
+    res.setHeader("Content-Disposition", `inline; filename="${record.original_name || record.stored_name}"`);
+    res.setHeader("Cache-Control", "public, max-age=86400");
+
+    const stream = fs.createReadStream(absPath);
+    stream.pipe(res);
+  } catch (err) {
+    console.error("[GET /api/media/file/:mediaId error]", err);
+    res.status(500).json({ success: false, error: "Failed to stream media file." });
   }
+});
 
-  // Legacy format:
-  // uploads/{userId}/{filename}
-  return path.join(
-    UPLOAD_ROOT,
-    row.user_id,
-    stored
-  );
-}
+/**
+ * GET /api/media/my-media
+ * List files uploaded by current user
+ */
+router.get("/my-media", requireAuth, async (req, res) => {
+  try {
+    const rows = await db.query(
+      `SELECT id, category, doc_type, doc_side, original_name, stored_name,
+              mime_type, size_bytes, created_at
+       FROM media
+       WHERE firebase_uid = ? AND deleted_at IS NULL
+       ORDER BY created_at DESC`,
+      [req.user.firebaseUid]
+    );
 
-// ------------------------------------------------------------
-// SANITIZE DOWNLOAD NAME
-// ------------------------------------------------------------
+    const items = rows.map((r) => ({
+      id: r.id,
+      category: r.category,
+      docType: r.doc_type,
+      docSide: r.doc_side,
+      originalName: r.original_name,
+      storedName: r.stored_name,
+      mimeType: r.mime_type,
+      sizeBytes: r.size_bytes,
+      url: `/api/media/file/${r.id}`,
+      createdAt: r.created_at
+    }));
 
-function sanitizeFilename(
-  filename
-) {
-  return String(filename)
-    .replace(
-      /[\r\n"]/g,
-      ""
-    )
-    .replace(
-      /[^\w.\- ]/g,
-      "_"
-    )
-    .slice(0, 120);
-}
+    res.json({ success: true, count: items.length, media: items });
+  } catch (err) {
+    console.error("[GET /api/media/my-media error]", err);
+    res.status(500).json({ success: false, error: "Failed to fetch user media." });
+  }
+});
 
-// ------------------------------------------------------------
-// PUBLIC MEDIA RESPONSE
-// ------------------------------------------------------------
+/**
+ * DELETE /api/media/:mediaId
+ * Delete user's media file
+ */
+router.delete("/:mediaId", requireAuth, async (req, res) => {
+  const mediaId = req.params.mediaId;
 
-function toPublicMedia(row) {
-  return {
-    id: row.id,
+  try {
+    const [rows] = await db.query(
+      "SELECT * FROM media WHERE id = ? LIMIT 1",
+      [mediaId]
+    );
 
-    userId:
-      row.user_id,
+    if (!rows.length) {
+      return res.status(404).json({ success: false, error: "Media not found." });
+    }
 
-    username:
-      row.username || null,
+    const item = rows[0];
+    const isStaff = ["admin", "manager"].includes(req.user.role);
+    if (!isStaff && item.firebase_uid !== req.user.firebaseUid) {
+      return res.status(403).json({ success: false, error: "Access denied." });
+    }
 
-    docType:
-      row.doc_type || null,
+    // Soft-delete or remove file
+    const absPath = path.isAbsolute(item.storage_path) ? item.storage_path : path.join(UPLOAD_ROOT, item.storage_path);
+    try { if (fs.existsSync(absPath)) fs.unlinkSync(absPath); } catch (_) {}
 
-    docSide:
-      row.doc_side || null,
+    await db.query("DELETE FROM media WHERE id = ?", [mediaId]);
 
-    category:
-      row.category,
+    // If it was a KYC document, reset user's document status
+    if (item.doc_type) {
+      const docType = item.doc_type;
+      const [uMeta] = await db.query("SELECT metadata FROM users WHERE firebase_uid = ? LIMIT 1", [item.firebase_uid]);
+      let meta = {};
+      try {
+        meta = typeof uMeta?.[0]?.metadata === "string" ? JSON.parse(uMeta[0].metadata) : (uMeta?.[0]?.metadata || {});
+      } catch (_) {}
 
-    relatedId:
-      row.related_id,
+      delete meta[`${docType}URL`];
+      delete meta[`${docType}FrontURL`];
+      delete meta[`${docType}BackURL`];
 
-    originalName:
-      row.original_name,
+      await db.query(
+        `UPDATE users SET metadata = ?, ${docType}_status = 'not_submitted', updated_at = CURRENT_TIMESTAMP WHERE firebase_uid = ?`,
+        [JSON.stringify(meta), item.firebase_uid]
+      );
+    }
 
-    mimeType:
-      row.mime_type,
-
-    sizeBytes:
-      row.size_bytes,
-
-    uploadedAt:
-      row.uploaded_at,
-
-    url:
-      `/api/media/file/${row.id}`,
-
-    storagePath:
-      row.stored_name,
-  };
-}
+    res.json({ success: true, message: "Media file deleted successfully." });
+  } catch (err) {
+    console.error("[DELETE /api/media/:mediaId error]", err);
+    res.status(500).json({ success: false, error: "Failed to delete media." });
+  }
+});
 
 module.exports = router;
