@@ -211,7 +211,7 @@ function withTimeout(promise, milliseconds = 10000) {
 /*
    Uploads a document to:
 
-   POST http://localhost:4001/api/media/upload
+ *   POST /api/media/upload
 
    The Firebase ID token proves who the user is.
 */
