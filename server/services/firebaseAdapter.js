@@ -1,1 +1,12 @@
-const firebaseAdmin=require('../firebaseAdmin');function resolveDb(){if(typeof firebaseAdmin.getDb==='function')return firebaseAdmin.getDb();if(firebaseAdmin.db)return firebaseAdmin.db;if(firebaseAdmin.firestoreDb)return firebaseAdmin.firestoreDb;if(typeof firebaseAdmin.firestore==='function')return firebaseAdmin.firestore();throw new Error('Update firebaseAdapter.js to match your firebaseAdmin.js export.')}module.exports={resolveDb};
+const firebaseAdmin = require("../firebaseAdmin");
+function resolveDb() {
+  if (typeof firebaseAdmin.getDb === "function") return firebaseAdmin.getDb();
+  if (firebaseAdmin.db) return firebaseAdmin.db;
+  if (firebaseAdmin.firestoreDb) return firebaseAdmin.firestoreDb;
+  if (typeof firebaseAdmin.firestore === "function")
+    return firebaseAdmin.firestore();
+  throw new Error(
+    "Update firebaseAdapter.js to match your firebaseAdmin.js export.",
+  );
+}
+module.exports = { resolveDb };

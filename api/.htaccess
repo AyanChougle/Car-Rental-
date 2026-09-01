@@ -1,0 +1,75 @@
+﻿# KRUIZLY API Routing & Security
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /api/
+
+    # Direct existing PHP files
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Health check
+    RewriteRule ^health/?$ health.php [L,QSA]
+
+    # Auth
+    RewriteRule ^auth/me/?$ auth/me.php [L,QSA]
+
+    # Users
+    RewriteRule ^users/me/?$ users/me.php [L,QSA]
+    RewriteRule ^users/sync/?$ users/sync.php [L,QSA]
+    RewriteRule ^users/partner-cars/?$ users/partner-cars.php [L,QSA]
+    RewriteRule ^users/partner-cars/([^/]+)/status/?$ users/partner-cars.php?id=$1 [L,QSA]
+    RewriteRule ^users/([^/]+)/role/?$ users/role.php?uid=$1 [L,QSA]
+    RewriteRule ^users/?$ users/index.php [L,QSA]
+
+    # Vehicles
+    RewriteRule ^vehicles/([^/]+)/?$ vehicles/detail.php?regNo=$1 [L,QSA]
+    RewriteRule ^vehicles/?$ vehicles/index.php [L,QSA]
+
+    # Bookings
+    RewriteRule ^bookings/my-bookings/?$ bookings/my-bookings.php [L,QSA]
+    RewriteRule ^bookings/([^/]+)/cancel/?$ bookings/cancel.php?id=$1 [L,QSA]
+    RewriteRule ^bookings/([^/]+)/?$ bookings/detail.php?id=$1 [L,QSA]
+    RewriteRule ^bookings/?$ bookings/index.php [L,QSA]
+
+    # Coupons
+    RewriteRule ^coupons/validate/?$ coupons/validate.php [L,QSA]
+    RewriteRule ^coupons/([^/]+)/?$ coupons/detail.php?code=$1 [L,QSA]
+    RewriteRule ^coupons/?$ coupons/index.php [L,QSA]
+
+    # Payments
+    RewriteRule ^payments/submit/?$ payments/submit.php [L,QSA]
+    RewriteRule ^payments/([^/]+)/verify/?$ payments/verify.php?id=$1 [L,QSA]
+    RewriteRule ^payments/?$ payments/index.php [L,QSA]
+
+    # Verification
+    RewriteRule ^verification/me/?$ verification/me.php [L,QSA]
+    RewriteRule ^verification/submit/?$ verification/submit.php [L,QSA]
+    RewriteRule ^verification/user/([^/]+)/status/?$ verification/user-status.php?uid=$1 [L,QSA]
+    RewriteRule ^verification/([^/]+)/review/?$ verification/user-status.php?id=$1 [L,QSA]
+    RewriteRule ^verification/?$ verification/index.php [L,QSA]
+
+    # Media
+    RewriteRule ^media/upload/?$ media/upload.php [L,QSA]
+    RewriteRule ^media/file/([^/]+)/?$ media/file.php?id=$1 [L,QSA]
+    RewriteRule ^media/my-media/?$ media/my-media.php [L,QSA]
+    RewriteRule ^media/([^/]+)/?$ media/delete.php?id=$1 [L,QSA]
+
+    # Invoices
+    RewriteRule ^invoice/([^/]+)/pdf/?$ invoices/pdf.php?bookingId=$1 [L,QSA]
+    RewriteRule ^invoice/([^/]+)/send/?$ invoices/send.php?bookingId=$1 [L,QSA]
+    RewriteRule ^invoice/([^/]+)/?$ invoices/get.php?bookingId=$1 [L,QSA]
+    RewriteRule ^invoices/([^/]+)/pdf/?$ invoices/pdf.php?bookingId=$1 [L,QSA]
+    RewriteRule ^invoices/([^/]+)/send/?$ invoices/send.php?bookingId=$1 [L,QSA]
+    RewriteRule ^invoices/([^/]+)/?$ invoices/get.php?bookingId=$1 [L,QSA]
+
+    # Admin Export
+    RewriteRule ^admin/export/excel/?$ admin/export.php [L,QSA]
+</IfModule>
+
+# Security: Deny direct access to config and services files
+<FilesMatch "(?i)\.(inc|json|lock|env|md|sql|log)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+Options -Indexes

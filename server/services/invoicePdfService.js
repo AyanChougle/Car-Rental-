@@ -7,13 +7,15 @@ const path = require("path");
 const puppeteer = require("puppeteer");
 const { buildInvoiceHtml } = require("../templates/invoiceHtml");
 
-const UPLOAD_ROOT = process.env.MEDIA_UPLOAD_DIR || path.join(__dirname, "..", "uploads");
+const UPLOAD_ROOT =
+  process.env.MEDIA_UPLOAD_DIR || path.join(__dirname, "..", "uploads");
 const INVOICE_DIR = path.join(UPLOAD_ROOT, "invoices");
 
 let browser;
 
 function findChromePath() {
-  if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
+  if (process.env.PUPPETEER_EXECUTABLE_PATH)
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
   const candidates = [
     "/usr/bin/chromium",
     "/usr/bin/chromium-browser",
@@ -22,7 +24,9 @@ function findChromePath() {
     "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
     "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
     "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe",
-    process.env.LOCALAPPDATA ? `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe` : null
+    process.env.LOCALAPPDATA
+      ? `${process.env.LOCALAPPDATA}\\Google\\Chrome\\Application\\chrome.exe`
+      : null,
   ].filter(Boolean);
 
   for (const p of candidates) {
@@ -43,8 +47,8 @@ async function getBrowser() {
         "--disable-gpu",
         "--no-first-run",
         "--no-zygote",
-        "--single-process"
-      ]
+        "--single-process",
+      ],
     };
     if (executablePath) launchOptions.executablePath = executablePath;
     browser = await puppeteer.launch(launchOptions);
@@ -53,7 +57,10 @@ async function getBrowser() {
 }
 
 async function generateInvoicePdf(invoice) {
-  const invFolder = path.join(INVOICE_DIR, String(invoice.invoiceId || invoice.invoiceNumber));
+  const invFolder = path.join(
+    INVOICE_DIR,
+    String(invoice.invoiceId || invoice.invoiceNumber),
+  );
   await fs.mkdir(invFolder, { recursive: true });
 
   const b = await getBrowser();
@@ -62,12 +69,14 @@ async function generateInvoicePdf(invoice) {
   const filePath = path.join(invFolder, fileName);
 
   try {
-    await p.setContent(buildInvoiceHtml(invoice), { waitUntil: "networkidle0" });
+    await p.setContent(buildInvoiceHtml(invoice), {
+      waitUntil: "networkidle0",
+    });
     await p.pdf({
       path: filePath,
       format: "A4",
       printBackground: true,
-      margin: { top: "14mm", right: "12mm", bottom: "16mm", left: "12mm" }
+      margin: { top: "14mm", right: "12mm", bottom: "16mm", left: "12mm" },
     });
   } finally {
     await p.close();

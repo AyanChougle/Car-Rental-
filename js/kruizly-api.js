@@ -1,4 +1,4 @@
-﻿/**
+/**
  * js/kruizly-api.js
  * 
  * Unified HTTP API client for KRUIZLY backend.
@@ -7,13 +7,7 @@
 
 import { auth } from "./firebase-init.js";
 
-const isLocal =
-  window.location.hostname === "localhost" ||
-  window.location.hostname === "127.0.0.1";
-
-export const API_BASE_URL = isLocal
-  ? "http://localhost:4001/api"
-  : `${window.location.origin}/api`;
+export const API_BASE_URL = window.__KRUIZLY_API_URL__ || `${window.location.origin}/api`;
 
 async function getAuthHeader() {
   if (auth && auth.currentUser) {

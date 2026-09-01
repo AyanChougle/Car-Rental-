@@ -9,8 +9,17 @@ const numberValue = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0);
 
 function totals(charges = {}, taxRate = 0) {
   const base = [
-    "rental", "driver", "delivery", "protection", "extraKm", "lateFee",
-    "fuel", "cleaning", "damage", "toll", "other"
+    "rental",
+    "driver",
+    "delivery",
+    "protection",
+    "extraKm",
+    "lateFee",
+    "fuel",
+    "cleaning",
+    "damage",
+    "toll",
+    "other",
   ].reduce((sum, key) => sum + numberValue(charges[key]), 0);
 
   const subtotal = Math.max(0, base - numberValue(charges.discount));
@@ -22,7 +31,7 @@ async function nextInvoiceNumber(type = "BOOKING") {
   const year = new Date().getFullYear();
   const [rows] = await db.query(
     "SELECT COUNT(*) as count FROM invoices WHERE type = ?",
-    [type]
+    [type],
   );
   const count = (rows[0]?.count || 0) + 1;
   return `KRZ-${type === "FINAL" ? "FINV" : "INV"}-${year}-${String(count).padStart(6, "0")}`;
@@ -33,7 +42,7 @@ function customer(b) {
     name: b.user_name || b.userName || b.customerName || "Customer",
     email: b.user_email || b.userEmail || b.customerEmail || "",
     phone: b.user_phone || b.userPhone || b.customerPhone || "",
-    address: b.pickup_location || ""
+    address: b.pickup_location || "",
   };
 }
 
@@ -46,12 +55,13 @@ function vehicle(b) {
     vehicleId: b.car_id || b.vehicle_reg || "",
     name: b.vehicle_name || b.vehicleName || "KRUIZLY Vehicle",
     registration: reg,
-    category: b.vehicle_category || b.vehicleCategory || ""
+    category: b.vehicle_category || b.vehicleCategory || "",
   };
 }
 
 function shortBookingId(rawId, b = {}) {
-  if (b.booking_number || b.bookingNumber) return String(b.booking_number || b.bookingNumber);
+  if (b.booking_number || b.bookingNumber)
+    return String(b.booking_number || b.bookingNumber);
   const str = String(rawId || b.id || "");
   if (/^\d{6,10}$/.test(str)) return str;
   return str.length > 8 ? str.slice(-8).toUpperCase() : str;
@@ -60,17 +70,21 @@ function shortBookingId(rawId, b = {}) {
 async function createBookingInvoice(bookingId) {
   const value = String(bookingId || "").trim();
   if (!value) {
-    throw Object.assign(new Error("Booking ID is required"), { statusCode: 400 });
+    throw Object.assign(new Error("Booking ID is required"), {
+      statusCode: 400,
+    });
   }
 
   // 1. Fetch booking from MySQL
   const [bookingRows] = await db.query(
     "SELECT * FROM bookings WHERE booking_id = ? OR booking_number = ? LIMIT 1",
-    [value, value]
+    [value, value],
   );
 
   if (!bookingRows.length) {
-    throw Object.assign(new Error(`Booking not found: ${value}`), { statusCode: 404 });
+    throw Object.assign(new Error(`Booking not found: ${value}`), {
+      statusCode: 404,
+    });
   }
 
   const booking = bookingRows[0];
@@ -78,7 +92,7 @@ async function createBookingInvoice(bookingId) {
   // 2. Check if invoice already exists
   const [existing] = await db.query(
     "SELECT * FROM invoices WHERE booking_id = ? OR raw_booking_id = ? LIMIT 1",
-    [booking.booking_id, value]
+    [booking.booking_id, value],
   );
 
   if (existing.length > 0) {
@@ -87,35 +101,51 @@ async function createBookingInvoice(bookingId) {
       ...inv,
       invoiceId: inv.invoice_id,
       invoiceNumber: inv.invoice_number,
-      customer: typeof inv.customer === "string" ? JSON.parse(inv.customer) : inv.customer,
-      vehicle: typeof inv.vehicle === "string" ? JSON.parse(inv.vehicle) : inv.vehicle,
-      rental: typeof inv.rental === "string" ? JSON.parse(inv.rental) : inv.rental,
-      charges: typeof inv.charges === "string" ? JSON.parse(inv.charges) : inv.charges,
-      securityDeposit: typeof inv.security_deposit === "string" ? JSON.parse(inv.security_deposit) : inv.security_deposit,
+      customer:
+        typeof inv.customer === "string"
+          ? JSON.parse(inv.customer)
+          : inv.customer,
+      vehicle:
+        typeof inv.vehicle === "string" ? JSON.parse(inv.vehicle) : inv.vehicle,
+      rental:
+        typeof inv.rental === "string" ? JSON.parse(inv.rental) : inv.rental,
+      charges:
+        typeof inv.charges === "string" ? JSON.parse(inv.charges) : inv.charges,
+      securityDeposit:
+        typeof inv.security_deposit === "string"
+          ? JSON.parse(inv.security_deposit)
+          : inv.security_deposit,
       pdf: { fileName: inv.pdf_filename, filePath: inv.pdf_path },
-      email: { recipient: inv.email_recipient, status: inv.email_status }
+      email: { recipient: inv.email_recipient, status: inv.email_status },
     };
   }
 
   // 3. Build charges & totals
   let returnInspection = {};
   try {
-    returnInspection = typeof booking.return_inspection === "string" ? JSON.parse(booking.return_inspection) : (booking.return_inspection || {});
+    returnInspection =
+      typeof booking.return_inspection === "string"
+        ? JSON.parse(booking.return_inspection)
+        : booking.return_inspection || {};
   } catch (_) {}
 
   const rawItems = Array.isArray(returnInspection.items)
     ? returnInspection.items
-    : (Array.isArray(returnInspection.deductions) ? returnInspection.deductions : []);
+    : Array.isArray(returnInspection.deductions)
+      ? returnInspection.deductions
+      : [];
 
   const deductionItems = rawItems
     .filter((item) => Number(item?.amount || item?.cost || 0) > 0)
     .map((item) => ({
       name: item.name || item.title || "Inspection Deduction",
       amount: Number(item.amount || item.cost || 0),
-      reason: item.description || item.reason || "Assessed on Return"
+      reason: item.description || item.reason || "Assessed on Return",
     }));
 
-  const totalDeduct = deductionItems.reduce((sum, x) => sum + x.amount, 0) || Number(returnInspection.totalDeductions || 0);
+  const totalDeduct =
+    deductionItems.reduce((sum, x) => sum + x.amount, 0) ||
+    Number(returnInspection.totalDeductions || 0);
   const secDeposit = numberValue(booking.security_deposit);
   const refundAmount = Math.max(0, secDeposit - totalDeduct);
 
@@ -125,13 +155,24 @@ async function createBookingInvoice(bookingId) {
     delivery: numberValue(booking.delivery_fee),
     protection: numberValue(booking.insurance_fee),
     discount: numberValue(booking.coupon_discount),
-    extraKm: 0, lateFee: 0, fuel: 0, cleaning: 0, damage: totalDeduct, toll: 0, other: 0
+    extraKm: 0,
+    lateFee: 0,
+    fuel: 0,
+    cleaning: 0,
+    damage: totalDeduct,
+    toll: 0,
+    other: 0,
   };
 
   const taxRate = 0;
   const summary = totals(charges, taxRate);
-  const isAdvance = booking.payment_plan === "advance" && booking.payment_status !== "paid" && !booking.pickup_payment_collected;
-  const amountPaid = isAdvance ? numberValue(booking.advance_amount || booking.payment_amount_paid) : summary.total;
+  const isAdvance =
+    booking.payment_plan === "advance" &&
+    booking.payment_status !== "paid" &&
+    !booking.pickup_payment_collected;
+  const amountPaid = isAdvance
+    ? numberValue(booking.advance_amount || booking.payment_amount_paid)
+    : summary.total;
   const balanceDue = Math.max(0, summary.total - amountPaid);
 
   const invoiceId = crypto.randomUUID();
@@ -153,7 +194,7 @@ async function createBookingInvoice(bookingId) {
     rental: {
       pickupDate: booking.pickup_date,
       returnDate: booking.drop_date,
-      duration: booking.duration || `${booking.days || 1} Day(s)`
+      duration: booking.duration || `${booking.days || 1} Day(s)`,
     },
     charges,
     taxRate,
@@ -169,16 +210,20 @@ async function createBookingInvoice(bookingId) {
       deducted: totalDeduct,
       refunded: refundAmount,
       status: totalDeduct > 0 ? "PARTIALLY_REFUNDED" : "HELD",
-      deductions: deductionItems
+      deductions: deductionItems,
     },
     notes: "",
     emailRecipient: customer(booking).email || null,
-    emailStatus: "PENDING"
+    emailStatus: "PENDING",
   };
 
   // 4. Generate PDF
   const pdf = await generateInvoicePdf(invoiceObj);
-  invoiceObj.pdf = { fileName: pdf.fileName, filePath: pdf.filePath, generatedAt: new Date().toISOString() };
+  invoiceObj.pdf = {
+    fileName: pdf.fileName,
+    filePath: pdf.filePath,
+    generatedAt: new Date().toISOString(),
+  };
 
   // 5. Save to MySQL
   await db.query(
@@ -190,30 +235,58 @@ async function createBookingInvoice(bookingId) {
       pdf_generated_at, email_recipient, email_status
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      invoiceId, invoiceNumber, booking.booking_id, value, booking.user_id, booking.firebase_uid,
-      "BOOKING", invoiceObj.status, "INR", JSON.stringify(invoiceObj.customer), JSON.stringify(invoiceObj.vehicle),
-      JSON.stringify(invoiceObj.rental), JSON.stringify(charges), taxRate, summary.subtotal, summary.tax,
-      summary.total, amountPaid, balanceDue, invoiceObj.paymentPlan, invoiceObj.paymentStatus,
-      invoiceObj.paymentMode, invoiceObj.paymentRef, JSON.stringify(invoiceObj.securityDeposit), "",
-      pdf.fileName, pdf.filePath, new Date().toISOString().slice(0, 19).replace("T", " "),
-      invoiceObj.emailRecipient, "PENDING"
-    ]
+      invoiceId,
+      invoiceNumber,
+      booking.booking_id,
+      value,
+      booking.user_id,
+      booking.firebase_uid,
+      "BOOKING",
+      invoiceObj.status,
+      "INR",
+      JSON.stringify(invoiceObj.customer),
+      JSON.stringify(invoiceObj.vehicle),
+      JSON.stringify(invoiceObj.rental),
+      JSON.stringify(charges),
+      taxRate,
+      summary.subtotal,
+      summary.tax,
+      summary.total,
+      amountPaid,
+      balanceDue,
+      invoiceObj.paymentPlan,
+      invoiceObj.paymentStatus,
+      invoiceObj.paymentMode,
+      invoiceObj.paymentRef,
+      JSON.stringify(invoiceObj.securityDeposit),
+      "",
+      pdf.fileName,
+      pdf.filePath,
+      new Date().toISOString().slice(0, 19).replace("T", " "),
+      invoiceObj.emailRecipient,
+      "PENDING",
+    ],
   );
 
   return invoiceObj;
 }
 
 async function getInvoice(id) {
-  if (!id) throw Object.assign(new Error("Invoice ID is required"), { statusCode: 400 });
+  if (!id)
+    throw Object.assign(new Error("Invoice ID is required"), {
+      statusCode: 400,
+    });
   const value = String(id).trim();
 
   const [rows] = await db.query(
     "SELECT * FROM invoices WHERE invoice_id = ? OR invoice_number = ? OR booking_id = ? LIMIT 1",
-    [value, value, value]
+    [value, value, value],
   );
 
   if (!rows.length) {
-    throw Object.assign(new Error(`Invoice not found for ID: ${value}`), { statusCode: 404 });
+    throw Object.assign(new Error(`Invoice not found for ID: ${value}`), {
+      statusCode: 404,
+    });
   }
 
   const inv = rows[0];
@@ -223,13 +296,31 @@ async function getInvoice(id) {
     invoiceNumber: inv.invoice_number,
     userId: inv.firebase_uid,
     firebaseUid: inv.firebase_uid,
-    customer: typeof inv.customer === "string" ? JSON.parse(inv.customer) : inv.customer,
-    vehicle: typeof inv.vehicle === "string" ? JSON.parse(inv.vehicle) : inv.vehicle,
-    rental: typeof inv.rental === "string" ? JSON.parse(inv.rental) : inv.rental,
-    charges: typeof inv.charges === "string" ? JSON.parse(inv.charges) : inv.charges,
-    securityDeposit: typeof inv.security_deposit === "string" ? JSON.parse(inv.security_deposit) : inv.security_deposit,
-    pdf: { fileName: inv.pdf_filename, filePath: inv.pdf_path, generatedAt: inv.pdf_generated_at },
-    email: { recipient: inv.email_recipient, status: inv.email_status, messageId: inv.email_message_id, sentAt: inv.email_sent_at }
+    customer:
+      typeof inv.customer === "string"
+        ? JSON.parse(inv.customer)
+        : inv.customer,
+    vehicle:
+      typeof inv.vehicle === "string" ? JSON.parse(inv.vehicle) : inv.vehicle,
+    rental:
+      typeof inv.rental === "string" ? JSON.parse(inv.rental) : inv.rental,
+    charges:
+      typeof inv.charges === "string" ? JSON.parse(inv.charges) : inv.charges,
+    securityDeposit:
+      typeof inv.security_deposit === "string"
+        ? JSON.parse(inv.security_deposit)
+        : inv.security_deposit,
+    pdf: {
+      fileName: inv.pdf_filename,
+      filePath: inv.pdf_path,
+      generatedAt: inv.pdf_generated_at,
+    },
+    email: {
+      recipient: inv.email_recipient,
+      status: inv.email_status,
+      messageId: inv.email_message_id,
+      sentAt: inv.email_sent_at,
+    },
   };
 }
 
