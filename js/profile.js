@@ -888,24 +888,21 @@ async function renderProfileData(
     data.age || "";
 
 
-  const licenseStatus =
-    String(
-      data.licenseStatus ||
-      "not_submitted"
-    ).toLowerCase();
+  const hasLicense = Boolean(data.licenseFrontURL || data.licenseURL);
+  const hasAadhar = Boolean(data.aadharFrontURL || data.aadharURL);
+  const hasPan = Boolean(data.panFrontURL || data.panURL);
 
+  const licenseStatus = hasLicense
+    ? String(data.licenseStatus || "pending").toLowerCase()
+    : "not_submitted";
 
-  const aadharStatus =
-    String(
-      data.aadharStatus ||
-      "not_submitted"
-    ).toLowerCase();
+  const aadharStatus = hasAadhar
+    ? String(data.aadharStatus || "pending").toLowerCase()
+    : "not_submitted";
 
-  const panStatus =
-    String(
-      data.panStatus ||
-      "not_submitted"
-    ).toLowerCase();
+  const panStatus = hasPan
+    ? String(data.panStatus || "pending").toLowerCase()
+    : "not_submitted";
 
 
   /* ==========================================================

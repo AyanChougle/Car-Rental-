@@ -1919,17 +1919,13 @@ function renderUsersTable(
 
   users.forEach(
     (user) => {
-      const license =
-        user.licenseStatus ||
-        "not_submitted";
+      const hasLicense = Boolean(user.licenseFrontURL || user.licenseURL);
+      const hasAadhaar = Boolean(user.aadharFrontURL || user.aadharURL);
+      const hasPan = Boolean(user.panFrontURL || user.panURL);
 
-      const aadhaar =
-        user.aadharStatus ||
-        "not_submitted";
-
-      const pan =
-        user.panStatus ||
-        "not_submitted";
+      const license = hasLicense ? (user.licenseStatus || "pending") : "not_submitted";
+      const aadhaar = hasAadhaar ? (user.aadharStatus || "pending") : "not_submitted";
+      const pan = hasPan ? (user.panStatus || "pending") : "not_submitted";
 
       html += `
         <tr
