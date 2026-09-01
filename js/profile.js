@@ -30,7 +30,7 @@ import {
    CONFIG
    ============================================================ */
 
-const MEDIA_SERVER_URL = "http://localhost:4001";
+const MEDIA_SERVER_URL = window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__.replace(/\/api$/, '') : window.location.origin;
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 

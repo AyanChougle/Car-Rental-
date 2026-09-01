@@ -2646,7 +2646,7 @@ async function loadBookings() {
     if (isAuthErr) {
       errMsg = "Admin Authentication Required — Please sign in with an Admin account on the Profile page.";
     } else if (isNetworkErr) {
-      errMsg = "Cannot connect to Backend API Server (http://localhost:4001). Please ensure the Node server is running.";
+      errMsg = "Cannot connect to Backend API Server. Please verify the API is reachable.";
     }
 
     if (bookingsTableWrap) {
@@ -5193,7 +5193,7 @@ async function openInvoiceEditorModal(bookingId, triggerBtn) {
   showModal("adminInvoiceModal");
 
   try {
-    const apiBase = window.MEDIA_API_URL || "http://localhost:4001";
+    const apiBase = window.MEDIA_API_URL || (window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__.replace(/\/api$/, '') : window.location.origin);
     const response = await fetch(`${apiBase}/api/invoices/payment-approved/${encodeURIComponent(bookingId)}`, {
       method: "POST",
       headers: {
@@ -5328,7 +5328,7 @@ function initialiseInvoiceEditorModal() {
       try {
         previewBtn.disabled = true;
         previewBtn.textContent = "Generating PDF…";
-        const apiBase = window.MEDIA_API_URL || "http://localhost:4001";
+        const apiBase = window.MEDIA_API_URL || (window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__.replace(/\/api$/, '') : window.location.origin);
 
         // Sync latest form inputs to backend before opening PDF preview
         const rental = Number($("adminInvRental")?.value || 0);
@@ -5442,7 +5442,7 @@ function initialiseInvoiceEditorModal() {
           paymentStatus: isFull ? "paid" : (currentEditingInvoice.paymentStatus || "advance_paid"),
         };
 
-        const apiBase = window.MEDIA_API_URL || "http://localhost:4001";
+        const apiBase = window.MEDIA_API_URL || (window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__.replace(/\/api$/, '') : window.location.origin);
         const res = await fetch(`${apiBase}/api/invoices/${encodeURIComponent(currentEditingInvoice.invoiceId)}`, {
           method: "PUT",
           headers: {
@@ -5521,7 +5521,7 @@ function initialiseInvoiceEditorModal() {
           paymentStatus: isFull ? "paid" : (currentEditingInvoice.paymentStatus || "advance_paid"),
         };
 
-        const apiBase = window.MEDIA_API_URL || "http://localhost:4001";
+        const apiBase = window.MEDIA_API_URL || (window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__.replace(/\/api$/, '') : window.location.origin);
         await fetch(`${apiBase}/api/invoices/${encodeURIComponent(currentEditingInvoice.invoiceId)}`, {
           method: "PUT",
           headers: {
@@ -6072,7 +6072,7 @@ function updateRevenueStats() {
 // pattern as profile.js's getPrivateMediaBlobUrl().
 // ============================================================================
 
-const MEDIA_SERVER_URL = "http://localhost:4001"; // same server profile.js talks to — point this at your real host before deploying
+const MEDIA_SERVER_URL = window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__.replace(/\/api$/, '') : window.location.origin;
 
 const hostPhotoCache = new Map(); // carId -> loaded [{ id, mimeType, originalName, blobUrl }]
 

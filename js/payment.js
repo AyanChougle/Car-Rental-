@@ -74,7 +74,7 @@ import { recordCouponUsage } from "./coupon-service.js";
 
 const MEDIA_API_URL =
   window.MEDIA_API_URL ||
-  "http://localhost:4001";
+  (window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__.replace(/\/api$/, '') : window.location.origin);
 
 
 // ============================================================
