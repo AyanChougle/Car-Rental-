@@ -2533,16 +2533,6 @@ async function openDocumentModal(
   const reject =
     $("rejectDocBtn");
 
-  if (img) {
-    img.removeAttribute("src");
-    img.style.display = "none";
-  }
-
-  if (backImg) {
-    backImg.removeAttribute("src");
-    backImg.style.display = "none";
-  }
-
   if (frontFigure) frontFigure.style.display = "block";
   if (backFigure) backFigure.style.display = config.requiresBack ? "block" : "none";
   if (previewGrid) {
@@ -2551,22 +2541,35 @@ async function openDocumentModal(
       : "1fr";
   }
 
-  if (approve) {
-    approve.disabled = false;
-  }
-
-  if (reject) {
-    reject.disabled = false;
-  }
-
   showModal(
     "docModal"
   );
 
-  if (!config.front || !img) return;
-
   const targets = [img, backImg];
   let loadedCount = 0;
+
+  const noFrontUploaded = !config.front;
+  const noBackUploaded = config.requiresBack && !config.back;
+
+  if (img) {
+    if (noFrontUploaded) {
+      img.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='260' viewBox='0 0 400 260'%3E%3Crect width='100%25' height='100%25' fill='%23121926' rx='12'/%3E%3Ctext x='50%25' y='50%25' fill='%23ef476f' font-family='sans-serif' font-size='14' font-weight='bold' text-anchor='middle'%3ENo Front Side Uploaded%3C/text%3E%3C/svg%3E`;
+      img.style.display = "block";
+    } else {
+      img.removeAttribute("src");
+      img.style.display = "none";
+    }
+  }
+
+  if (backImg) {
+    if (noBackUploaded) {
+      backImg.src = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='260' viewBox='0 0 400 260'%3E%3Crect width='100%25' height='100%25' fill='%23121926' rx='12'/%3E%3Ctext x='50%25' y='50%25' fill='%23ef476f' font-family='sans-serif' font-size='14' font-weight='bold' text-anchor='middle'%3ENo Back Side Uploaded%3C/text%3E%3C/svg%3E`;
+      backImg.style.display = "block";
+    } else {
+      backImg.removeAttribute("src");
+      backImg.style.display = "none";
+    }
+  }
 
   await Promise.all(urls.map(async (url, index) => {
     if (!url || !targets[index]) return;
@@ -2591,12 +2594,14 @@ async function openDocumentModal(
   }));
 
   const requiredCount = config.requiresBack ? 2 : 1;
-  if (approve) approve.disabled = loadedCount !== requiredCount;
-  if (reject) reject.disabled = loadedCount === 0;
-  if (status) {
-    status.textContent = loadedCount === requiredCount
-      ? "All required sides are loaded and ready for review."
-      : `Missing ${config.requiresBack && !config.back ? "back-side upload" : "required document preview"}. Approval is disabled.`;
+  const hasAllRequiredFiles = !noFrontUploaded && (!config.requiresBack || !noBackUploaded) && loadedCount >= requiredCount;
+
+  if (approve) {
+    approve.disabled = !hasAllRequiredFiles;
+    approve.title = hasAllRequiredFiles ? "Approve document verification" : "Cannot approve verification without required document images.";
+  }
+  if (reject) {
+    reject.disabled = false;
   }
 }
 
