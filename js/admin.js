@@ -2639,24 +2639,31 @@ async function loadBookings() {
   } catch (error) {
     console.error("LOAD BOOKINGS ERROR:", error);
 
-    const isPermErr = error.code === "permission-denied" || (error.message && error.message.includes("permission"));
-    const errMsg = isPermErr
-      ? "Admin Authentication Required — Please sign in with an Admin account on the Profile page to load live Firestore bookings."
-      : error.message;
+    const isAuthErr = error.message && (error.message.includes("401") || error.message.includes("403") || error.message.includes("token") || error.message.includes("access"));
+    const isNetworkErr = error.message && (error.message.includes("Failed to fetch") || error.message.includes("NetworkError") || error.message.includes("connection"));
+    
+    let errMsg = error.message;
+    if (isAuthErr) {
+      errMsg = "Admin Authentication Required — Please sign in with an Admin account on the Profile page.";
+    } else if (isNetworkErr) {
+      errMsg = "Cannot connect to Backend API Server (http://localhost:4001). Please ensure the Node server is running.";
+    }
 
     if (bookingsTableWrap) {
       bookingsTableWrap.innerHTML =
         `<div style="padding:24px;text-align:center;background:rgba(255,92,119,0.06);border:1px solid rgba(255,92,119,0.2);border-radius:14px;margin:10px 0;">
-          <p style="color:#ff5c77;font-weight:700;margin:0 0 6px;">Unable to fetch live bookings</p>
+          <p style="color:#ff5c77;font-weight:700;margin:0 0 6px;">Unable to fetch bookings</p>
           <p style="color:var(--kr-text-secondary);font-size:13px;margin:0 0 14px;">${escapeHtml(errMsg)}</p>
-          ${isPermErr ? `<a href="profile.html" class="btn btn-dark btn-sm" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;">Go to Profile &amp; Sign In</a>` : ""}
+          <a href="profile.html" class="btn btn-dark btn-sm" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;">Go to Profile &amp; Sign In</a>
         </div>`;
     }
 
     if (paymentsTableWrap) {
       paymentsTableWrap.innerHTML =
-        `<div style="padding:24px;text-align:center;color:var(--kr-text-muted);font-size:13px;">
-          Awaiting Admin Authentication to load payment verification queue.
+        `<div style="padding:24px;text-align:center;background:rgba(255,92,119,0.06);border:1px solid rgba(255,92,119,0.2);border-radius:14px;margin:10px 0;">
+          <p style="color:#ff5c77;font-weight:700;margin:0 0 6px;">Unable to fetch payments</p>
+          <p style="color:var(--kr-text-secondary);font-size:13px;margin:0 0 14px;">${escapeHtml(errMsg)}</p>
+          <a href="profile.html" class="btn btn-dark btn-sm" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;">Go to Profile &amp; Sign In</a>
         </div>`;
     }
   }
