@@ -1,4 +1,4 @@
-﻿// server/routes/users.js
+// server/routes/users.js
 "use strict";
 
 const express = require("express");
@@ -226,6 +226,77 @@ router.put("/:uid/role", requireAuth, requireRole("admin"), async (req, res) => 
   } catch (err) {
     console.error("[PUT /api/users/:uid/role error]", err);
     res.status(500).json({ success: false, error: "Failed to update user role." });
+  }
+});
+
+/**
+ * GET /api/users/partner-cars
+ * List all partner/host car listings
+ */
+router.get("/partner-cars", requireAuth, requireRole("admin", "manager"), async (req, res) => {
+  try {
+    const rows = await db.query(
+      `SELECT * FROM partner_cars ORDER BY created_at DESC`
+    );
+
+    const partnerCars = rows.map((c) => {
+      let photos = [];
+      try {
+        photos = typeof c.photos === "string" ? JSON.parse(c.photos) : (c.photos || []);
+      } catch (_) {}
+
+      return {
+        id: c.id,
+        carId: c.car_id,
+        userId: c.firebase_uid,
+        userName: c.user_name,
+        userPhone: c.user_phone,
+        userEmail: c.user_email,
+        brand: c.brand,
+        model: c.model,
+        year: c.year,
+        regNo: c.reg_no,
+        transmission: c.transmission,
+        fuel: c.fuel,
+        city: c.city,
+        expectedPrice: c.expected_price,
+        status: c.status,
+        photos,
+        rejectionReason: c.rejection_reason,
+        createdAt: c.created_at,
+        updatedAt: c.updated_at
+      };
+    });
+
+    res.json({ success: true, count: partnerCars.length, partnerCars });
+  } catch (err) {
+    console.error("[GET /api/users/partner-cars error]", err);
+    res.status(500).json({ success: false, error: "Failed to fetch partner cars." });
+  }
+});
+
+/**
+ * PUT /api/users/partner-cars/:id/status
+ * Approve/reject partner car listing
+ */
+router.put("/partner-cars/:id/status", requireAuth, requireRole("admin", "manager"), async (req, res) => {
+  const carId = req.params.id;
+  const { status, rejectionReason } = req.body || {};
+
+  try {
+    await db.query(
+      `UPDATE partner_cars
+       SET status = ?,
+           rejection_reason = ?,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = ? OR car_id = ?`,
+      [status, rejectionReason || null, carId, carId]
+    );
+
+    res.json({ success: true, message: `Partner car status updated to ${status}.` });
+  } catch (err) {
+    console.error("[PUT /api/users/partner-cars/:id/status error]", err);
+    res.status(500).json({ success: false, error: "Failed to update partner car status." });
   }
 });
 

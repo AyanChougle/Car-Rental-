@@ -1,4 +1,4 @@
-﻿// server/routes/verification.js
+// server/routes/verification.js
 "use strict";
 
 const express = require("express");
@@ -175,6 +175,60 @@ router.post("/:id/review", requireAuth, requireRole("admin", "manager"), async (
   } catch (err) {
     console.error("[POST /api/verification/:id/review error]", err);
     res.status(500).json({ success: false, error: "Failed to review verification." });
+  }
+});
+
+/**
+ * POST /api/verification/user/:uid/status
+ * Admin: Directly update user KYC document status (license, aadhar, pan, or all)
+ */
+router.post("/user/:uid/status", requireAuth, requireRole("admin", "manager"), async (req, res) => {
+  const targetUid = String(req.params.uid || "").trim();
+  const { docType, status, metadataUpdates } = req.body || {}; // docType: license, aadhar, pan, both, all | status: verified, rejected, pending
+
+  try {
+    const validStatuses = ["verified", "rejected", "pending", "not_submitted"];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, error: "Invalid status value." });
+    }
+
+    const updates = [];
+    const params = [];
+
+    if (docType === "license" || docType === "both" || docType === "all") {
+      updates.push("license_status = ?");
+      params.push(status);
+    }
+    if (docType === "aadhar" || docType === "both" || docType === "all") {
+      updates.push("aadhar_status = ?");
+      params.push(status);
+    }
+    if (docType === "pan" || docType === "both" || docType === "all") {
+      updates.push("pan_status = ?");
+      params.push(status);
+    }
+
+    if (metadataUpdates && typeof metadataUpdates === "object") {
+      updates.push("metadata = JSON_MERGE_PATCH(COALESCE(metadata, '{}'), ?)");
+      params.push(JSON.stringify(metadataUpdates));
+    }
+
+    if (updates.length > 0) {
+      updates.push("updated_at = CURRENT_TIMESTAMP");
+      params.push(targetUid);
+
+      await db.query(
+        `UPDATE users SET ${updates.join(", ")} WHERE firebase_uid = ?`,
+        params
+      );
+
+      invalidateUserCache(targetUid);
+    }
+
+    res.json({ success: true, message: `User document status updated to ${status}.` });
+  } catch (err) {
+    console.error("[POST /api/verification/user/:uid/status error]", err);
+    res.status(500).json({ success: false, error: "Failed to update document status." });
   }
 });
 

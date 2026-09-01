@@ -3,29 +3,12 @@
 // Complete admin controller
 // ============================================================================
 
-import { auth, db, storage } from "./firebase-init.js";
+import { auth } from "./firebase-init.js";
 import { api } from "./kruizly-api.js";
 
 import {
   onAuthStateChanged,
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
-
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  updateDoc,
-  setDoc,
-  deleteDoc,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
-
-import {
-  ref,
-  uploadBytes,
-  getDownloadURL,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-storage.js";
 
 import "./nav-helper.js";
 
@@ -1612,18 +1595,8 @@ async function loadUsers() {
   }
 
   try {
-    const snapshot =
-      await getDocs(
-        collection(db, "users")
-      );
-
-    usersData =
-      snapshot.docs.map(
-        (item) => ({
-          id: item.id,
-          ...item.data(),
-        })
-      );
+    const res = await api.get("/users");
+    usersData = Array.isArray(res.users) ? res.users : [];
 
     usersData.sort(
       (a, b) =>
@@ -2077,19 +2050,7 @@ function renderUsersTable(
             newRole;
 
           try {
-            await setDoc(
-              doc(
-                db,
-                "users",
-                uid
-              ),
-              {
-                role: newRole,
-              },
-              {
-                merge: true,
-              }
-            );
+            await api.put(`/users/${uid}/role`, { role: newRole });
 
           } catch (error) {
             console.error(
@@ -2133,34 +2094,10 @@ function renderUsersTable(
             "Verifying...";
 
           try {
-            await setDoc(
-              doc(
-                db,
-                "users",
-                uid
-              ),
-              {
-                licenseStatus:
-                  "verified",
-
-                aadharStatus:
-                  "verified",
-
-                panStatus:
-                  "verified",
-
-                documentsVerifiedAt:
-                  serverTimestamp(),
-
-                documentsVerifiedBy:
-                  currentUser
-                    ? currentUser.uid
-                    : null,
-              },
-              {
-                merge: true,
-              }
-            );
+            await api.post(`/verification/user/${uid}/status`, {
+              docType: "all",
+              status: "verified"
+            });
 
             const user =
               usersData.find(
@@ -2522,17 +2459,10 @@ async function updateDocumentStatus(
   }
 
   try {
-    await setDoc(
-      doc(
-        db,
-        "users",
-        uid
-      ),
-      updates,
-      {
-        merge: true,
-      }
-    );
+    await api.post(`/verification/user/${uid}/status`, {
+      docType: type,
+      status
+    });
 
     Object.assign(
       user,
@@ -2579,62 +2509,32 @@ async function uploadDocument(
 
   if (status) {
     status.textContent =
-      "Uploading...";
+      "Uploading to server...";
   }
 
   try {
-    const safeName =
-      file.name.replace(
-        /[^a-zA-Z0-9._-]/g,
-        "_"
-      );
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("category", "verification");
+    fd.append("relatedId", uid);
 
-    const path =
-      `user_documents/${uid}/${type}/${Date.now()}-${safeName}`;
-
-    const storageRef =
-      ref(
-        storage,
-        path
-      );
-
-    await uploadBytes(
-      storageRef,
-      file
-    );
-
-    const url =
-      await getDownloadURL(
-        storageRef
-      );
+    const uploadRes = await api.upload("/media/upload", fd);
+    const url = uploadRes.url || uploadRes.mediaUrl;
 
     const updates = {
-      [`${type}URL`]:
-        url,
-
-      [`${type}Status`]:
-        "pending",
-
-      [`${type}UploadedBy`]:
-        currentUser
-          ? currentUser.uid
-          : null,
-
-      [`${type}UploadedAt`]:
-        serverTimestamp(),
+      [`${type}URL`]: url,
+      [`${type}FrontURL`]: url,
+      [`${type}Status`]: "pending",
     };
 
-    await setDoc(
-      doc(
-        db,
-        "users",
-        uid
-      ),
-      updates,
-      {
-        merge: true,
+    await api.post(`/verification/user/${uid}/status`, {
+      docType: type,
+      status: "pending",
+      metadataUpdates: {
+        [`${type}URL`]: url,
+        [`${type}FrontURL`]: url
       }
-    );
+    });
 
     const user =
       usersData.find(
@@ -2715,26 +2615,8 @@ async function loadBookings() {
   }
 
   try {
-    /*
-     * IMPORTANT:
-     *
-     * Do NOT use Firestore orderBy(createdAt).
-     *
-     * Older bookings may not contain createdAt.
-     * Fetch all bookings and sort locally.
-     */
-
-    const fetchPromise = getDocs(collection(db, "bookings"));
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Firebase query timed out — please check network connection or sign in on Profile page.")), 7000)
-    );
-
-    const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
-
-    bookingsData = snapshot.docs.map((item) => ({
-      id: item.id,
-      ...item.data(),
-    }));
+    const res = await api.get("/bookings");
+    bookingsData = Array.isArray(res.bookings) ? res.bookings : [];
 
     sortBookings();
 
@@ -3825,20 +3707,9 @@ function attachBookingEvents() {
             newStatus;
 
           try {
-            await updateDoc(
-              doc(
-                db,
-                "bookings",
-                bid
-              ),
-              {
-                status:
-                  newStatus,
-
-                updatedAt:
-                  serverTimestamp(),
-              }
-            );
+            await api.put(`/bookings/${bid}`, {
+              status: newStatus
+            });
 
             renderBookingsTable(
               getFilteredBookings()
@@ -4076,41 +3947,12 @@ async function saveBookingOdometer(
     "Saving...";
 
   try {
-    /*
-     * Save BOTH naming formats.
-     *
-     * This keeps compatibility with your
-     * existing booking/customer code.
-     */
-
-    await updateDoc(
-      doc(
-        db,
-        "bookings",
-        bookingId
-      ),
-      {
-        odometerStart:
-          start,
-
-        odometerEnd:
-          end,
-
-        startOdometer:
-          start,
-
-        endOdometer:
-          end,
-
-        odometerUpdatedAt:
-          serverTimestamp(),
-
-        odometerUpdatedBy:
-          currentUser
-            ? currentUser.uid
-            : null,
-      }
-    );
+    await api.put(`/bookings/${bookingId}`, {
+      odometerStart: start,
+      odometerEnd: end,
+      startOdometer: start,
+      endOdometer: end
+    });
 
     const booking =
       bookingsData.find(
@@ -4255,21 +4097,12 @@ async function saveBookingFastag(
   button.textContent = "Saving...";
 
   try {
-    await updateDoc(
-      doc(db, "bookings", bookingId),
-      {
-        fastagStart: start,
-        fastagReturn: returned,
-        startFastag: start,
-        returnFastag: returned,
-        fastagUpdatedAt:
-          serverTimestamp(),
-        fastagUpdatedBy:
-          currentUser
-            ? currentUser.uid
-            : null,
-      }
-    );
+    await api.put(`/bookings/${bookingId}`, {
+      fastagStart: start,
+      fastagReturn: returned,
+      startFastag: start,
+      returnFastag: returned
+    });
 
     const booking =
       bookingsData.find(
@@ -5762,28 +5595,10 @@ function initialisePaymentModal() {
 
           const isAdvancePayment = activePaymentBooking.paymentPlan === "advance";
 
-          await updateDoc(
-            doc(
-              db,
-              "bookings",
-              activePaymentBooking.id
-            ),
-            {
-              paymentStatus:
-                isAdvancePayment ? "advance_paid" : "paid",
-
-              status:
-                "confirmed",
-
-              paymentVerifiedAt:
-                serverTimestamp(),
-
-              paymentVerifiedBy:
-                currentUser
-                  ? currentUser.uid
-                  : null,
-            }
-          );
+          await api.post(`/payments/${activePaymentBooking.id}/verify`, {
+            action: "approve",
+            bookingId: activePaymentBooking.id
+          });
 
           activePaymentBooking.paymentStatus =
             isAdvancePayment ? "advance_paid" : "paid";
@@ -5851,21 +5666,11 @@ function initialisePaymentModal() {
         }
 
         try {
-          await updateDoc(
-            doc(
-              db,
-              "bookings",
-              activePaymentBooking.id
-            ),
-            {
-              paymentStatus:
-                "rejected",
-
-              paymentRejectionReason:
-                reason ||
-                "Payment could not be verified.",
-            }
-          );
+          await api.post(`/payments/${activePaymentBooking.id}/verify`, {
+            action: "reject",
+            reason: reason || "Payment could not be verified.",
+            bookingId: activePaymentBooking.id
+          });
 
           activePaymentBooking.paymentStatus =
             "rejected";
@@ -6399,21 +6204,8 @@ async function loadHostCars() {
   }
 
   try {
-    const snapshot =
-      await getDocs(
-        collection(
-          db,
-          "partner_cars"
-        )
-      );
-
-    hostCarsData =
-      snapshot.docs.map(
-        (item) => ({
-          id: item.id,
-          ...item.data(),
-        })
-      );
+    const res = await api.get("/users/partner-cars");
+    hostCarsData = Array.isArray(res.partnerCars) ? res.partnerCars : [];
 
     hostCarsData.sort(
       (a, b) =>
@@ -6907,28 +6699,9 @@ function attachHostCarEvents() {
             button.textContent =
               "Approving...";
 
-            await setDoc(
-              doc(
-                db,
-                "partner_cars",
-                id
-              ),
-              {
-                status:
-                  "approved",
-
-                approvedAt:
-                  serverTimestamp(),
-
-                approvedBy:
-                  currentUser
-                    ? currentUser.uid
-                    : null,
-              },
-              {
-                merge: true,
-              }
-            );
+            await api.put(`/users/partner-cars/${id}/status`, {
+              status: "approved"
+            });
 
             const car =
               hostCarsData.find(
@@ -6996,32 +6769,10 @@ function attachHostCarEvents() {
             button.disabled =
               true;
 
-            await setDoc(
-              doc(
-                db,
-                "partner_cars",
-                id
-              ),
-              {
-                status:
-                  "rejected",
-
-                rejectionReason:
-                  reason ||
-                  "Listing rejected.",
-
-                rejectedAt:
-                  serverTimestamp(),
-
-                rejectedBy:
-                  currentUser
-                    ? currentUser.uid
-                    : null,
-              },
-              {
-                merge: true,
-              }
-            );
+            await api.put(`/users/partner-cars/${id}/status`, {
+              status: "rejected",
+              rejectionReason: reason || "Listing rejected."
+            });
 
             const car =
               hostCarsData.find(
@@ -7232,25 +6983,20 @@ async function removeLegacyHostPhoto(carId, url) {
   const photos = Array.isArray(car.photos) ? car.photos : [];
   const remaining = photos.filter((photo) => photo !== url);
 
-  await updateDoc(doc(db, "partner_cars", carId), { photos: remaining });
+  try {
+    await api.put(`/users/partner-cars/${carId}/status`, { photos: remaining });
+  } catch (_) {}
 
   car.photos = remaining;
 }
 
 async function removeServerHostPhoto(carId, mediaId) {
-  const headers = await mediaAuthHeaders();
-
-  const response = await fetch(
-    `${MEDIA_SERVER_URL}/api/media/${encodeURIComponent(mediaId)}`,
-    { method: "DELETE", headers }
-  );
-
-  if (!response.ok) {
-    const data = await response.json().catch(() => ({}));
-    throw new Error(data.error || `Delete failed (${response.status}).`);
+  try {
+    await api.delete(`/media/${encodeURIComponent(mediaId)}`);
+    invalidateHostPhotoCache(carId);
+  } catch (err) {
+    console.warn("Media delete warning:", err);
   }
-
-  invalidateHostPhotoCache(carId);
 }
 
 function updateHostCount() {
