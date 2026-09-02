@@ -11,6 +11,7 @@ $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
 $allowedOrigins = [
     'https://ayanchougle.github.io',
     'https://kruizly.com',
+    'https://www.kruizly.com',
     'http://localhost:5500',
     'http://localhost:5501',
     'http://127.0.0.1:5500',

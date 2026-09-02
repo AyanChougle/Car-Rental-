@@ -1,15 +1,15 @@
 # MIGRATION_PLAN.md — Phases 0–4, existing → target
 
-| Area | Existing | Target (Master Plan) | Status |
-|---|---|---|---|
-| Auth | Firebase Auth + `users/{uid}.role` | same, + custom claims | Optional claims-sync script added (Phase 2), not wired to auto-run |
-| Role checks | Firestore `get()` per request | custom claims where appropriate | Script mirrors role → claim; rules/middleware can adopt claims later |
-| Storage config | `storage.rules` written but not in `firebase.json` | rules deployed and enforced | **Fixed** — `firebase.json` now declares the storage target |
-| Fleet inventory | Static `js/vehicles.js` + partial Firestore overrides | Firestore-authoritative `vehicles/{regNo}` | **Migrated** — seed script writes the full catalog into Firestore |
-| Vehicle maintenance | Doesn't exist | `vehicleMaintenance/{id}` | Rules added, empty collection, ready for Phase 7 UI |
-| Payments | SQLite + local disk | Firestore `payments/{paymentId}` + Storage | **Dual-write shipped this pass** — SQLite/disk still authoritative, see below |
-| Media/files | Local disk (`server/uploads/`) | Firebase Storage per Section 5 layout | **Dual-write shipped this pass** — same |
-| Cloud Functions | None (Express server) | Cloud Functions for privileged ops | Not started — out of scope this pass, flagged for Phase 7+ |
+| Area                | Existing                                              | Target (Master Plan)                       | Status                                                                        |
+| ------------------- | ----------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
+| Auth                | Firebase Auth + `users/{uid}.role`                    | same, + custom claims                      | Optional claims-sync script added (Phase 2), not wired to auto-run            |
+| Role checks         | Firestore `get()` per request                         | custom claims where appropriate            | Script mirrors role → claim; rules/middleware can adopt claims later          |
+| Storage config      | `storage.rules` written but not in `firebase.json`    | rules deployed and enforced                | **Fixed** — `firebase.json` now declares the storage target                   |
+| Fleet inventory     | Static `js/vehicles.js` + partial Firestore overrides | Firestore-authoritative `vehicles/{regNo}` | **Migrated** — seed script writes the full catalog into Firestore             |
+| Vehicle maintenance | Doesn't exist                                         | `vehicleMaintenance/{id}`                  | Rules added, empty collection, ready for Phase 7 UI                           |
+| Payments            | SQLite + local disk                                   | Firestore `payments/{paymentId}` + Storage | **Dual-write shipped this pass** — SQLite/disk still authoritative, see below |
+| Media/files         | Local disk (`server/uploads/`)                        | Firebase Storage per Section 5 layout      | **Dual-write shipped this pass** — same                                       |
+| Cloud Functions     | None (Express server)                                 | Cloud Functions for privileged ops         | Not started — out of scope this pass, flagged for Phase 7+                    |
 
 ## Phase 3 — implemented as a dual-write, not a cutover
 

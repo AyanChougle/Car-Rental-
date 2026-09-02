@@ -35,7 +35,7 @@
     RewriteRule ^coupons/validate/?$ coupons/validate.php [L,QSA]
     RewriteRule ^coupons/([^/]+)/?$ coupons/detail.php?code=$1 [L,QSA]
     RewriteRule ^coupons/?$ coupons/index.php [L,QSA]
-
+    
     # Payments
     RewriteRule ^payments/submit/?$ payments/submit.php [L,QSA]
     RewriteRule ^payments/([^/]+)/verify/?$ payments/verify.php?id=$1 [L,QSA]

@@ -11,8 +11,10 @@ require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/middleware/cors.php';
 
 $dbStatus = 'disconnected';
+
 try {
     $res = Database::fetchOne("SELECT 1 as alive");
+
     if ($res && $res['alive'] == 1) {
         $dbStatus = 'connected';
     }

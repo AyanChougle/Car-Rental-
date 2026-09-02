@@ -1,4 +1,4 @@
-﻿<?php
+﻿﻿<?php
 /**
  * api/config/database.php
  * 
