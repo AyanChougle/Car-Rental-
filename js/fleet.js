@@ -53,7 +53,7 @@ function renderFleetCards(records) {
   grid.innerHTML = records
     .map((vehicle, index) => {
       const vehicleName = `${vehicle.brand} ${vehicle.model}`;
-      const imagePath = vehicle.imageUrl || window.fleetImagePath(vehicle);
+      const imagePath = (window.fleetImagePath ? window.fleetImagePath(vehicle) : vehicle.imageUrl) || "assets/fleet/BMW.png";
       const isAvailable = Boolean(vehicle.available);
       const availabilityLabel = isAvailable
         ? "Available"
@@ -86,7 +86,7 @@ function renderFleetCards(records) {
               loading="lazy"
               decoding="async"
               onload="this.parentElement.classList.add('has-loaded-image')"
-              onerror="this.onerror=null; this.style.opacity='0.4';"
+              onerror="this.onerror=null; this.src='assets/fleet/BMW.png';"
             />
 
             <span
