@@ -19,8 +19,8 @@
   min-height: 66px;
   background: linear-gradient(
     90deg,
-    rgba(5, 8, 10, 0.75) 0%,
-    rgba(5, 8, 10, 0.35) 30%,
+    rgba(5, 8, 10, 0.75) 30%,
+    rgba(5, 8, 10, 0.35) 60%,
     rgba(5, 8, 10, 0.08) 65%,
     rgba(5, 8, 10, 0) 100%
   );
