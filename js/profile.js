@@ -5,8 +5,8 @@
    ============================================================ */
 
 import { auth } from "./firebase-init.js";
-import { checkAuth, getCurrentUser, logout } from "./auth.js?v=20260904-v15";
-import { api } from "./kruizly-api.js?v=20260904-v15";
+import { checkAuth, getCurrentUser, logout } from "./auth.js?v=20260904-v16";
+import { api } from "./kruizly-api.js?v=20260904-v16";
 import "./nav-helper.js";
 import { formatBookingNumber } from "./booking-reference.js";
 
@@ -1629,17 +1629,22 @@ function renderBooking(
 
 
         <div class="booking-detail">
-
           <span>
             Duration
           </span>
-
           <strong>
             ${escapeHtml(
-              booking.duration || (booking.days ? `${booking.days} Day${booking.days > 1 ? "s" : ""}` : "1 Day")
+              (() => {
+                let dStr = booking.duration || "";
+                if (!dStr.includes("hr")) {
+                  const d = Math.max(1, Number(booking.days) || 1);
+                  const h = Math.max(1, Number(booking.hours) || (d * 24));
+                  return `${d} Day${d > 1 ? "s" : ""} (${h} hrs)`;
+                }
+                return dStr;
+              })()
             )}
           </strong>
-
         </div>
 
 

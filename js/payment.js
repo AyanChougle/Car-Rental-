@@ -36,8 +36,8 @@
 //
 // ============================================================
 
-import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v15";
-import { api } from "./kruizly-api.js?v=20260904-v15";
+import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v16";
+import { api } from "./kruizly-api.js?v=20260904-v16";
 
 import { PAYMENT_CONFIG } from "./payment-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
@@ -891,9 +891,15 @@ function displayBooking(
 
   // Authoritative duration calculation from actual pickup and drop date/time
   const durationResult = calculateDuration(booking.pickupDate, booking.dropDate);
-  const formattedDuration = durationResult.valid
+  let formattedDuration = durationResult.valid
     ? durationResult.formattedDuration
-    : (booking.duration || (booking.days ? `${booking.days} Day${booking.days > 1 ? "s" : ""}` : "1 Day"));
+    : (booking.duration || "");
+
+  if (!formattedDuration || !formattedDuration.includes("hr")) {
+    const d = Math.max(1, Number(booking.days) || 1);
+    const h = Math.max(1, Number(booking.hours) || (d * 24));
+    formattedDuration = `${d} Day${d > 1 ? "s" : ""} (${h} hrs)`;
+  }
 
   if ($("paymentDuration")) {
     $("paymentDuration").textContent = formattedDuration;

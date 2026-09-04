@@ -2,8 +2,8 @@
 // KRUIZLY — BOOKING PAGE
 // ============================================================
 
-import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v15";
-import { api } from "./kruizly-api.js?v=20260904-v15";
+import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v16";
+import { api } from "./kruizly-api.js?v=20260904-v16";
 import "./nav-helper.js";
 import { generateNumericBookingId } from "./booking-reference.js";
 import {
@@ -320,29 +320,21 @@ async function initBooking(vehicle) {
       return null;
     }
 
-    const {
-      duration,
-      hours,
-      days,
-      rentalTotal,
-      driverTotal,
-      securityDeposit,
-      couponDiscount,
-      finalAmount,
-      advanceAmount,
-      remainingAmount,
-    } = calculation;
-
-    const dayLabel = days === 1 ? "1 day" : `${days} days`;
-    const hrLabel = `${hours} hrs`;
+    const dayCount = Math.max(1, Number(days) || 1);
+    const hourCount = Math.max(1, Number(hours) || (dayCount * 24));
+    const dayLabel = dayCount === 1 ? "1 Day" : `${dayCount} Days`;
+    const hrLabel = `${hourCount} hrs`;
+    const formattedDuration = `${dayLabel} (${hrLabel})`;
 
     let html =
       '<div class="booking-totals__header"><span>PRICE BREAKDOWN</span><span>Duration: ' +
-      duration.formattedDuration +
+      formattedDuration +
       "</span></div>";
     html +=
       '<div class="booking-total-row"><span>Rental Charges (' +
-      dayLabel +
+      dayCount +
+      " day" +
+      (dayCount > 1 ? "s" : "") +
       " (" +
       hrLabel +
       "))</span><strong>₹" +
