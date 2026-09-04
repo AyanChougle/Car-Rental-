@@ -29,7 +29,9 @@ class InvoicePdfService {
 
         $invoiceDir = STORAGE_ROOT . '/invoices/' . preg_replace('/[^a-zA-Z0-9_-]/', '_', $booking['booking_id']);
         if (!is_dir($invoiceDir)) {
-            mkdir($invoiceDir, 0755, true);
+            if (!@mkdir($invoiceDir, 0755, true) && !is_dir($invoiceDir)) {
+                $invoiceDir = STORAGE_ROOT;
+            }
         }
 
         $pdfPath = $invoiceDir . '/invoice.pdf';
