@@ -173,14 +173,48 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   transition: transform 160ms ease;
 }
 
-/* Operations Queue Table */
+/* Operations Queue Table & Scrollable Page Format */
 .manager-table-wrap,
-.admin-table-wrap {
+.admin-table-wrap,
+.data-table-scroll-container {
   width: 100%;
+  max-height: 680px;
+  overflow-y: auto;
   overflow-x: auto;
   border: 1px solid var(--kr-border);
   border-radius: var(--kr-radius-md);
   background-color: var(--kr-surface-control);
+  position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(79, 215, 255, 0.4) rgba(255, 255, 255, 0.02);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+
+.manager-table-wrap::-webkit-scrollbar,
+.admin-table-wrap::-webkit-scrollbar,
+.data-table-scroll-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.manager-table-wrap::-webkit-scrollbar-track,
+.admin-table-wrap::-webkit-scrollbar-track,
+.data-table-scroll-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+
+.manager-table-wrap::-webkit-scrollbar-thumb,
+.admin-table-wrap::-webkit-scrollbar-thumb,
+.data-table-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(79, 215, 255, 0.35);
+  border-radius: 4px;
+}
+
+.manager-table-wrap::-webkit-scrollbar-thumb:hover,
+.admin-table-wrap::-webkit-scrollbar-thumb:hover,
+.data-table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #4fd7ff;
 }
 
 .manager-table,
@@ -191,8 +225,18 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   font-size: 14px;
 }
 
+.manager-table thead,
+.admin-table thead {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 15 !important;
+}
+
 .manager-table th,
 .admin-table th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 15 !important;
   padding: 14px 18px;
   font-size: 11px;
   font-weight: 800;
@@ -200,7 +244,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   text-transform: uppercase;
   color: var(--kr-text-muted);
   border-bottom: 1px solid var(--kr-border-strong);
-  background-color: rgba(6, 10, 16, 0.40);
+  background-color: #0b1119 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   white-space: nowrap;
 }
 

@@ -891,4 +891,74 @@ input.kr-clean-input[type=number] {
   -moz-appearance: textfield;
 }
 
+/* =========================================================
+   EXECUTIVE SCROLLABLE TABLE & STICKY HEADERS
+   ========================================================= */
+.manager-table-wrap,
+.executive-table-wrap,
+.data-table-scroll-container {
+  width: 100%;
+  max-height: 680px;
+  overflow-y: auto;
+  overflow-x: auto;
+  border: 1px solid var(--kr-border);
+  border-radius: var(--kr-radius-md, 14px);
+  background-color: var(--kr-surface-control, rgba(255, 255, 255, 0.03));
+  position: relative;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(79, 215, 255, 0.4) rgba(255, 255, 255, 0.02);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+}
+
+.manager-table-wrap::-webkit-scrollbar,
+.executive-table-wrap::-webkit-scrollbar,
+.data-table-scroll-container::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.manager-table-wrap::-webkit-scrollbar-track,
+.executive-table-wrap::-webkit-scrollbar-track,
+.data-table-scroll-container::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+
+.manager-table-wrap::-webkit-scrollbar-thumb,
+.executive-table-wrap::-webkit-scrollbar-thumb,
+.data-table-scroll-container::-webkit-scrollbar-thumb {
+  background: rgba(79, 215, 255, 0.35);
+  border-radius: 4px;
+}
+
+.manager-table-wrap::-webkit-scrollbar-thumb:hover,
+.executive-table-wrap::-webkit-scrollbar-thumb:hover,
+.data-table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #4fd7ff;
+}
+
+.manager-table thead,
+.executive-table thead {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 15 !important;
+}
+
+.manager-table th,
+.executive-table th {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 15 !important;
+  padding: 14px 18px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--kr-text-muted);
+  border-bottom: 1px solid var(--kr-border-strong);
+  background-color: #0b1119 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+}
+
 

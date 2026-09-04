@@ -822,9 +822,12 @@ async function loadFleetManagement() {
                   </td>
                 </tr>
               `;
-            }).join("")}
           </tbody>
         </table>
+      </div>
+      <div style="padding:10px 16px;font-size:0.8rem;color:var(--kr-text-muted);display:flex;justify-content:space-between;align-items:center;background:rgba(6,10,16,0.45);border-top:1px solid var(--kr-border);border-radius:0 0 var(--kr-radius-md) var(--kr-radius-md);">
+        <span>Showing all <strong>${vehicles.length}</strong> fleet vehicles</span>
+        <span style="font-size:0.75rem;color:var(--kr-cyan);font-weight:600;">↕ Scrollable Table</span>
       </div>
     `;
 
@@ -1993,10 +1996,13 @@ function renderUsersTable(
         </tbody>
       </table>
     </div>
+    <div style="padding:10px 16px;font-size:0.8rem;color:var(--kr-text-muted);display:flex;justify-content:space-between;align-items:center;background:rgba(6,10,16,0.45);border-top:1px solid var(--kr-border);border-radius:0 0 var(--kr-radius-md) var(--kr-radius-md);">
+      <span>Showing all <strong>${users.length}</strong> registered user accounts</span>
+      <span style="font-size:0.75rem;color:var(--kr-cyan);font-weight:600;">↕ Scrollable Table</span>
+    </div>
   `;
 
-  usersTableWrap.innerHTML =
-    html;
+  usersTableWrap.innerHTML = html;
 
   // INSPECT DOCUMENT
   usersTableWrap
@@ -2716,17 +2722,7 @@ function renderBookingsTable(
     return;
   }
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(bookings.length / ADMIN_BOOKINGS_PER_PAGE)
-  );
-  adminBookingPage = Math.min(adminBookingPage, totalPages);
-  const pageStart =
-    (adminBookingPage - 1) * ADMIN_BOOKINGS_PER_PAGE;
-  const pageBookings = bookings.slice(
-    pageStart,
-    pageStart + ADMIN_BOOKINGS_PER_PAGE
-  );
+  const pageBookings = bookings;
 
   if (!bookings.length) {
     bookingsTableWrap.innerHTML =
@@ -3496,29 +3492,14 @@ function renderBookingsTable(
       </table>
 
     </div>
-    ${renderAdminPagination({
-      page: adminBookingPage,
-      totalPages,
-      totalItems: bookings.length,
-      type: "bookings"
-    })}
+    <div style="padding:10px 16px;font-size:0.8rem;color:var(--kr-text-muted);display:flex;justify-content:space-between;align-items:center;background:rgba(6,10,16,0.45);border-top:1px solid var(--kr-border);border-radius:0 0 var(--kr-radius-md) var(--kr-radius-md);">
+      <span>Showing all <strong>${bookings.length}</strong> bookings</span>
+      <span style="font-size:0.75rem;color:var(--kr-cyan);font-weight:600;">↕ Scrollable Table</span>
+    </div>
   `;
 
-  bookingsTableWrap.innerHTML =
-    html;
-
+  bookingsTableWrap.innerHTML = html;
   attachBookingEvents();
-
-  bookingsTableWrap
-    .querySelectorAll("[data-admin-page-action]")
-    .forEach((button) => {
-      button.addEventListener("click", () => {
-        adminBookingPage +=
-          button.dataset.adminPageAction === "next" ? 1 : -1;
-        renderBookingsTable(getFilteredBookings());
-        bookingsTableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    });
 }
 
 function renderAdminPagination({ page, totalPages, totalItems, type }) {
@@ -4938,17 +4919,7 @@ function renderPaymentsTable() {
     return;
   }
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(paymentRecords.length / ADMIN_PAYMENTS_PER_PAGE)
-  );
-  adminPaymentPage = Math.min(adminPaymentPage, totalPages);
-  const pageStart =
-    (adminPaymentPage - 1) * ADMIN_PAYMENTS_PER_PAGE;
-  const pagePayments = paymentRecords.slice(
-    pageStart,
-    pageStart + ADMIN_PAYMENTS_PER_PAGE
-  );
+  const pagePayments = paymentRecords;
 
   let html = `
     <div style="width:100%;overflow-x:auto;">
@@ -5098,55 +5069,26 @@ function renderPaymentsTable() {
       </table>
 
     </div>
-    ${renderAdminPagination({
-      page: adminPaymentPage,
-      totalPages,
-      totalItems: paymentRecords.length,
-      type: "payments"
-    })}
+    <div style="padding:10px 16px;font-size:0.8rem;color:var(--kr-text-muted);display:flex;justify-content:space-between;align-items:center;background:rgba(6,10,16,0.45);border-top:1px solid var(--kr-border);border-radius:0 0 var(--kr-radius-md) var(--kr-radius-md);">
+      <span>Showing all <strong>${paymentRecords.length}</strong> payment transactions</span>
+      <span style="font-size:0.75rem;color:var(--kr-cyan);font-weight:600;">↕ Scrollable Table</span>
+    </div>
   `;
 
-  paymentsTableWrap.innerHTML =
-    html;
+  paymentsTableWrap.innerHTML = html;
 
   paymentsTableWrap
-    .querySelectorAll(
-      ".review-payment-btn"
-    )
+    .querySelectorAll(".review-payment-btn")
     .forEach((button) => {
-      button.addEventListener(
-        "click",
-        () => {
-          const booking =
-            bookingsData.find(
-              (item) =>
-                item.id ===
-                button.dataset.bid
-            );
-
-          if (booking) {
-            openPaymentModal(
-              booking
-            );
-          }
-        }
-      );
+      button.addEventListener("click", () => {
+        const booking = bookingsData.find((item) => item.id === button.dataset.bid);
+        if (booking) openPaymentModal(booking);
+      });
     });
 
   paymentsTableWrap.querySelectorAll(".edit-invoice-btn, .send-invoice-btn").forEach((button) => {
     button.addEventListener("click", () => openInvoiceEditorModal(button.dataset.bid, button));
   });
-
-  paymentsTableWrap
-    .querySelectorAll("[data-admin-payment-page-action]")
-    .forEach((button) => {
-      button.addEventListener("click", () => {
-        adminPaymentPage +=
-          button.dataset.adminPaymentPageAction === "next" ? 1 : -1;
-        renderPaymentsTable();
-        paymentsTableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
-    });
 }
 
 async function convertBookingToFullPayment(bookingId, triggerBtn) {
@@ -6536,13 +6478,14 @@ function renderHostCarsTable(
   html += `
         </tbody>
       </table>
-
+    </div>
+    <div style="padding:10px 16px;font-size:0.8rem;color:var(--kr-text-muted);display:flex;justify-content:space-between;align-items:center;background:rgba(6,10,16,0.45);border-top:1px solid var(--kr-border);border-radius:0 0 var(--kr-radius-md) var(--kr-radius-md);">
+      <span>Showing all <strong>${cars.length}</strong> acquisition vehicles</span>
+      <span style="font-size:0.75rem;color:var(--kr-cyan);font-weight:600;">↕ Scrollable Table</span>
     </div>
   `;
 
-  hostCarsTableWrap.innerHTML =
-    html;
-
+  hostCarsTableWrap.innerHTML = html;
   attachHostCarEvents();
 }
 
