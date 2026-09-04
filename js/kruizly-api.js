@@ -94,6 +94,7 @@ export function resolveEndpoint(endpoint, params = {}) {
     "media/file": "/media/file.php",
     "media/delete": "/media/delete.php",
     "invoices/get": "/invoices/get.php",
+    "invoices/update": "/invoices/update.php",
     "invoices/pdf": "/invoices/pdf.php",
     "invoices/send": "/invoices/send.php",
     "admin/export": "/admin/export.php"

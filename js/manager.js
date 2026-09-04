@@ -1,6 +1,6 @@
 import { auth } from "./firebase-init.js";
-import { checkAuth, getCurrentUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260904-v3";
-import { api } from "./kruizly-api.js?v=20260904-v3";
+import { checkAuth, getCurrentUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260904-v4";
+import { api } from "./kruizly-api.js?v=20260904-v4";
 
 import "./nav-helper.js";
 import { openReturnModal } from "./return-inspection.js";

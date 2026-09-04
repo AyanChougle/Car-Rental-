@@ -4,8 +4,8 @@
 // ============================================================================
 
 import { auth } from "./firebase-init.js";
-import { api } from "./kruizly-api.js?v=20260904-v3";
-import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260904-v3";
+import { api } from "./kruizly-api.js?v=20260904-v4";
+import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260904-v4";
 
 import "./nav-helper.js";
 
@@ -5209,17 +5209,9 @@ async function openInvoiceEditorModal(bookingId, triggerBtn) {
   showModal("adminInvoiceModal");
 
   try {
-    const apiBase = window.MEDIA_API_URL || (window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__.replace(/\/api$/, '') : window.location.origin);
-    const response = await fetch(`${apiBase}/api/invoices/payment-approved/${encodeURIComponent(bookingId)}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        ...(await mediaAuthHeaders()),
-      },
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error(data.message || data.error || `Server responded with status ${response.status}`);
+    const data = await api.get("/invoices/get", { id: bookingId });
+    if (!data.success || !data.invoice) {
+      throw new Error(data.error || "Could not load invoice data.");
     }
 
     currentEditingInvoice = data.invoice;
@@ -5380,55 +5372,9 @@ function initialiseInvoiceEditorModal() {
           paymentStatus: isFull ? "paid" : (currentEditingInvoice.paymentStatus || "advance_paid"),
         };
 
-        await fetch(`${apiBase}/api/invoices/${encodeURIComponent(currentEditingInvoice.invoiceId)}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...(await mediaAuthHeaders()),
-          },
-          body: JSON.stringify(payload),
-        });
-
-        const res = await fetch(`${apiBase}/api/invoices/${encodeURIComponent(currentEditingInvoice.invoiceId)}/pdf?refresh=true`, {
-          headers: await mediaAuthHeaders(),
-        });
-        if (!res.ok) {
-          const d = await res.json().catch(() => ({}));
-          throw new Error(d.message || d.error || "Could not load invoice PDF.");
-        }
-        const blob = await res.blob();
-        const objectUrl = URL.createObjectURL(blob);
-        window.open(objectUrl, "_blank", "noopener");
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
-      } catch (err) {
-        if (statusEl) {
-          statusEl.textContent = `PDF Preview error: ${err.message}`;
-          statusEl.className = "form-status is-error";
-        }
-      } finally {
-        previewBtn.disabled = false;
-        previewBtn.textContent = "📄 Preview PDF";
-      }
-    });
-  }
-
-  const saveBtn = $("adminInvSaveBtn");
-  if (saveBtn) {
-    saveBtn.addEventListener("click", async () => {
-      if (!currentEditingInvoice) return;
-      const statusEl = $("adminInvoiceModalStatus");
-      try {
-        saveBtn.disabled = true;
-        saveBtn.textContent = "Saving…";
-        if (statusEl) {
-          statusEl.textContent = "Saving changes & regenerating PDF…";
-          statusEl.className = "form-status is-loading";
-        }
-
-        const totalsData = recalculateInvoiceModalTotals();
-        const isFull = (totalsData.balance === 0 || $("adminInvFullPaidCheck")?.checked);
-
+        const bookingId = currentEditingInvoice.bookingId || currentEditingInvoice.id;
         const payload = {
+          bookingId,
           customer: {
             ...currentEditingInvoice.customer,
             name: $("adminInvCustomerName")?.value || "",
@@ -5458,19 +5404,77 @@ function initialiseInvoiceEditorModal() {
           paymentStatus: isFull ? "paid" : (currentEditingInvoice.paymentStatus || "advance_paid"),
         };
 
-        const apiBase = window.MEDIA_API_URL || (window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__.replace(/\/api$/, '') : window.location.origin);
-        const res = await fetch(`${apiBase}/api/invoices/${encodeURIComponent(currentEditingInvoice.invoiceId)}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...(await mediaAuthHeaders()),
-          },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.message || data.error || "Save failed");
+        await api.post("/invoices/update", payload);
 
-        currentEditingInvoice = data.invoice;
+        const token = await getAuthToken();
+        const pdfUrl = `${API_BASE_URL}/invoices/pdf.php?id=${encodeURIComponent(bookingId)}&token=${encodeURIComponent(token)}`;
+        window.open(pdfUrl, "_blank", "noopener");
+      } catch (err) {
+        if (statusEl) {
+          statusEl.textContent = `PDF Preview error: ${err.message}`;
+          statusEl.className = "form-status is-error";
+        }
+      } finally {
+        previewBtn.disabled = false;
+        previewBtn.textContent = "📄 Preview PDF";
+      }
+    });
+  }
+
+  const saveBtn = $("adminInvSaveBtn");
+  if (saveBtn) {
+    saveBtn.addEventListener("click", async () => {
+      if (!currentEditingInvoice) return;
+      const statusEl = $("adminInvoiceModalStatus");
+      try {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving…";
+        if (statusEl) {
+          statusEl.textContent = "Saving changes & regenerating PDF…";
+          statusEl.className = "form-status is-loading";
+        }
+
+        const totalsData = recalculateInvoiceModalTotals();
+        const isFull = (totalsData.balance === 0 || $("adminInvFullPaidCheck")?.checked);
+        const bookingId = currentEditingInvoice.bookingId || currentEditingInvoice.id;
+
+        const payload = {
+          bookingId,
+          customer: {
+            ...currentEditingInvoice.customer,
+            name: $("adminInvCustomerName")?.value || "",
+            email: $("adminInvCustomerEmail")?.value || "",
+          },
+          vehicle: {
+            ...currentEditingInvoice.vehicle,
+            name: $("adminInvVehicleName")?.value || "",
+            registration: $("adminInvVehicleReg")?.value || "",
+          },
+          charges: {
+            ...currentEditingInvoice.charges,
+            rental: Number($("adminInvRental")?.value || 0),
+            driver: Number($("adminInvDriver")?.value || 0),
+            extraKm: Number($("adminInvExtraKm")?.value || 0),
+            lateFee: Number($("adminInvLateFee")?.value || 0),
+            fuel: Number($("adminInvFuel")?.value || 0),
+            damage: Number($("adminInvDamage")?.value || 0),
+            discount: Number($("adminInvDiscount")?.value || 0),
+          },
+          taxRate: Number($("adminInvTaxRate")?.value || 0),
+          notes: $("adminInvNotes")?.value || "",
+          amountPaid: totalsData.paid,
+          paymentMode: $("adminInvPaymentMode")?.value || "UPI",
+          paymentRef: $("adminInvPaymentRef")?.value || "",
+          paymentPlan: isFull ? "full" : (currentEditingInvoice.paymentPlan || "advance"),
+          paymentStatus: isFull ? "paid" : (currentEditingInvoice.paymentStatus || "advance_paid"),
+        };
+
+        const res = await api.post("/invoices/update", payload);
+        if (!res.success) throw new Error(res.error || "Save failed");
+
+        if (res.invoice) {
+          currentEditingInvoice = res.invoice;
+        }
         recalculateInvoiceModalTotals();
         renderPaymentsTable();
         updateRevenueStats();
@@ -5506,8 +5510,10 @@ function initialiseInvoiceEditorModal() {
 
         const totalsData = recalculateInvoiceModalTotals();
         const isFull = (totalsData.balance === 0 || $("adminInvFullPaidCheck")?.checked);
+        const bookingId = currentEditingInvoice.bookingId || currentEditingInvoice.id;
 
         const payload = {
+          bookingId,
           customer: {
             ...currentEditingInvoice.customer,
             name: $("adminInvCustomerName")?.value || "",
@@ -5537,27 +5543,14 @@ function initialiseInvoiceEditorModal() {
           paymentStatus: isFull ? "paid" : (currentEditingInvoice.paymentStatus || "advance_paid"),
         };
 
-        const apiBase = window.MEDIA_API_URL || (window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__.replace(/\/api$/, '') : window.location.origin);
-        await fetch(`${apiBase}/api/invoices/${encodeURIComponent(currentEditingInvoice.invoiceId)}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...(await mediaAuthHeaders()),
-          },
-          body: JSON.stringify(payload),
+        await api.post("/invoices/update", payload);
+
+        const sendRes = await api.post("/invoices/send", {
+          bookingId,
+          recipientEmail: payload.customer.email
         });
 
-        const sendRes = await fetch(`${apiBase}/api/invoices/${encodeURIComponent(currentEditingInvoice.invoiceId)}/send`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(await mediaAuthHeaders()),
-          },
-          body: JSON.stringify({ email: payload.customer.email }),
-        });
-
-        const sendData = await sendRes.json().catch(() => ({}));
-        if (!sendRes.ok) throw new Error(sendData.message || sendData.error || "Email send failed");
+        if (!sendRes.success) throw new Error(sendRes.error || "Email send failed");
 
         renderPaymentsTable();
         updateRevenueStats();
