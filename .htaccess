@@ -1,10 +1,14 @@
-﻿# ============================================================
+# ============================================================
 # KRUIZLY Production Apache / LiteSpeed Configuration
 # ============================================================
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
+
+    # Pass Authorization Header to FastCGI / PHP-FPM
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
     # Clean URLs for HTML pages
     RewriteCond %{REQUEST_FILENAME} !-d

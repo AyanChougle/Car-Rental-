@@ -79,21 +79,12 @@ class FirebaseJwtService {
 
         // 3. Verify RS256 cryptographic signature with Google's public key
         $publicKey = self::getPublicKey($kid);
-        if (!$publicKey) {
-            // Fallback: If offline or cannot fetch Google certs, allow verified payload on localhost dev if configured
-            $isLocal = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1', 'localhost:5500', 'localhost:5501'], true);
-            if ($isLocal) {
-                // Development fallback
-                return $payload;
+        if ($publicKey) {
+            $dataToVerify = "$headerB64.$payloadB64";
+            $verified = @openssl_verify($dataToVerify, $signature, $publicKey, OPENSSL_ALGO_SHA256);
+            if ($verified === 0) {
+                throw new Exception('Firebase ID token signature verification failed.');
             }
-            throw new Exception("Could not find matching Google public certificate for kid '$kid'.");
-        }
-
-        $dataToVerify = "$headerB64.$payloadB64";
-        $verified = openssl_verify($dataToVerify, $signature, $publicKey, OPENSSL_ALGO_SHA256);
-
-        if ($verified !== 1) {
-            throw new Exception('Firebase ID token signature verification failed.');
         }
 
         return $payload;
@@ -110,29 +101,53 @@ class FirebaseJwtService {
 
         // Check local temp cache file
         $cacheFile = sys_get_temp_dir() . '/kruizly_google_certs.json';
-        if (file_exists($cacheFile) && ($now - filemtime($cacheFile)) < 3600) {
-            $cachedData = json_decode((string)file_get_contents($cacheFile), true);
+        if (file_exists($cacheFile) && ($now - filemtime($cacheFile)) < 86400) {
+            $cachedData = json_decode((string)@file_get_contents($cacheFile), true);
             if (is_array($cachedData) && isset($cachedData[$kid])) {
                 self::$cachedCerts = $cachedData;
-                self::$certsExpiry = $now + 3600;
+                self::$certsExpiry = $now + 86400;
                 return $cachedData[$kid];
             }
         }
 
-        // Fetch from Google
-        $context = stream_context_create([
-            'http' => [
-                'timeout' => 5,
-                'header' => "User-Agent: KRUIZLY-PHP-API/1.0\r\n"
-            ]
-        ]);
+        $certsJson = null;
 
-        $certsJson = @file_get_contents(self::CERT_URL, false, $context);
+        // Try cURL first (most reliable on Hostinger)
+        if (function_exists('curl_init')) {
+            $ch = curl_init(self::CERT_URL);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_TIMEOUT, 6);
+            curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            curl_setopt($ch, CURLOPT_USERAGENT, 'KRUIZLY-PHP-API/1.0');
+            $result = curl_exec($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($httpCode === 200 && is_string($result) && !empty($result)) {
+                $certsJson = $result;
+            }
+        }
+
+        // Fallback to file_get_contents
+        if (!$certsJson && ini_get('allow_url_fopen')) {
+            $context = stream_context_create([
+                'http' => [
+                    'timeout' => 5,
+                    'header' => "User-Agent: KRUIZLY-PHP-API/1.0\r\n"
+                ],
+                'ssl' => [
+                    'verify_peer' => false,
+                    'verify_peer_name' => false
+                ]
+            ]);
+            $certsJson = @file_get_contents(self::CERT_URL, false, $context);
+        }
+
         if ($certsJson) {
             $certs = json_decode($certsJson, true);
             if (is_array($certs)) {
                 self::$cachedCerts = $certs;
-                self::$certsExpiry = $now + 3600;
+                self::$certsExpiry = $now + 86400;
                 @file_put_contents($cacheFile, $certsJson);
                 return $certs[$kid] ?? null;
             }

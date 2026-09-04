@@ -25,7 +25,11 @@ class Auth {
             return self::$currentUser;
         }
 
-        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? $_SERVER['AUTHORIZATION'] ?? '';
+        if (!$authHeader && function_exists('getallheaders')) {
+            $headers = getallheaders();
+            $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+        }
         if (!$authHeader && function_exists('apache_request_headers')) {
             $headers = apache_request_headers();
             $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
@@ -36,8 +40,25 @@ class Auth {
             $idToken = trim($matches[1]);
         } elseif (!empty($_GET['token'])) {
             $idToken = trim((string)$_GET['token']);
+        } elseif (!empty($_GET['idToken'])) {
+            $idToken = trim((string)$_GET['idToken']);
+        } elseif (!empty($_POST['idToken'])) {
+            $idToken = trim((string)$_POST['idToken']);
         } elseif (!empty($_COOKIE['kruizly_token'])) {
             $idToken = trim((string)$_COOKIE['kruizly_token']);
+        } elseif (!empty($_COOKIE['token'])) {
+            $idToken = trim((string)$_COOKIE['token']);
+        }
+
+        if (!$idToken) {
+            // Check raw input JSON body as last fallback
+            $rawInput = @file_get_contents('php://input');
+            if ($rawInput) {
+                $jsonData = json_decode($rawInput, true);
+                if (is_array($jsonData) && !empty($jsonData['idToken'])) {
+                    $idToken = trim((string)$jsonData['idToken']);
+                }
+            }
         }
 
         if (!$idToken) {
