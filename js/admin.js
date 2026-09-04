@@ -822,6 +822,7 @@ async function loadFleetManagement() {
                   </td>
                 </tr>
               `;
+            }).join("")}
           </tbody>
         </table>
       </div>
