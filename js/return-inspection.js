@@ -5,9 +5,22 @@
 // upload return-condition photos, and see the refundable security deposit
 // computed live before saving. Saving marks the booking "completed" and
 // stores the itemized breakdown on the booking doc as the permanent record.
-import { api } from "./kruizly-api.js?v=20260904-v2";
+import { auth } from "./firebase-init.js";
+import { api } from "./kruizly-api.js?v=20260904-v3";
 import { MEDIA_SERVER_URL } from "./media-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
+
+async function getAuthToken(user = null) {
+  try {
+    if (user && typeof user.getIdToken === "function") {
+      return await user.getIdToken();
+    }
+    if (auth && auth.currentUser && typeof auth.currentUser.getIdToken === "function") {
+      return await auth.currentUser.getIdToken();
+    }
+  } catch (_) {}
+  return "";
+}
 
 export const DAMAGE_CHECKLIST = [
   { key: "scratch", label: "Scratch / paint damage", defaultAmount: 1500 },
@@ -58,7 +71,7 @@ async function uploadReturnPhoto(user, bookingId, file, index) {
     throw new Error("Return photo upload requires a signed-in staff account.");
   }
 
-  const token = await user.getIdToken();
+  const token = await getAuthToken(user);
   const formData = new FormData();
   formData.append("file", file);
   formData.append("category", "inspection_photo");
@@ -118,7 +131,7 @@ function normalizeSavedPhotos(value) {
 }
 
 async function fetchProtectedMediaBlob(user, mediaId) {
-  const token = await user.getIdToken();
+  const token = await getAuthToken(user);
   const response = await fetch(
     `${MEDIA_SERVER_URL}/api/media/file/${encodeURIComponent(mediaId)}`,
     {

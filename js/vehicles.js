@@ -1074,80 +1074,167 @@ const fleetVehicles = [
 // Image path resolution: map vehicle brand + model to asset files.
 const fleetImageOverrides = {
   // Maruti models
-  "Maruti Swift": "assets/fleet/Maruti Suzuki Swift.png",
-  "Maruti Suzuki Swift": "assets/fleet/Maruti Suzuki Swift.png",
-  "Maruti Baleno": "assets/fleet/Maruti Suzuki Baleno.png",
-  "Maruti Suzuki Baleno": "assets/fleet/Maruti Suzuki Baleno.png",
-  "Maruti Brezza": "assets/fleet/Maruti Suzuki Brezza.png",
-  "Maruti Suzuki Brezza": "assets/fleet/Maruti Suzuki Brezza.png",
-  "Maruti Dzire": "assets/fleet/Maruti Suzuki Dzire.png",
-  "Maruti Suzuki Dzire": "assets/fleet/Maruti Suzuki Dzire.png",
-  "Maruti Ertiga": "assets/fleet/Maruti Suzuki Ertiga.png",
-  "Maruti Suzuki Ertiga": "assets/fleet/Maruti Suzuki Ertiga.png",
-  "Maruti Fronx": "assets/fleet/Maruti Suzuki Fronx.png",
-  "Maruti Suzuki Fronx": "assets/fleet/Maruti Suzuki Fronx.png",
-  "Maruti Grand Vitara": "assets/fleet/Maruti Suzuki Grand Vitara.png",
-  "Maruti Suzuki Grand Vitara": "assets/fleet/Maruti Suzuki Grand Vitara.png",
-  "Maruti Ignis": "assets/fleet/Maruti Suzuki Ignis.png",
-  "Maruti Suzuki Ignis": "assets/fleet/Maruti Suzuki Ignis.png",
-  "Maruti WagonR": "assets/fleet/Maruti Suzuki WagonR.png",
-  "Maruti Suzuki WagonR": "assets/fleet/Maruti Suzuki WagonR.png",
-  "Maruti XL6": "assets/fleet/Maruti Suzuki XL6.png",
-  "Maruti Suzuki XL6": "assets/fleet/Maruti Suzuki XL6.png",
+  "maruti swift": "assets/fleet/Maruti Suzuki Swift.png",
+  "maruti suzuki swift": "assets/fleet/Maruti Suzuki Swift.png",
+  "swift": "assets/fleet/Maruti Suzuki Swift.png",
+  "maruti baleno": "assets/fleet/Maruti Suzuki Baleno.png",
+  "maruti suzuki baleno": "assets/fleet/Maruti Suzuki Baleno.png",
+  "baleno": "assets/fleet/Maruti Suzuki Baleno.png",
+  "maruti brezza": "assets/fleet/Maruti Suzuki Brezza.png",
+  "maruti suzuki brezza": "assets/fleet/Maruti Suzuki Brezza.png",
+  "brezza": "assets/fleet/Maruti Suzuki Brezza.png",
+  "maruti dzire": "assets/fleet/Maruti Suzuki Dzire.png",
+  "maruti suzuki dzire": "assets/fleet/Maruti Suzuki Dzire.png",
+  "dzire": "assets/fleet/Maruti Suzuki Dzire.png",
+  "maruti ertiga": "assets/fleet/Maruti Suzuki Ertiga.png",
+  "maruti suzuki ertiga": "assets/fleet/Maruti Suzuki Ertiga.png",
+  "ertiga": "assets/fleet/Maruti Suzuki Ertiga.png",
+  "maruti fronx": "assets/fleet/Maruti Suzuki Fronx.png",
+  "maruti suzuki fronx": "assets/fleet/Maruti Suzuki Fronx.png",
+  "fronx": "assets/fleet/Maruti Suzuki Fronx.png",
+  "maruti grand vitara": "assets/fleet/Maruti Suzuki Grand Vitara.png",
+  "maruti suzuki grand vitara": "assets/fleet/Maruti Suzuki Grand Vitara.png",
+  "grand vitara": "assets/fleet/Maruti Suzuki Grand Vitara.png",
+  "maruti ignis": "assets/fleet/Maruti Suzuki Ignis.png",
+  "maruti suzuki ignis": "assets/fleet/Maruti Suzuki Ignis.png",
+  "ignis": "assets/fleet/Maruti Suzuki Ignis.png",
+  "maruti wagon r": "assets/fleet/Maruti Suzuki WagonR.png",
+  "maruti wagonr": "assets/fleet/Maruti Suzuki WagonR.png",
+  "maruti suzuki wagon r": "assets/fleet/Maruti Suzuki WagonR.png",
+  "maruti suzuki wagonr": "assets/fleet/Maruti Suzuki WagonR.png",
+  "wagon r": "assets/fleet/Maruti Suzuki WagonR.png",
+  "wagonr": "assets/fleet/Maruti Suzuki WagonR.png",
+  "maruti xl6": "assets/fleet/Maruti Suzuki XL6.png",
+  "maruti suzuki xl6": "assets/fleet/Maruti Suzuki XL6.png",
+  "xl6": "assets/fleet/Maruti Suzuki XL6.png",
 
   // Hyundai models
-  "Hyundai Exter": "assets/fleet/Hyundai Exter .png",
-  "Hyundai Aura": "assets/fleet/Hyundai Aura.png",
-  "Hyundai Creta": "assets/fleet/Hyundai Creta.png",
-  "Hyundai i20": "assets/fleet/Hyundai i20.png",
+  "hyundai exter": "assets/fleet/Hyundai Exter .png",
+  "exter": "assets/fleet/Hyundai Exter .png",
+  "hyundai aura": "assets/fleet/Hyundai Aura.png",
+  "aura": "assets/fleet/Hyundai Aura.png",
+  "hyundai creta": "assets/fleet/Hyundai Creta.png",
+  "creta": "assets/fleet/Hyundai Creta.png",
+  "hyundai i20": "assets/fleet/Hyundai i20.png",
+  "i20": "assets/fleet/Hyundai i20.png",
+  "hyundai verna": "assets/fleet/Hyundai Aura.png",
+  "verna": "assets/fleet/Hyundai Aura.png",
+  "hyundai venue": "assets/fleet/Hyundai Creta.png",
+  "venue": "assets/fleet/Hyundai Creta.png",
 
   // Tata models
-  "Tata Altroz": "assets/fleet/Tata Altroz .png",
-  "Tata Nexon": "assets/fleet/Tata Nexon.png",
-  "Tata Punch": "assets/fleet/Tata Punch.png",
-  "Tata Safari": "assets/fleet/Tata Safari.png",
+  "tata altroz": "assets/fleet/Tata Altroz .png",
+  "altroz": "assets/fleet/Tata Altroz .png",
+  "tata nexon": "assets/fleet/Tata Nexon.png",
+  "nexon": "assets/fleet/Tata Nexon.png",
+  "tata punch": "assets/fleet/Tata Punch.png",
+  "punch": "assets/fleet/Tata Punch.png",
+  "tata safari": "assets/fleet/Tata Safari.png",
+  "safari": "assets/fleet/Tata Safari.png",
+  "tata harrier": "assets/fleet/Tata Safari.png",
+  "harrier": "assets/fleet/Tata Safari.png",
 
   // Mahindra models
-  "Mahindra 7XO": "assets/fleet/Mahindra 7XO.png",
-  "Mahindra XUV700": "assets/fleet/Mahindra XUV700 .png",
-  "Mahindra Scorpio N": "assets/fleet/Mahindra Scorpio N.png",
-  "Mahindra Thar": "assets/fleet/Mahindra Thar.png",
-  "Mahindra Thar Roxx": "assets/fleet/Thar Roxx.avif",
-  "Mahindra XUV500": "assets/fleet/Mahindra XUV500.png",
+  "mahindra 7xo": "assets/fleet/Mahindra 7XO.png",
+  "mahindra xuv 7xo": "assets/fleet/Mahindra 7XO.png",
+  "mahindra xuv7xo": "assets/fleet/Mahindra 7XO.png",
+  "7xo": "assets/fleet/Mahindra 7XO.png",
+  "xuv 7xo": "assets/fleet/Mahindra 7XO.png",
+  "mahindra 3xo": "assets/fleet/Mahindra 7XO.png",
+  "mahindra xuv 3xo": "assets/fleet/Mahindra 7XO.png",
+  "mahindra xuv3xo": "assets/fleet/Mahindra 7XO.png",
+  "3xo": "assets/fleet/Mahindra 7XO.png",
+  "xuv 3xo": "assets/fleet/Mahindra 7XO.png",
+  "mahindra xuv700": "assets/fleet/Mahindra XUV700 .png",
+  "xuv700": "assets/fleet/Mahindra XUV700 .png",
+  "mahindra xuv 700": "assets/fleet/Mahindra XUV700 .png",
+  "mahindra scorpio n": "assets/fleet/Mahindra Scorpio N.png",
+  "scorpio n": "assets/fleet/Mahindra Scorpio N.png",
+  "mahindra scorpio": "assets/fleet/Mahindra Scorpio N.png",
+  "scorpio": "assets/fleet/Mahindra Scorpio N.png",
+  "mahindra bolero neo": "assets/fleet/Mahindra Scorpio N.png",
+  "bolero neo": "assets/fleet/Mahindra Scorpio N.png",
+  "mahindra bolero": "assets/fleet/Mahindra Scorpio N.png",
+  "bolero": "assets/fleet/Mahindra Scorpio N.png",
+  "mahindra thar": "assets/fleet/Mahindra Thar.png",
+  "thar": "assets/fleet/Mahindra Thar.png",
+  "mahindra thar roxx": "assets/fleet/Thar Roxx.avif",
+  "thar roxx": "assets/fleet/Thar Roxx.avif",
+  "mahindra xuv500": "assets/fleet/Mahindra XUV500.png",
+  "xuv500": "assets/fleet/Mahindra XUV500.png",
 
   // Toyota models
-  "Toyota Glanza": "assets/fleet/Toyota Glanza.png",
-  "Toyota Innova Crysta": "assets/fleet/Toyota Innova Crysta.png",
-  "Toyota Rumion": "assets/fleet/Toyota Rumion.png",
-  "Toyota Urban Cruiser": "assets/fleet/Toyota Urban Cruiser Taisor .png",
-  "Toyota Urban Cruiser Taisor": "assets/fleet/Toyota Urban Cruiser Taisor .png",
-  "Toyota Taisor": "assets/fleet/Toyota Urban Cruiser Taisor .png",
+  "toyota glanza": "assets/fleet/Toyota Glanza.png",
+  "glanza": "assets/fleet/Toyota Glanza.png",
+  "toyota innova crysta": "assets/fleet/Toyota Innova Crysta.png",
+  "innova crysta": "assets/fleet/Toyota Innova Crysta.png",
+  "toyota innova hycross": "assets/fleet/Toyota Innova Crysta.png",
+  "innova hycross": "assets/fleet/Toyota Innova Crysta.png",
+  "toyota innova": "assets/fleet/Toyota Innova Crysta.png",
+  "innova": "assets/fleet/Toyota Innova Crysta.png",
+  "toyota rumion": "assets/fleet/Toyota Rumion.png",
+  "rumion": "assets/fleet/Toyota Rumion.png",
+  "toyota urban cruiser": "assets/fleet/Toyota Urban Cruiser Taisor .png",
+  "toyota urban cruiser taisor": "assets/fleet/Toyota Urban Cruiser Taisor .png",
+  "urban cruiser taisor": "assets/fleet/Toyota Urban Cruiser Taisor .png",
+  "urban cruiser": "assets/fleet/Toyota Urban Cruiser Taisor .png",
+  "toyota taisor": "assets/fleet/Toyota Urban Cruiser Taisor .png",
+  "taisor": "assets/fleet/Toyota Urban Cruiser Taisor .png",
+  "toyota fortuner legender": "assets/fleet/Toyota Innova Crysta.png",
+  "fortuner legender": "assets/fleet/Toyota Innova Crysta.png",
+  "toyota fortuner": "assets/fleet/Toyota Innova Crysta.png",
+  "fortuner": "assets/fleet/Toyota Innova Crysta.png",
 
-  // Other brands & Model Fallbacks
-  "BMW 520D": "assets/fleet/BMW 520D.png",
-  "BMW": "assets/fleet/BMW.png",
-  "Jeep Compass": "assets/fleet/Jeep Compass.png",
-  "Kia Carens": "assets/fleet/Kia Carens.png",
-  "Honda Amaze": "assets/fleet/Hyundai Aura.png",
-  "Honda City": "assets/fleet/Hyundai Aura.png",
-  "Mercedes": "assets/fleet/BMW 520D.png",
-  "Mercedes-Benz": "assets/fleet/BMW 520D.png",
-  "Fortuner": "assets/fleet/Toyota Innova Crysta.png",
-  "Toyota Fortuner": "assets/fleet/Toyota Innova Crysta.png",
+  // Honda, Skoda, VW, Kia, MG, BMW
+  "honda amaze": "assets/fleet/Hyundai Aura.png",
+  "amaze": "assets/fleet/Hyundai Aura.png",
+  "honda city": "assets/fleet/Hyundai Aura.png",
+  "city": "assets/fleet/Hyundai Aura.png",
+  "skoda slavia": "assets/fleet/BMW 520D.png",
+  "slavia": "assets/fleet/BMW 520D.png",
+  "volkswagen virtus": "assets/fleet/BMW 520D.png",
+  "virtus": "assets/fleet/BMW 520D.png",
+  "kia seltos": "assets/fleet/Hyundai Creta.png",
+  "seltos": "assets/fleet/Hyundai Creta.png",
+  "kia sonet": "assets/fleet/Hyundai Creta.png",
+  "sonet": "assets/fleet/Hyundai Creta.png",
+  "kia carens": "assets/fleet/Kia Carens.png",
+  "carens": "assets/fleet/Kia Carens.png",
+  "mg hector": "assets/fleet/Tata Safari.png",
+  "hector": "assets/fleet/Tata Safari.png",
+  "jeep compass": "assets/fleet/Jeep Compass.png",
+  "compass": "assets/fleet/Jeep Compass.png",
+  "bmw 520d": "assets/fleet/BMW 520D.png",
+  "520d": "assets/fleet/BMW 520D.png",
+  "bmw": "assets/fleet/BMW.png",
+  "mercedes": "assets/fleet/BMW 520D.png",
+  "mercedes-benz": "assets/fleet/BMW 520D.png"
 };
+
+function findFleetImageOverride(key) {
+  if (!key) return null;
+  const clean = String(key).trim().toLowerCase().replace(/\s+/g, " ");
+  if (fleetImageOverrides[clean]) return fleetImageOverrides[clean];
+  const noSpace = clean.replace(/[\s\-_]+/g, "");
+  for (const [k, v] of Object.entries(fleetImageOverrides)) {
+    if (k.replace(/[\s\-_]+/g, "") === noSpace) return v;
+  }
+  return null;
+}
 
 function fleetImagePath(vehicle) {
   if (!vehicle) return "assets/fleet/BMW.png";
   if (typeof vehicle === "string") {
     if (vehicle.startsWith("http") || vehicle.startsWith("/api/media/")) return vehicle;
-    if (vehicle.startsWith("assets/")) {
-      const baseName = vehicle.replace(/^assets\/fleet\//, "").replace(/\.png$/i, "").trim();
-      if (fleetImageOverrides[baseName]) return encodeURI(fleetImageOverrides[baseName]);
+    if (vehicle.startsWith("assets/fleet/")) {
+      const baseName = vehicle.replace(/^assets\/fleet\//, "").replace(/\.(png|jpg|jpeg|webp|avif)$/i, "").trim();
+      const ov = findFleetImageOverride(baseName);
+      if (ov) return encodeURI(ov);
       return encodeURI(vehicle);
     }
-    const ov = fleetImageOverrides[vehicle.trim()];
+    const ov = findFleetImageOverride(vehicle);
     if (ov) return encodeURI(ov);
-    return `assets/fleet/${encodeURIComponent(vehicle.trim())}.png`;
+    return `assets/fleet/BMW.png`;
   }
 
   // If vehicle has an uploaded media ID / external URL, use it
@@ -1165,13 +1252,13 @@ function fleetImagePath(vehicle) {
   const model = (vehicle.model || "").trim();
   const fullName = `${brand} ${model}`.trim();
 
-  const rawPath = fleetImageOverrides[fullName] ||
-    fleetImageOverrides[`${brand} ${model}`] ||
-    (brand.toLowerCase() === "maruti" ? fleetImageOverrides[`Maruti Suzuki ${model}`] : null) ||
-    (model ? fleetImageOverrides[model] : null) ||
-    `assets/fleet/${fullName}.png`;
+  const ov = findFleetImageOverride(fullName) ||
+    findFleetImageOverride(model) ||
+    (brand.toLowerCase() === "maruti" ? findFleetImageOverride(`Maruti Suzuki ${model}`) : null);
 
-  return encodeURI(rawPath);
+  if (ov) return encodeURI(ov);
+
+  return "assets/fleet/BMW.png";
 }
 
 function getFleetVehicle(query) {

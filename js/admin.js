@@ -3,13 +3,26 @@
 // Complete admin controller
 // ============================================================================
 
-import { api } from "./kruizly-api.js?v=20260904-v2";
-import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260904-v2";
+import { auth } from "./firebase-init.js";
+import { api } from "./kruizly-api.js?v=20260904-v3";
+import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260904-v3";
 
 import "./nav-helper.js";
 
 import { openReturnModal } from "./return-inspection.js";
 import { formatBookingNumber } from "./booking-reference.js";
+
+async function getAuthToken() {
+  try {
+    if (auth && auth.currentUser && typeof auth.currentUser.getIdToken === "function") {
+      return await auth.currentUser.getIdToken();
+    }
+    if (currentUser && typeof currentUser.getIdToken === "function") {
+      return await currentUser.getIdToken();
+    }
+  } catch (_) {}
+  return "";
+}
 
 // ============================================================================
 // DOM
@@ -1213,7 +1226,7 @@ function initialiseFirebaseExport() {
     if (firebaseExportStatus) firebaseExportStatus.textContent = "Generating database Excel export...";
 
     try {
-      const token = currentUser ? await currentUser.getIdToken() : "";
+      const token = await getAuthToken();
       const exportUrl = `${API_BASE_URL}/admin/export/excel`;
       
       const response = await fetch(exportUrl, {
@@ -1498,8 +1511,7 @@ async function exportFirebaseToExcel() {
         "Generating Excel from Firebase...";
     }
 
-    const token =
-      await currentUser.getIdToken();
+    const token = await getAuthToken();
 
     const response = await fetch(
       `${MEDIA_SERVER_URL}/api/admin/export/excel`,
@@ -2278,7 +2290,7 @@ async function fetchAdminDocumentPreview(mediaUrl) {
   const url = isFullHttp ? str : `${MEDIA_SERVER_URL}${str.startsWith("/") ? "" : "/"}${str}`;
 
   try {
-    const token = currentUser ? await currentUser.getIdToken().catch(() => null) : null;
+    const token = await getAuthToken();
     const headers = {};
     if (token) headers.Authorization = `Bearer ${token}`;
 
@@ -6081,9 +6093,8 @@ const MEDIA_SERVER_URL = window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__
 const hostPhotoCache = new Map(); // carId -> loaded [{ id, mimeType, originalName, blobUrl }]
 
 async function mediaAuthHeaders() {
-  if (!currentUser) return {};
-  const token = await currentUser.getIdToken();
-  return { Authorization: `Bearer ${token}` };
+  const token = await getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 // The uploader of a given photo could be the host who submitted the car

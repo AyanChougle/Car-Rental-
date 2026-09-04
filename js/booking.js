@@ -2,8 +2,8 @@
 // KRUIZLY — BOOKING PAGE
 // ============================================================
 
-import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v2";
-import { api } from "./kruizly-api.js?v=20260904-v2";
+import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v3";
+import { api } from "./kruizly-api.js?v=20260904-v3";
 import "./nav-helper.js";
 import { generateNumericBookingId } from "./booking-reference.js";
 import {

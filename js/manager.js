@@ -1,10 +1,23 @@
-import { checkAuth, getCurrentUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260904-v2";
-import { api } from "./kruizly-api.js?v=20260904-v2";
+import { auth } from "./firebase-init.js";
+import { checkAuth, getCurrentUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260904-v3";
+import { api } from "./kruizly-api.js?v=20260904-v3";
 
 import "./nav-helper.js";
 import { openReturnModal } from "./return-inspection.js";
 import { MEDIA_SERVER_URL } from "./media-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
+
+async function getAuthToken() {
+  try {
+    if (auth && auth.currentUser && typeof auth.currentUser.getIdToken === "function") {
+      return await auth.currentUser.getIdToken();
+    }
+    if (currentUser && typeof currentUser.getIdToken === "function") {
+      return await currentUser.getIdToken();
+    }
+  } catch (_) {}
+  return "";
+}
 
 /* =========================================================
    ELEMENTS
@@ -160,8 +173,7 @@ async function fetchManagerPaymentScreenshot(mediaId) {
     throw new Error("Manager authentication is required.");
   }
 
-  const token =
-    await currentUser.getIdToken();
+  const token = await getAuthToken();
 
   const response = await fetch(
     `${MEDIA_SERVER_URL}/api/media/file/${encodeURIComponent(mediaId)}`,
@@ -526,7 +538,7 @@ function openExecutivePickupModal(booking) {
 }
 
 async function uploadExecutivePickupPhoto(file, bookingId) {
-  const token = await currentUser.getIdToken();
+  const token = await getAuthToken();
   const formData = new FormData();
   formData.append("file", file);
   formData.append("category", "inspection_photo");
@@ -556,7 +568,7 @@ async function uploadExecutivePickupPhoto(file, bookingId) {
 
 async function removeExecutiveMedia(mediaId) {
   try {
-    const token = await currentUser.getIdToken();
+    const token = await getAuthToken();
     await fetch(
       `${MEDIA_SERVER_URL}/api/media/${encodeURIComponent(mediaId)}`,
       {
@@ -572,7 +584,7 @@ async function removeExecutiveMedia(mediaId) {
 }
 
 async function fetchExecutiveMedia(mediaId) {
-  const token = await currentUser.getIdToken();
+  const token = await getAuthToken();
   const response = await fetch(
     `${MEDIA_SERVER_URL}/api/media/file/${encodeURIComponent(mediaId)}`,
     {
@@ -2314,11 +2326,11 @@ function closeManagerDocumentModal() {
 }
 
 async function fetchManagerDocumentPreview(mediaUrl) {
-  if (!currentUser || !mediaUrl) {
+  if (!mediaUrl) {
     throw new Error("Document preview information is missing.");
   }
 
-  const token = await currentUser.getIdToken();
+  const token = await getAuthToken();
   const url = String(mediaUrl).startsWith("http")
     ? String(mediaUrl)
     : `${MEDIA_SERVER_URL}${mediaUrl}`;

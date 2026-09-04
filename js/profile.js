@@ -4,10 +4,23 @@
    Local Node Media Server for documents
    ============================================================ */
 
-import { checkAuth, getCurrentUser, logout } from "./auth.js?v=20260904-v2";
-import { api } from "./kruizly-api.js?v=20260904-v2";
+import { auth } from "./firebase-init.js";
+import { checkAuth, getCurrentUser, logout } from "./auth.js?v=20260904-v3";
+import { api } from "./kruizly-api.js?v=20260904-v3";
 import "./nav-helper.js";
 import { formatBookingNumber } from "./booking-reference.js";
+
+async function getAuthToken(user = null) {
+  try {
+    if (user && typeof user.getIdToken === "function") {
+      return await user.getIdToken();
+    }
+    if (auth && auth.currentUser && typeof auth.currentUser.getIdToken === "function") {
+      return await auth.currentUser.getIdToken();
+    }
+  } catch (_) {}
+  return "";
+}
 
 
 /* ============================================================
@@ -296,8 +309,7 @@ async function loadProtectedMediaPreview(
   }
 
   try {
-    const token =
-      await user.getIdToken();
+    const token = await getAuthToken(user);
 
     let url = mediaUrl;
 

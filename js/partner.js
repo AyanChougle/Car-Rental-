@@ -4,11 +4,24 @@
 // Collection: partner_cars
 // ============================================================
 
-import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v2";
-import { api } from "./kruizly-api.js?v=20260904-v2";
+import { auth } from "./firebase-init.js";
+import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v3";
+import { api } from "./kruizly-api.js?v=20260904-v3";
 
 import "./nav-helper.js";
 import { MEDIA_SERVER_URL } from "./media-config.js";
+
+async function getAuthToken() {
+  try {
+    if (auth && auth.currentUser && typeof auth.currentUser.getIdToken === "function") {
+      return await auth.currentUser.getIdToken();
+    }
+    if (currentUser && typeof currentUser.getIdToken === "function") {
+      return await currentUser.getIdToken();
+    }
+  } catch (_) {}
+  return "";
+}
 
 
 // ============================================================
@@ -51,7 +64,7 @@ carPhotosInput?.addEventListener("change", () => {
 async function uploadHostPhoto(file, listingId) {
   // 1. Try local media server if available
   try {
-    const token = await currentUser.getIdToken();
+    const token = await getAuthToken();
     const formData = new FormData();
     formData.append("file", file);
     formData.append("category", "partner_car_photo");
@@ -123,7 +136,7 @@ async function uploadHostPhoto(file, listingId) {
 
 async function removeUploadedHostPhoto(mediaId) {
   try {
-    const token = await currentUser.getIdToken();
+    const token = await getAuthToken();
     await fetch(`${MEDIA_SERVER_URL}/api/media/${encodeURIComponent(mediaId)}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${token}` }
