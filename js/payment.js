@@ -1373,6 +1373,15 @@ async function submitPayment(
       "Screenshot uploaded. Saving your payment reference..."
     );
 
+    const total = Number(booking.finalAmount ?? booking.totalAmount ?? 0);
+    const plan = booking.paymentPlan || "full";
+    const payAmount = Number(
+      booking.paymentAmount ??
+      booking.paymentAmountPaid ??
+      (plan === "advance" ? Math.min(500, total) : total)
+    );
+    const remBalance = Math.max(0, total - payAmount);
+
     const finalBookingRecord = {
       ...booking,
       bookingId,
@@ -1382,10 +1391,11 @@ async function submitPayment(
       userEmail: currentUser.email || booking.userEmail || "",
       userPhone: booking.userPhone || null,
       paymentMethod: activeMethod,
-      paymentPlan: booking.paymentPlan || "full",
-      paymentAmount: Number(booking.paymentAmount ?? booking.totalAmount ?? 0),
-      paymentAmountPaid: Number(booking.paymentAmount ?? booking.totalAmount ?? 0),
-      remainingBalance: Number(booking.remainingBalance ?? 0),
+      paymentPlan: plan,
+      paymentAmount: payAmount,
+      paymentAmountPaid: payAmount,
+      remainingBalance: remBalance,
+      remainingAmount: remBalance,
       paymentRef: reference,
       paymentScreenshotMediaId: String(uploadedMediaId),
       paymentScreenshotCategory: "payment_screenshot",
@@ -1409,7 +1419,7 @@ async function submitPayment(
     // Record payment submission
     await api.post("/payments/submit", {
       bookingId,
-      amount: paymentAmount,
+      amount: payAmount,
       method: activeMethod || "upi",
       utr: reference,
       screenshotUrl: media?.url || null,

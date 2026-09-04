@@ -29,6 +29,13 @@ if (!$bookingId) {
     sendErrorResponse('Booking ID is required.', 400);
 }
 
+if ($amount <= 0 && $bookingId) {
+    $bk = Database::fetchOne("SELECT final_amount, advance_amount, payment_plan, total_amount FROM bookings WHERE booking_id = ? OR booking_number = ? LIMIT 1", [$bookingId, $bookingId]);
+    if ($bk) {
+        $amount = ($bk['payment_plan'] === 'advance' && (float)$bk['advance_amount'] > 0) ? (float)$bk['advance_amount'] : (float)($bk['final_amount'] ?: $bk['total_amount']);
+    }
+}
+
 // Handle screenshot upload if sent directly in files
 $screenshotUrl = trim((string)($input['screenshotUrl'] ?? $input['paymentScreenshotUrl'] ?? ''));
 $screenshotMediaId = trim((string)($input['screenshotMediaId'] ?? ''));
