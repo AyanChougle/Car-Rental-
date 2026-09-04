@@ -1,7 +1,7 @@
 <?php
 /**
  * api/admin/export.php
- * GET /api/admin/export/excel - Export MySQL database tables as an Excel workbook
+ * GET /api/admin/export - Export MySQL database tables as JSON or CSV
  */
 
 declare(strict_types=1);
@@ -10,7 +10,7 @@ require_once __DIR__ . '/../middleware/auth.php';
 
 Auth::requireRole('admin');
 
-$type = strtolower((string)($_GET['type'] ?? 'excel'));
+$format = strtolower((string)($_GET['format'] ?? 'json'));
 
 // Fetch all database tables
 $users = Database::fetchAll("SELECT id, firebase_uid, email, name, phone, age, role, status, license_status, aadhar_status, pan_status, created_at FROM users");
@@ -20,16 +20,31 @@ $payments = Database::fetchAll("SELECT payment_id, booking_id, firebase_uid, amo
 $coupons = Database::fetchAll("SELECT code, discount_type, discount_value, min_order, active, used_count, expires_at FROM coupons");
 $verification = Database::fetchAll("SELECT verification_id, firebase_uid, full_name, phone, license_number, license_status, aadhar_number, aadhar_status, pan_number, pan_status, overall_status FROM verification");
 
-$filename = "KRUIZLY_Database_Export_" . date('Y-m-d_His') . ".csv";
+if ($format === 'json' || (!isset($_GET['format']) && !isset($_GET['csv']))) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'status' => 'success',
+        'data' => [
+            'bookings' => $bookings ?: [],
+            'payments' => $payments ?: [],
+            'users' => $users ?: [],
+            'vehicles' => $vehicles ?: [],
+            'coupons' => $coupons ?: [],
+            'verification' => $verification ?: []
+        ],
+        'exported_at' => date('Y-m-d H:i:s')
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
+// If CSV requested
+$filename = "KRUIZLY_Database_Export_" . date('Y-m-d_His') . ".csv";
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Pragma: no-cache');
 header('Expires: 0');
 
 $out = fopen('php://output', 'w');
-
-// Write BOM for UTF-8 Excel opening
 fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
 
 function writeSection($out, string $title, array $rows) {
@@ -42,7 +57,7 @@ function writeSection($out, string $title, array $rows) {
     } else {
         fputcsv($out, ["No records found."]);
     }
-    fputcsv($out, []); // Blank separator line
+    fputcsv($out, []);
 }
 
 writeSection($out, "BOOKINGS", $bookings);
