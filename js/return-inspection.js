@@ -5,7 +5,7 @@
 // upload return-condition photos, and see the refundable security deposit
 // computed live before saving. Saving marks the booking "completed" and
 // stores the itemized breakdown on the booking doc as the permanent record.
-import { api } from "./kruizly-api.js?v=20260904";
+import { api } from "./kruizly-api.js?v=20260904-v2";
 import { MEDIA_SERVER_URL } from "./media-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
 

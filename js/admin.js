@@ -3,8 +3,8 @@
 // Complete admin controller
 // ============================================================================
 
-import { api } from "./kruizly-api.js?v=20260904";
-import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260904";
+import { api } from "./kruizly-api.js?v=20260904-v2";
+import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260904-v2";
 
 import "./nav-helper.js";
 
