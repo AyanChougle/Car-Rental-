@@ -2286,22 +2286,28 @@ async function fetchAdminDocumentPreview(mediaUrl) {
     return str;
   }
 
-  const isFullHttp = str.startsWith("http://") || str.startsWith("https://");
-  const url = isFullHttp ? str : `${MEDIA_SERVER_URL}${str.startsWith("/") ? "" : "/"}${str}`;
+  let finalUrl = str;
+  if (str.startsWith("MED-")) {
+    finalUrl = `${MEDIA_SERVER_URL}/api/media/file.php?id=${encodeURIComponent(str)}`;
+  } else if (!str.startsWith("http://") && !str.startsWith("https://")) {
+    finalUrl = `${MEDIA_SERVER_URL}${str.startsWith("/") ? "" : "/"}${str}`;
+  }
+
+  const isFullHttp = finalUrl.startsWith("http://") || finalUrl.startsWith("https://");
 
   try {
     const token = await getAuthToken();
     const headers = {};
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    const response = await fetch(url, { headers });
+    const response = await fetch(finalUrl, { headers });
     if (!response.ok) {
-      if (isFullHttp) return str;
+      if (isFullHttp) return finalUrl;
       throw new Error(`Media server status ${response.status}`);
     }
     return URL.createObjectURL(await response.blob());
   } catch (err) {
-    if (isFullHttp) return str;
+    if (isFullHttp) return finalUrl;
     throw err;
   }
 }
@@ -2322,20 +2328,20 @@ async function openDocumentModal(
   const configs = {
     license: {
       title: "Driving Licence",
-      front: user.licenseFrontURL || user.licenseURL,
-      back: user.licenseBackURL,
+      front: user.licenseFrontURL || user.licenseURL || user.licenseFrontMediaId || user.license_front_media_id,
+      back: user.licenseBackURL || user.licenseBackMediaId || user.license_back_media_id,
       requiresBack: true
     },
     aadhar: {
       title: "Aadhaar Card",
-      front: user.aadharFrontURL || user.aadharURL,
-      back: user.aadharBackURL,
+      front: user.aadharFrontURL || user.aadharURL || user.aadharFrontMediaId || user.aadhar_front_media_id,
+      back: user.aadharBackURL || user.aadharBackMediaId || user.aadhar_back_media_id,
       requiresBack: true
     },
     pan: {
       title: "PAN Card",
-      front: user.panFrontURL,
-      back: user.panBackURL,
+      front: user.panFrontURL || user.panFrontMediaId || user.pan_front_media_id,
+      back: user.panBackURL || user.panBackMediaId || user.pan_back_media_id,
       requiresBack: true
     }
   };
@@ -5067,8 +5073,8 @@ function renderPaymentsTable() {
           </td>
 
           <td style="padding:12px;">
-            <span class="fleet-status ${booking.paymentStatus === "paid" || booking.paymentStatus === "advance_paid" ? "verified" : "pending"}">
-              ${booking.paymentStatus === "paid" ? "Paid in Full" : booking.paymentStatus === "advance_paid" ? "Advance Paid" : "Pending Review"}
+            <span class="fleet-status ${booking.paymentStatus === "paid" || booking.paymentStatus === "advance_paid" ? "verified" : booking.paymentStatus === "rejected" ? "rejected" : "pending"}">
+              ${booking.paymentStatus === "paid" ? "Paid in Full" : booking.paymentStatus === "advance_paid" ? "Advance Paid" : booking.paymentStatus === "rejected" ? "Rejected" : "Pending Review"}
             </span>
           </td>
 
@@ -5079,7 +5085,7 @@ function renderPaymentsTable() {
               white-space:nowrap;
             "
           >
-            ${booking.paymentStatus === "pending_verification"
+            ${booking.paymentStatus === "pending_verification" || booking.paymentStatus === "rejected"
               ? `<button type="button" class="btn btn-dark review-payment-btn" data-bid="${escapeHtml(booking.id)}" style="padding:6px 12px;font-size:.8rem;">Review</button>`
               : `<button type="button" class="btn btn-outline edit-invoice-btn" data-bid="${escapeHtml(booking.id)}" style="padding:6px 12px;font-size:.8rem;">Edit / Send Invoice</button>`}
           </td>

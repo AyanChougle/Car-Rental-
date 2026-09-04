@@ -64,6 +64,13 @@ export function resolveEndpoint(endpoint, params = {}) {
     return { path: "/coupons/detail.php", params: queryParams };
   }
 
+  // /verification/user/:uid/status
+  const verUserStatusMatch = clean.match(/^verification\/user\/([^/]+)\/status$/);
+  if (verUserStatusMatch) {
+    queryParams.uid = verUserStatusMatch[1];
+    return { path: "/verification/user-status.php", params: queryParams };
+  }
+
   // Route map for standard endpoints
   const routeMap = {
     "health": "/health.php",

@@ -17,6 +17,16 @@ $rows = Database::fetchAll(
      ORDER BY v.created_at DESC"
 );
 
+function formatVerDocUrl(?string $val): ?string {
+    if (!$val) return null;
+    $val = trim($val);
+    if (!$val) return null;
+    if (str_starts_with($val, 'http://') || str_starts_with($val, 'https://') || str_starts_with($val, '/api/media/')) {
+        return $val;
+    }
+    return '/api/media/file.php?id=' . urlencode($val);
+}
+
 $verifications = array_map(function($v) {
     return [
         'id' => $v['verification_id'],
@@ -30,14 +40,20 @@ $verifications = array_map(function($v) {
         'licenseFrontMediaId' => $v['license_front_media_id'],
         'licenseBackMediaId' => $v['license_back_media_id'],
         'licenseStatus' => $v['license_status'],
+        'licenseFrontURL' => formatVerDocUrl($v['license_front_media_id']),
+        'licenseBackURL' => formatVerDocUrl($v['license_back_media_id']),
         'aadharNumber' => $v['aadhar_number'],
         'aadharFrontMediaId' => $v['aadhar_front_media_id'],
         'aadharBackMediaId' => $v['aadhar_back_media_id'],
         'aadharStatus' => $v['aadhar_status'],
+        'aadharFrontURL' => formatVerDocUrl($v['aadhar_front_media_id']),
+        'aadharBackURL' => formatVerDocUrl($v['aadhar_back_media_id']),
         'panNumber' => $v['pan_number'],
         'panFrontMediaId' => $v['pan_front_media_id'],
         'panBackMediaId' => $v['pan_back_media_id'],
         'panStatus' => $v['pan_status'],
+        'panFrontURL' => formatVerDocUrl($v['pan_front_media_id']),
+        'panBackURL' => formatVerDocUrl($v['pan_back_media_id']),
         'overallStatus' => $v['overall_status'],
         'rejectionReason' => $v['rejection_reason'],
         'verifiedBy' => $v['verified_by'],
