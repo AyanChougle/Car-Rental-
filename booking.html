@@ -533,13 +533,38 @@
        SCRIPTS
   ========================== -->
 
-  <script src="js/vehicles.js?v=20260829-crp"></script>
+  <script>
+    (function() {
+      function lockDates() {
+        const now = new Date();
+        const pad = (n) => String(n).padStart(2, "0");
+        const iso = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate()) + "T" + pad(now.getHours()) + ":" + pad(now.getMinutes());
+        const p = document.getElementById("pickupDate");
+        const d = document.getElementById("dropDate");
+        if (p) {
+          p.min = iso;
+          if (!p.value || new Date(p.value) < now) {
+            p.value = iso;
+          }
+        }
+        if (d) {
+          d.min = (p && p.value) ? p.value : iso;
+        }
+      }
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", lockDates);
+      } else {
+        lockDates();
+      }
+    })();
+  </script>
+  <script src="js/vehicles.js?v=20260904"></script>
   <script
     type="module"
-    src="js/booking.js"
+    src="js/booking.js?v=20260904"
   ></script>
 
-    <script src="js/glass-ui.js"></script>
-      <script src="js/kruizly-motion.js"></script>
+  <script src="js/glass-ui.js?v=20260904"></script>
+  <script src="js/kruizly-motion.js?v=20260904"></script>
   </body>
 </html>
