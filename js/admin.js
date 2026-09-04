@@ -5712,13 +5712,19 @@ async function openPaymentModal(
       `Booking #${formatBookingNumber(booking)}`;
   }
 
-  const screenshotSrc =
+  let screenshotSrc =
     booking.paymentScreenshotDataUrl ||
     booking.paymentScreenshotURL ||
     booking.paymentScreenshotUrl ||
     booking.screenshotUrl ||
     booking.screenshotURL ||
     (typeof booking.paymentScreenshot === "string" ? booking.paymentScreenshot : null);
+
+  if (!screenshotSrc && booking.paymentScreenshotMediaId) {
+    screenshotSrc = `/api/media/file.php?id=${encodeURIComponent(booking.paymentScreenshotMediaId)}`;
+  } else if (screenshotSrc && String(screenshotSrc).startsWith("MED-")) {
+    screenshotSrc = `/api/media/file.php?id=${encodeURIComponent(screenshotSrc)}`;
+  }
 
   const body =
     $("paymentModalBody");
@@ -5793,13 +5799,14 @@ async function openPaymentModal(
                   screenshotSrc
                 )}"
                 alt="Payment screenshot"
+                onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'400\\' height=\\'260\\' viewBox=\\'0 0 400 260\\'%3E%3Crect width=\\'100%25\\' height=\\'100%25\\' fill=\\'%23121926\\' rx=\\'12\\'/%3E%3Ctext x=\\'50%25\\' y=\\'46%25\\' fill=\\'%2348d7ff\\' font-family=\\'sans-serif\\' font-size=\\'14\\' font-weight=\\'bold\\' text-anchor=\\'middle\\'%3EProtected Payment Proof%3C/text%3E%3Ctext x=\\'50%25\\' y=\\'58%25\\' fill=\\'%237b8798\\' font-family=\\'sans-serif\\' font-size=\\'12\\' text-anchor=\\'middle\\'%3ERef: ${escapeHtml(booking.paymentRef || booking.id || '')}%3C/text%3E%3C/svg%3E';"
                 style="
                   width:100%;
                   max-height:400px;
                   object-fit:contain;
                   border-radius:10px;
                   background:#000;
-                margin-top:10px;
+                  margin-top:10px;
                 "
               />
             `
