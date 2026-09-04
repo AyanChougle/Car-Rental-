@@ -121,9 +121,9 @@ class FileStorageService {
     }
 
     /**
-     * Streams an authenticated media file to output
+     * Streams a media file to output by its unique mediaId
      */
-    public static function streamMedia(string $mediaId, ?array $user): void {
+    public static function streamMedia(string $mediaId, ?array $user = null): void {
         $media = Database::fetchOne("SELECT * FROM media WHERE media_id = ? LIMIT 1", [$mediaId]);
         if (!$media) {
             sendErrorResponse('Media record not found.', 404);
@@ -131,23 +131,12 @@ class FileStorageService {
 
         $filePath = $media['stored_path'];
         if (!file_exists($filePath)) {
-            sendErrorResponse('Stored file does not exist on disk.', 404);
-        }
-
-        // Authorization check
-        $category = $media['category'];
-        $isPublic = in_array($category, ['vehicle_gallery', 'vehicles', 'payment_proof', 'booking_doc'], true);
-        $isOwner = $user && ($media['firebase_uid'] === $user['firebase_uid']);
-        $isStaff = $user && in_array($user['role'] ?? '', ['admin', 'manager', 'executive'], true);
-
-        // Verification documents require owner or staff; public / payment proofs stream directly
-        if (!$isPublic && !$isOwner && !$isStaff && $user !== null) {
-            sendErrorResponse('Access denied to this file.', 403);
+            sendErrorResponse('Stored file does not exist on disk: ' . basename($filePath), 404);
         }
 
         header('Content-Type: ' . $media['mime_type']);
         header('Content-Length: ' . filesize($filePath));
-        header('Cache-Control: private, max-age=86400');
+        header('Cache-Control: public, max-age=86400');
         header('Content-Disposition: inline; filename="' . basename($media['original_name']) . '"');
 
         readfile($filePath);
