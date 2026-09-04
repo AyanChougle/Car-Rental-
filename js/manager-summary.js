@@ -85,7 +85,10 @@ function renderDashboard() {
     item => item.paymentStatus === "pending_verification"
   ).length;
 
-  const pageItems = bookings;
+  const totalPages = Math.max(1, Math.ceil(bookings.length / PAGE_SIZE));
+  currentPage = Math.min(currentPage, totalPages);
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const pageItems = bookings.slice(start, start + PAGE_SIZE);
 
   content.innerHTML = `
     <section class="manager-stats" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr))">
@@ -129,11 +132,23 @@ function renderDashboard() {
           </tbody>
         </table>
       </div>
-      <div style="padding:10px 16px;font-size:0.8rem;color:var(--kr-text-muted);display:flex;justify-content:space-between;align-items:center;background:rgba(6,10,16,0.45);border-top:1px solid var(--kr-border);border-radius:0 0 var(--kr-radius-md) var(--kr-radius-md);">
-        <span>Showing all <strong>${bookings.length}</strong> bookings</span>
-        <span style="font-size:0.75rem;color:var(--kr-cyan);font-weight:600;">↕ Scrollable Ledger</span>
-      </div>
+      ${totalPages > 1 ? `
+        <nav class="data-pagination" aria-label="Manager booking summary pages">
+          <span class="data-pagination__summary">Page ${currentPage} of ${totalPages} · ${bookings.length} bookings</span>
+          <div class="data-pagination__actions">
+            <button type="button" data-summary-page="previous" ${currentPage === 1 ? "disabled" : ""}>Previous</button>
+            <button type="button" data-summary-page="next" ${currentPage === totalPages ? "disabled" : ""}>Next</button>
+          </div>
+        </nav>` : ""}
     </section>`;
+
+  content.querySelectorAll("[data-summary-page]").forEach(button => {
+    button.addEventListener("click", () => {
+      currentPage += button.dataset.summaryPage === "next" ? 1 : -1;
+      renderDashboard();
+      content.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
 }
 
 async function loadSummary() {

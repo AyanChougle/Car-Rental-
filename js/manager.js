@@ -1190,7 +1190,17 @@ function renderManagerBookingsTable(bookings) {
     return;
   }
 
-  const pageBookings = bookings;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(bookings.length / MANAGER_BOOKINGS_PER_PAGE)
+  );
+  managerBookingPage = Math.min(managerBookingPage, totalPages);
+  const pageStart =
+    (managerBookingPage - 1) * MANAGER_BOOKINGS_PER_PAGE;
+  const pageBookings = bookings.slice(
+    pageStart,
+    pageStart + MANAGER_BOOKINGS_PER_PAGE
+  );
 
   let html = `
     <div class="manager-table-wrap" style="width:100%;max-height:680px;overflow-y:auto;overflow-x:auto;">
@@ -1534,14 +1544,22 @@ function renderManagerBookingsTable(bookings) {
       </table>
 
     </div>
-    <div style="padding:10px 16px;font-size:0.8rem;color:var(--kr-text-muted);display:flex;justify-content:space-between;align-items:center;background:rgba(6,10,16,0.45);border-top:1px solid var(--kr-border);border-radius:0 0 var(--kr-radius-md) var(--kr-radius-md);">
-      <span>Showing all <strong>${bookings.length}</strong> operations bookings</span>
-      <span style="font-size:0.75rem;color:var(--kr-cyan);font-weight:600;">↕ Scrollable Table</span>
-    </div>
+    ${renderManagerPagination(totalPages, bookings.length)}
   `;
 
   bookingsWrap.innerHTML = html;
   attachBookingButtonEvents();
+
+  bookingsWrap
+    .querySelectorAll("[data-manager-page-action]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        managerBookingPage +=
+          button.dataset.managerPageAction === "next" ? 1 : -1;
+        renderManagerBookingsTable(getSortedManagerBookings());
+        bookingsWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
 }
 
 function renderManagerPagination(totalPages, totalItems) {

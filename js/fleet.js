@@ -254,23 +254,52 @@ function getCards() {
 
 function renderPagination(totalItems) {
   if (!fleetPagination) return;
-  if (totalItems === 0) {
+
+  const totalPages = Math.ceil(totalItems / CARS_PER_PAGE);
+
+  if (totalPages <= 1 || totalItems === 0) {
     fleetPagination.classList.add("hidden");
     fleetPagination.hidden = true;
     return;
   }
+
   fleetPagination.classList.remove("hidden");
   fleetPagination.hidden = false;
+
+  currentFleetPage = Math.max(1, Math.min(currentFleetPage, totalPages));
+
+  let pageButtonsHtml = "";
+  for (let i = 1; i <= totalPages; i++) {
+    pageButtonsHtml += `
+      <button type="button" data-fleet-page="${i}" class="${i === currentFleetPage ? "active" : ""}">${i}</button>
+    `;
+  }
+
   fleetPagination.innerHTML = `
-    <div style="width:100%;display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;margin-top:20px;">
-      <span class="data-pagination__summary" style="font-size:0.88rem;color:var(--kr-text-secondary);">
-        Showing all <strong>${totalItems}</strong> matching vehicles
-      </span>
-      <span style="font-size:0.8rem;color:var(--kr-cyan);font-weight:700;">
-        ⚡ Instant Booking Available
-      </span>
+    <span class="data-pagination__summary">
+      Page <strong>${currentFleetPage}</strong> of <strong>${totalPages}</strong> · <strong>${totalItems}</strong> vehicles
+    </span>
+    <div class="data-pagination__actions">
+      <button type="button" data-fleet-page="prev" ${currentFleetPage === 1 ? "disabled" : ""}>Previous</button>
+      ${pageButtonsHtml}
+      <button type="button" data-fleet-page="next" ${currentFleetPage === totalPages ? "disabled" : ""}>Next</button>
     </div>
   `;
+
+  fleetPagination.querySelectorAll("[data-fleet-page]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = button.dataset.fleetPage;
+      if (target === "prev") {
+        currentFleetPage = Math.max(1, currentFleetPage - 1);
+      } else if (target === "next") {
+        currentFleetPage = Math.min(totalPages, currentFleetPage + 1);
+      } else {
+        currentFleetPage = Number(target) || 1;
+      }
+      applyPagination();
+      document.querySelector(".fleet-listing-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
 }
 
 function applyPagination() {
@@ -284,13 +313,20 @@ function applyPagination() {
     card.hidden = true;
   });
 
-  // Display all matching vehicles for seamless scrolling
-  visibleCards.forEach((card) => {
-    card.classList.remove("hidden");
-    card.hidden = false;
+  const totalItems = visibleCards.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / CARS_PER_PAGE));
+  currentFleetPage = Math.max(1, Math.min(currentFleetPage, totalPages));
+
+  const startIndex = (currentFleetPage - 1) * CARS_PER_PAGE;
+  const endIndex = startIndex + CARS_PER_PAGE;
+
+  visibleCards.forEach((card, idx) => {
+    const isPageVisible = idx >= startIndex && idx < endIndex;
+    card.classList.toggle("hidden", !isPageVisible);
+    card.hidden = !isPageVisible;
   });
 
-  renderPagination(visibleCards.length);
+  renderPagination(totalItems);
 }
 
 function applyFilters() {

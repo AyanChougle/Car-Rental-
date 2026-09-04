@@ -4,7 +4,7 @@
 // ============================================================================
 
 import { auth } from "./firebase-init.js";
-import { api } from "./kruizly-api.js?v=20260904-v4";
+import { api, API_BASE_URL } from "./kruizly-api.js?v=20260904-v4";
 import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260904-v4";
 
 import "./nav-helper.js";
@@ -65,8 +65,12 @@ let bookingDateFrom = "";
 let bookingDateTo = "";
 const ADMIN_BOOKINGS_PER_PAGE = 10;
 const ADMIN_PAYMENTS_PER_PAGE = 10;
+const ADMIN_USERS_PER_PAGE = 10;
+const ADMIN_FLEET_PER_PAGE = 10;
 let adminBookingPage = 1;
 let adminPaymentPage = 1;
+let adminUserPage = 1;
+let adminFleetPage = 1;
 
 let expandedBookingId = null;
 let expandedHostPhotoId = null;
@@ -762,6 +766,11 @@ async function loadFleetManagement() {
       return;
     }
 
+    const totalPages = Math.max(1, Math.ceil(vehicles.length / ADMIN_FLEET_PER_PAGE));
+    adminFleetPage = Math.min(adminFleetPage, totalPages);
+    const pageStart = (adminFleetPage - 1) * ADMIN_FLEET_PER_PAGE;
+    const pageVehicles = vehicles.slice(pageStart, pageStart + ADMIN_FLEET_PER_PAGE);
+
     fleetManagementWrap.innerHTML = `
       <div style="width:100%;overflow-x:auto;">
         <table class="admin-table" style="width:100%;min-width:940px;border-collapse:collapse;text-align:left;">
@@ -777,7 +786,7 @@ async function loadFleetManagement() {
             </tr>
           </thead>
           <tbody>
-            ${vehicles.map((vehicle) => {
+            ${pageVehicles.map((vehicle) => {
               const available = Boolean(vehicle.available);
               const imgUrl = (typeof window.fleetImagePath === "function" && window.fleetImagePath(vehicle)) || (Array.isArray(vehicle.gallery) && vehicle.gallery[0]) || vehicle.imageUrl || "assets/fleet/BMW.png";
               return `
@@ -826,11 +835,23 @@ async function loadFleetManagement() {
           </tbody>
         </table>
       </div>
-      <div style="padding:10px 16px;font-size:0.8rem;color:var(--kr-text-muted);display:flex;justify-content:space-between;align-items:center;background:rgba(6,10,16,0.45);border-top:1px solid var(--kr-border);border-radius:0 0 var(--kr-radius-md) var(--kr-radius-md);">
-        <span>Showing all <strong>${vehicles.length}</strong> fleet vehicles</span>
-        <span style="font-size:0.75rem;color:var(--kr-cyan);font-weight:600;">↕ Scrollable Table</span>
-      </div>
+      ${renderAdminPagination({
+        page: adminFleetPage,
+        totalPages,
+        totalItems: vehicles.length,
+        type: "fleet"
+      })}
     `;
+
+    fleetManagementWrap
+      .querySelectorAll("[data-admin-fleet-page-action]")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          adminFleetPage += button.dataset.adminFleetPageAction === "next" ? 1 : -1;
+          loadFleetManagement();
+          fleetManagementWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      });
 
     fleetManagementWrap
       .querySelectorAll(".admin-fleet-edit")
@@ -1741,6 +1762,11 @@ function renderUsersTable(
     return;
   }
 
+  const totalPages = Math.max(1, Math.ceil(users.length / ADMIN_USERS_PER_PAGE));
+  adminUserPage = Math.min(adminUserPage, totalPages);
+  const pageStart = (adminUserPage - 1) * ADMIN_USERS_PER_PAGE;
+  const pageUsers = users.slice(pageStart, pageStart + ADMIN_USERS_PER_PAGE);
+
   let html = `
     <div style="width:100%;overflow-x:auto;">
       <table
@@ -1792,7 +1818,7 @@ function renderUsersTable(
         <tbody>
   `;
 
-  users.forEach((user) => {
+  pageUsers.forEach((user) => {
     const hasLicense = Boolean(user.licenseFrontURL || user.licenseURL || user.licenseFrontMediaId || user.license_front_media_id || user.licenseNumber);
       const hasAadhaar = Boolean(user.aadharFrontURL || user.aadharURL || user.aadharBackURL || user.aadharFrontMediaId || user.aadhar_front_media_id || user.aadharNumber);
       const hasPan = Boolean(user.panFrontURL || user.panURL || user.panBackURL || user.panFrontMediaId || user.pan_front_media_id || user.panNumber);
@@ -1997,13 +2023,25 @@ function renderUsersTable(
         </tbody>
       </table>
     </div>
-    <div style="padding:10px 16px;font-size:0.8rem;color:var(--kr-text-muted);display:flex;justify-content:space-between;align-items:center;background:rgba(6,10,16,0.45);border-top:1px solid var(--kr-border);border-radius:0 0 var(--kr-radius-md) var(--kr-radius-md);">
-      <span>Showing all <strong>${users.length}</strong> registered user accounts</span>
-      <span style="font-size:0.75rem;color:var(--kr-cyan);font-weight:600;">↕ Scrollable Table</span>
-    </div>
+    ${renderAdminPagination({
+      page: adminUserPage,
+      totalPages,
+      totalItems: users.length,
+      type: "users"
+    })}
   `;
 
   usersTableWrap.innerHTML = html;
+
+  usersTableWrap
+    .querySelectorAll("[data-admin-users-page-action]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        adminUserPage += button.dataset.adminUsersPageAction === "next" ? 1 : -1;
+        renderUsersTable(usersData);
+        usersTableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
 
   // INSPECT DOCUMENT
   usersTableWrap
@@ -2723,7 +2761,17 @@ function renderBookingsTable(
     return;
   }
 
-  const pageBookings = bookings;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(bookings.length / ADMIN_BOOKINGS_PER_PAGE)
+  );
+  adminBookingPage = Math.min(adminBookingPage, totalPages);
+  const pageStart =
+    (adminBookingPage - 1) * ADMIN_BOOKINGS_PER_PAGE;
+  const pageBookings = bookings.slice(
+    pageStart,
+    pageStart + ADMIN_BOOKINGS_PER_PAGE
+  );
 
   if (!bookings.length) {
     bookingsTableWrap.innerHTML =
@@ -3493,32 +3541,42 @@ function renderBookingsTable(
       </table>
 
     </div>
-    <div style="padding:10px 16px;font-size:0.8rem;color:var(--kr-text-muted);display:flex;justify-content:space-between;align-items:center;background:rgba(6,10,16,0.45);border-top:1px solid var(--kr-border);border-radius:0 0 var(--kr-radius-md) var(--kr-radius-md);">
-      <span>Showing all <strong>${bookings.length}</strong> bookings</span>
-      <span style="font-size:0.75rem;color:var(--kr-cyan);font-weight:600;">↕ Scrollable Table</span>
-    </div>
+    ${renderAdminPagination({
+      page: adminBookingPage,
+      totalPages,
+      totalItems: bookings.length,
+      type: "bookings"
+    })}
   `;
 
   bookingsTableWrap.innerHTML = html;
   attachBookingEvents();
+
+  bookingsTableWrap
+    .querySelectorAll("[data-admin-bookings-page-action]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        adminBookingPage +=
+          button.dataset.adminBookingsPageAction === "next" ? 1 : -1;
+        renderBookingsTable(getFilteredBookings());
+        bookingsTableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
 }
 
 function renderAdminPagination({ page, totalPages, totalItems, type }) {
   if (totalPages <= 1) return "";
 
-  const attribute =
-    type === "payments"
-      ? "data-admin-payment-page-action"
-      : "data-admin-page-action";
+  const attribute = `data-admin-${type}-page-action`;
 
   return `
-    <nav class="data-pagination" aria-label="${escapeHtml(type)} pages">
-      <span class="data-pagination__summary">
-        Page ${page} of ${totalPages} · ${totalItems} ${escapeHtml(type)}
+    <nav class="data-pagination" aria-label="${escapeHtml(type)} pages" style="margin-top:14px;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(6,10,16,0.6);border:1px solid var(--kr-border);border-radius:var(--kr-radius-md);">
+      <span class="data-pagination__summary" style="font-size:0.85rem;color:var(--kr-text-muted);">
+        Page <strong style="color:var(--kr-text);">${page}</strong> of <strong style="color:var(--kr-text);">${totalPages}</strong> · ${totalItems} ${escapeHtml(type)}
       </span>
-      <div class="data-pagination__actions">
-        <button type="button" ${attribute}="previous" ${page === 1 ? "disabled" : ""}>Previous</button>
-        <button type="button" ${attribute}="next" ${page === totalPages ? "disabled" : ""}>Next</button>
+      <div class="data-pagination__actions" style="display:flex;gap:8px;">
+        <button type="button" class="btn btn-outline" style="padding:6px 14px;font-size:0.82rem;" ${attribute}="previous" ${page === 1 ? "disabled" : ""}>Previous</button>
+        <button type="button" class="btn btn-outline" style="padding:6px 14px;font-size:0.82rem;" ${attribute}="next" ${page === totalPages ? "disabled" : ""}>Next</button>
       </div>
     </nav>`;
 }
@@ -4920,7 +4978,17 @@ function renderPaymentsTable() {
     return;
   }
 
-  const pagePayments = paymentRecords;
+  const totalPages = Math.max(
+    1,
+    Math.ceil(paymentRecords.length / ADMIN_PAYMENTS_PER_PAGE)
+  );
+  adminPaymentPage = Math.min(adminPaymentPage, totalPages);
+  const pageStart =
+    (adminPaymentPage - 1) * ADMIN_PAYMENTS_PER_PAGE;
+  const pagePayments = paymentRecords.slice(
+    pageStart,
+    pageStart + ADMIN_PAYMENTS_PER_PAGE
+  );
 
   let html = `
     <div style="width:100%;overflow-x:auto;">
@@ -5070,10 +5138,12 @@ function renderPaymentsTable() {
       </table>
 
     </div>
-    <div style="padding:10px 16px;font-size:0.8rem;color:var(--kr-text-muted);display:flex;justify-content:space-between;align-items:center;background:rgba(6,10,16,0.45);border-top:1px solid var(--kr-border);border-radius:0 0 var(--kr-radius-md) var(--kr-radius-md);">
-      <span>Showing all <strong>${paymentRecords.length}</strong> payment transactions</span>
-      <span style="font-size:0.75rem;color:var(--kr-cyan);font-weight:600;">↕ Scrollable Table</span>
-    </div>
+    ${renderAdminPagination({
+      page: adminPaymentPage,
+      totalPages,
+      totalItems: paymentRecords.length,
+      type: "payments"
+    })}
   `;
 
   paymentsTableWrap.innerHTML = html;
@@ -5090,6 +5160,17 @@ function renderPaymentsTable() {
   paymentsTableWrap.querySelectorAll(".edit-invoice-btn, .send-invoice-btn").forEach((button) => {
     button.addEventListener("click", () => openInvoiceEditorModal(button.dataset.bid, button));
   });
+
+  paymentsTableWrap
+    .querySelectorAll("[data-admin-payments-page-action]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        adminPaymentPage +=
+          button.dataset.adminPaymentsPageAction === "next" ? 1 : -1;
+        renderPaymentsTable();
+        paymentsTableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
 }
 
 async function convertBookingToFullPayment(bookingId, triggerBtn) {
