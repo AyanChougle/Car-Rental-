@@ -30,6 +30,16 @@ export function resolveEndpoint(endpoint, params = {}) {
 
   const queryParams = { ...params };
 
+  // Separate any query string embedded in endpoint
+  if (clean.includes("?")) {
+    const [pathPart, qs] = clean.split("?", 2);
+    clean = pathPart;
+    const searchParams = new URLSearchParams(qs);
+    for (const [k, v] of searchParams.entries()) {
+      queryParams[k] = v;
+    }
+  }
+
   // Already a .php endpoint
   if (clean.endsWith(".php")) {
     return { path: `/${clean}`, params: queryParams };

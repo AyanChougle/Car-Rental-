@@ -4,7 +4,7 @@
 // ============================================================================
 
 import { auth } from "./firebase-init.js";
-import { api, API_BASE_URL } from "./kruizly-api.js?v=20260904-v4";
+import { api, API_BASE_URL } from "./kruizly-api.js?v=20260904-v5";
 import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260904-v4";
 
 import "./nav-helper.js";
@@ -1254,7 +1254,7 @@ function initialiseFirebaseExport() {
     }
 
     try {
-      const res = await api.get("/admin/export?format=json");
+      const res = await api.get("/admin/export", { format: "json" });
       const exportData = res.data || res;
       const dateStr = new Date().toISOString().slice(0, 10);
       const filename = `KRUIZLY_Database_Export_${dateStr}.xlsx`;
