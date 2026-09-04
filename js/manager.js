@@ -1,5 +1,5 @@
-import { checkAuth, getCurrentUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js";
-import { api } from "./kruizly-api.js";
+import { checkAuth, getCurrentUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260904";
+import { api } from "./kruizly-api.js?v=20260904";
 
 import "./nav-helper.js";
 import { openReturnModal } from "./return-inspection.js";

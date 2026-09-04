@@ -4,8 +4,8 @@
    Local Node Media Server for documents
    ============================================================ */
 
-import { checkAuth, getCurrentUser, logout } from "./auth.js";
-import { api } from "./kruizly-api.js";
+import { checkAuth, getCurrentUser, logout } from "./auth.js?v=20260904";
+import { api } from "./kruizly-api.js?v=20260904";
 import "./nav-helper.js";
 import { formatBookingNumber } from "./booking-reference.js";
 
