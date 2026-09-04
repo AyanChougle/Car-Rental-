@@ -23,8 +23,8 @@ if ($isLocal) {
 // ------------------------------------------------------------
 define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
 define('DB_PORT', getenv('DB_PORT') ?: '3306');
-define('DB_NAME', getenv('DB_NAME') ?: 'u303150498_carRentpe');
-define('DB_USER', getenv('DB_USER') ?: 'u303150498_omkar');
+define('DB_NAME', getenv('DB_NAME') ?: 'u303154098_carRentpe');
+define('DB_USER', getenv('DB_USER') ?: 'u303154098_omkar');
 define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : 'Pa$$@12123');
 define('DB_CHARSET', 'utf8mb4');
 
