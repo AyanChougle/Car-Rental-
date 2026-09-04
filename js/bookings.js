@@ -1,5 +1,5 @@
-import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v14";
-import { api } from "./kruizly-api.js?v=20260904-v14";
+import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v15";
+import { api } from "./kruizly-api.js?v=20260904-v15";
 import "./nav-helper.js";
 
 import {

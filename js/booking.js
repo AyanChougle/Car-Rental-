@@ -2,8 +2,8 @@
 // KRUIZLY — BOOKING PAGE
 // ============================================================
 
-import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v14";
-import { api } from "./kruizly-api.js?v=20260904-v14";
+import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v15";
+import { api } from "./kruizly-api.js?v=20260904-v15";
 import "./nav-helper.js";
 import { generateNumericBookingId } from "./booking-reference.js";
 import {
@@ -333,16 +333,19 @@ async function initBooking(vehicle) {
       remainingAmount,
     } = calculation;
 
+    const dayLabel = days === 1 ? "1 day" : `${days} days`;
+    const hrLabel = `${hours} hrs`;
+
     let html =
       '<div class="booking-totals__header"><span>PRICE BREAKDOWN</span><span>Duration: ' +
       duration.formattedDuration +
       "</span></div>";
     html +=
       '<div class="booking-total-row"><span>Rental Charges (' +
-      days +
-      " day" +
-      (days > 1 ? "s" : "") +
-      ")</span><strong>₹" +
+      dayLabel +
+      " (" +
+      hrLabel +
+      "))</span><strong>₹" +
       formatCurrency(rentalTotal) +
       "</strong></div>";
 
