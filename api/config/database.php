@@ -33,7 +33,7 @@ class Database {
                 self::$instance = new PDO($dsn, DB_USER, DB_PASS, $options);
             } catch (PDOException $e) {
                 error_log("[Database Connection Error] " . $e->getMessage());
-                sendErrorResponse("Database connection failed. Please verify MySQL configuration on Hostinger.", 500);
+                sendErrorResponse("Database connection failed: " . $e->getMessage(), 500);
             }
         }
 
