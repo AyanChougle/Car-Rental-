@@ -1,4 +1,4 @@
-﻿/**
+/**
  * js/coupon-service.js
  * 
  * Production server-side coupon validation and suggestion catalog for KRUIZLY.

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/invoices/pdf.php
  * GET /api/invoices/:bookingId/pdf - Generate and stream PDF invoice

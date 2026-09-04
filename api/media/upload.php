@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/media/upload.php
  * POST /api/media/upload - Secure file upload into Hostinger server storage

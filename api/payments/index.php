@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/payments/index.php
  * GET /api/payments - List payments for admin/manager review

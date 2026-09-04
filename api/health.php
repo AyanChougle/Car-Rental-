@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/health.php
  * GET /api/health - Health check endpoint

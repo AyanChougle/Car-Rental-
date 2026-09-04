@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/bookings/create.php
  * POST /api/bookings - Create a reservation transactionally

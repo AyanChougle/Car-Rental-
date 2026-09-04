@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/coupons/validate.php
  * POST /api/coupons/validate - Server-Side Coupon Validation & Single-Use Enforcement

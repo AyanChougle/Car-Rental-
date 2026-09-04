@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/users/index.php
  * GET /api/users - List all users (admin, manager, executive)

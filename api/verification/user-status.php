@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/verification/user-status.php
  * POST /api/verification/user/:uid/status - Admin direct KYC status update

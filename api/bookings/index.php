@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/bookings/index.php
  * GET /api/bookings - List all bookings (Staff)

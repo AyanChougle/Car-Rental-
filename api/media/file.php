@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/media/file.php
  * GET /api/media/file.php?id=:mediaId - Stream authenticated file from Hostinger storage

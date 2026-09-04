@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/users/sync.php
  * POST /api/users/sync - Sync Firebase Auth profile on login

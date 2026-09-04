@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/vehicles/index.php
  * GET /api/vehicles - List all fleet vehicles (public)

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * database/migrate_from_json.php
  * 

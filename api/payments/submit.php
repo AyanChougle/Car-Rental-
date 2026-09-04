@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/payments/submit.php
  * POST /api/payments/submit - Customer UPI / Bank Transfer payment proof submission

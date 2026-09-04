@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/services/InvoicePdfService.php
  * 

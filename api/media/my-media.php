@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/media/my-media.php
  * GET /api/media/my-media - List current user's uploaded files

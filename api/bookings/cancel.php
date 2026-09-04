@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/bookings/cancel.php
  * POST /api/bookings/:id/cancel - Transactional cancellation, refund, coupon release & fleet release

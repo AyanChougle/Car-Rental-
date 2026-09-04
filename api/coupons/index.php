@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/coupons/index.php
  * GET /api/coupons - List active coupons (or all coupons for admin)

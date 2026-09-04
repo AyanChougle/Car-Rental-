@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/vehicles/detail.php
  * GET / PUT / DELETE /api/vehicles/:regNo

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/verification/index.php
  * GET /api/verification - List KYC submissions for admin review

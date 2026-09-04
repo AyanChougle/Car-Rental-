@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/media/delete.php
  * DELETE /api/media/:mediaId

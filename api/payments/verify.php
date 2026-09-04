@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/payments/verify.php
  * POST /api/payments/:id/verify - Admin payment verification (Approve / Reject)

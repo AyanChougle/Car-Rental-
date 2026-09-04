@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/middleware/cors.php
  * 

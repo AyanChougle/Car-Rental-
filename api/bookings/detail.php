@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/bookings/detail.php
  * GET / PUT /api/bookings/:id

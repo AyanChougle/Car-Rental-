@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/bookings/my-bookings.php
  * GET /api/bookings/my-bookings - List customer bookings

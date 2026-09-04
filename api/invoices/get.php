@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/invoices/get.php
  * GET /api/invoices/:bookingId - Fetch invoice details

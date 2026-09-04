@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/users/role.php
  * PUT /api/users/:uid/role - Update user permissions (admin only)

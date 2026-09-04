@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/admin/export.php
  * GET /api/admin/export/excel - Export MySQL database tables as an Excel workbook

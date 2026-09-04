@@ -1,4 +1,4 @@
-﻿/**
+/**
  * js/kruizly-api.js
  * 
  * Unified HTTP API client for KRUIZLY backend.

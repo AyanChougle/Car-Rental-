@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/invoices/send.php
  * POST /api/invoices/:bookingId/send - Send tax invoice PDF via SMTP email

@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/verification/me.php
  * GET /api/verification/me - Current user's KYC verification status

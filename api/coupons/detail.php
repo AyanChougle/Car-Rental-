@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/coupons/detail.php
  * PUT / DELETE /api/coupons/:code

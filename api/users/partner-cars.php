@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/users/partner-cars.php
  * GET /api/users/partner-cars - List host listings (customer gets their own, staff gets all)
