@@ -1,5 +1,5 @@
-import { getCurrentUser, checkAuth, isManagerUser, isAdminUser } from "./auth.js?v=20260904-v4";
-import { api } from "./kruizly-api.js?v=20260904-v4";
+import { getCurrentUser, checkAuth, isManagerUser, isAdminUser } from "./auth.js?v=20260904-v12";
+import { api } from "./kruizly-api.js?v=20260904-v12";
 import "./nav-helper.js";
 import { formatBookingNumber } from "./booking-reference.js";
 

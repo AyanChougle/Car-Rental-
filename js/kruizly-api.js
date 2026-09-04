@@ -130,35 +130,45 @@ export function resolveEndpoint(endpoint, params = {}) {
 }
 
 async function getAuthHeader() {
+  let token = "";
   if (auth.currentUser) {
     try {
-      const token = await auth.currentUser.getIdToken();
-      if (token) {
-        return { Authorization: `Bearer ${token}` };
-      }
+      token = await auth.currentUser.getIdToken();
     } catch (err) {
       console.warn("Could not get Firebase ID token:", err);
     }
   }
 
-  // If currentUser is not yet loaded, wait up to 600ms for Firebase Auth hydration
-  return new Promise((resolve) => {
-    const timeout = setTimeout(() => resolve({}), 600);
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      clearTimeout(timeout);
-      unsubscribe();
-      if (user) {
-        try {
-          const token = await user.getIdToken();
-          resolve(token ? { Authorization: `Bearer ${token}` } : {});
-        } catch {
-          resolve({});
+  if (!token) {
+    // If currentUser is not yet loaded, wait up to 800ms for Firebase Auth hydration
+    token = await new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(""), 800);
+      const unsubscribe = auth.onAuthStateChanged(async (user) => {
+        clearTimeout(timeout);
+        unsubscribe();
+        if (user) {
+          try {
+            const t = await user.getIdToken();
+            resolve(t || "");
+          } catch {
+            resolve("");
+          }
+        } else {
+          resolve("");
         }
-      } else {
-        resolve({});
-      }
+      });
     });
-  });
+  }
+
+  if (token) {
+    return {
+      Authorization: `Bearer ${token}`,
+      "X-Authorization": `Bearer ${token}`,
+      "X-Firebase-Token": token
+    };
+  }
+
+  return {};
 }
 
 function buildUrl(resolved) {

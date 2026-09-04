@@ -81,6 +81,21 @@ class Auth {
                 [$firebaseUid]
             );
 
+            // If not found by firebase_uid, find by email and link migrated account
+            if (!$user && !empty($email)) {
+                $user = Database::fetchOne(
+                    "SELECT * FROM users WHERE email = ? LIMIT 1",
+                    [$email]
+                );
+                if ($user) {
+                    Database::execute(
+                        "UPDATE users SET firebase_uid = ? WHERE id = ?",
+                        [$firebaseUid, $user['id']]
+                    );
+                    $user['firebase_uid'] = $firebaseUid;
+                }
+            }
+
             $isAdminEmail = in_array($email, ['ayan@kruizly.com', 'admin@kruizly.com', 'carrentpedatabase@gmail.com'], true);
 
             if (!$user) {

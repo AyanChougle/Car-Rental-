@@ -5,7 +5,7 @@
  * Authoritative source: Hostinger MySQL Backend API (/api/coupons).
  */
 
-import { api } from "./kruizly-api.js?v=20260904-v4";
+import { api } from "./kruizly-api.js?v=20260904-v12";
 
 /**
  * Fetches active available coupons from backend database for suggestions in UI.
