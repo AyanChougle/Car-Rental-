@@ -713,11 +713,11 @@ function initialiseExecutivePickupModal() {
 
       const updatePayload = {
         pickupStatus: "picked_up",
-        pickupAt: serverTimestamp(),
+        pickupAt: new Date().toISOString(),
         pickupHandledBy: currentUser?.uid || null,
         pickupNotes: notes?.value.trim() || "",
-        pickupPhotoMediaIds: arrayUnion(...uploadedIds),
-        updatedAt: serverTimestamp(),
+        pickupPhotoMediaIds: uploadedIds,
+        updatedAt: new Date().toISOString(),
       };
 
       if (pickupOdometer !== null) updatePayload.pickupOdometer = pickupOdometer;
@@ -740,7 +740,7 @@ function initialiseExecutivePickupModal() {
         updatePayload.paymentMode = payMode;
         if (payRef) updatePayload.paymentRef = payRef;
         updatePayload.pickupPaymentCollected = true;
-        updatePayload.pickupPaymentCollectedAt = serverTimestamp();
+        updatePayload.pickupPaymentCollectedAt = new Date().toISOString();
         updatePayload.pickupPaymentCollectedBy = currentUser?.displayName || currentUser?.email || currentUser?.uid || "Executive";
       }
 
@@ -771,7 +771,7 @@ async function openExecutiveBookingDetails(booking) {
   document.getElementById("executiveBookingDetails")?.remove();
 
   const customer = currentManagerUsers.find(
-    (user) => user.id === booking.userId
+    (user) => user.id === booking.userId || user.uid === booking.userId || user.id === booking.firebaseUid || user.uid === booking.firebaseUid || (user.email && booking.userEmail && user.email.toLowerCase() === booking.userEmail.toLowerCase())
   ) || {};
   const mediaIds = Array.isArray(booking.pickupPhotoMediaIds)
     ? booking.pickupPhotoMediaIds
@@ -823,21 +823,21 @@ async function openExecutiveBookingDetails(booking) {
       <section id="executiveOverviewPanel" class="executive-details-panel" role="tabpanel" aria-labelledby="executiveOverviewTab" data-details-panel="overview">
         <div class="executive-details-grid">
           ${[
-            ["Customer", customer.name || booking.userName || "Customer"],
-            ["Email", customer.email || booking.userEmail || "—"],
-            ["Phone", customer.phone || booking.userPhone || "—"],
-            ["Age", customer.age || "—"],
+            ["Customer", customer.name || customer.fullName || customer.displayName || booking.userName || booking.customerName || "Customer"],
+            ["Email", customer.email || booking.userEmail || booking.customerEmail || "—"],
+            ["Phone", customer.phone || customer.phoneNumber || booking.userPhone || booking.customerPhone || booking.phone || "—"],
+            ["Age", customer.age || booking.userAge || booking.age || "—"],
             ["Vehicle", booking.vehicleName || "Vehicle"],
-            ["Registration", booking.vehicleReg || "—"],
+            ["Registration", booking.vehicleReg || booking.registration || booking.vehicleRegistration || booking.regNo || booking.regNumber || "—"],
             ["Pickup", formatDisplayDate(booking.pickupDate)],
             ["Drop", formatDisplayDate(booking.dropDate)],
-            ["Booking status", formatStatus(booking.status)],
-            ["Pickup status", formatStatus(booking.pickupStatus || "awaiting pickup")],
-            ["Pickup Odometer", booking.pickupOdometer != null ? `${Number(booking.pickupOdometer).toLocaleString("en-IN")} km` : "—"],
-            ["Return Odometer", returnInspection.returnOdometer != null ? `${Number(returnInspection.returnOdometer).toLocaleString("en-IN")} km` : "—"],
-            ["Pickup FASTag", booking.pickupFastagBalance != null ? `₹${Number(booking.pickupFastagBalance).toLocaleString("en-IN")}` : "—"],
-            ["Return FASTag", returnInspection.returnFastagBalance != null ? `₹${Number(returnInspection.returnFastagBalance).toLocaleString("en-IN")}` : "—"],
-            ["Fuel Level", booking.pickupFuelLevel || returnInspection.fuelLevel || "—"],
+            ["Booking status", formatStatus(booking.status || booking.bookingStatus)],
+            ["Pickup status", formatStatus(booking.pickupStatus || (booking.status === "in_trip" || booking.status === "completed" ? "picked_up" : "awaiting pickup"))],
+            ["Pickup Odometer", booking.pickupOdometer != null ? `${Number(booking.pickupOdometer).toLocaleString("en-IN")} km` : (booking.startOdometer != null ? `${Number(booking.startOdometer).toLocaleString("en-IN")} km` : "—")],
+            ["Return Odometer", returnInspection.returnOdometer != null ? `${Number(returnInspection.returnOdometer).toLocaleString("en-IN")} km` : (booking.endOdometer != null ? `${Number(booking.endOdometer).toLocaleString("en-IN")} km` : "—")],
+            ["Pickup FASTag", booking.pickupFastagBalance != null ? `₹${Number(booking.pickupFastagBalance).toLocaleString("en-IN")}` : (booking.startFastag != null ? `₹${Number(booking.startFastag).toLocaleString("en-IN")}` : "—")],
+            ["Return FASTag", returnInspection.returnFastagBalance != null ? `₹${Number(returnInspection.returnFastagBalance).toLocaleString("en-IN")}` : (booking.returnFastag != null ? `₹${Number(booking.returnFastag).toLocaleString("en-IN")}` : "—")],
+            ["Fuel Level", booking.pickupFuelLevel || booking.fuelLevel || returnInspection.fuelLevel || "—"],
           ].map(([label, value]) => `
             <div class="executive-detail-item">
               <span>${escapeHtml(label)}</span>
@@ -2486,7 +2486,7 @@ async function setManagerDocumentStatus(status) {
   const updates = {
     [statusField]: status,
     [reasonField]: status === "rejected" ? rejectionReason : null,
-    [`${type}ReviewedAt`]: serverTimestamp(),
+    [`${type}ReviewedAt`]: new Date().toISOString(),
     [`${type}ReviewedBy`]: currentUser?.uid || null,
   };
 
@@ -2495,7 +2495,7 @@ async function setManagerDocumentStatus(status) {
     : user.licenseStatus;
 
   if (status === "verified" && otherStatus === "verified") {
-    updates.documentsVerifiedAt = serverTimestamp();
+    updates.documentsVerifiedAt = new Date().toISOString();
     updates.documentsVerifiedBy = currentUser?.uid || null;
   }
 
