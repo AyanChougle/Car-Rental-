@@ -430,9 +430,199 @@ async function initAdminAuth() {
 
 initAdminAuth();
 
+let currentKpiStats = null;
+
+async function loadKpiStats() {
+  try {
+    const res = await api.get("/admin/stats");
+    if (res && res.data) {
+      currentKpiStats = res.data;
+      applyKpiStats();
+    }
+  } catch (err) {
+    console.warn("Could not load /admin/stats:", err);
+  }
+}
+
+function applyKpiStats() {
+  if (!currentKpiStats) return;
+
+  const eff = currentKpiStats.effective || currentKpiStats.live;
+  if (!eff) return;
+
+  const totalUsers = $("statTotalUsers");
+  if (totalUsers) totalUsers.textContent = eff.total_users;
+
+  const totalBookings = $("statTotalBookings");
+  if (totalBookings) totalBookings.textContent = eff.total_bookings;
+
+  const pendingDocs = $("statPendingDocs");
+  if (pendingDocs) pendingDocs.textContent = eff.pending_docs;
+
+  const pendingPayments = $("statPendingPayments");
+  if (pendingPayments) pendingPayments.textContent = eff.pending_payments;
+
+  const totalRevenue = $("statTotalRevenue");
+  if (totalRevenue) totalRevenue.textContent = formatINR(eff.total_revenue);
+
+  const monthRevenue = $("statMonthRevenue");
+  if (monthRevenue) monthRevenue.textContent = formatINR(eff.month_revenue);
+
+  const paidBookings = $("statPaidBookings");
+  if (paidBookings) paidBookings.textContent = eff.paid_bookings;
+
+  const avgBooking = $("statAvgBooking");
+  if (avgBooking) avgBooking.textContent = formatINR(eff.avg_booking);
+
+  const badge = $("kpiOverrideBadge");
+  if (badge) {
+    badge.style.display = currentKpiStats.is_overridden ? "inline-block" : "none";
+  }
+
+  const pBadge = $("paymentsTabBadge");
+  if (pBadge) {
+    if (Number(eff.pending_payments) > 0) {
+      pBadge.hidden = false;
+      pBadge.textContent = eff.pending_payments;
+    } else {
+      pBadge.hidden = true;
+    }
+  }
+}
+
+function initialiseKpiModal() {
+  const editBtn = $("editKpisBtn");
+  const modal = $("editKpiModal");
+  const closeBtn = $("closeEditKpiModal");
+  const form = $("editKpiForm");
+  const toggle = $("kpiOverrideToggle");
+  const resetBtn = $("kpiResetLiveBtn");
+  const statusMsg = $("kpiStatusMsg");
+
+  const inTotalUsers = $("kpiInputTotalUsers");
+  const inTotalBookings = $("kpiInputTotalBookings");
+  const inPendingDocs = $("kpiInputPendingDocs");
+  const inPendingPayments = $("kpiInputPendingPayments");
+  const inTotalRevenue = $("kpiInputTotalRevenue");
+  const inMonthRevenue = $("kpiInputMonthRevenue");
+  const inPaidBookings = $("kpiInputPaidBookings");
+  const inAvgBooking = $("kpiInputAvgBooking");
+
+  function openModal() {
+    if (!modal) return;
+    const eff = currentKpiStats?.effective || currentKpiStats?.live || {};
+    const ov = currentKpiStats?.overrides || {};
+
+    if (toggle) toggle.checked = !!currentKpiStats?.is_overridden;
+    if (inTotalUsers) inTotalUsers.value = ov.total_users ?? eff.total_users ?? "";
+    if (inTotalBookings) inTotalBookings.value = ov.total_bookings ?? eff.total_bookings ?? "";
+    if (inPendingDocs) inPendingDocs.value = ov.pending_docs ?? eff.pending_docs ?? "";
+    if (inPendingPayments) inPendingPayments.value = ov.pending_payments ?? eff.pending_payments ?? "";
+    if (inTotalRevenue) inTotalRevenue.value = ov.total_revenue ?? eff.total_revenue ?? "";
+    if (inMonthRevenue) inMonthRevenue.value = ov.month_revenue ?? eff.month_revenue ?? "";
+    if (inPaidBookings) inPaidBookings.value = ov.paid_bookings ?? eff.paid_bookings ?? "";
+    if (inAvgBooking) inAvgBooking.value = ov.avg_booking ?? eff.avg_booking ?? "";
+
+    if (statusMsg) {
+      statusMsg.style.display = "none";
+      statusMsg.textContent = "";
+    }
+    modal.hidden = false;
+  }
+
+  function closeModal() {
+    if (modal) modal.hidden = true;
+  }
+
+  editBtn?.addEventListener("click", openModal);
+  closeBtn?.addEventListener("click", closeModal);
+
+  [
+    "cardTotalUsers",
+    "cardTotalBookings",
+    "cardPendingDocs",
+    "cardPendingPayments",
+    "cardTotalRevenue",
+    "cardMonthRevenue",
+    "cardPaidBookings",
+    "cardAvgBooking"
+  ].forEach((id) => {
+    $(id)?.addEventListener("click", openModal);
+  });
+
+  form?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!statusMsg) return;
+
+    statusMsg.style.display = "block";
+    statusMsg.style.background = "rgba(79, 215, 255, 0.1)";
+    statusMsg.style.color = "#4fd7ff";
+    statusMsg.textContent = "Saving and syncing metrics across all panels...";
+
+    try {
+      const payload = {
+        enabled: toggle ? toggle.checked : true,
+        total_users: inTotalUsers?.value,
+        total_bookings: inTotalBookings?.value,
+        pending_docs: inPendingDocs?.value,
+        pending_payments: inPendingPayments?.value,
+        total_revenue: inTotalRevenue?.value,
+        month_revenue: inMonthRevenue?.value,
+        paid_bookings: inPaidBookings?.value,
+        avg_booking: inAvgBooking?.value
+      };
+
+      const res = await api.post("/admin/stats", payload);
+      statusMsg.style.background = "rgba(6, 214, 160, 0.15)";
+      statusMsg.style.color = "#06d6a0";
+      statusMsg.textContent = res.message || "Metrics saved and synced successfully!";
+
+      await loadKpiStats();
+      setTimeout(() => {
+        closeModal();
+      }, 700);
+    } catch (err) {
+      statusMsg.style.background = "rgba(255, 92, 119, 0.15)";
+      statusMsg.style.color = "#ff5c77";
+      statusMsg.textContent = err.message || "Failed to save metrics";
+    }
+  });
+
+  resetBtn?.addEventListener("click", async () => {
+    if (!confirm("Reset all KPI stats to live database calculations?")) return;
+    if (statusMsg) {
+      statusMsg.style.display = "block";
+      statusMsg.style.background = "rgba(79, 215, 255, 0.1)";
+      statusMsg.style.color = "#4fd7ff";
+      statusMsg.textContent = "Resetting to live calculations...";
+    }
+
+    try {
+      await api.post("/admin/stats", { enabled: false });
+      if (toggle) toggle.checked = false;
+      await loadKpiStats();
+      if (statusMsg) {
+        statusMsg.style.background = "rgba(6, 214, 160, 0.15)";
+        statusMsg.style.color = "#06d6a0";
+        statusMsg.textContent = "Reset to live calculations successfully.";
+      }
+      setTimeout(() => {
+        closeModal();
+      }, 700);
+    } catch (err) {
+      if (statusMsg) {
+        statusMsg.style.background = "rgba(255, 92, 119, 0.15)";
+        statusMsg.style.color = "#ff5c77";
+        statusMsg.textContent = err.message || "Failed to reset";
+      }
+    }
+  });
+}
+
 // Initialize UI listeners immediately so tabs and controls work on page load
 function initialiseAdmin() {
   initialiseTabs();
+  initialiseKpiModal();
   initialiseBookingFilters();
   initialiseDocumentModal();
   initialisePaymentModal();
@@ -746,11 +936,16 @@ async function loadAllAdminData() {
     loadHostCars(),
     loadFleetManagement(),
     loadCoupons(),
+    loadKpiStats()
   ]);
 
-  updateUserStats();
-  updateBookingStats();
-  updateRevenueStats();
+  if (currentKpiStats && currentKpiStats.is_overridden) {
+    applyKpiStats();
+  } else {
+    updateUserStats();
+    updateBookingStats();
+    updateRevenueStats();
+  }
 }
 
 async function loadFleetManagement() {
@@ -1696,6 +1891,11 @@ async function loadUsers() {
 }
 
 function updateUserStats() {
+  if (currentKpiStats && currentKpiStats.is_overridden) {
+    applyKpiStats();
+    return;
+  }
+
   const totalUsers =
     $("statTotalUsers");
 
@@ -1725,6 +1925,11 @@ function updateUserStats() {
 }
 
 function updateBookingStats() {
+  if (currentKpiStats && currentKpiStats.is_overridden) {
+    applyKpiStats();
+    return;
+  }
+
   const totalBookings = $("statTotalBookings");
   if (totalBookings) {
     totalBookings.textContent = bookingsData.length;
@@ -5962,6 +6167,11 @@ function getBookingCollectedAmount(booking) {
 }
 
 function updateRevenueStats() {
+  if (currentKpiStats && currentKpiStats.is_overridden) {
+    applyKpiStats();
+    return;
+  }
+
   const paid =
     bookingsData.filter(
       (booking) =>

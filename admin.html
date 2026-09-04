@@ -59,21 +59,32 @@
           class="admin-wrapper"
           style="margin-top: 20px"
         >
+          <!-- Metrics Overview Header with Edit Controls -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sub);">Performance &amp; Business KPIs</span>
+              <span id="kpiOverrideBadge" class="badge" style="display:none; background: #ffb703; color: #000; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 10px;">Custom Values Active</span>
+            </div>
+            <button id="editKpisBtn" type="button" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; border-radius: 8px; border-color: rgba(255,255,255,0.2);">
+              <span>✏️</span> <span>Edit KPI Metrics</span>
+            </button>
+          </div>
+
           <!-- Metrics Overview (Row 1: Operations & System Queue) -->
           <div class="admin-stats-grid" style="margin-bottom: 16px;">
-            <div class="card stat-card">
+            <div class="card stat-card" id="cardTotalUsers" style="cursor: pointer;" title="Click to edit metrics">
               <span class="stat-label">Total Users</span>
               <div id="statTotalUsers" class="stat-value" style="color: var(--accent);">0</div>
             </div>
-            <div class="card stat-card">
+            <div class="card stat-card" id="cardTotalBookings" style="cursor: pointer;" title="Click to edit metrics">
               <span class="stat-label">Total Bookings</span>
               <div id="statTotalBookings" class="stat-value" style="color: var(--accent);">0</div>
             </div>
-            <div class="card stat-card">
+            <div class="card stat-card" id="cardPendingDocs" style="cursor: pointer;" title="Click to edit metrics">
               <span class="stat-label">Pending Document Reviews</span>
               <div id="statPendingDocs" class="stat-value" style="color: #ffd166;">0</div>
             </div>
-            <div class="card stat-card">
+            <div class="card stat-card" id="cardPendingPayments" style="cursor: pointer;" title="Click to edit metrics">
               <span class="stat-label">Awaiting Payment Verification</span>
               <div id="statPendingPayments" class="stat-value" style="color: #ffd166;">0</div>
             </div>
@@ -81,19 +92,19 @@
 
           <!-- Revenue & Sales KPIs (Row 2: Financial Performance) -->
           <div class="admin-stats-grid" style="margin-bottom: 24px;">
-            <div class="card stat-card">
+            <div class="card stat-card" id="cardTotalRevenue" style="cursor: pointer;" title="Click to edit metrics">
               <span class="stat-label">Total Revenue (Verified)</span>
               <div id="statTotalRevenue" class="stat-value" style="color: var(--accent);">₹0</div>
             </div>
-            <div class="card stat-card">
+            <div class="card stat-card" id="cardMonthRevenue" style="cursor: pointer;" title="Click to edit metrics">
               <span class="stat-label">Revenue This Month</span>
               <div id="statMonthRevenue" class="stat-value" style="color: var(--accent);">₹0</div>
             </div>
-            <div class="card stat-card">
+            <div class="card stat-card" id="cardPaidBookings" style="cursor: pointer;" title="Click to edit metrics">
               <span class="stat-label">Paid Bookings</span>
               <div id="statPaidBookings" class="stat-value" style="color: #06d6a0;">0</div>
             </div>
-            <div class="card stat-card">
+            <div class="card stat-card" id="cardAvgBooking" style="cursor: pointer;" title="Click to edit metrics">
               <span class="stat-label">Avg. Verified Booking Value</span>
               <div id="statAvgBooking" class="stat-value" style="color: var(--accent);">₹0</div>
             </div>
@@ -758,7 +769,72 @@
       </div>
     </div>
 
-        <footer class="site-footer">
+    <!-- Edit KPI Metrics Modal -->
+    <div id="editKpiModal" class="modal admin-modal" hidden>
+      <div class="card admin-inspect-modal-card" style="max-width: 620px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 28px 32px; background: #0b111a; border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; box-shadow: 0 24px 80px rgba(0,0,0,0.8);">
+        <button id="closeEditKpiModal" class="admin-inspect-close" aria-label="Close modal">&times;</button>
+        <div style="margin-bottom: 20px;">
+          <h2 class="admin-inspect-title" style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #fff;">Edit KPI Metrics &amp; Values</h2>
+          <p style="color: var(--kr-text-secondary, #8b949e); font-size: 0.88rem; margin-top: 4px; line-height: 1.4;">
+            Customized numbers saved here reflect across <strong>Admin Control Center</strong>, <strong>Manager Summary</strong>, and <strong>Executive Operations</strong>.
+          </p>
+        </div>
+
+        <form id="editKpiForm" style="display: flex; flex-direction: column; gap: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(255,255,255,0.04); border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);">
+            <div>
+              <strong style="color: #fff; display: block; font-size: 14px;">Enable Custom KPI Override</strong>
+              <span style="color: #8b949e; font-size: 12px;">Toggle on to use your custom values instead of live database counts.</span>
+            </div>
+            <input type="checkbox" id="kpiOverrideToggle" style="width: 20px; height: 20px; accent-color: var(--accent, #ffd166); cursor: pointer;">
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+            <div class="form-group">
+              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Total Users</label>
+              <input type="number" id="kpiInputTotalUsers" class="form-input" placeholder="e.g. 117" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Total Bookings</label>
+              <input type="number" id="kpiInputTotalBookings" class="form-input" placeholder="e.g. 125" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Pending Document Reviews</label>
+              <input type="number" id="kpiInputPendingDocs" class="form-input" placeholder="e.g. 11" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Awaiting Payment Verification</label>
+              <input type="number" id="kpiInputPendingPayments" class="form-input" placeholder="e.g. 0" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Total Revenue (Verified) (₹)</label>
+              <input type="number" id="kpiInputTotalRevenue" class="form-input" placeholder="e.g. 450000" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Revenue This Month (₹)</label>
+              <input type="number" id="kpiInputMonthRevenue" class="form-input" placeholder="e.g. 120000" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Paid Bookings</label>
+              <input type="number" id="kpiInputPaidBookings" class="form-input" placeholder="e.g. 88" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Avg. Verified Booking Value (₹)</label>
+              <input type="number" id="kpiInputAvgBooking" class="form-input" placeholder="e.g. 5113" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
+            </div>
+          </div>
+
+          <div id="kpiStatusMsg" style="display:none; padding:10px; border-radius:8px; font-size:13px;"></div>
+
+          <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap;">
+            <button type="button" id="kpiResetLiveBtn" class="btn btn-outline" style="border-color: rgba(255,255,255,0.2); padding: 8px 16px;">Reset to Live Calculation</button>
+            <button type="submit" id="kpiSaveBtn" class="btn btn-primary" style="background: var(--accent, #ffd166); color: #000; font-weight: 700; padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer;">Save &amp; Sync Panels</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <footer class="site-footer">
       <div class="container">
         <div class="footer-grid">
           <div class="footer-brand footer-section">

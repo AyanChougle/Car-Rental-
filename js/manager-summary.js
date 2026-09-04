@@ -67,6 +67,8 @@ function metric(label, value, tone = "") {
     </div>`;
 }
 
+let customStats = null;
+
 function renderDashboard() {
   if (!content) return;
 
@@ -85,6 +87,15 @@ function renderDashboard() {
     item => item.paymentStatus === "pending_verification"
   ).length;
 
+  const eff = customStats?.effective;
+  const isOverridden = customStats?.is_overridden;
+
+  const displayTotalBookings = isOverridden && eff?.total_bookings != null ? eff.total_bookings : bookings.length;
+  const displayRevenue = isOverridden && eff?.total_revenue != null ? eff.total_revenue : revenue;
+  const displayMonthRevenue = isOverridden && eff?.month_revenue != null ? eff.month_revenue : monthRevenue;
+  const displayAverage = isOverridden && eff?.avg_booking != null ? eff.avg_booking : average;
+  const displayPendingPayments = isOverridden && eff?.pending_payments != null ? eff.pending_payments : pendingPayments;
+
   const totalPages = Math.max(1, Math.ceil(bookings.length / PAGE_SIZE));
   currentPage = Math.min(currentPage, totalPages);
   const start = (currentPage - 1) * PAGE_SIZE;
@@ -92,14 +103,14 @@ function renderDashboard() {
 
   content.innerHTML = `
     <section class="manager-stats" style="grid-template-columns:repeat(auto-fit,minmax(210px,1fr))">
-      ${metric("Total Bookings", String(bookings.length))}
+      ${metric("Total Bookings", String(displayTotalBookings))}
       ${metric("Confirmed Bookings", String(confirmed))}
       ${metric("Active Trips", String(activeTrips), "pickups")}
       ${metric("Completed Trips", String(completed))}
-      ${metric("Verified Revenue", formatINR(revenue))}
-      ${metric("Revenue This Month", formatINR(monthRevenue))}
-      ${metric("Average Value", formatINR(average))}
-      ${metric("Pending Payments", String(pendingPayments), "action")}
+      ${metric("Verified Revenue", formatINR(displayRevenue))}
+      ${metric("Revenue This Month", formatINR(displayMonthRevenue))}
+      ${metric("Average Value", formatINR(displayAverage))}
+      ${metric("Pending Payments", String(displayPendingPayments), "action")}
     </section>
 
     <section class="card manager-panel">
@@ -156,11 +167,20 @@ async function loadSummary() {
     content.innerHTML = `<div class="card manager-panel manager-state">Loading management summary...</div>`;
   }
   try {
-    const res = await api.get("/bookings");
-    bookings = (res.bookings || res.data || [])
-      .sort((a, b) => toMillis(b.createdAt || b.bookingDate || b.pickupDate) - toMillis(a.createdAt || a.bookingDate || a.pickupDate));
+    const [bookingsRes, statsRes] = await Promise.allSettled([
+      api.get("/bookings"),
+      api.get("/admin/stats")
+    ]);
+    if (bookingsRes.status === "fulfilled" && bookingsRes.value) {
+      const res = bookingsRes.value;
+      bookings = (res.bookings || res.data || [])
+        .sort((a, b) => toMillis(b.createdAt || b.bookingDate || b.pickupDate) - toMillis(a.createdAt || a.bookingDate || a.pickupDate));
+    }
+    if (statsRes.status === "fulfilled" && statsRes.value?.data) {
+      customStats = statsRes.value.data;
+    }
   } catch (e) {
-    console.warn("API bookings fetch notice:", e);
+    console.warn("API summary fetch notice:", e);
     bookings = [];
   }
   renderDashboard();
