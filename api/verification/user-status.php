@@ -54,35 +54,66 @@ try {
         $params[] = $targetUid;
         $pdo->prepare("UPDATE users SET " . implode(', ', $userUpdates) . ", updated_at = CURRENT_TIMESTAMP WHERE firebase_uid = ?")->execute($params);
 
-        // Update verification record
-        $verUpdates = [];
-        $vParams = [];
-        if ($docType === 'license') {
-            $verUpdates[] = "license_status = ?";
-            $vParams[] = $status;
-        } elseif ($docType === 'aadhar') {
-            $verUpdates[] = "aadhar_status = ?";
-            $vParams[] = $status;
-        } elseif ($docType === 'pan') {
-            $verUpdates[] = "pan_status = ?";
-            $vParams[] = $status;
+        // Ensure verification record exists and is updated
+        $verRecord = Database::fetchOne("SELECT id FROM verification WHERE firebase_uid = ? LIMIT 1", [$targetUid]);
+        if (!$verRecord) {
+            $verId = 'VER-' . strtoupper(bin2hex(random_bytes(6)));
+            $u = Database::fetchOne("SELECT * FROM users WHERE firebase_uid = ? LIMIT 1", [$targetUid]);
+            if ($u) {
+                $licSt = $docType === 'license' ? $status : ($u['license_status'] ?: 'not_submitted');
+                $adhSt = $docType === 'aadhar' ? $status : ($u['aadhar_status'] ?: 'not_submitted');
+                $panSt = $docType === 'pan' ? $status : ($u['pan_status'] ?: 'not_submitted');
+                $overSt = ($licSt === 'verified' && $adhSt === 'verified') ? 'verified' : ($status === 'rejected' ? 'rejected' : 'pending');
+
+                $pdo->prepare(
+                    "INSERT INTO verification (
+                        verification_id, user_id, firebase_uid, full_name, phone,
+                        license_status, aadhar_status, pan_status, overall_status,
+                        rejection_reason, verified_by, verified_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+                )->execute([
+                    $verId, $u['id'], $u['firebase_uid'], $u['name'], $u['phone'],
+                    $licSt, $adhSt, $panSt, $overSt,
+                    $reason ?: null, $admin['firebase_uid'], $now
+                ]);
+            }
+        } else {
+            $verUpdates = [];
+            $vParams = [];
+            if ($docType === 'license') {
+                $verUpdates[] = "license_status = ?";
+                $vParams[] = $status;
+            } elseif ($docType === 'aadhar') {
+                $verUpdates[] = "aadhar_status = ?";
+                $vParams[] = $status;
+            } elseif ($docType === 'pan') {
+                $verUpdates[] = "pan_status = ?";
+                $vParams[] = $status;
+            } else {
+                $verUpdates[] = "license_status = ?";
+                $verUpdates[] = "aadhar_status = ?";
+                $verUpdates[] = "pan_status = ?";
+                $vParams[] = $status;
+                $vParams[] = $status;
+                $vParams[] = $status;
+            }
+
+            $verUpdates[] = "overall_status = ?";
+            $vParams[] = $status === 'verified' ? 'verified' : ($status === 'rejected' ? 'rejected' : 'pending');
+
+            if ($reason) {
+                $verUpdates[] = "rejection_reason = ?";
+                $vParams[] = $reason;
+            }
+
+            $verUpdates[] = "verified_by = ?";
+            $verUpdates[] = "verified_at = ?";
+            $vParams[] = $admin['firebase_uid'];
+            $vParams[] = $now;
+            $vParams[] = $targetUid;
+
+            $pdo->prepare("UPDATE verification SET " . implode(', ', $verUpdates) . ", updated_at = CURRENT_TIMESTAMP WHERE firebase_uid = ?")->execute($vParams);
         }
-
-        $verUpdates[] = "overall_status = ?";
-        $vParams[] = $status === 'verified' ? 'verified' : ($status === 'rejected' ? 'rejected' : 'pending');
-
-        if ($reason) {
-            $verUpdates[] = "rejection_reason = ?";
-            $vParams[] = $reason;
-        }
-
-        $verUpdates[] = "verified_by = ?";
-        $verUpdates[] = "verified_at = ?";
-        $vParams[] = $admin['firebase_uid'];
-        $vParams[] = $now;
-        $vParams[] = $targetUid;
-
-        $pdo->prepare("UPDATE verification SET " . implode(', ', $verUpdates) . ", updated_at = CURRENT_TIMESTAMP WHERE firebase_uid = ?")->execute($vParams);
     });
 
     sendJsonResponse([

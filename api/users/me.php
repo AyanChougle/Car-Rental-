@@ -33,6 +33,13 @@ if ($method === 'GET') {
     $panFrontURL = $metadata['panFrontURL'] ?? $formatMediaUrl($v['pan_front_media_id'] ?? null);
     $panBackURL = $metadata['panBackURL'] ?? $formatMediaUrl($v['pan_back_media_id'] ?? null);
 
+    $resolveStatus = function(?string $verStatus, ?string $userStatus): string {
+        if ($userStatus === 'verified' || $verStatus === 'verified') return 'verified';
+        if ($userStatus === 'rejected' || $verStatus === 'rejected') return 'rejected';
+        if ($userStatus === 'pending' || $verStatus === 'pending') return 'pending';
+        return $verStatus ?: ($userStatus ?: 'not_submitted');
+    };
+
     sendJsonResponse([
         'success' => true,
         'user' => [
@@ -45,10 +52,10 @@ if ($method === 'GET') {
             'age' => $user['age'],
             'role' => $user['role'],
             'status' => $user['status'],
-            'licenseStatus' => $v['license_status'] ?? $user['license_status'],
-            'aadharStatus' => $v['aadhar_status'] ?? $user['aadhar_status'],
-            'panStatus' => $v['pan_status'] ?? $user['pan_status'],
-            'overallStatus' => $v['overall_status'] ?? 'not_submitted',
+            'licenseStatus' => $resolveStatus($v['license_status'] ?? null, $user['license_status'] ?? null),
+            'aadharStatus' => $resolveStatus($v['aadhar_status'] ?? null, $user['aadhar_status'] ?? null),
+            'panStatus' => $resolveStatus($v['pan_status'] ?? null, $user['pan_status'] ?? null),
+            'overallStatus' => $v['overall_status'] ?? (($user['license_status'] === 'verified' && $user['aadhar_status'] === 'verified') ? 'verified' : 'not_submitted'),
             'licenseFrontURL' => $licenseFrontURL,
             'licenseBackURL' => $licenseBackURL,
             'aadharFrontURL' => $aadharFrontURL,

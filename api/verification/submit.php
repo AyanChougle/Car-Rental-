@@ -27,23 +27,27 @@ $phone = trim((string)($input['phone'] ?? $user['phone'] ?? ''));
 
 $verificationId = 'VER-' . strtoupper(bin2hex(random_bytes(6)));
 
-// Process file uploads if attached
-$licenseFrontMediaId = trim((string)($input['licenseFrontMediaId'] ?? ''));
-$licenseBackMediaId = trim((string)($input['licenseBackMediaId'] ?? ''));
-$aadharFrontMediaId = trim((string)($input['aadharFrontMediaId'] ?? ''));
-$aadharBackMediaId = trim((string)($input['aadharBackMediaId'] ?? ''));
-$panFrontMediaId = trim((string)($input['panFrontMediaId'] ?? ''));
-$panBackMediaId = trim((string)($input['panBackMediaId'] ?? ''));
+// Process file uploads & document references if attached
+$licenseFrontMediaId = trim((string)($input['licenseFrontMediaId'] ?? $input['licenseFrontURL'] ?? $input['licenseFront'] ?? ''));
+$licenseBackMediaId = trim((string)($input['licenseBackMediaId'] ?? $input['licenseBackURL'] ?? $input['licenseBack'] ?? ''));
+$aadharFrontMediaId = trim((string)($input['aadharFrontMediaId'] ?? $input['aadharFrontURL'] ?? $input['aadharFront'] ?? ''));
+$aadharBackMediaId = trim((string)($input['aadharBackMediaId'] ?? $input['aadharBackURL'] ?? $input['aadharBack'] ?? ''));
+$panFrontMediaId = trim((string)($input['panFrontMediaId'] ?? $input['panFrontURL'] ?? $input['panFront'] ?? ''));
+$panBackMediaId = trim((string)($input['panBackMediaId'] ?? $input['panBackURL'] ?? $input['panBack'] ?? ''));
 
-$licenseStatus = $licenseNumber || $licenseFrontMediaId ? 'pending' : 'not_submitted';
-$aadharStatus = $aadharNumber || $aadharFrontMediaId ? 'pending' : 'not_submitted';
-$panStatus = $panNumber || $panFrontMediaId ? 'pending' : 'not_submitted';
+$licenseSubmitted = (bool)($licenseNumber || $licenseFrontMediaId || $licenseBackMediaId);
+$aadharSubmitted = (bool)($aadharNumber || $aadharFrontMediaId || $aadharBackMediaId);
+$panSubmitted = (bool)($panNumber || $panFrontMediaId || $panBackMediaId);
+
+$licenseStatus = $licenseSubmitted ? 'pending' : null;
+$aadharStatus = $aadharSubmitted ? 'pending' : null;
+$panStatus = $panSubmitted ? 'pending' : null;
 
 try {
     Database::transaction(function($pdo) use (
         $verificationId, $user, $fullName, $phone, $licenseNumber, $licenseFrontMediaId,
-        $licenseBackMediaId, $licenseStatus, $aadharNumber, $aadharFrontMediaId,
-        $aadharBackMediaId, $aadharStatus, $panNumber, $panFrontMediaId, $panBackMediaId, $panStatus
+        $licenseBackMediaId, $licenseStatus, $licenseSubmitted, $aadharNumber, $aadharFrontMediaId,
+        $aadharBackMediaId, $aadharStatus, $aadharSubmitted, $panNumber, $panFrontMediaId, $panBackMediaId, $panStatus, $panSubmitted
     ) {
         $existing = Database::fetchOne("SELECT * FROM verification WHERE firebase_uid = ? LIMIT 1", [$user['firebase_uid']]);
 
@@ -57,17 +61,17 @@ try {
             if ($licenseNumber) { $updateFields[] = "license_number = ?"; $params[] = $licenseNumber; }
             if ($licenseFrontMediaId) { $updateFields[] = "license_front_media_id = ?"; $params[] = $licenseFrontMediaId; }
             if ($licenseBackMediaId) { $updateFields[] = "license_back_media_id = ?"; $params[] = $licenseBackMediaId; }
-            if ($licenseStatus !== 'not_submitted') { $updateFields[] = "license_status = ?"; $params[] = $licenseStatus; }
+            if ($licenseStatus !== null) { $updateFields[] = "license_status = ?"; $params[] = $licenseStatus; }
 
             if ($aadharNumber) { $updateFields[] = "aadhar_number = ?"; $params[] = $aadharNumber; }
             if ($aadharFrontMediaId) { $updateFields[] = "aadhar_front_media_id = ?"; $params[] = $aadharFrontMediaId; }
             if ($aadharBackMediaId) { $updateFields[] = "aadhar_back_media_id = ?"; $params[] = $aadharBackMediaId; }
-            if ($aadharStatus !== 'not_submitted') { $updateFields[] = "aadhar_status = ?"; $params[] = $aadharStatus; }
+            if ($aadharStatus !== null) { $updateFields[] = "aadhar_status = ?"; $params[] = $aadharStatus; }
 
             if ($panNumber) { $updateFields[] = "pan_number = ?"; $params[] = $panNumber; }
             if ($panFrontMediaId) { $updateFields[] = "pan_front_media_id = ?"; $params[] = $panFrontMediaId; }
             if ($panBackMediaId) { $updateFields[] = "pan_back_media_id = ?"; $params[] = $panBackMediaId; }
-            if ($panStatus !== 'not_submitted') { $updateFields[] = "pan_status = ?"; $params[] = $panStatus; }
+            if ($panStatus !== null) { $updateFields[] = "pan_status = ?"; $params[] = $panStatus; }
 
             $updateFields[] = "overall_status = 'pending'";
             $updateFields[] = "updated_at = CURRENT_TIMESTAMP";
@@ -88,18 +92,20 @@ try {
             );
             $stmt->execute([
                 $verificationId, $user['id'], $user['firebase_uid'], $fullName, $phone,
-                $licenseNumber ?: null, $licenseFrontMediaId ?: null, $licenseBackMediaId ?: null, $licenseStatus,
-                $aadharNumber ?: null, $aadharFrontMediaId ?: null, $aadharBackMediaId ?: null, $aadharStatus,
-                $panNumber ?: null, $panFrontMediaId ?: null, $panBackMediaId ?: null, $panStatus
+                $licenseNumber ?: null, $licenseFrontMediaId ?: null, $licenseBackMediaId ?: null, $licenseStatus ?: 'not_submitted',
+                $aadharNumber ?: null, $aadharFrontMediaId ?: null, $aadharBackMediaId ?: null, $aadharStatus ?: 'not_submitted',
+                $panNumber ?: null, $panFrontMediaId ?: null, $panBackMediaId ?: null, $panStatus ?: 'not_submitted'
             ]);
         }
 
-        // Update user status
+        // Update user status and profile fields
         $userUpdates = [];
         $uParams = [];
-        if ($licenseStatus !== 'not_submitted') { $userUpdates[] = "license_status = ?"; $uParams[] = $licenseStatus; }
-        if ($aadharStatus !== 'not_submitted') { $userUpdates[] = "aadhar_status = ?"; $uParams[] = $aadharStatus; }
-        if ($panStatus !== 'not_submitted') { $userUpdates[] = "pan_status = ?"; $uParams[] = $panStatus; }
+        if ($fullName) { $userUpdates[] = "name = COALESCE(NULLIF(?, ''), name)"; $uParams[] = $fullName; }
+        if ($phone) { $userUpdates[] = "phone = COALESCE(NULLIF(?, ''), phone)"; $uParams[] = $phone; }
+        if ($licenseStatus !== null) { $userUpdates[] = "license_status = ?"; $uParams[] = $licenseStatus; }
+        if ($aadharStatus !== null) { $userUpdates[] = "aadhar_status = ?"; $uParams[] = $aadharStatus; }
+        if ($panStatus !== null) { $userUpdates[] = "pan_status = ?"; $uParams[] = $panStatus; }
 
         if (!empty($userUpdates)) {
             $userUpdates[] = "updated_at = CURRENT_TIMESTAMP";

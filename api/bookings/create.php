@@ -42,12 +42,16 @@ $vehicleId = $vehicle['id'] ?? null;
 $vehicleName = $vehicle ? ($vehicle['brand'] . ' ' . $vehicle['model']) : ($input['vehicleName'] ?? 'Vehicle');
 $vehicleCategory = $vehicle ? $vehicle['category'] : ($input['vehicleCategory'] ?? 'Sedan');
 
+$userName = trim((string)($input['userName'] ?? $input['name'] ?? $input['customerName'] ?? $user['name'] ?? ''));
+$userPhone = trim((string)($input['userPhone'] ?? $input['phone'] ?? $input['customerPhone'] ?? $user['phone'] ?? ''));
+$userAge = isset($input['age']) ? (int)$input['age'] : (isset($input['userAge']) ? (int)$input['userAge'] : (isset($input['customerAge']) ? (int)$input['customerAge'] : (isset($user['age']) ? (int)$user['age'] : null)));
+
 try {
     Database::transaction(function($pdo) use (
         $bookingId, $bookingNumber, $user, $vehicleId, $vehicleReg, $vehicleName, $vehicleCategory,
         $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $baseAmount, $couponCode,
         $couponDiscount, $totalAmount, $advanceAmount, $remainingBalance, $paymentPlan, $paymentStatus,
-        $status, $location, $securityDeposit, $input
+        $status, $location, $securityDeposit, $userName, $userPhone, $userAge, $input
     ) {
         // 1. Insert or update booking
         $stmt = $pdo->prepare(
@@ -61,6 +65,8 @@ try {
             ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             ) ON DUPLICATE KEY UPDATE
+                user_name = COALESCE(NULLIF(VALUES(user_name), ''), user_name),
+                user_phone = COALESCE(NULLIF(VALUES(user_phone), ''), user_phone),
                 payment_status = VALUES(payment_status),
                 status = VALUES(status),
                 advance_amount = VALUES(advance_amount),
@@ -70,15 +76,35 @@ try {
         );
 
         $stmt->execute([
-            $bookingId, $bookingNumber, $user['id'], $user['firebase_uid'], $user['name'] ?: $user['email'],
-            $user['email'], $user['phone'], $vehicleId, $vehicleReg, $vehicleName, $vehicleCategory,
+            $bookingId, $bookingNumber, $user['id'], $user['firebase_uid'], $userName ?: ($user['name'] ?: $user['email']),
+            $user['email'], $userPhone ?: ($user['phone'] ?: null), $vehicleId, $vehicleReg, $vehicleName, $vehicleCategory,
             $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $baseAmount, $couponCode ?: null,
             $couponDiscount, $totalAmount, $totalAmount, $advanceAmount, $remainingBalance, $remainingBalance,
             $paymentPlan, $paymentStatus, $status, $status, $location, $securityDeposit,
             $input['paymentScreenshotUrl'] ?? $input['screenshotUrl'] ?? null
         ]);
 
-        // 2. If coupon applied, record coupon_usage
+        // 2. Sync phone, name, age back to users table if available
+        $uFields = [];
+        $uParams = [];
+        if ($userName) {
+            $uFields[] = "name = COALESCE(NULLIF(?, ''), name)";
+            $uParams[] = $userName;
+        }
+        if ($userPhone) {
+            $uFields[] = "phone = COALESCE(NULLIF(?, ''), phone)";
+            $uParams[] = $userPhone;
+        }
+        if ($userAge !== null) {
+            $uFields[] = "age = COALESCE(?, age)";
+            $uParams[] = $userAge;
+        }
+        if (!empty($uFields)) {
+            $uParams[] = $user['firebase_uid'];
+            $pdo->prepare("UPDATE users SET " . implode(', ', $uFields) . ", updated_at = CURRENT_TIMESTAMP WHERE firebase_uid = ?")->execute($uParams);
+        }
+
+        // 3. If coupon applied, record coupon_usage
         if ($couponCode && $couponDiscount > 0) {
             $coupon = Database::fetchOne("SELECT id FROM coupons WHERE code = ? LIMIT 1", [$couponCode]);
             if ($coupon) {

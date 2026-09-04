@@ -54,6 +54,13 @@ $users = array_map(function($u) {
     $panFront = $u['pan_front_media_id'] ?: ($metadata['panFrontURL'] ?? null);
     $panBack = $u['pan_back_media_id'] ?: ($metadata['panBackURL'] ?? null);
 
+    $resolveStatus = function(?string $verStatus, ?string $userStatus): string {
+        if ($userStatus === 'verified' || $verStatus === 'verified') return 'verified';
+        if ($userStatus === 'rejected' || $verStatus === 'rejected') return 'rejected';
+        if ($userStatus === 'pending' || $verStatus === 'pending') return 'pending';
+        return $verStatus ?: ($userStatus ?: 'not_submitted');
+    };
+
     return [
         'id' => $u['firebase_uid'],
         'dbId' => $u['id'],
@@ -64,9 +71,9 @@ $users = array_map(function($u) {
         'age' => $u['age'],
         'role' => $u['role'],
         'status' => $u['status'],
-        'licenseStatus' => $u['v_license_status'] ?: $u['license_status'],
-        'aadharStatus' => $u['v_aadhar_status'] ?: $u['aadhar_status'],
-        'panStatus' => $u['v_pan_status'] ?: $u['pan_status'],
+        'licenseStatus' => $resolveStatus($u['v_license_status'], $u['license_status']),
+        'aadharStatus' => $resolveStatus($u['v_aadhar_status'], $u['aadhar_status']),
+        'panStatus' => $resolveStatus($u['v_pan_status'], $u['pan_status']),
         'licenseNumber' => $u['license_number'] ?? null,
         'aadharNumber' => $u['aadhar_number'] ?? null,
         'panNumber' => $u['pan_number'] ?? null,

@@ -1788,15 +1788,14 @@ function renderUsersTable(
         <tbody>
   `;
 
-  users.forEach(
-    (user) => {
-      const hasLicense = Boolean(user.licenseFrontURL || user.licenseURL);
-      const hasAadhaar = Boolean(user.aadharFrontURL || user.aadharURL);
-      const hasPan = Boolean(user.panFrontURL || user.panURL);
+  users.forEach((user) => {
+    const hasLicense = Boolean(user.licenseFrontURL || user.licenseURL || user.licenseFrontMediaId || user.license_front_media_id || user.licenseNumber);
+      const hasAadhaar = Boolean(user.aadharFrontURL || user.aadharURL || user.aadharBackURL || user.aadharFrontMediaId || user.aadhar_front_media_id || user.aadharNumber);
+      const hasPan = Boolean(user.panFrontURL || user.panURL || user.panBackURL || user.panFrontMediaId || user.pan_front_media_id || user.panNumber);
 
-      const license = hasLicense ? (user.licenseStatus || "pending") : "not_submitted";
-      const aadhaar = hasAadhaar ? (user.aadharStatus || "pending") : "not_submitted";
-      const pan = hasPan ? (user.panStatus || "pending") : "not_submitted";
+      const license = (user.licenseStatus && user.licenseStatus !== "not_submitted") ? user.licenseStatus : (hasLicense ? "pending" : "not_submitted");
+      const aadhaar = (user.aadharStatus && user.aadharStatus !== "not_submitted") ? user.aadharStatus : (hasAadhaar ? "pending" : "not_submitted");
+      const pan = (user.panStatus && user.panStatus !== "not_submitted") ? user.panStatus : (hasPan ? "pending" : "not_submitted");
 
       html += `
         <tr
@@ -2430,12 +2429,11 @@ async function openDocumentModal(
     }
   }));
 
-  const requiredCount = config.requiresBack ? 2 : 1;
-  const hasAllRequiredFiles = !noFrontUploaded && (!config.requiresBack || !noBackUploaded) && loadedCount >= requiredCount;
+  const hasUploadedFile = !noFrontUploaded || !noBackUploaded || loadedCount > 0;
 
   if (approve) {
-    approve.disabled = !hasAllRequiredFiles;
-    approve.title = hasAllRequiredFiles ? "Approve document verification" : "Cannot approve verification without required document images.";
+    approve.disabled = !hasUploadedFile;
+    approve.title = hasUploadedFile ? "Approve document verification" : "No document file uploaded.";
   }
   if (reject) {
     reject.disabled = false;
