@@ -4,8 +4,8 @@
 // ============================================================================
 
 import { auth } from "./firebase-init.js";
-import { api, API_BASE_URL } from "./kruizly-api.js?v=20260904-v12";
-import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260904-v12";
+import { api, API_BASE_URL } from "./kruizly-api.js?v=20260904-v13";
+import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260904-v13";
 
 import "./nav-helper.js";
 
@@ -983,7 +983,12 @@ async function loadFleetManagement() {
           <tbody>
             ${pageVehicles.map((vehicle) => {
               const available = Boolean(vehicle.available);
-              const imgUrl = (typeof window.fleetImagePath === "function" && window.fleetImagePath(vehicle)) || (Array.isArray(vehicle.gallery) && vehicle.gallery[0]) || vehicle.imageUrl || "assets/fleet/BMW.png";
+              let imgUrl = (typeof window.fleetImagePath === "function" && window.fleetImagePath(vehicle)) || "";
+              if (!imgUrl && Array.isArray(vehicle.gallery) && vehicle.gallery[0]) {
+                const g0 = vehicle.gallery[0];
+                imgUrl = (typeof g0 === "string" && (g0.startsWith("http") || g0.startsWith("assets/") || g0.startsWith("images/"))) ? g0 : `/api/media/file.php?id=${encodeURIComponent(g0)}`;
+              }
+              if (!imgUrl) imgUrl = vehicle.imageUrl || "assets/fleet/BMW.png";
               return `
                 <tr style="border-bottom:1px solid rgba(255,255,255,.06);">
                   <td style="padding:12px;"><strong>${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}</strong></td>
@@ -6824,14 +6829,20 @@ function renderLegacyHostPhotos(carId, urls) {
 
   return urls
     .map(
-      (url, index) => `
+      (url, index) => {
+        const isDirect = typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:") || url.startsWith("blob:") || url.startsWith("assets/") || url.startsWith("images/"));
+        const srcUrl = isDirect ? url : `/api/media/file.php?id=${encodeURIComponent(url)}`;
+        const fallbackSvg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='90' viewBox='0 0 120 90'%3E%3Crect width='100%25' height='100%25' fill='%23121926' rx='8'/%3E%3Ctext x='50%25' y='50%25' fill='%237b8798' font-family='sans-serif' font-size='10' text-anchor='middle' dy='.3em'%3E${encodeURIComponent(url)}%3C/text%3E%3C/svg%3E`;
+
+        return `
         <div
           class="host-photo-tile"
           style="position:relative;width:120px;height:90px;"
         >
           <img
-            src="${escapeHtml(url)}"
+            src="${escapeHtml(srcUrl)}"
             alt="Host car photo ${index + 1}"
+            onerror="this.onerror=null;this.src='${fallbackSvg}';"
             style="
               width:100%;height:100%;object-fit:cover;
               border-radius:8px;border:1px solid var(--line);
@@ -6850,7 +6861,8 @@ function renderLegacyHostPhotos(carId, urls) {
             "
           >×</button>
         </div>
-      `
+      `;
+      }
     )
     .join("");
 }

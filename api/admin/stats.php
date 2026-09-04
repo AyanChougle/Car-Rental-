@@ -18,7 +18,7 @@ if ($method === 'OPTIONS') {
 
 if ($method === 'GET') {
     // Accessible to logged-in staff (admin, manager, executive) or authenticated users
-    $user = Auth::authenticate();
+    $user = Auth::optionalAuth();
 
     // 1. Calculate live database statistics
     $totalUsers = (int)(Database::fetchOne("SELECT COUNT(*) as c FROM users")['c'] ?? 0);

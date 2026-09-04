@@ -114,7 +114,8 @@ export function resolveEndpoint(endpoint, params = {}) {
     "invoices/update": "/invoices/update.php",
     "invoices/pdf": "/invoices/pdf.php",
     "invoices/send": "/invoices/send.php",
-    "admin/export": "/admin/export.php"
+    "admin/export": "/admin/export.php",
+    "admin/stats": "/admin/stats.php"
   };
 
   if (routeMap[clean]) {

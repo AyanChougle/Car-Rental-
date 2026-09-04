@@ -4,7 +4,7 @@
 // configured, so it can no longer be the only delivery path). Also
 // prefills the form for links coming from fleet.html / vehicle.html
 // "Book Now" buttons (contact.html?subject=Booking%20Support&vehicle=Tata%20Nexon).
-import { api } from "./kruizly-api.js?v=20260904-v12";
+import { api } from "./kruizly-api.js?v=20260904-v13";
 import "./nav-helper.js";
 
 const form = document.getElementById("contact-form");
