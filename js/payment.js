@@ -1081,227 +1081,41 @@ async function initialisePaymentUI(
 }
 
 
-// ============================================================
-// GET FIREBASE ID TOKEN
-// ============================================================
-//
-// This is the bridge between Firebase Auth and your Node API.
-//
-// Node's middleware/auth.js expects:
-//
-// Authorization: Bearer <Firebase ID token>
-//
-// ============================================================
-
-async function getAuthToken(
-  currentUser
-) {
-  if (!currentUser) {
-    throw new Error(
-      "You must be signed in to submit payment."
-    );
-  }
-
-
-  try {
-    const token =
-      await currentUser.getIdToken(
-        true
-      );
-
-
-    if (!token) {
-      throw new Error(
-        "Could not obtain your authentication token."
-      );
-    }
-
-
-    return token;
-
-  } catch (error) {
-    console.error(
-      "AUTH TOKEN ERROR:",
-      error
-    );
-
-    throw new Error(
-      "Your login session could not be verified. Please sign in again."
-    );
-  }
-}
-
-
-// ============================================================
-// UPLOAD PAYMENT SCREENSHOT TO NODE + SQLITE
-// ============================================================
-//
-// POST /api/media/upload
-//
-// multipart/form-data:
-//
-// file       = screenshot
-// category   = payment_screenshot
-// relatedId  = bookingId
-//
-// Authorization:
-// Bearer <Firebase ID token>
-//
-// ============================================================
-
 async function uploadPaymentScreenshot(
   file,
   currentUser,
   reference
 ) {
-  console.log(
-    "Starting local SQL media upload..."
-  );
+  console.log("Starting payment screenshot upload via API...");
 
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("category", "payment_proof");
+  formData.append("relatedId", String(bookingId));
 
-  // 1. Try local Node media server first
-  try {
-    const token = await getAuthToken(currentUser);
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("category", "payment_screenshot");
-    formData.append("relatedId", String(bookingId));
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
-
-    const response = await fetch(
-      getMediaApiUrl("/api/media/upload"),
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-        signal: controller.signal
-      }
-    );
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      const data = await response.json().catch(() => ({}));
-      if (data && data.id) {
-        console.log("LOCAL SQL MEDIA UPLOAD COMPLETE:", data);
-        return data;
-      }
-    }
-  } catch (serverErr) {
-    console.warn("[Payment Screenshot] Local media server unavailable, using direct cloud compression fallback:", serverErr);
-  }
-
-  // 2. Client-side compressed image processing for direct Firestore payment verification
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX_DIM = 1200;
-        let width = img.width;
-        let height = img.height;
-        if (width > height && width > MAX_DIM) {
-          height = Math.round((height * MAX_DIM) / width);
-          width = MAX_DIM;
-        } else if (height > MAX_DIM) {
-          width = Math.round((width * MAX_DIM) / height);
-          height = MAX_DIM;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.78);
-        resolve({
-          id: `pay_${Date.now()}`,
-          url: dataUrl,
-          category: "payment_screenshot",
-          originalName: file.name
-        });
-      };
-      img.onerror = () => {
-        resolve({
-          id: `pay_${Date.now()}`,
-          url: e.target.result,
-          category: "payment_screenshot",
-          originalName: file.name
-        });
-      };
-      img.src = e.target.result;
-    };
-    reader.onerror = () => reject(new Error("Could not process payment screenshot."));
-    reader.readAsDataURL(file);
-  });
+  const result = await api.upload("/media/upload", formData);
+  console.log("PAYMENT SCREENSHOT UPLOAD COMPLETE:", result);
+  return result;
 }
 
 
 // ============================================================
-// DELETE MEDIA FILE IF FIRESTORE UPDATE FAILS
-// ============================================================
-//
-// This prevents an orphan screenshot from staying in uploads/
-// if the Firestore booking update fails.
-//
+// DELETE MEDIA FILE IF SUBMISSION FAILS
 // ============================================================
 
 async function deleteUploadedMedia(
   mediaId,
   currentUser
 ) {
-  if (!mediaId) {
-    return;
-  }
-
+  if (!mediaId) return;
 
   try {
-    const token =
-      await getAuthToken(
-        currentUser
-      );
-
-
-    const response =
-      await fetch(
-        getMediaApiUrl(
-          `/api/media/${encodeURIComponent(
-            mediaId
-          )}`
-        ),
-        {
-          method:
-            "DELETE",
-
-          headers: {
-            Authorization:
-              `Bearer ${token}`,
-          },
-        }
-      );
-
-
-    if (!response.ok) {
-      console.warn(
-        "Could not clean up uploaded payment screenshot:",
-        response.status
-      );
-    } else {
-      console.log(
-        "Uploaded screenshot cleaned up."
-      );
-    }
-
+    await api.delete("/media/delete", { id: mediaId });
+    console.log("Uploaded screenshot cleaned up:", mediaId);
   } catch (error) {
-    console.warn(
-      "Media cleanup failed:",
-      error
-    );
+    console.warn("Media cleanup error:", error);
   }
 }
-
 
 // ============================================================
 // SUBMIT PAYMENT
@@ -1596,10 +1410,10 @@ async function submitPayment(
     await api.post("/payments/submit", {
       bookingId,
       amount: paymentAmount,
-      method: "upi",
-      utr,
+      method: activeMethod || "upi",
+      utr: reference,
       screenshotUrl: media?.url || null,
-      screenshotMediaId: media?.mediaId || null
+      screenshotMediaId: media?.mediaId || media?.id || null
     });
 
     try {
