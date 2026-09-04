@@ -6,7 +6,7 @@
 // computed live before saving. Saving marks the booking "completed" and
 // stores the itemized breakdown on the booking doc as the permanent record.
 import { auth } from "./firebase-init.js";
-import { api } from "./kruizly-api.js?v=20260904-v16";
+import { api } from "./kruizly-api.js?v=20260904-v17";
 import { MEDIA_SERVER_URL } from "./media-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
 

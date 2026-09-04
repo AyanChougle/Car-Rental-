@@ -17,8 +17,8 @@ import {
   updateProfile
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 
-import { api } from "./kruizly-api.js?v=20260904-v16";
-import { initDynamicNav } from "./nav-helper.js?v=20260904-v16";
+import { api } from "./kruizly-api.js?v=20260904-v17";
+import { initDynamicNav } from "./nav-helper.js?v=20260904-v17";
 
 // ============================================================
 // STATE & STORAGE

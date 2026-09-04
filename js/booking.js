@@ -2,8 +2,8 @@
 // KRUIZLY — BOOKING PAGE
 // ============================================================
 
-import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v16";
-import { api } from "./kruizly-api.js?v=20260904-v16";
+import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v17";
+import { api } from "./kruizly-api.js?v=20260904-v17";
 import "./nav-helper.js";
 import { generateNumericBookingId } from "./booking-reference.js";
 import {
@@ -319,6 +319,19 @@ async function initBooking(vehicle) {
         "</div>";
       return null;
     }
+
+    const {
+      duration,
+      hours,
+      days,
+      rentalTotal,
+      driverTotal,
+      securityDeposit,
+      couponDiscount,
+      finalAmount,
+      advanceAmount,
+      remainingAmount,
+    } = calculation;
 
     const dayCount = Math.max(1, Number(days) || 1);
     const hourCount = Math.max(1, Number(hours) || (dayCount * 24));

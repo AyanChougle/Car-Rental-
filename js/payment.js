@@ -36,8 +36,8 @@
 //
 // ============================================================
 
-import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v16";
-import { api } from "./kruizly-api.js?v=20260904-v16";
+import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v17";
+import { api } from "./kruizly-api.js?v=20260904-v17";
 
 import { PAYMENT_CONFIG } from "./payment-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
