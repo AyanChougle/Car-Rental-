@@ -1,189 +1,107 @@
-/**
- * js/auth.js (UPDATED)
+﻿/**
+ * js/auth.js
  * 
- * Authentication using JWT tokens via /api/auth endpoints.
- * NO Firebase dependency. Works with database-backed auth.
+ * KRUIZLY Authentication using Firebase Auth SDK + Hostinger MySQL Synchronization.
+ * Supports Email/Password, Google Sign-In, Password Reset, and Live Auth State.
  */
 
-import "./nav-helper.js";
+import { auth } from "./firebase-init.js";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signInWithPopup,
+  GoogleAuthProvider,
+  sendPasswordResetEmail,
+  signOut,
+  onAuthStateChanged,
+  updateProfile
+} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
+
+import { api } from "./kruizly-api.js";
+import { initDynamicNav } from "./nav-helper.js";
 
 // ============================================================
-// TOKEN STORAGE & RETRIEVAL
+// STATE & STORAGE
 // ============================================================
 
-function getStoredTokens() {
-  const stored = localStorage.getItem("kruizly_tokens");
-  return stored ? JSON.parse(stored) : null;
-}
-
-function setStoredTokens(tokens) {
-  localStorage.setItem("kruizly_tokens", JSON.stringify(tokens));
-}
-
-function clearStoredTokens() {
-  localStorage.removeItem("kruizly_tokens");
-  localStorage.removeItem("kruizly_user");
-}
-
-function getStoredUser() {
+export function getStoredUser() {
   const stored = localStorage.getItem("kruizly_user");
-  return stored ? JSON.parse(stored) : null;
-}
-
-function setStoredUser(user) {
-  localStorage.setItem("kruizly_user", JSON.stringify(user));
-}
-
-function getAccessToken() {
-  const tokens = getStoredTokens();
-  return tokens?.accessToken || null;
-}
-
-function getRefreshToken() {
-  const tokens = getStoredTokens();
-  return tokens?.refreshToken || null;
-}
-
-// ============================================================
-// API CALLS
-// ============================================================
-
-async function apiCall(method, endpoint, body = null) {
-  const url = `/api${endpoint}`;
-  const options = {
-    method,
-    headers: {
-      "Content-Type": "application/json",
-    },
-  };
-
-  if (body) {
-    options.body = JSON.stringify(body);
-  }
-
-  const token = getAccessToken();
-  if (token) {
-    options.headers.Authorization = `Bearer ${token}`;
-  }
-
+  if (!stored) return null;
   try {
-    const response = await fetch(url, options);
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || `HTTP ${response.status}`);
-    }
-
-    return data;
-  } catch (error) {
-    throw error;
-  }
-}
-
-async function refreshAccessToken() {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    clearStoredTokens();
-    return false;
-  }
-
-  try {
-    const data = await fetch("/api/auth/refresh", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ refreshToken }),
-    }).then((r) => r.json());
-
-    if (data.success && data.tokens?.accessToken) {
-      const currentTokens = getStoredTokens();
-      setStoredTokens({
-        ...currentTokens,
-        accessToken: data.tokens.accessToken,
-      });
-      return true;
-    }
-
-    clearStoredTokens();
-    return false;
+    return JSON.parse(stored);
   } catch {
-    clearStoredTokens();
-    return false;
+    return null;
   }
 }
 
-// ============================================================
-// AUTHENTICATION FUNCTIONS
-// ============================================================
-
-export async function register(email, password, name) {
-  const data = await apiCall("POST", "/auth/register", {
-    email,
-    password,
-    name,
-  });
-
-  if (data.success) {
-    setStoredTokens(data.tokens);
-    setStoredUser(data.user);
+export function setStoredUser(user) {
+  if (!user) {
+    localStorage.removeItem("kruizly_user");
+  } else {
+    localStorage.setItem("kruizly_user", JSON.stringify(user));
   }
-
-  return data;
 }
 
-export async function login(email, password) {
-  const data = await apiCall("POST", "/auth/login", {
-    email,
-    password,
-  });
-
-  if (data.success) {
-    setStoredTokens(data.tokens);
-    setStoredUser(data.user);
-  }
-
-  return data;
-}
-
-export async function logout() {
-  try {
-    await apiCall("POST", "/auth/logout");
-  } catch {
-    // Ignore errors, just clear local state
-  }
-
-  clearStoredTokens();
-  window.location.href = "/";
+export function clearStoredUser() {
+  localStorage.removeItem("kruizly_user");
+  localStorage.removeItem("kruizly_tokens");
 }
 
 export function getCurrentUser() {
+  if (auth.currentUser) {
+    const stored = getStoredUser();
+    return {
+      uid: auth.currentUser.uid,
+      id: auth.currentUser.uid,
+      email: auth.currentUser.email,
+      name: auth.currentUser.displayName || stored?.name || "User",
+      role: stored?.role || "customer",
+      status: stored?.status || "active",
+      ...stored
+    };
+  }
   return getStoredUser();
 }
 
 export function isLoggedIn() {
-  return !!getAccessToken() && !!getStoredUser();
+  return !!auth.currentUser || !!getStoredUser();
 }
 
 export async function checkAuth() {
-  if (!getAccessToken()) {
-    return false;
-  }
+  return new Promise((resolve) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      unsubscribe();
+      if (user) {
+        const isAdmin = ["ayan@kruizly.com", "admin@kruizly.com", "carrentpedatabase@gmail.com"].includes((user.email || "").toLowerCase());
+        const initialUser = {
+          uid: user.uid,
+          id: user.uid,
+          email: user.email,
+          name: user.displayName || "User",
+          role: isAdmin ? "admin" : "customer"
+        };
+        
+        if (!getStoredUser()) {
+          setStoredUser(initialUser);
+        }
 
-  try {
-    // Try to call a protected endpoint to verify token
-    const data = await apiCall("GET", "/auth/me");
-    if (data.success) {
-      setStoredUser(data.user);
-      return true;
-    }
-  } catch {
-    // Token might be expired, try refresh
-    if (await refreshAccessToken()) {
-      return checkAuth(); // Retry with new token
-    }
-  }
+        try {
+          const syncRes = await api.post("/users/sync", {
+            name: user.displayName || "",
+            email: user.email || ""
+          }).catch(() => null);
 
-  clearStoredTokens();
-  return false;
+          if (syncRes && syncRes.user) {
+            setStoredUser(syncRes.user);
+          }
+        } catch (_) {}
+        resolve(true);
+      } else {
+        clearStoredUser();
+        resolve(false);
+      }
+    });
+  });
 }
 
 export function requireAuth(redirectTo = "index.html?next=") {
@@ -196,35 +114,179 @@ export function requireAuth(redirectTo = "index.html?next=") {
 }
 
 // ============================================================
-// UI HELPER FUNCTIONS
+// AUTHENTICATION OPERATIONS
 // ============================================================
 
-function friendlyAuthError(error) {
-  const map = {
-    "Invalid email or password.": "Email or password is incorrect.",
-    "Invalid email address.": "That email address doesn't look right.",
-    "Password must be at least 6 characters.": "Password needs to be at least 6 characters.",
-    "Email already registered. Try logging in instead.":
-      "That email already has an account — try logging in instead.",
-    "Your account has been disabled. Contact support.":
-      "Your account has been disabled.",
-    "Your account is suspended. Contact support.": "Your account is suspended.",
-  };
+export async function login(email, password) {
+  if (!email || !password) {
+    throw new Error("Email and password are required.");
+  }
 
-  return (
-    map[error?.message] ||
-    error?.message ||
-    error ||
-    "Something went wrong. Please try again."
-  );
+  const credential = await signInWithEmailAndPassword(auth, email.trim(), password);
+  const user = credential.user;
+
+  const isAdmin = ["ayan@kruizly.com", "admin@kruizly.com", "carrentpedatabase@gmail.com"].includes((user.email || "").toLowerCase());
+  const initialUser = {
+    uid: user.uid,
+    id: user.uid,
+    email: user.email,
+    name: user.displayName || "Driver",
+    role: isAdmin ? "admin" : "customer"
+  };
+  setStoredUser(initialUser);
+
+  // Sync with MySQL database on Hostinger
+  try {
+    const syncRes = await api.post("/users/sync", {
+      email: user.email,
+      name: user.displayName || ""
+    }).catch(() => null);
+    if (syncRes && syncRes.user) {
+      setStoredUser(syncRes.user);
+    }
+  } catch (err) {
+    console.warn("Backend user sync notice:", err);
+  }
+
+  initDynamicNav();
+  updateIndexAuthView(user);
+  return { success: true, user };
 }
 
-function setStatus(form, message, isError) {
-  const el = form?.querySelector(".form-status");
+export async function register(email, password, name, phone = "") {
+  if (!email || !password || !name) {
+    throw new Error("Full name, email, and password are required.");
+  }
+
+  const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+  const user = credential.user;
+
+  try {
+    await updateProfile(user, { displayName: name.trim() });
+  } catch (_) {}
+
+  const initialUser = {
+    uid: user.uid,
+    id: user.uid,
+    email: user.email,
+    name: name.trim(),
+    role: "customer"
+  };
+  setStoredUser(initialUser);
+
+  // Sync new user with MySQL database on Hostinger
+  try {
+    const syncRes = await api.post("/users/sync", {
+      name: name.trim(),
+      email: user.email,
+      phone: phone ? phone.trim() : ""
+    }).catch(() => null);
+    if (syncRes && syncRes.user) {
+      setStoredUser(syncRes.user);
+    }
+  } catch (err) {
+    console.warn("Backend user sync notice:", err);
+  }
+
+  initDynamicNav();
+  updateIndexAuthView(user);
+  return { success: true, user };
+}
+
+export async function loginWithGoogle() {
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: "select_account" });
+
+  const result = await signInWithPopup(auth, provider);
+  const user = result.user;
+
+  const isAdmin = ["ayan@kruizly.com", "admin@kruizly.com", "carrentpedatabase@gmail.com"].includes((user.email || "").toLowerCase());
+  const initialUser = {
+    uid: user.uid,
+    id: user.uid,
+    email: user.email,
+    name: user.displayName || "Google User",
+    role: isAdmin ? "admin" : "customer"
+  };
+  setStoredUser(initialUser);
+
+  // Sync Google user with MySQL database
+  try {
+    const syncRes = await api.post("/users/sync", {
+      name: user.displayName || "Google User",
+      email: user.email || "",
+      phone: user.phoneNumber || ""
+    }).catch(() => null);
+    if (syncRes && syncRes.user) {
+      setStoredUser(syncRes.user);
+    }
+  } catch (err) {
+    console.warn("Backend Google sync notice:", err);
+  }
+
+  initDynamicNav();
+  updateIndexAuthView(user);
+  return { success: true, user };
+}
+
+export async function resetPassword(email) {
+  if (!email) {
+    throw new Error("Please enter your registered email address.");
+  }
+  await sendPasswordResetEmail(auth, email.trim());
+  return { success: true, message: "Password reset link sent to your email." };
+}
+
+export async function logout() {
+  try {
+    await signOut(auth);
+  } catch (_) {}
+  clearStoredUser();
+  initDynamicNav();
+  updateIndexAuthView(null);
+  window.location.href = "index.html";
+}
+
+// ============================================================
+// UI HELPERS & ERROR HANDLING
+// ============================================================
+
+export function friendlyAuthError(error) {
+  const code = error?.code || "";
+  const msg = error?.message || String(error || "");
+
+  if (code === "auth/invalid-credential" || code === "auth/wrong-password" || code === "auth/user-not-found") {
+    return "Incorrect email or password. Please try again.";
+  }
+  if (code === "auth/email-already-in-use") {
+    return "This email is already registered. Please log in instead.";
+  }
+  if (code === "auth/invalid-email") {
+    return "Please enter a valid email address.";
+  }
+  if (code === "auth/weak-password") {
+    return "Password should be at least 6 characters long.";
+  }
+  if (code === "auth/popup-closed-by-user") {
+    return "Google Sign-In popup was closed before finishing.";
+  }
+  if (code === "auth/too-many-requests") {
+    return "Too many unsuccessful attempts. Please try again later or reset your password.";
+  }
+  if (code === "auth/network-request-failed") {
+    return "Network error. Please check your internet connection.";
+  }
+
+  return msg || "An unexpected error occurred. Please try again.";
+}
+
+function setStatus(formOrEl, message, isError) {
+  const el = formOrEl?.querySelector?.(".form-status") || (typeof formOrEl === "string" ? document.getElementById(formOrEl) : formOrEl);
   if (!el) return;
 
   el.textContent = message;
-  el.setAttribute("aria-live", "polite");
+  el.style.display = message ? "block" : "none";
+  el.style.color = isError ? "#ef476f" : "#06d6a0";
 
   if (isError) {
     el.classList.remove("success");
@@ -254,13 +316,6 @@ function wirePasswordToggles() {
       btn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
       input.focus({ preventScroll: true });
     });
-
-    btn.addEventListener("keydown", (ev) => {
-      if (ev.key === "Enter" || ev.key === " ") {
-        ev.preventDefault();
-        btn.click();
-      }
-    });
   });
 }
 
@@ -272,58 +327,67 @@ function getSafeNextUrl() {
   return next;
 }
 
+export function updateIndexAuthView(user) {
+  const guestView = document.getElementById("authGuestView");
+  const userView = document.getElementById("authUserView");
+  const userNameEl = document.getElementById("authUserName");
+
+  if (!guestView || !userView) return;
+
+  if (user) {
+    guestView.hidden = true;
+    userView.hidden = false;
+    if (userNameEl) {
+      const name = user.displayName || user.name || (user.email ? user.email.split("@")[0] : "Driver");
+      userNameEl.textContent = name;
+    }
+  } else {
+    guestView.hidden = false;
+    userView.hidden = true;
+  }
+}
+
 // ============================================================
-// FORM HANDLING
+// FORM INITIALIZATION
 // ============================================================
 
 export function initAuthForms() {
   wirePasswordToggles();
 
-  // Signup form
-  const signupForm = document.querySelector(".signup-form");
-  if (signupForm) {
-    signupForm.addEventListener("submit", async (e) => {
+  // 1. Google Sign-In Button
+  const googleBtn = document.getElementById("googleLoginBtn") || document.getElementById("googleAuthBtn") || document.querySelector(".btn-google") || document.querySelector(".google-btn");
+  const googleStatus = document.getElementById("googleAuthStatus");
+  if (googleBtn) {
+    googleBtn.addEventListener("click", async (e) => {
       e.preventDefault();
-
-      const nameInput = signupForm.querySelector('[name="name"]');
-      const emailInput = signupForm.querySelector('[name="email"]');
-      const passwordInput = signupForm.querySelector('[name="password"]');
-
-      const name = nameInput?.value.trim();
-      const email = emailInput?.value.trim();
-      const password = passwordInput?.value;
-
-      if (!name || !email || !password) {
-        setStatus(signupForm, "All fields are required.", true);
-        return;
-      }
+      if (googleStatus) setStatus(googleStatus, "Connecting to Google...", false);
+      googleBtn.disabled = true;
 
       try {
-        const result = await register(email, password, name);
-        if (result.success) {
-          setStatus(signupForm, "Registration successful! Redirecting...", false);
-          setTimeout(() => {
-            window.location.href = getSafeNextUrl();
-          }, 1500);
-        } else {
-          setStatus(signupForm, friendlyAuthError(result.error), true);
-        }
-      } catch (error) {
-        setStatus(signupForm, friendlyAuthError(error), true);
+        await loginWithGoogle();
+        if (googleStatus) setStatus(googleStatus, "Signed in successfully! Redirecting...", false);
+        setTimeout(() => {
+          window.location.href = getSafeNextUrl();
+        }, 600);
+      } catch (err) {
+        console.error("Google Auth Error:", err);
+        if (googleStatus) setStatus(googleStatus, friendlyAuthError(err), true);
+      } finally {
+        googleBtn.disabled = false;
       }
     });
   }
 
-  // Login form
-  const loginForm = document.querySelector(".login-form");
+  // 2. Login Form
+  const loginForm = document.getElementById("loginForm") || document.querySelector(".login-form");
   if (loginForm) {
     loginForm.addEventListener("submit", async (e) => {
       e.preventDefault();
 
-      const emailInput = loginForm.querySelector('[name="email"]');
-      const passwordInput = loginForm.querySelector('[name="password"]');
+      const emailInput = document.getElementById("loginEmail") || loginForm.querySelector('input[type="email"]') || loginForm.querySelector('[name="email"]');
+      const passwordInput = document.getElementById("loginPassword") || loginForm.querySelector('input[type="password"]') || loginForm.querySelector('[name="password"]');
 
-      const email = emailInput?.value.trim();
+      const email = emailInput?.value?.trim();
       const password = passwordInput?.value;
 
       if (!email || !password) {
@@ -331,23 +395,132 @@ export function initAuthForms() {
         return;
       }
 
+      const submitBtn = loginForm.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Logging in...";
+      }
+
       try {
-        const result = await login(email, password);
-        if (result.success) {
-          setStatus(loginForm, "Login successful! Redirecting...", false);
-          setTimeout(() => {
-            window.location.href = getSafeNextUrl();
-          }, 1500);
-        } else {
-          setStatus(loginForm, friendlyAuthError(result.error), true);
+        await login(email, password);
+        setStatus(loginForm, "Login successful! Redirecting...", false);
+        setTimeout(() => {
+          window.location.href = getSafeNextUrl();
+        }, 600);
+      } catch (err) {
+        console.error("Login Error:", err);
+        setStatus(loginForm, friendlyAuthError(err), true);
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Login";
         }
-      } catch (error) {
-        setStatus(loginForm, friendlyAuthError(error), true);
       }
     });
   }
 
-  // Logout button
+  // 3. Sign Up Form
+  const signupForm = document.getElementById("signupForm") || document.querySelector(".signup-form");
+  if (signupForm) {
+    signupForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const nameInput = document.getElementById("signupName") || signupForm.querySelector('[name="name"]') || signupForm.querySelector('input[type="text"]');
+      const emailInput = document.getElementById("signupEmail") || signupForm.querySelector('[name="email"]') || signupForm.querySelector('input[type="email"]');
+      const phoneInput = document.getElementById("signupPhone") || signupForm.querySelector('[name="phone"]') || signupForm.querySelector('input[type="tel"]');
+      const passwordInput = document.getElementById("signupPassword") || signupForm.querySelector('[name="password"]') || signupForm.querySelector('input[type="password"]');
+      const confirmInput = document.getElementById("confirmPassword") || signupForm.querySelector('[name="confirmPassword"]');
+
+      const name = nameInput?.value?.trim();
+      const email = emailInput?.value?.trim();
+      const phone = phoneInput?.value?.trim() || "";
+      const password = passwordInput?.value;
+      const confirmPassword = confirmInput?.value;
+
+      if (!name || !email || !password) {
+        setStatus(signupForm, "Full name, email, and password are required.", true);
+        return;
+      }
+
+      if (confirmInput && password !== confirmPassword) {
+        setStatus(signupForm, "Passwords do not match.", true);
+        return;
+      }
+
+      if (password.length < 6) {
+        setStatus(signupForm, "Password must be at least 6 characters.", true);
+        return;
+      }
+
+      const submitBtn = signupForm.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Creating Account...";
+      }
+
+      try {
+        await register(email, password, name, phone);
+        setStatus(signupForm, "Account created successfully! Redirecting...", false);
+        setTimeout(() => {
+          window.location.href = getSafeNextUrl();
+        }, 600);
+      } catch (err) {
+        console.error("Signup Error:", err);
+        setStatus(signupForm, friendlyAuthError(err), true);
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Create Account";
+        }
+      }
+    });
+  }
+
+  // 4. Quick Book & Sign Out on Index
+  const quickLogoutBtn = document.getElementById("quickLogoutBtn");
+  if (quickLogoutBtn) {
+    quickLogoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      logout();
+    });
+  }
+
+  const quickBookBtn = document.getElementById("quickBookBtn");
+  if (quickBookBtn) {
+    quickBookBtn.addEventListener("click", () => {
+      const p = document.getElementById("quickPickup")?.value;
+      const d = document.getElementById("quickDrop")?.value;
+      let url = "fleet.html";
+      if (p && d) {
+        url += `?pickup=${encodeURIComponent(p)}&drop=${encodeURIComponent(d)}`;
+      }
+      window.location.href = url;
+    });
+  }
+
+  // 5. Forgot Password Link
+  document.querySelectorAll(".forgot-password").forEach((link) => {
+    link.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const emailInput = document.getElementById("loginEmail") || document.querySelector('input[type="email"]');
+      const email = prompt("Enter your registered email address for password reset:", emailInput?.value || "");
+
+      if (email === null) return;
+      if (!email.trim()) {
+        alert("Email address is required.");
+        return;
+      }
+
+      try {
+        await resetPassword(email.trim());
+        alert(`Password reset link sent to ${email.trim()}. Check your inbox.`);
+      } catch (err) {
+        alert(friendlyAuthError(err));
+      }
+    });
+  });
+
+  // 6. Global Logout Handlers
   document.querySelectorAll('[data-action="logout"]').forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -356,16 +529,45 @@ export function initAuthForms() {
       }
     });
   });
-
-  // Guard protected pages
-  const isProtectedPage = document.body.classList.contains("protected");
-  if (isProtectedPage && !isLoggedIn()) {
-    const nextUrl = encodeURIComponent(window.location.href);
-    window.location.href = `index.html?next=${nextUrl}`;
-  }
 }
 
-// Initialize on DOM ready
+// Global Auth State Observer
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    const isAdmin = ["ayan@kruizly.com", "admin@kruizly.com", "carrentpedatabase@gmail.com"].includes((user.email || "").toLowerCase());
+    const initialUser = {
+      uid: user.uid,
+      id: user.uid,
+      email: user.email,
+      name: user.displayName || "Driver",
+      role: isAdmin ? "admin" : "customer"
+    };
+
+    const existing = getStoredUser();
+    if (!existing) {
+      setStoredUser(initialUser);
+    }
+
+    try {
+      const syncRes = await api.post("/users/sync", {
+        name: user.displayName || "",
+        email: user.email || ""
+      }).catch(() => null);
+
+      if (syncRes && syncRes.user) {
+        setStoredUser(syncRes.user);
+      }
+    } catch (_) {}
+
+    updateIndexAuthView(user);
+  } else {
+    clearStoredUser();
+    updateIndexAuthView(null);
+  }
+  initDynamicNav();
+});
+
+// Auto-initialize when loaded
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initAuthForms);
 } else {
@@ -373,13 +575,16 @@ if (document.readyState === "loading") {
 }
 
 export default {
-  register,
   login,
+  register,
+  loginWithGoogle,
+  resetPassword,
   logout,
   getCurrentUser,
+  getStoredUser,
+  setStoredUser,
   isLoggedIn,
   checkAuth,
   requireAuth,
-  getAccessToken,
-  refreshAccessToken,
+  friendlyAuthError
 };

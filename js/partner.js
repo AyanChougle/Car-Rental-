@@ -283,47 +283,19 @@ async function loadMyListings(uid) {
 
 
   try {
+    const res = await api.get("/users/partner-cars");
+    const listings = Array.isArray(res.partnerCars) ? res.partnerCars : [];
 
-    const listingsQuery = query(
-
-      collection(
-        db,
-        "partner_cars"
-      ),
-
-      where(
-        "userId",
-        "==",
-        uid
-      )
-
-    );
-
-
-    const snap =
-      await getDocs(listingsQuery);
-
-
-    if (snap.empty) {
-
+    if (!listings.length) {
       myListingsSection.hidden = true;
-
       return;
-
     }
-
 
     myListingsSection.hidden = false;
 
-
     myListingsWrap.innerHTML =
-      snap.docs
-        .map((document) => {
-
-          const car =
-            document.data();
-
-
+      listings
+        .map((car) => {
           const status =
             STATUS_LABEL[car.status] ||
             {
@@ -331,12 +303,10 @@ async function loadMyListings(uid) {
               className: "pending"
             };
 
-
           const photos =
             Array.isArray(car.photos)
               ? car.photos
               : [];
-
 
           return `
             <a href="profile.html?tab=listings" class="partner-listing-card" title="Click to manage this listing in your profile">
@@ -347,21 +317,17 @@ async function loadMyListings(uid) {
                     ${car.year ? `<span class="partner-listing-year">(${car.year})</span>` : ""}
                   </h4>
                   <div class="partner-listing-meta">
-                    <span>${escapeHtml(car.location || "Mumbai")}</span>
-                    ${car.regNumber ? `<span>• ${escapeHtml(car.regNumber)}</span>` : ""}
+                    <span>${escapeHtml(car.city || car.location || "Mumbai")}</span>
+                    <span>•</span>
+                    <span>${escapeHtml(car.transmission || "Automatic")}</span>
+                    <span>•</span>
+                    <span>${escapeHtml(car.fuel || "Petrol")}</span>
                   </div>
                 </div>
-
-                <span class="partner-status-badge ${status.className}">
-                  <span class="status-dot"></span>
+                <span class="partner-status-pill ${status.className}">
                   ${status.label}
                 </span>
               </div>
-
-              <div class="partner-listing-footer">
-                <p class="partner-listing-note">
-                  ${car.status === "approved" 
-                    ? "✓ Listing is live. Photos and availability managed by concierge." 
                     : "Listing submitted for review. Operations team is verifying documents."}
                 </p>
                 <span class="partner-listing-action">Manage &rarr;</span>
@@ -622,8 +588,6 @@ if (form) {
       // Firestore
       // ------------------------------------------------------
 
-      const listingRef = doc(collection(db, "partner_cars"));
-      const uploadedPhotoIds = [];
       const uploadedPhotoUrls = [];
 
       try {
@@ -631,65 +595,32 @@ if (form) {
           if (statusEl) {
             statusEl.textContent = `Uploading vehicle photo ${index + 1} of ${photoFiles.length}...`;
           }
-          const uploaded = await uploadHostPhoto(photoFiles[index], listingRef.id);
-          uploadedPhotoIds.push(uploaded.id);
-          if (uploaded.url) uploadedPhotoUrls.push(uploaded.url);
+          const formData = new FormData();
+          formData.append("file", photoFiles[index]);
+          formData.append("category", "vehicle_gallery");
+          const uploadRes = await api.upload("/media/upload", formData);
+          if (uploadRes && (uploadRes.url || uploadRes.mediaUrl)) {
+            uploadedPhotoUrls.push(uploadRes.url || uploadRes.mediaUrl);
+          }
         }
 
-        await setDoc(
-          listingRef,
-          {
-
-            // User
-            userId:
-              currentUser.uid,
-
-            userEmail:
-              currentUser.email || null,
-
-
-            // Vehicle
-            brand,
-            model,
-            year,
-            odometer,
-            transmission,
-            fuel,
-            seats,
-            regNumber,
-            location,
-
-
-            // Documents
-            insuranceStart,
-            insuranceEnd,
-
-            pucStart,
-            pucEnd,
-
-
-            // Photos stored
-            photos: uploadedPhotoUrls,
-            photoMediaIds: uploadedPhotoIds,
-
-
-            // Owner
-            ownerName,
-            ownerPhone,
-
-
-            // Workflow
-            status:
-              "pending_approval",
-
-
-            // Timestamp
-            createdAt:
-              serverTimestamp()
-
-          }
-
-        );
+        await api.post("/users/partner-cars", {
+          brand,
+          model,
+          year,
+          odometer,
+          transmission,
+          fuel,
+          seats,
+          regNo: regNumber,
+          city: location,
+          expectedPrice: expectedEarnings,
+          userName: ownerName,
+          userPhone: ownerPhone,
+          userEmail: currentUser.email || null,
+          photos: uploadedPhotoUrls,
+          status: "pending_approval"
+        });
 
 
         // ----------------------------------------------------

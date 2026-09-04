@@ -127,14 +127,12 @@ async function loadManagerData() {
 }
 
 async function loadExecutiveProfiles() {
-  const snap = await getDocs(
-    collection(db, "users")
-  );
-
-  currentManagerUsers = snap.docs.map((item) => ({
-    id: item.id,
-    ...item.data(),
-  }));
+  try {
+    const res = await api.get("/users");
+    currentManagerUsers = res.users || [];
+  } catch (err) {
+    console.error("Failed to load user profiles:", err);
+  }
 }
 
 /* =========================================================
@@ -395,17 +393,9 @@ function initialiseManagerPaymentModal() {
     approveButton.textContent = "Approving...";
 
     try {
-      const isAdvancePayment = booking.paymentPlan === "advance";
-
-      await updateDoc(
-        doc(db, "bookings", booking.id),
-        {
-          paymentStatus: isAdvancePayment ? "advance_paid" : "paid",
-          status: "confirmed",
-          paymentVerifiedAt: serverTimestamp(),
-          paymentVerifiedBy: currentUser?.uid || null,
-        }
-      );
+      await api.post(`/payments/${booking.id}/verify`, {
+        status: "verified"
+      });
 
       closeManagerPaymentModal();
       await loadManagerBookings();
@@ -428,14 +418,10 @@ function initialiseManagerPaymentModal() {
     rejectButton.disabled = true;
 
     try {
-      await updateDoc(
-        doc(db, "bookings", booking.id),
-        {
-          paymentStatus: "rejected",
-          paymentRejectionReason:
-            reason || "Payment could not be verified.",
-        }
-      );
+      await api.post(`/payments/${booking.id}/verify`, {
+        status: "rejected",
+        rejectionReason: reason || "Payment could not be verified."
+      });
 
       closeManagerPaymentModal();
       await loadManagerBookings();
@@ -748,10 +734,7 @@ function initialiseExecutivePickupModal() {
         updatePayload.pickupPaymentCollectedBy = currentUser?.displayName || currentUser?.email || currentUser?.uid || "Executive";
       }
 
-      await updateDoc(
-        doc(db, "bookings", booking.id),
-        updatePayload
-      );
+      await api.put(`/bookings/${booking.id}`, updatePayload);
 
       closeExecutivePickupModal();
       await loadManagerBookings();
@@ -1008,15 +991,8 @@ async function loadManagerBookings() {
   `;
 
   try {
-    const snap = await getDocs(
-      collection(db, "bookings")
-    );
-
-    const bookings = snap.docs.map((item) => ({
-      id: item.id,
-      ...item.data(),
-    }));
-
+    const res = await api.get("/bookings");
+    const bookings = Array.isArray(res.bookings) ? res.bookings : [];
     currentManagerBookings = bookings;
 
     /* =====================================================
@@ -1670,17 +1646,10 @@ function attachBookingButtonEvents() {
 
         try {
 
-          await updateDoc(
-            doc(
-              db,
-              "bookings",
-              bookingId
-            ),
-            {
-              status: newStatus,
-              updatedAt: new Date(),
-            }
-          );
+          await api.post("/bookings/cancel", {
+            bookingId: bookingId,
+            reason: "Cancelled from Manager/Executive panel"
+          });
 
           await loadManagerBookings();
 
@@ -2515,15 +2484,21 @@ async function setManagerDocumentStatus(status) {
     updates.documentsVerifiedBy = currentUser?.uid || null;
   }
 
-  await updateDoc(
-    doc(db, "users", user.id),
-    updates
-  );
+  try {
+    await api.post("/verification/user-status", {
+      userId: user.id || user.uid,
+      documentType: type,
+      status: status,
+      rejectionReason: status === "rejected" ? rejectionReason : null
+    });
 
-  user[statusField] = status;
-  user[reasonField] = updates[reasonField];
-
-  return true;
+    user[statusField] = status;
+    user[reasonField] = status === "rejected" ? rejectionReason : null;
+    return true;
+  } catch (err) {
+    console.error("Document update error:", err);
+    throw err;
+  }
 }
 
 function initialiseManagerDocumentModal() {
@@ -2602,15 +2577,8 @@ async function loadManagerDocs() {
 
   try {
 
-    const snap = await getDocs(
-      collection(db, "users")
-    );
-
-    const users =
-      snap.docs.map((item) => ({
-        id: item.id,
-        ...item.data(),
-      }));
+    const res = await api.get("/users");
+    const users = res.users || [];
 
     currentManagerUsers = users;
 

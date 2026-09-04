@@ -1386,17 +1386,14 @@ function flattenFirestoreRecord(
 async function getFirestoreExportRows(
   collectionName
 ) {
-  const snapshot = await getDocs(
-    collection(db, collectionName)
-  );
-
-  return snapshot.docs.map(
-    (item) =>
-      flattenFirestoreRecord({
-        documentId: item.id,
-        ...item.data(),
-      })
-  );
+  try {
+    const res = await api.get(`/admin/export?table=${encodeURIComponent(collectionName)}`);
+    const records = res.data || res.rows || [];
+    return records.map((item) => flattenFirestoreRecord(item));
+  } catch {
+    const cached = getCachedExportRows(collectionName);
+    return cached ? cached.map((item) => flattenFirestoreRecord(item)) : [];
+  }
 }
 
 function getCachedExportRows(

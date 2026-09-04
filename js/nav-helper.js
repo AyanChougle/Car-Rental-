@@ -1,4 +1,7 @@
-// Shared navigation helper to render dynamic staff and customer links.
+﻿// Shared navigation helper to render dynamic staff and customer links.
+import { auth } from "./firebase-init.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
+import { api } from "./kruizly-api.js";
 
 export function initDynamicNav() {
   const currentPath = window.location.pathname.split("/").pop() || "index.html";
@@ -36,17 +39,19 @@ export function initDynamicNav() {
         prof ? nav.insertBefore(link, prof) : nav.appendChild(link);
       }
 
-      // Executive operations are separate from the Manager summary.
+      // Executive operations
       if (normalizedRole === "executive" || normalizedRole === "admin") {
-        const link = document.createElement("a");
-        link.href = "executive.html";
-        link.textContent = "Executive";
-        if (currentPath === "executive.html") link.classList.add("active");
-        const prof = nav.querySelector('a[href="profile.html"]');
-        prof ? nav.insertBefore(link, prof) : nav.appendChild(link);
+        if (!nav.querySelector('a[href="executive.html"]')) {
+          const link = document.createElement("a");
+          link.href = "executive.html";
+          link.textContent = "Executive";
+          if (currentPath === "executive.html") link.classList.add("active");
+          const prof = nav.querySelector('a[href="profile.html"]');
+          prof ? nav.insertBefore(link, prof) : nav.appendChild(link);
+        }
       }
 
-      // Manager summary is available to manager and admin accounts.
+      // Manager summary
       if (normalizedRole === "manager" || normalizedRole === "admin") {
         if (!nav.querySelector('a[href="manager.html"]')) {
           const link = document.createElement("a");
@@ -58,7 +63,7 @@ export function initDynamicNav() {
         }
       }
 
-      // Ensure Admin link for admin role
+      // Admin link
       if (normalizedRole === "admin") {
         if (!nav.querySelector('a[href="admin.html"]')) {
           const link = document.createElement("a");
@@ -72,7 +77,7 @@ export function initDynamicNav() {
     });
   };
 
-  // Get user from local storage
+  // 1. Initial quick render from localStorage
   const storedUser = localStorage.getItem("kruizly_user");
   let userRole = "customer";
   if (storedUser) {
@@ -81,8 +86,29 @@ export function initDynamicNav() {
       userRole = parsed.role || "customer";
     } catch (_) {}
   }
-
   renderNavLinks(userRole);
+
+  // 2. Live Auth State Listener
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      // Check admin emails by default
+      const email = (user.email || "").toLowerCase();
+      if (email === "ayan@kruizly.com" || email === "admin@kruizly.com" || email === "carrentpedatabase@gmail.com") {
+        renderNavLinks("admin");
+      }
+
+      // Fetch authoritative role from MySQL
+      try {
+        const res = await api.get("/users/me");
+        if (res && res.user && res.user.role) {
+          localStorage.setItem("kruizly_user", JSON.stringify(res.user));
+          renderNavLinks(res.user.role);
+        }
+      } catch (_) {}
+    } else {
+      renderNavLinks("customer");
+    }
+  });
 
   // Universal Mobile Navigation Toggle
   const toggleBtn = document.getElementById("mobileNavToggle") || document.querySelector(".mobile-nav-toggle");

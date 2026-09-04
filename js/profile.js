@@ -556,14 +556,9 @@ async function loadMyListings(uid) {
   if (!grid || !summary) return;
 
   try {
-    const listingsQuery = query(
-      collection(db, "partner_cars"),
-      where("userId", "==", uid)
-    );
-    const snapshot = await withTimeout(getDocs(listingsQuery));
-    const listings = snapshot.docs
-      .map(document => ({ id: document.id, ...document.data() }))
-      .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+    const res = await api.get("/users/partner-cars");
+    const allListings = Array.isArray(res.partnerCars) ? res.partnerCars : [];
+    const listings = allListings.filter(item => (item.userId === uid || item.firebaseUid === uid || !item.userId));
     const approvedCount = listings.filter(
       listing => listing.status === "approved"
     ).length;
@@ -693,155 +688,23 @@ async function loadMyListings(uid) {
    ============================================================ */
 
 async function loadProfile(user) {
-
-  const emailElement =
-    $("profileEmail");
-
+  const emailElement = $("profileEmail");
   if (emailElement) {
-    emailElement.textContent =
-      user.email || "—";
+    emailElement.textContent = user.email || "—";
   }
-
-
-  const userRef =
-    doc(
-      db,
-      "users",
-      user.uid
-    );
-
-
-  let snapshot;
 
   try {
+    const res = await api.get("/users/me");
+    const data = res.user || {};
 
-    snapshot =
-      await withTimeout(
-        getDoc(userRef),
-        10000
-      );
-
+    console.log("KRUZLY profile loaded:", data);
+    renderProfileData(data, user);
+    return data;
   } catch (error) {
-
-    console.error(
-      "Firestore profile read failed:",
-      error
-    );
-
+    console.error("Profile load error:", error);
     renderProfileError(error);
-
     return {};
   }
-
-
-  /* ==========================================================
-     CREATE PROFILE IF MISSING
-     ========================================================== */
-
-  if (!snapshot.exists()) {
-
-    const fallbackData = {
-
-      name:
-        user.displayName ||
-        (
-          user.email
-            ? user.email.split("@")[0]
-            : "KRUZLY Member"
-        ),
-
-      email:
-        user.email || null,
-
-      phone: null,
-
-      age: null,
-
-      licenseURL: null,
-
-      licenseFrontURL: null,
-
-      licenseBackURL: null,
-
-      licenseStatus:
-        "not_submitted",
-
-      aadharURL: null,
-
-      aadharFrontURL: null,
-
-      aadharBackURL: null,
-
-      aadharStatus:
-        "not_submitted",
-
-      panFrontURL: null,
-
-      panBackURL: null,
-
-      panStatus:
-        "not_submitted",
-
-      role:
-        "customer",
-
-      createdAt:
-        serverTimestamp()
-    };
-
-
-    try {
-
-      await withTimeout(
-        setDoc(
-          userRef,
-          fallbackData,
-          {
-            merge: true
-          }
-        ),
-        10000
-      );
-
-    } catch (error) {
-
-      console.error(
-        "Could not create user profile:",
-        error
-      );
-
-    }
-
-
-    renderProfileData(
-      fallbackData,
-      user
-    );
-
-    return fallbackData;
-  }
-
-
-  /* ==========================================================
-     EXISTING PROFILE
-     ========================================================== */
-
-  const data =
-    snapshot.data() || {};
-
-  console.log(
-    "KRUZLY profile loaded:",
-    data
-  );
-
-
-  renderProfileData(
-    data,
-    user
-  );
-
-
-  return data;
 }
 
 
@@ -1308,40 +1171,11 @@ function initEditProfile(
 
 
       try {
-
-        await withTimeout(
-
-          setDoc(
-
-            doc(
-              db,
-              "users",
-              user.uid
-            ),
-
-            {
-              phone:
-                cleanPhone || null,
-
-              age:
-                age || null,
-
-              email:
-                user.email || null,
-
-              updatedAt:
-                serverTimestamp()
-
-            },
-
-            {
-              merge:
-                true
-            }
-
-          )
-
-        );
+        await api.put("/users/me", {
+          name: name || null,
+          phone: cleanPhone || null,
+          age: age || null
+        });
 
 
         /* Update UI */
@@ -1518,56 +1352,8 @@ async function loadBookings(
 
 
   try {
-
-    const bookingsQuery =
-      query(
-        collection(
-          db,
-          "bookings"
-        ),
-
-        where(
-          "userId",
-          "==",
-          userId
-        )
-      );
-
-
-    const snapshot =
-      await withTimeout(
-        getDocs(bookingsQuery),
-        10000
-      );
-
-
-    const bookings =
-      snapshot.docs.map(
-        item => ({
-          id: item.id,
-          ...item.data()
-        })
-      );
-
-
-    bookings.sort(
-      (a, b) => {
-
-        const dateA =
-          toMillis(
-            a.createdAt ||
-            a.pickupDate
-          );
-
-        const dateB =
-          toMillis(
-            b.createdAt ||
-            b.pickupDate
-          );
-
-        return dateB - dateA;
-      }
-    );
+    const res = await api.get("/bookings/my-bookings");
+    const bookings = Array.isArray(res.bookings) ? res.bookings : [];
 
 
     if (!bookings.length) {
@@ -2149,40 +1935,12 @@ function initDocumentUpload(
         }
 
 
-        /* ====================================================
-           SAVE SERVER FILE URL IN FIRESTORE
-           ==================================================== */
-
-        await withTimeout(
-
-          setDoc(
-
-            doc(
-              db,
-              "users",
-              user.uid
-            ),
-
-            {
-
-              [config.urlField]:
-                mediaUrl,
-
-              [config.statusField]:
-                "pending",
-
-              documentsUpdatedAt:
-                serverTimestamp()
-
-            },
-
-            {
-              merge: true
-            }
-          ),
-
-          10000
-        );
+        /* Save document in MySQL database */
+        const fieldName = config.urlField.includes("Front") ? "FrontMediaId" : "BackMediaId";
+        const docType = config.statusField.replace("Status", "");
+        await api.post("/verification/submit", {
+          [`${docType}${fieldName}`]: result.mediaId || result.id || mediaUrl
+        });
 
 
         /* ====================================================
