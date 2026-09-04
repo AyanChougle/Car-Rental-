@@ -687,6 +687,17 @@
         window.addEventListener("resize", () => {
           if (window.innerWidth > 760) closeMenu();
         });
+
+        // Initialize minimum allowed date for quick booking
+        const pEl = document.getElementById("quickPickup");
+        const dEl = document.getElementById("quickDrop");
+        if (pEl && dEl) {
+          const pad = (n) => String(n).padStart(2, "0");
+          const now = new Date();
+          const nowStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+          pEl.min = nowStr;
+          dEl.min = nowStr;
+        }
       })();
     </script>
     <script type="module" src="js/auth.js"></script>

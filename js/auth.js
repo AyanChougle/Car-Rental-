@@ -1,4 +1,4 @@
-﻿/**
+/**
  * js/auth.js
  * 
  * KRUIZLY Authentication using Firebase Auth SDK + Hostinger MySQL Synchronization.
@@ -347,6 +347,64 @@ export function updateIndexAuthView(user) {
   }
 }
 
+function formatToLocalDateTime(date) {
+  const pad = (n) => String(n).padStart(2, "0");
+  const y = date.getFullYear();
+  const m = pad(date.getMonth() + 1);
+  const d = pad(date.getDate());
+  const h = pad(date.getHours());
+  const min = pad(date.getMinutes());
+  return `${y}-${m}-${d}T${h}:${min}`;
+}
+
+function wireQuickBookingDates() {
+  const pickupEl = document.getElementById("quickPickup");
+  const dropEl = document.getElementById("quickDrop");
+  if (!pickupEl || !dropEl) return;
+
+  const now = new Date();
+  const remainder = 30 - (now.getMinutes() % 30);
+  const start = new Date(now.getTime() + remainder * 60 * 1000);
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+
+  const minNow = formatToLocalDateTime(now);
+  pickupEl.min = minNow;
+  dropEl.min = minNow;
+
+  if (!pickupEl.value) {
+    pickupEl.value = formatToLocalDateTime(start);
+  }
+  if (!dropEl.value) {
+    dropEl.value = formatToLocalDateTime(end);
+  }
+  dropEl.min = pickupEl.value;
+
+  pickupEl.addEventListener("change", () => {
+    if (pickupEl.value < pickupEl.min) {
+      pickupEl.value = pickupEl.min;
+    }
+    dropEl.min = pickupEl.value;
+    if (!dropEl.value || dropEl.value <= pickupEl.value) {
+      const pDate = new Date(pickupEl.value);
+      if (!isNaN(pDate.getTime())) {
+        const dDate = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
+        dropEl.value = formatToLocalDateTime(dDate);
+      }
+    }
+  });
+
+  dropEl.addEventListener("change", () => {
+    if (dropEl.value <= pickupEl.value) {
+      alert("Drop date and time must be after pickup date and time.");
+      const pDate = new Date(pickupEl.value);
+      if (!isNaN(pDate.getTime())) {
+        const dDate = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
+        dropEl.value = formatToLocalDateTime(dDate);
+      }
+    }
+  });
+}
+
 // ============================================================
 // FORM INITIALIZATION
 // ============================================================
@@ -477,6 +535,8 @@ export function initAuthForms() {
   }
 
   // 4. Quick Book & Sign Out on Index
+  wireQuickBookingDates();
+
   const quickLogoutBtn = document.getElementById("quickLogoutBtn");
   if (quickLogoutBtn) {
     quickLogoutBtn.addEventListener("click", (e) => {
