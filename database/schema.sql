@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- KRUIZLY PRODUCTION MYSQL DATABASE SCHEMA
 -- Hostinger MySQL 8.x
 -- ============================================================
@@ -228,6 +228,7 @@ CREATE TABLE IF NOT EXISTS `verification` (
   `verified_at` DATETIME DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY `uniq_verification_uid` (`firebase_uid`),
   INDEX `idx_verification_uid` (`firebase_uid`),
   INDEX `idx_verification_overall` (`overall_status`),
   CONSTRAINT `fk_verification_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL

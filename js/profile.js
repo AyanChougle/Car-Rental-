@@ -213,35 +213,18 @@ async function uploadDocumentToServer(
     throw new Error("No file selected.");
   }
 
-  // 1. Try local media server if available
+  // Upload to Hostinger server storage via kruizly-api
   try {
-    const token = await user.getIdToken();
     const formData = new FormData();
     formData.append("file", file);
     formData.append("category", category);
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
-
-    const response = await fetch(
-      `${MEDIA_SERVER_URL}/api/media/upload`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: formData,
-        signal: controller.signal
-      }
-    );
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      const data = await response.json().catch(() => ({}));
-      if (data && data.url) return data;
+    const result = await api.upload("/media/upload", formData);
+    if (result && (result.url || result.mediaUrl || result.mediaId || result.id)) {
+      return result;
     }
   } catch (serverErr) {
-    console.warn("[Upload] Local media server offline, using client cloud document fallback:", serverErr);
+    console.warn("[Upload] Media upload via API failed, using client fallback:", serverErr);
   }
 
   // 2. Client-side compressed document processing for direct Firestore/Cloud verification
@@ -2181,23 +2164,11 @@ function initMediaManager(user) {
     }
 
     try {
-      const token = await user.getIdToken();
       const formData = new FormData();
       formData.append("file", file);
       formData.append("category", "personal_media");
 
-      const response = await fetch(`${MEDIA_SERVER_URL}/api/media/upload`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-        body: formData
-      });
-
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        throw new Error(result.error || result.message || "Upload failed.");
-      }
+      await api.upload("/media/upload", formData);
 
       if (statusEl) {
         statusEl.textContent = "Media uploaded successfully.";
@@ -2227,20 +2198,8 @@ async function loadUserMedia(user) {
   if (!gridEl) return;
 
   try {
-    const token = await user.getIdToken();
-    const response = await fetch(`${MEDIA_SERVER_URL}/api/media?category=personal_media`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
-
-    if (!response.ok) {
-      if (emptyEl) emptyEl.hidden = false;
-      return;
-    }
-
-    const data = await response.json();
-    const items = Array.isArray(data) ? data : Array.isArray(data.items) ? data.items : [];
+    const data = await api.get("/media/my-media");
+    const items = Array.isArray(data) ? data : (Array.isArray(data.files) ? data.files : (Array.isArray(data.items) ? data.items : []));
 
     if (!items.length) {
       if (emptyEl) emptyEl.hidden = false;
@@ -2254,16 +2213,18 @@ async function loadUserMedia(user) {
     gridEl.innerHTML = items.map((item) => {
       const isVideo = item.mimeType?.startsWith("video/") || item.mediaType === "video";
       const fileName = item.originalName || "Uploaded Media";
-      const dateFormatted = formatDate(item.uploadedAt);
+      const dateFormatted = formatDate(item.createdAt || item.uploadedAt);
+      const mediaId = item.mediaId || item.id;
+      const fileUrl = item.url || `/api/media/file.php?id=${encodeURIComponent(mediaId)}`;
 
       return `
         <div class="media-card" style="position:relative;border-radius:14px;overflow:hidden;background:rgba(255,255,255,0.035);border:1px solid var(--kr-border);display:flex;flex-direction:column;">
           <div style="width:100%;aspect-ratio:4/3;background:rgba(0,0,0,0.5);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;">
             ${isVideo
-              ? `<video data-user-media-id="${escapeHtml(item.id)}" controls style="width:100%;height:100%;object-fit:cover;"></video>`
-              : `<img data-user-media-id="${escapeHtml(item.id)}" alt="${escapeHtml(fileName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" />`
+              ? `<video src="${escapeHtml(fileUrl)}" controls style="width:100%;height:100%;object-fit:cover;"></video>`
+              : `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(fileName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" />`
             }
-            <button type="button" class="btn-delete-media" data-media-id="${escapeHtml(item.id)}" title="Delete Media" style="position:absolute;top:8px;right:8px;width:30px;height:30px;background:rgba(239,71,111,0.9);color:white;border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.5);font-size:16px;font-weight:bold;z-index:2;transition:transform 0.15s ease;">×</button>
+            <button type="button" class="btn-delete-media" data-media-id="${escapeHtml(mediaId)}" title="Delete Media" style="position:absolute;top:8px;right:8px;width:30px;height:30px;background:rgba(239,71,111,0.9);color:white;border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.5);font-size:16px;font-weight:bold;z-index:2;transition:transform 0.15s ease;">×</button>
           </div>
           <div style="padding:10px 12px;display:flex;flex-direction:column;gap:2px;">
             <strong style="font-size:12.5px;color:#ffffff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="${escapeHtml(fileName)}">${escapeHtml(fileName)}</strong>
@@ -2272,23 +2233,6 @@ async function loadUserMedia(user) {
         </div>
       `;
     }).join("");
-
-    // Load blobs with authorization token for each protected image/video
-    gridEl.querySelectorAll("[data-user-media-id]").forEach(async (el) => {
-      const mediaId = el.dataset.userMediaId;
-      if (!mediaId) return;
-      try {
-        const fileResp = await fetch(`${MEDIA_SERVER_URL}/api/media/file/${encodeURIComponent(mediaId)}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        if (fileResp.ok) {
-          const blob = await fileResp.blob();
-          el.src = URL.createObjectURL(blob);
-        }
-      } catch (e) {
-        console.warn(`Could not load media preview for ${mediaId}:`, e);
-      }
-    });
 
     // Wire delete buttons
     gridEl.querySelectorAll(".btn-delete-media").forEach((btn) => {
@@ -2299,14 +2243,7 @@ async function loadUserMedia(user) {
         if (!confirm("Are you sure you want to delete this media file?")) return;
         btn.disabled = true;
         try {
-          const delResp = await fetch(`${MEDIA_SERVER_URL}/api/media/${encodeURIComponent(id)}`, {
-            method: "DELETE",
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          });
-          const delData = await delResp.json().catch(() => ({}));
-          if (!delResp.ok) throw new Error(delData.error || delData.message || "Delete failed.");
+          await api.delete("/media/delete", { id: id });
           await loadUserMedia(user);
         } catch (err) {
           console.error("Delete media error:", err);

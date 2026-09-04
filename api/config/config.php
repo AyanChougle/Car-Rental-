@@ -29,8 +29,10 @@ define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : 'Pa$$@12123'
 define('DB_CHARSET', 'utf8mb4');
 
 // ------------------------------------------------------------
-// 2. JWT AUTHENTICATION (No Firebase dependency)
+// 2. FIREBASE & JWT AUTHENTICATION
 // ------------------------------------------------------------
+define('FIREBASE_PROJECT_ID', getenv('FIREBASE_PROJECT_ID') ?: 'carrentpeweb');
+
 // SECURITY: In production, this MUST come from environment variable
 // Generate a strong key: php -r "echo bin2hex(random_bytes(32));"
 define('JWT_SECRET', getenv('JWT_SECRET') ?: 'dev_key_change_in_production_immediately');
@@ -45,7 +47,11 @@ define('JWT_REFRESH_TOKEN_TTL', 604800); // 7 days
 // ------------------------------------------------------------
 // 3. FILE STORAGE PATHS (Hostinger Filesystem)
 // ------------------------------------------------------------
-define('STORAGE_ROOT', realpath(__DIR__ . '/../../storage') ?: (__DIR__ . '/../../storage'));
+$storagePath = realpath(__DIR__ . '/../../storage') ?: (__DIR__ . '/../../storage');
+if (!is_dir($storagePath)) {
+    @mkdir($storagePath, 0755, true);
+}
+define('STORAGE_ROOT', $storagePath);
 define('MAX_UPLOAD_SIZE', 10 * 1024 * 1024); // 10 MB
 
 // ------------------------------------------------------------

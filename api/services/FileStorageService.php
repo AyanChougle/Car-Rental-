@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 /**
  * api/services/FileStorageService.php
  * 
@@ -52,16 +52,20 @@ class FileStorageService {
         $cleanCategory = preg_replace('/[^a-zA-Z0-9_-]/', '_', $category);
 
         $targetDir = STORAGE_ROOT . '/' . $cleanCategory;
-        if ($cleanCategory === 'verification' || $cleanCategory === 'users') {
+        if (in_array($cleanCategory, ['verification', 'users', 'license_doc', 'aadhar_doc', 'pan_doc'], true)) {
             $targetDir = STORAGE_ROOT . '/users/' . $safeUid . '/verification';
-        } elseif ($cleanCategory === 'bookings' || $cleanCategory === 'payment_proof') {
+        } elseif ($cleanCategory === 'personal_media') {
+            $targetDir = STORAGE_ROOT . '/users/' . $safeUid . '/personal';
+        } elseif ($cleanCategory === 'bookings' || $cleanCategory === 'payment_proof' || $cleanCategory === 'payment_screenshot') {
             $targetDir = STORAGE_ROOT . '/bookings/' . ($relatedId ? preg_replace('/[^a-zA-Z0-9_-]/', '_', $relatedId) : 'general');
         } elseif ($cleanCategory === 'vehicles' || $cleanCategory === 'vehicle_gallery') {
             $targetDir = STORAGE_ROOT . '/vehicles/' . ($relatedId ? preg_replace('/[^a-zA-Z0-9_-]/', '_', $relatedId) : 'fleet');
         }
 
         if (!is_dir($targetDir)) {
-            mkdir($targetDir, 0755, true);
+            if (!@mkdir($targetDir, 0755, true) && !is_dir($targetDir)) {
+                $targetDir = STORAGE_ROOT;
+            }
         }
 
         $mediaId = 'MED-' . bin2hex(random_bytes(12));
@@ -74,6 +78,16 @@ class FileStorageService {
 
         $fileHash = hash_file('sha256', $targetPath);
 
+        // Map category to schema ENUM for media table
+        $dbCategory = match($cleanCategory) {
+            'license_doc', 'aadhar_doc', 'pan_doc', 'verification', 'users' => 'verification',
+            'payment_proof', 'payment_screenshot' => 'payment_proof',
+            'vehicle_gallery', 'vehicles' => 'vehicle_gallery',
+            'booking_doc', 'bookings' => 'booking_doc',
+            'invoice', 'invoices' => 'invoice',
+            default => 'other'
+        };
+
         // Get user ID
         $user = Database::fetchOne("SELECT id FROM users WHERE firebase_uid = ? LIMIT 1", [$firebaseUid]);
         $userId = $user['id'] ?? null;
@@ -83,7 +97,7 @@ class FileStorageService {
             "INSERT INTO media (media_id, user_id, firebase_uid, category, related_id, original_name, stored_name, stored_path, mime_type, file_size, file_hash)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
-                $mediaId, $userId, $firebaseUid, $cleanCategory, $relatedId,
+                $mediaId, $userId, $firebaseUid, $dbCategory, $relatedId,
                 $origName, $storedName, $targetPath, $mimeType, $file['size'], $fileHash
             ]
         );
@@ -91,6 +105,7 @@ class FileStorageService {
         $mediaUrl = '/api/media/file.php?id=' . urlencode($mediaId);
 
         return [
+            'id' => $mediaId,
             'mediaId' => $mediaId,
             'originalName' => $origName,
             'storedName' => $storedName,
@@ -99,7 +114,9 @@ class FileStorageService {
             'category' => $cleanCategory,
             'mimeType' => $mimeType,
             'fileSize' => $file['size'],
-            'createdAt' => date('Y-m-d H:i:s')
+            'sizeBytes' => $file['size'],
+            'createdAt' => date('Y-m-d H:i:s'),
+            'uploadedAt' => date('Y-m-d H:i:s')
         ];
     }
 
