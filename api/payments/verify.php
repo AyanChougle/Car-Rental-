@@ -74,6 +74,8 @@ try {
 
             $pdo->prepare(
                 "UPDATE bookings SET
+                    status = 'cancelled',
+                    booking_status = 'cancelled',
                     payment_status = 'rejected',
                     updated_at = CURRENT_TIMESTAMP
                  WHERE booking_id = ? OR booking_number = ?"

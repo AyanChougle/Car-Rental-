@@ -1446,19 +1446,22 @@ function renderBooking(
 
   } else if (
     status === "pending_payment" ||
+    status === "pending_verification" ||
     status === "pending"
   ) {
-
     statusClass =
       "pending";
 
   } else if (
     status === "cancelled" ||
-    status === "rejected"
+    status === "rejected" ||
+    booking.paymentStatus === "rejected"
   ) {
-
     statusClass =
       "rejected";
+    if (booking.paymentStatus === "rejected") {
+      displayStatus = "Payment Rejected";
+    }
   }
 
 
@@ -1585,10 +1588,7 @@ function renderBooking(
         >
 
           ${escapeHtml(
-            status.replaceAll(
-              "_",
-              " "
-            )
+            displayStatus
           )}
 
         </span>

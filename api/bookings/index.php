@@ -47,10 +47,11 @@ if ($method === 'GET') {
     $rows = Database::fetchAll($sql, $params);
 
     $bookings = array_map(function($b) {
-        $inspection = [];
-        if (!empty($b['return_inspection'])) {
-            $inspection = is_string($b['return_inspection']) ? json_decode($b['return_inspection'], true) : $b['return_inspection'];
+        $status = $b['status'];
+        if ($b['payment_status'] === 'rejected' && ($status === 'pending_verification' || $status === 'pending_payment')) {
+            $status = 'cancelled';
         }
+
         return [
             'id' => $b['booking_id'],
             'bookingId' => $b['booking_id'],
@@ -79,8 +80,8 @@ if ($method === 'GET') {
             'couponDiscount' => (float)$b['coupon_discount'],
             'paymentPlan' => $b['payment_plan'],
             'paymentStatus' => $b['payment_status'],
-            'status' => $b['status'],
-            'bookingStatus' => $b['booking_status'],
+            'status' => $status,
+            'bookingStatus' => $status,
             'paymentRef' => $b['payment_ref'],
             'location' => $b['location'],
             'startOdometer' => $b['start_odometer'],

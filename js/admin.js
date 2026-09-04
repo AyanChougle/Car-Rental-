@@ -3022,12 +3022,12 @@ function renderBookingsTable(
           <td style="padding:14px;">
             <span
               class="fleet-status ${getStatusClass(
-                status
+                booking.paymentStatus === 'rejected' ? 'rejected' : status
               )}"
             >
-              ${escapeHtml(
-                status
-              )}
+              ${booking.paymentStatus === 'rejected'
+                ? 'Payment Rejected'
+                : escapeHtml(status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()))}
             </span>
           </td>
 

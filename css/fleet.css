@@ -388,6 +388,7 @@
 }
 
 .fleet-card.hidden,
+.fleet-card.filtered-out,
 .fleet-card[hidden] {
   display: none !important;
 }

@@ -305,6 +305,13 @@ function renderPagination(totalItems) {
 function applyPagination() {
   const cards = getCards();
   const visibleCards = cards.filter((card) => !card.classList.contains("filtered-out"));
+  const filteredOutCards = cards.filter((card) => card.classList.contains("filtered-out"));
+
+  // Ensure all non-matching cards are completely hidden
+  filteredOutCards.forEach((card) => {
+    card.classList.add("hidden");
+    card.hidden = true;
+  });
 
   const totalItems = visibleCards.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / CARS_PER_PAGE));
@@ -358,7 +365,21 @@ function applyFilters() {
     // Fuel Filter
     let matchesFuel = true;
     if (selectedFuels.length > 0) {
-      matchesFuel = selectedFuels.some((f) => fuel.includes(f));
+      matchesFuel = selectedFuels.some((f) => {
+        if (f === "petrol") {
+          return fuel.includes("petrol");
+        }
+        if (f === "diesel") {
+          return fuel.includes("diesel");
+        }
+        if (f === "cng") {
+          return fuel.includes("cng");
+        }
+        if (f === "electric") {
+          return fuel.includes("electric") || fuel.includes("hybrid") || fuel.includes("ev");
+        }
+        return fuel.includes(f);
+      });
     }
 
     // Body Type Filter
@@ -587,33 +608,63 @@ async function applyFleetAvailabilityOverrides() {
     const serverVehicles = Array.isArray(res.vehicles) ? res.vehicles : [];
 
     if (serverVehicles.length > 0) {
-      const overrides = new Map(
-        serverVehicles.map((item) => [item.regNo, item])
-      );
+      const catalog = Array.isArray(window.fleetVehicles) ? [...window.fleetVehicles] : [];
 
-      const catalog = window.fleetVehicles || [];
-      const catalogRegistrations = new Set(
-        catalog.map((vehicle) => vehicle.regNo)
-      );
+      const findMatchingCatalogItem = (serverV) => {
+        const sBrand = (serverV.brand || "").toLowerCase().trim();
+        const sModel = (serverV.model || "").toLowerCase().trim();
+        const sReg = (serverV.regNo || serverV.reg_no || "").toLowerCase().trim();
+        const sId = String(serverV.id || "").toLowerCase().trim();
 
-      catalog.forEach((vehicle) => {
-        const override = overrides.get(vehicle.regNo);
-        if (override?.removed || override?.status === "removed" || override?.status === "disabled") {
-          vehicle.removed = true;
-        } else if (override) {
-          Object.assign(vehicle, override);
-          if (typeof override.available === "boolean" || typeof override.available === "number") {
-            vehicle.available = Boolean(override.available) ? 1 : 0;
-            vehicle.status = override.available ? "available" : "unavailable";
+        return catalog.find((c) => {
+          if (sReg && c.regNo && c.regNo.toLowerCase().trim() === sReg) return true;
+          if (sId && c.id && String(c.id).toLowerCase().trim() === sId) return true;
+          const cBrand = (c.brand || "").toLowerCase().trim();
+          const cModel = (c.model || "").toLowerCase().trim();
+          if (cBrand === sBrand && cModel === sModel) {
+            const sTrans = (serverV.transmission || "").toLowerCase().trim();
+            const cTrans = (c.transmission || "").toLowerCase().trim();
+            if (!sTrans || !cTrans || sTrans === cTrans) return true;
           }
+          return false;
+        });
+      };
+
+      serverVehicles.forEach((sVehicle) => {
+        const matching = findMatchingCatalogItem(sVehicle);
+        if (matching) {
+          if (sVehicle.removed || sVehicle.status === "removed" || sVehicle.status === "disabled") {
+            matching.removed = true;
+          } else {
+            if (typeof sVehicle.available === "boolean" || typeof sVehicle.available === "number") {
+              matching.available = Boolean(sVehicle.available) ? 1 : 0;
+              matching.status = sVehicle.available ? "available" : "unavailable";
+            }
+            if (sVehicle.priceHour) matching.priceHour = Number(sVehicle.priceHour);
+            if (sVehicle.priceDay) matching.priceDay = Number(sVehicle.priceDay);
+            if (sVehicle.regNo || sVehicle.reg_no) matching.regNo = sVehicle.regNo || sVehicle.reg_no;
+            if (sVehicle.gallery && Array.isArray(sVehicle.gallery) && sVehicle.gallery.length) {
+              matching.gallery = sVehicle.gallery;
+            }
+          }
+        } else if (!sVehicle.removed && sVehicle.status !== "removed" && sVehicle.status !== "disabled") {
+          catalog.push(sVehicle);
         }
       });
 
-      serverVehicles
-        .filter((v) => !catalogRegistrations.has(v.regNo) && v.status !== "removed" && v.status !== "disabled")
-        .forEach((v) => catalog.push(v));
+      // Deduplicate catalog
+      const seen = new Set();
+      const deduplicated = [];
+      for (const v of catalog) {
+        if (v.removed) continue;
+        const key = v.id || `${v.brand}_${v.model}_${v.transmission}_${v.fuel}`.toLowerCase().replace(/\s+/g, "");
+        if (!seen.has(key)) {
+          seen.add(key);
+          deduplicated.push(v);
+        }
+      }
 
-      window.fleetVehicles = catalog.filter((vehicle) => !vehicle.removed);
+      window.fleetVehicles = deduplicated;
     }
   } catch (error) {
     console.warn("Could not load MySQL fleet overrides:", error);

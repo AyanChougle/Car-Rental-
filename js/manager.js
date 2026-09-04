@@ -1333,6 +1333,7 @@ function renderManagerBookingsTable(bookings) {
     ===================================================== */
 
     let statusClass = "pending";
+    let displayBookingStatus = formatStatus(status);
 
     if (
       status === "confirmed" ||
@@ -1344,9 +1345,13 @@ function renderManagerBookingsTable(bookings) {
     if (
       status === "cancelled" ||
       status === "rejected" ||
-      status === "failed"
+      status === "failed" ||
+      booking.paymentStatus === "rejected"
     ) {
       statusClass = "rejected";
+      if (booking.paymentStatus === "rejected") {
+        displayBookingStatus = "Payment Rejected";
+      }
     }
 
     /* =====================================================
@@ -1512,7 +1517,7 @@ function renderManagerBookingsTable(bookings) {
             fleet-status
             ${statusClass}
           ">
-            ${escapeHtml(formatStatus(status))}
+            ${escapeHtml(displayBookingStatus)}
           </span>
 
           ${status === "confirmed" ? `
