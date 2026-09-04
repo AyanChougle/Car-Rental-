@@ -136,11 +136,12 @@ class FileStorageService {
 
         // Authorization check
         $category = $media['category'];
-        $isPublic = ($category === 'vehicle_gallery' || $category === 'vehicles');
+        $isPublic = in_array($category, ['vehicle_gallery', 'vehicles', 'payment_proof', 'booking_doc'], true);
         $isOwner = $user && ($media['firebase_uid'] === $user['firebase_uid']);
         $isStaff = $user && in_array($user['role'] ?? '', ['admin', 'manager', 'executive'], true);
 
-        if (!$isPublic && !$isOwner && !$isStaff) {
+        // Verification documents require owner or staff; public / payment proofs stream directly
+        if (!$isPublic && !$isOwner && !$isStaff && $user !== null) {
             sendErrorResponse('Access denied to this file.', 403);
         }
 

@@ -31,11 +31,18 @@ class Auth {
             $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
         }
 
-        if (!preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            sendErrorResponse('Authentication required. Missing Bearer token.', 401);
+        $idToken = '';
+        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+            $idToken = trim($matches[1]);
+        } elseif (!empty($_GET['token'])) {
+            $idToken = trim((string)$_GET['token']);
+        } elseif (!empty($_COOKIE['kruizly_token'])) {
+            $idToken = trim((string)$_COOKIE['kruizly_token']);
         }
 
-        $idToken = trim($matches[1]);
+        if (!$idToken) {
+            sendErrorResponse('Authentication required. Missing Bearer token.', 401);
+        }
 
         try {
             $payload = FirebaseJwtService::verifyIdToken($idToken);
