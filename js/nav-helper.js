@@ -1,4 +1,4 @@
-﻿// Shared navigation helper to render dynamic staff and customer links.
+// Shared navigation helper to render dynamic staff and customer links.
 import { auth } from "./firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 import { api } from "./kruizly-api.js";
@@ -39,8 +39,8 @@ export function initDynamicNav() {
         prof ? nav.insertBefore(link, prof) : nav.appendChild(link);
       }
 
-      // Executive operations
-      if (normalizedRole === "executive" || normalizedRole === "admin") {
+      // Executive operations (available to executive, manager, and admin)
+      if (normalizedRole === "executive" || normalizedRole === "manager" || normalizedRole === "admin") {
         if (!nav.querySelector('a[href="executive.html"]')) {
           const link = document.createElement("a");
           link.href = "executive.html";

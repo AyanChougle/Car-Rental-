@@ -47,20 +47,46 @@ export function clearStoredUser() {
   localStorage.removeItem("kruizly_tokens");
 }
 
+export function isAdminUser(user) {
+  if (!user) return false;
+  const role = String(user.role || "").trim().toLowerCase();
+  if (role === "admin") return true;
+  const email = String(user.email || "").trim().toLowerCase();
+  return ["ayan@kruizly.com", "admin@kruizly.com", "carrentpedatabase@gmail.com"].includes(email);
+}
+
+export function isManagerUser(user) {
+  if (!user) return false;
+  if (isAdminUser(user)) return true;
+  const role = String(user.role || "").trim().toLowerCase();
+  return role === "manager";
+}
+
+export function isExecutiveUser(user) {
+  if (!user) return false;
+  if (isAdminUser(user) || isManagerUser(user)) return true;
+  const role = String(user.role || "").trim().toLowerCase();
+  return role === "executive";
+}
+
 export function getCurrentUser() {
+  const stored = getStoredUser();
   if (auth.currentUser) {
-    const stored = getStoredUser();
+    const isAdmin = isAdminUser({ email: auth.currentUser.email, role: stored?.role });
     return {
       uid: auth.currentUser.uid,
       id: auth.currentUser.uid,
       email: auth.currentUser.email,
       name: auth.currentUser.displayName || stored?.name || "User",
-      role: stored?.role || "customer",
+      role: isAdmin ? "admin" : (stored?.role || "customer"),
       status: stored?.status || "active",
       ...stored
     };
   }
-  return getStoredUser();
+  if (stored && isAdminUser(stored)) {
+    stored.role = "admin";
+  }
+  return stored;
 }
 
 export function isLoggedIn() {
@@ -72,7 +98,7 @@ export async function checkAuth() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       unsubscribe();
       if (user) {
-        const isAdmin = ["ayan@kruizly.com", "admin@kruizly.com", "carrentpedatabase@gmail.com"].includes((user.email || "").toLowerCase());
+        const isAdmin = isAdminUser({ email: user.email });
         const initialUser = {
           uid: user.uid,
           id: user.uid,
@@ -81,7 +107,7 @@ export async function checkAuth() {
           role: isAdmin ? "admin" : "customer"
         };
         
-        if (!getStoredUser()) {
+        if (!getStoredUser() || (isAdmin && getStoredUser()?.role !== "admin")) {
           setStoredUser(initialUser);
         }
 
@@ -92,6 +118,7 @@ export async function checkAuth() {
           }).catch(() => null);
 
           if (syncRes && syncRes.user) {
+            if (isAdmin) syncRes.user.role = "admin";
             setStoredUser(syncRes.user);
           }
         } catch (_) {}

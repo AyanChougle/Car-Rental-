@@ -1,4 +1,4 @@
-import { checkAuth, getCurrentUser } from "./auth.js";
+import { checkAuth, getCurrentUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js";
 import { api } from "./kruizly-api.js";
 
 import "./nav-helper.js";
@@ -58,10 +58,10 @@ if (bookingSortOrder) {
 });
 
 bookingDateClear?.addEventListener("click", () => {
-  managerBookingDateFrom = "";
-  managerBookingDateTo = "";
   if (bookingDateFrom) bookingDateFrom.value = "";
   if (bookingDateTo) bookingDateTo.value = "";
+  managerBookingDateFrom = "";
+  managerBookingDateTo = "";
   managerBookingPage = 1;
   renderManagerBookingsTable(getSortedManagerBookings());
 });
@@ -93,9 +93,7 @@ async function initManagerAuth() {
   }
 
   currentUser = getCurrentUser();
-  const role = String(currentUser?.role || "").trim().toLowerCase();
-
-  if (role === "executive" || role === "manager" || role === "admin") {
+  if (isExecutiveUser(currentUser) || isManagerUser(currentUser) || isAdminUser(currentUser)) {
     setVisible(accessDenied, false);
     setVisible(managerContent, true);
     await loadManagerData();

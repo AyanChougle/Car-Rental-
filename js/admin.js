@@ -4,7 +4,7 @@
 // ============================================================================
 
 import { api } from "./kruizly-api.js";
-import { checkAuth, getCurrentUser } from "./auth.js";
+import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js";
 
 import "./nav-helper.js";
 
@@ -391,8 +391,16 @@ function hideModal(id) {
 
 async function initAdminAuth() {
   const isAuthenticated = await checkAuth();
-  if (isAuthenticated) {
-    currentUser = getCurrentUser();
+  if (!isAuthenticated) {
+    window.location.href = "index.html?next=admin.html";
+    return;
+  }
+
+  currentUser = getCurrentUser();
+  if (!isAdminUser(currentUser)) {
+    alert("Access denied. Admin privileges required.");
+    window.location.href = "profile.html";
+    return;
   }
 
   if (adminContent) {

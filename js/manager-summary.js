@@ -1,4 +1,4 @@
-import { getCurrentUser, checkAuth } from "./auth.js";
+import { getCurrentUser, checkAuth, isManagerUser, isAdminUser } from "./auth.js";
 import { api } from "./kruizly-api.js";
 import "./nav-helper.js";
 import { formatBookingNumber } from "./booking-reference.js";
@@ -98,33 +98,37 @@ function renderDashboard() {
       ${metric("Completed Trips", String(completed))}
       ${metric("Verified Revenue", formatINR(revenue))}
       ${metric("Revenue This Month", formatINR(monthRevenue))}
-      ${metric("Paid Bookings", String(paid.length))}
-      ${metric("Avg. Verified Booking", formatINR(average))}
-      ${metric("Payments Awaiting Review", String(pendingPayments), "documents")}
+      ${metric("Average Value", formatINR(average))}
+      ${metric("Pending Payments", String(pendingPayments), "action")}
     </section>
 
     <section class="card manager-panel">
       <div class="manager-panel-header">
-        <div>
-          <h2 class="manager-panel-title">Booking Summary</h2>
-          <p class="manager-panel-subtitle">Read-only view of recent booking and payment performance.</p>
-        </div>
-        <span class="manager-status verified">Read-only summary</span>
+        <h3 class="manager-panel-title">Operations Booking Ledger</h3>
       </div>
       <div class="manager-table-wrap">
         <table class="manager-table">
-          <thead><tr><th>Booking</th><th>Customer</th><th>Vehicle</th><th>Date</th><th>Amount</th><th>Status</th><th>Payment</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Booking</th>
+              <th>Customer</th>
+              <th>Schedule</th>
+              <th>Amount</th>
+              <th>Payment</th>
+              <th>Trip Status</th>
+            </tr>
+          </thead>
           <tbody>
             ${pageItems.map(item => `
               <tr>
-                <td><strong>#${escapeHtml(formatBookingNumber(item))}</strong></td>
-                <td>${escapeHtml(item.userName || item.customerName || "Customer")}</td>
-                <td>${escapeHtml(item.vehicleName || item.carName || "Vehicle")}</td>
-                <td>${escapeHtml(formatDate(item.createdAt || item.bookingDate || item.pickupDate))}</td>
-                <td style="color:var(--accent);font-weight:700">${escapeHtml(formatINR(bookingAmount(item)))}</td>
-                <td><span class="manager-status ${escapeHtml(String(item.status || "pending").toLowerCase())}">${escapeHtml(String(item.status || "pending").replaceAll("_", " "))}</span></td>
-                <td>${escapeHtml(String(item.paymentStatus || "unpaid").replaceAll("_", " "))}</td>
-              </tr>`).join("") || `<tr><td colspan="7" class="manager-state">No bookings available.</td></tr>`}
+                <td><strong>${escapeHtml(formatBookingNumber(item.bookingNumber || item.id))}</strong><br><span style="color:var(--sub);font-size:12px;">${escapeHtml(item.carName || item.vehicleName || "Vehicle")}</span></td>
+                <td>${escapeHtml(item.userName || item.name || "Customer")}<br><span style="color:var(--sub);font-size:12px;">${escapeHtml(item.userPhone || item.phone || item.userEmail || "—")}</span></td>
+                <td>${escapeHtml(formatDate(item.pickupDate))}<br><span style="color:var(--sub);font-size:12px;">to ${escapeHtml(formatDate(item.dropDate))}</span></td>
+                <td><strong>${formatINR(bookingAmount(item))}</strong></td>
+                <td><span class="status-pill status-${escapeHtml(item.paymentStatus || 'pending')}">${escapeHtml(item.paymentStatus || 'Pending')}</span></td>
+                <td><span class="status-pill status-${escapeHtml(item.status || 'pending')}">${escapeHtml(item.status || 'Pending')}</span></td>
+              </tr>
+            `).join("")}
           </tbody>
         </table>
       </div>
@@ -173,15 +177,13 @@ async function initManagerSummary() {
   }
 
   const user = getCurrentUser();
-  const role = String(user?.role || "customer").trim().toLowerCase();
-
-  if (role !== "manager" && role !== "admin") {
+  if (isManagerUser(user) || isAdminUser(user)) {
+    setVisible(denied, false);
+    setVisible(content, true);
+    await loadSummary();
+  } else {
     setVisible(denied, true);
-    return;
   }
-
-  setVisible(content, true);
-  await loadSummary();
 }
 
 initManagerSummary();
