@@ -19,15 +19,15 @@
   min-height: 66px;
   background: linear-gradient(
     90deg,
-    rgba(4, 7, 12, 0.92) 0%,
-    rgba(4, 7, 12, 0.85) 35%,
-    rgba(4, 7, 12, 0.50) 65%,
-    rgba(4, 7, 12, 0.15) 85%,
-    rgba(4, 7, 12, 0.02) 100%
+    rgba(4, 7, 12, 0.45) 0%,
+    rgba(4, 7, 12, 0.28) 35%,
+    rgba(4, 7, 12, 0.10) 65%,
+    rgba(4, 7, 12, 0.02) 85%,
+    rgba(4, 7, 12, 0.00) 100%
   ) !important;
-  backdrop-filter: blur(16px) saturate(160%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
-  border-bottom: 1px solid rgba(72, 215, 255, 0.10) !important;
+  backdrop-filter: blur(10px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(130%) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
 }
 
 .site-header .container.header-inner,

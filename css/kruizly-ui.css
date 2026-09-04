@@ -134,12 +134,18 @@ header.site-header,
   width: 100% !important;
   height: 76px !important;
   z-index: var(--kz-z-header) !important;
-  background-color: rgba(5, 6, 7, 0.90) !important;
-  background-image: none !important;
-  backdrop-filter: var(--kz-blur) !important;
-  -webkit-backdrop-filter: var(--kz-blur) !important;
-  border-bottom: 1px solid var(--kz-border) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+  background: linear-gradient(
+    90deg,
+    rgba(4, 7, 12, 0.45) 0%,
+    rgba(4, 7, 12, 0.28) 35%,
+    rgba(4, 7, 12, 0.10) 65%,
+    rgba(4, 7, 12, 0.02) 85%,
+    rgba(4, 7, 12, 0.00) 100%
+  ) !important;
+  backdrop-filter: blur(10px) saturate(130%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(130%) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  box-shadow: none !important;
 }
 
 main,
