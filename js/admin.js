@@ -5342,43 +5342,11 @@ function initialiseInvoiceEditorModal() {
       try {
         previewBtn.disabled = true;
         previewBtn.textContent = "Generating PDF…";
-        const apiBase = window.MEDIA_API_URL || (window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__.replace(/\/api$/, '') : window.location.origin);
-
         // Sync latest form inputs to backend before opening PDF preview
-        const rental = Number($("adminInvRental")?.value || 0);
-        const driver = Number($("adminInvDriver")?.value || 0);
-        const extraKm = Number($("adminInvExtraKm")?.value || 0);
-        const lateFee = Number($("adminInvLateFee")?.value || 0);
-        const fuel = Number($("adminInvFuel")?.value || 0);
-        const damage = Number($("adminInvDamage")?.value || 0);
-        const discount = Number($("adminInvDiscount")?.value || 0);
-        const taxRate = Number($("adminInvTaxRate")?.value || 0);
-        const isFull = $("adminInvFullPaidCheck")?.checked;
-        const amountPaid = Number($("adminInvAmountPaid")?.value || 0);
-
-        const payload = {
-          customer: {
-            name: $("adminInvCustomerName")?.value.trim() || currentEditingInvoice.customer?.name || "",
-            email: $("adminInvCustomerEmail")?.value.trim() || currentEditingInvoice.customer?.email || "",
-            phone: currentEditingInvoice.customer?.phone || "",
-            address: currentEditingInvoice.customer?.address || "",
-          },
-          vehicle: {
-            name: $("adminInvVehicleName")?.value.trim() || currentEditingInvoice.vehicle?.name || "",
-            registration: $("adminInvVehicleReg")?.value.trim() || "",
-            category: currentEditingInvoice.vehicle?.category || "",
-          },
-          charges: { rental, driver, extraKm, lateFee, fuel, damage, discount },
-          taxRate,
-          notes: $("adminInvNotes")?.value.trim() || "",
-          amountPaid,
-          paymentMode: $("adminInvPaymentMode")?.value || "UPI",
-          paymentRef: $("adminInvPaymentRef")?.value || "",
-          paymentPlan: isFull ? "full" : (currentEditingInvoice.paymentPlan || "advance"),
-          paymentStatus: isFull ? "paid" : (currentEditingInvoice.paymentStatus || "advance_paid"),
-        };
-
+        const totalsData = recalculateInvoiceModalTotals();
+        const isFull = (totalsData.balance === 0 || $("adminInvFullPaidCheck")?.checked);
         const bookingId = currentEditingInvoice.bookingId || currentEditingInvoice.id;
+
         const payload = {
           bookingId,
           customer: {
