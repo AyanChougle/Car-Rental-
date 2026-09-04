@@ -1073,19 +1073,104 @@ const fleetVehicles = [
 
 // Image path resolution: map vehicle brand + model to asset files.
 const fleetImageOverrides = {
+  // Maruti models
+  "Maruti Swift": "assets/fleet/Maruti Suzuki Swift.png",
+  "Maruti Suzuki Swift": "assets/fleet/Maruti Suzuki Swift.png",
+  "Maruti Baleno": "assets/fleet/Maruti Suzuki Baleno.png",
+  "Maruti Suzuki Baleno": "assets/fleet/Maruti Suzuki Baleno.png",
+  "Maruti Brezza": "assets/fleet/Maruti Suzuki Brezza.png",
+  "Maruti Suzuki Brezza": "assets/fleet/Maruti Suzuki Brezza.png",
+  "Maruti Dzire": "assets/fleet/Maruti Suzuki Dzire.png",
+  "Maruti Suzuki Dzire": "assets/fleet/Maruti Suzuki Dzire.png",
+  "Maruti Ertiga": "assets/fleet/Maruti Suzuki Ertiga.png",
+  "Maruti Suzuki Ertiga": "assets/fleet/Maruti Suzuki Ertiga.png",
+  "Maruti Fronx": "assets/fleet/Maruti Suzuki Fronx.png",
+  "Maruti Suzuki Fronx": "assets/fleet/Maruti Suzuki Fronx.png",
+  "Maruti Grand Vitara": "assets/fleet/Maruti Suzuki Grand Vitara.png",
+  "Maruti Suzuki Grand Vitara": "assets/fleet/Maruti Suzuki Grand Vitara.png",
+  "Maruti Ignis": "assets/fleet/Maruti Suzuki Ignis.png",
+  "Maruti Suzuki Ignis": "assets/fleet/Maruti Suzuki Ignis.png",
+  "Maruti WagonR": "assets/fleet/Maruti Suzuki WagonR.png",
+  "Maruti Suzuki WagonR": "assets/fleet/Maruti Suzuki WagonR.png",
+  "Maruti XL6": "assets/fleet/Maruti Suzuki XL6.png",
+  "Maruti Suzuki XL6": "assets/fleet/Maruti Suzuki XL6.png",
+
+  // Hyundai models
   "Hyundai Exter": "assets/fleet/Hyundai Exter .png",
-  "Mahindra XUV700": "assets/fleet/Mahindra XUV700 .png",
+  "Hyundai Aura": "assets/fleet/Hyundai Aura.png",
+  "Hyundai Creta": "assets/fleet/Hyundai Creta.png",
+  "Hyundai i20": "assets/fleet/Hyundai i20.png",
+
+  // Tata models
   "Tata Altroz": "assets/fleet/Tata Altroz .png",
+  "Tata Nexon": "assets/fleet/Tata Nexon.png",
+  "Tata Punch": "assets/fleet/Tata Punch.png",
+  "Tata Safari": "assets/fleet/Tata Safari.png",
+
+  // Mahindra models
+  "Mahindra 7XO": "assets/fleet/Mahindra 7XO.png",
+  "Mahindra XUV700": "assets/fleet/Mahindra XUV700 .png",
+  "Mahindra Scorpio N": "assets/fleet/Mahindra Scorpio N.png",
+  "Mahindra Thar": "assets/fleet/Mahindra Thar.png",
+  "Mahindra Thar Roxx": "assets/fleet/Thar Roxx.avif",
+  "Mahindra XUV500": "assets/fleet/Mahindra XUV500.png",
+
+  // Toyota models
+  "Toyota Glanza": "assets/fleet/Toyota Glanza.png",
+  "Toyota Innova Crysta": "assets/fleet/Toyota Innova Crysta.png",
+  "Toyota Rumion": "assets/fleet/Toyota Rumion.png",
   "Toyota Urban Cruiser": "assets/fleet/Toyota Urban Cruiser Taisor .png",
   "Toyota Urban Cruiser Taisor": "assets/fleet/Toyota Urban Cruiser Taisor .png",
-  "Mahindra Thar Roxx": "assets/fleet/Thar Roxx.avif",
+  "Toyota Taisor": "assets/fleet/Toyota Urban Cruiser Taisor .png",
+
+  // Other brands & Model Fallbacks
   "BMW 520D": "assets/fleet/BMW 520D.png",
+  "BMW": "assets/fleet/BMW.png",
+  "Jeep Compass": "assets/fleet/Jeep Compass.png",
+  "Kia Carens": "assets/fleet/Kia Carens.png",
+  "Honda Amaze": "assets/fleet/Hyundai Aura.png",
+  "Honda City": "assets/fleet/Hyundai Aura.png",
+  "Mercedes": "assets/fleet/BMW 520D.png",
+  "Mercedes-Benz": "assets/fleet/BMW 520D.png",
+  "Fortuner": "assets/fleet/Toyota Innova Crysta.png",
+  "Toyota Fortuner": "assets/fleet/Toyota Innova Crysta.png",
 };
 
 function fleetImagePath(vehicle) {
-  if (!vehicle) return "assets/favicon.svg";
-  const fullName = `${vehicle.brand} ${vehicle.model}`.trim();
-  const rawPath = fleetImageOverrides[fullName] || `assets/fleet/${fullName}.png`;
+  if (!vehicle) return "assets/fleet/BMW.png";
+  if (typeof vehicle === "string") {
+    if (vehicle.startsWith("http") || vehicle.startsWith("/api/media/")) return vehicle;
+    if (vehicle.startsWith("assets/")) {
+      const baseName = vehicle.replace(/^assets\/fleet\//, "").replace(/\.png$/i, "").trim();
+      if (fleetImageOverrides[baseName]) return encodeURI(fleetImageOverrides[baseName]);
+      return encodeURI(vehicle);
+    }
+    const ov = fleetImageOverrides[vehicle.trim()];
+    if (ov) return encodeURI(ov);
+    return `assets/fleet/${encodeURIComponent(vehicle.trim())}.png`;
+  }
+
+  // If vehicle has an uploaded media ID / external URL, use it
+  if (Array.isArray(vehicle.gallery) && vehicle.gallery[0]) {
+    const first = vehicle.gallery[0];
+    if (first.startsWith("/api/media/") || first.startsWith("http")) {
+      return first;
+    }
+  }
+  if (vehicle.imageUrl && (vehicle.imageUrl.startsWith("/api/media/") || vehicle.imageUrl.startsWith("http"))) {
+    return vehicle.imageUrl;
+  }
+
+  const brand = (vehicle.brand || "").trim();
+  const model = (vehicle.model || "").trim();
+  const fullName = `${brand} ${model}`.trim();
+
+  const rawPath = fleetImageOverrides[fullName] ||
+    fleetImageOverrides[`${brand} ${model}`] ||
+    (brand.toLowerCase() === "maruti" ? fleetImageOverrides[`Maruti Suzuki ${model}`] : null) ||
+    (model ? fleetImageOverrides[model] : null) ||
+    `assets/fleet/${fullName}.png`;
+
   return encodeURI(rawPath);
 }
 

@@ -766,14 +766,12 @@ async function loadFleetManagement() {
           <tbody>
             ${vehicles.map((vehicle) => {
               const available = Boolean(vehicle.available);
-              const imgUrl = (Array.isArray(vehicle.gallery) && vehicle.gallery[0]) || vehicle.imageUrl || "";
+              const imgUrl = (typeof window.fleetImagePath === "function" && window.fleetImagePath(vehicle)) || (Array.isArray(vehicle.gallery) && vehicle.gallery[0]) || vehicle.imageUrl || "assets/fleet/BMW.png";
               return `
                 <tr style="border-bottom:1px solid rgba(255,255,255,.06);">
                   <td style="padding:12px;"><strong>${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}</strong></td>
                   <td style="padding:12px;">
-                    ${imgUrl
-                      ? `<img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}" style="display:block;width:72px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--line);" />`
-                      : `<span style="color:var(--sub);font-size:.8rem;">Catalog image</span>`}
+                    <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}" onerror="this.onerror=null;this.src='assets/fleet/BMW.png';" style="display:block;width:72px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--line);" />
                   </td>
                   <td style="padding:12px;font-family:monospace;">${escapeHtml(vehicle.regNo)}</td>
                   <td style="padding:12px;">${escapeHtml(vehicle.category || "—")}</td>

@@ -164,15 +164,19 @@ async function initBooking(vehicle) {
 
     appliedCouponsWrap.hidden = false;
     appliedCouponsWrap.innerHTML = appliedCoupons
+      .filter((c) => Boolean(c && (c.code || c.couponCode)))
       .map((c) => {
+        const type = c.discountType || c.discount_type || c.type || "flat";
+        const val = Number(c.discountValue ?? c.discount_value ?? c.val ?? 0);
         const discountTxt =
-          c.discountType === "percent"
-            ? `${c.discountValue}% OFF`
-            : `₹${c.discountValue} OFF`;
+          type === "percent" || type === "percentage"
+            ? `${val}% OFF`
+            : `₹${val} OFF`;
+        const code = c.code || c.couponCode;
         return `
         <span class="applied-coupon-tag">
-          <strong>${c.code}</strong> (${discountTxt})
-          <button type="button" class="remove-coupon-btn" data-code="${c.code}" aria-label="Remove coupon ${c.code}">✕</button>
+          <strong>${code}</strong> (${discountTxt})
+          <button type="button" class="remove-coupon-btn" data-code="${code}" aria-label="Remove coupon ${code}">✕</button>
         </span>
       `;
       })

@@ -66,16 +66,17 @@ export async function validateCoupon({ code, bookingAmount, userId, appliedCoupo
   try {
     const res = await api.post("/coupons/validate", {
       code: cleanCode,
-      bookingAmount: Number(bookingAmount || 0)
+      bookingAmount: Number(bookingAmount || 0),
+      orderTotal: Number(bookingAmount || 0)
     });
 
-    if (!res.valid) {
-      return { valid: false, error: res.error || `Invalid coupon code "${cleanCode}".` };
+    if (!res || !res.valid) {
+      return { valid: false, error: res?.error || `Invalid coupon code "${cleanCode}".` };
     }
 
-    const c = res.coupon;
-    const type = c.discountType === "percentage" || c.discountType === "percent" || c.type === "percentage" ? "percent" : "flat";
-    const val = Number(c.discountValue || c.val || 0);
+    const c = res.coupon || res;
+    const type = c.discountType === "percentage" || c.discountType === "percent" || c.discount_type === "percentage" || c.type === "percentage" ? "percent" : "flat";
+    const val = Number(c.discountValue ?? c.discount_value ?? c.val ?? 0);
 
     return {
       valid: true,
@@ -83,11 +84,13 @@ export async function validateCoupon({ code, bookingAmount, userId, appliedCoupo
         ...c,
         code: cleanCode,
         discountType: type,
+        discount_type: type,
         discountValue: val,
-        minimumBookingAmount: Number(c.minOrder || 0),
+        discount_value: val,
+        minimumBookingAmount: Number(c.minOrder ?? c.min_order ?? 0),
         label: c.label || `${cleanCode} Applied`,
         description: c.description || "",
-        discountAmount: Number(res.discountAmount || 0)
+        discountAmount: Number(res.discountAmount || res.discount || 0)
       }
     };
   } catch (err) {

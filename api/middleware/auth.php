@@ -16,11 +16,11 @@ class Auth {
     private static ?array $currentUser = null;
 
     /**
-     * Enforces user authentication via Firebase ID Token
-     * Resolves and provisions MySQL user record
-     * @return array Current authenticated user record from MySQL
+     * Resolves authenticated user from Bearer header, GET token, or cookie.
+     * Returns null if unauthenticated or token is invalid without terminating request.
+     * @return array|null Current user record from MySQL or null if guest/unauthenticated
      */
-    public static function requireAuth(): array {
+    public static function resolveUser(): ?array {
         if (self::$currentUser !== null) {
             return self::$currentUser;
         }
@@ -41,12 +41,16 @@ class Auth {
         }
 
         if (!$idToken) {
-            sendErrorResponse('Authentication required. Missing Bearer token.', 401);
+            return null;
         }
 
         try {
             $payload = FirebaseJwtService::verifyIdToken($idToken);
-            $firebaseUid = $payload['sub'];
+            $firebaseUid = $payload['sub'] ?? '';
+            if (!$firebaseUid) {
+                return null;
+            }
+
             $email = strtolower(trim($payload['email'] ?? ''));
             $name = trim($payload['name'] ?? ($payload['email'] ?? 'User'));
 
@@ -76,10 +80,23 @@ class Auth {
 
             self::$currentUser = $user;
             return $user;
-        } catch (Exception $e) {
-            error_log("[Auth Middleware Error] " . $e->getMessage());
-            sendErrorResponse('Invalid or expired authentication token: ' . $e->getMessage(), 401);
+        } catch (Throwable $e) {
+            error_log("[Auth Middleware Token Verification] " . $e->getMessage());
+            return null;
         }
+    }
+
+    /**
+     * Enforces user authentication via Firebase ID Token
+     * Resolves and provisions MySQL user record. Sends 401 on failure.
+     * @return array Current authenticated user record from MySQL
+     */
+    public static function requireAuth(): array {
+        $user = self::resolveUser();
+        if (!$user) {
+            sendErrorResponse('Authentication required. Please sign in to continue.', 401);
+        }
+        return $user;
     }
 
     /**
@@ -108,10 +125,6 @@ class Auth {
      * Optional authentication helper (returns null if unauthenticated without terminating request)
      */
     public static function optionalAuth(): ?array {
-        try {
-            return self::requireAuth();
-        } catch (Throwable $e) {
-            return null;
-        }
+        return self::resolveUser();
     }
 }
