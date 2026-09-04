@@ -36,12 +36,8 @@
 //
 // ============================================================
 
-import { auth } from "./firebase-init.js";
+import { checkAuth, getCurrentUser } from "./auth.js";
 import { api } from "./kruizly-api.js";
-
-import {
-  onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 
 import { PAYMENT_CONFIG } from "./payment-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
@@ -1836,192 +1832,92 @@ async function startPaymentPage() {
   // AUTH
   // ----------------------------------------------------------
 
-  onAuthStateChanged(
-    auth,
-    async (user) => {
-      console.log(
-        "AUTH STATE:",
-        user
-          ? user.uid
-          : "NOT LOGGED IN"
-      );
+  async function initPaymentAuth() {
+    const isAuthenticated = await checkAuth();
+    const user = getCurrentUser();
 
+    console.log("AUTH STATE:", user ? (user.id || user.uid) : "NOT LOGGED IN");
 
-      // --------------------------------------------------------
-      // NOT LOGGED IN
-      // --------------------------------------------------------
-
-      if (!user) {
-        const next =
-          `payment.html?booking=${encodeURIComponent(
-            bookingId
-          )}`;
-
-
-        window.location.href =
-          `index.html?next=${encodeURIComponent(
-            next
-          )}`;
-
-
-        return;
-      }
-
-
-      // --------------------------------------------------------
-      // LOAD BOOKING
-      // --------------------------------------------------------
-
-      let booking = null;
-
-      try {
-        const rawPending = sessionStorage.getItem("kruizly_pending_booking");
-        if (rawPending) {
-          const parsed = JSON.parse(rawPending);
-          if (parsed && String(parsed.bookingId || parsed.bookingNumber) === String(bookingId)) {
-            booking = parsed;
-          }
-        }
-      } catch (_) {}
-
-      if (!booking) {
-        try {
-          const bRes = await api.get(`/bookings/${bookingId}`);
-          if (bRes?.booking) {
-            booking = bRes.booking;
-          }
-        } catch (error) {
-          console.warn("Backend booking read fallback:", error.message);
-        }
-      }
-
-      if (!booking) {
-        showError(
-          "That booking does not exist. Please start your booking from the vehicle fleet."
-        );
-        return;
-      }
-
-      console.log(
-        "BOOKING LOADED:",
-        booking
-      );
-
-      // --------------------------------------------------------
-      // SECURITY
-      // --------------------------------------------------------
-
-      if (
-        booking.userId &&
-        booking.userId !== user.uid
-      ) {
-        showError(
-          "This booking does not belong to your account."
-        );
-        return;
-      }
-
-      // --------------------------------------------------------
-      // ALREADY PAID
-      // --------------------------------------------------------
-
-      if (
-        booking.paymentStatus === "paid" ||
-        booking.paymentStatus === "advance_paid" ||
-        booking.paymentStatus === "pay_at_pickup"
-      ) {
-        if (paymentVehicleName) {
-          paymentVehicleName.textContent =
-            booking.vehicleName || "Your vehicle";
-        }
-
-        setStatus(
-          "This booking is already confirmed. Check My Bookings for details."
-        );
-
-        hidePaymentInterface();
-
-        redirectToBookings(900);
-
-        return;
-      }
-
-      // --------------------------------------------------------
-      // ALREADY SUBMITTED WITH TRANSACTION ID & SCREENSHOT
-      // --------------------------------------------------------
-
-      if (
-        booking.paymentStatus === "pending_verification" &&
-        booking.paymentRef
-      ) {
-        if (paymentVehicleName) {
-          paymentVehicleName.textContent =
-            booking.vehicleName || "Your vehicle";
-        }
-
-        setStatus(
-          "We've received your payment reference and are verifying it. Check My Bookings for the latest status."
-        );
-
-        hidePaymentInterface();
-
-        redirectToBookings(900);
-
-        return;
-      }
-
-
-      // --------------------------------------------------------
-      // INITIALISE UI
-      // --------------------------------------------------------
-
-      await initialisePaymentUI(
-        booking
-      );
-
-
-      // --------------------------------------------------------
-      // TABS
-      // --------------------------------------------------------
-
-      initialisePaymentTabs();
-
-
-      // --------------------------------------------------------
-      // SCREENSHOT PREVIEW
-      // --------------------------------------------------------
-
-      initialiseScreenshotPreview();
-
-
-      // --------------------------------------------------------
-      // FORM
-      // --------------------------------------------------------
-
-      initialisePaymentForm(
-        booking,
-        user
-      );
-
-
-      console.log(
-        "========================================"
-      );
-
-      console.log(
-        "KRUIZLY PAYMENT PAGE READY"
-      );
-
-      console.log(
-        "Local media API:",
-        MEDIA_API_URL
-      );
-
-      console.log(
-        "========================================"
-      );
+    if (!isAuthenticated || !user) {
+      const next = `payment.html?booking=${encodeURIComponent(bookingId)}`;
+      window.location.href = `index.html?next=${encodeURIComponent(next)}`;
+      return;
     }
-  );
+
+    let booking = null;
+
+    try {
+      const rawPending = sessionStorage.getItem("kruizly_pending_booking");
+      if (rawPending) {
+        const parsed = JSON.parse(rawPending);
+        if (parsed && String(parsed.bookingId || parsed.bookingNumber) === String(bookingId)) {
+          booking = parsed;
+        }
+      }
+    } catch (_) {}
+
+    if (!booking) {
+      try {
+        const bRes = await api.get(`/bookings/${bookingId}`);
+        if (bRes?.booking) {
+          booking = bRes.booking;
+        }
+      } catch (error) {
+        console.warn("Backend booking read fallback:", error.message);
+      }
+    }
+
+    if (!booking) {
+      showError("That booking does not exist. Please start your booking from the vehicle fleet.");
+      return;
+    }
+
+    console.log("BOOKING LOADED:", booking);
+
+    const userId = user.id || user.uid;
+    if (booking.userId && booking.userId !== userId && booking.firebaseUid && booking.firebaseUid !== userId) {
+      showError("This booking does not belong to your account.");
+      return;
+    }
+
+    if (
+      booking.paymentStatus === "paid" ||
+      booking.paymentStatus === "advance_paid" ||
+      booking.paymentStatus === "pay_at_pickup"
+    ) {
+      if (paymentVehicleName) {
+        paymentVehicleName.textContent = booking.vehicleName || "Your vehicle";
+      }
+      setStatus("This booking is already confirmed. Check My Bookings for details.");
+      hidePaymentInterface();
+      redirectToBookings(900);
+      return;
+    }
+
+    if (
+      booking.paymentStatus === "pending_verification" &&
+      booking.paymentRef
+    ) {
+      if (paymentVehicleName) {
+        paymentVehicleName.textContent = booking.vehicleName || "Your vehicle";
+      }
+      setStatus("We've received your payment reference and are verifying it. Check My Bookings for the latest status.");
+      hidePaymentInterface();
+      redirectToBookings(900);
+      return;
+    }
+
+    await initialisePaymentUI(booking);
+    initialisePaymentTabs();
+    initialiseScreenshotPreview();
+    initialisePaymentForm(booking, user);
+
+    console.log("========================================");
+    console.log("KRUIZLY PAYMENT PAGE READY");
+    console.log("========================================");
+  }
+
+  initPaymentAuth();
 }
 
 

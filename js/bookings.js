@@ -1,5 +1,4 @@
-import { auth } from "./firebase-init.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
+import { checkAuth, getCurrentUser } from "./auth.js";
 import { api } from "./kruizly-api.js";
 import "./nav-helper.js";
 
@@ -174,10 +173,14 @@ function wireActions(bookings) {
   });
 }
 
-onAuthStateChanged(auth, (user) => {
-  if (!user) {
+async function initBookingsAuth() {
+  const isAuthenticated = await checkAuth();
+  if (!isAuthenticated) {
     window.location.href = `index.html?next=${encodeURIComponent("bookings.html")}`;
     return;
   }
-  loadBookings(user.uid);
-});
+  const user = getCurrentUser();
+  loadBookings(user.id || user.uid);
+}
+
+initBookingsAuth();

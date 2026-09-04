@@ -3,12 +3,8 @@
 // Complete admin controller
 // ============================================================================
 
-import { auth } from "./firebase-init.js";
 import { api } from "./kruizly-api.js";
-
-import {
-  onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
+import { checkAuth, getCurrentUser } from "./auth.js";
 
 import "./nav-helper.js";
 
@@ -393,8 +389,11 @@ function hideModal(id) {
 // AUTH
 // ============================================================================
 
-onAuthStateChanged(auth, async (user) => {
-  currentUser = user;
+async function initAdminAuth() {
+  const isAuthenticated = await checkAuth();
+  if (isAuthenticated) {
+    currentUser = getCurrentUser();
+  }
 
   if (adminContent) {
     adminContent.hidden = false;
@@ -402,7 +401,9 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   loadAllAdminData();
-});
+}
+
+initAdminAuth();
 
 // Initialize UI listeners immediately so tabs and controls work on page load
 function initialiseAdmin() {

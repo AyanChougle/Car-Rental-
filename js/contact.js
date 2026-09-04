@@ -4,12 +4,7 @@
 // configured, so it can no longer be the only delivery path). Also
 // prefills the form for links coming from fleet.html / vehicle.html
 // "Book Now" buttons (contact.html?subject=Booking%20Support&vehicle=Tata%20Nexon).
-import { db } from "./firebase-init.js";
-import {
-  collection,
-  addDoc,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
+import { api } from "./kruizly-api.js";
 import "./nav-helper.js";
 
 const form = document.getElementById("contact-form");
@@ -72,20 +67,10 @@ if (form && status) {
     status.className = "form-status";
     status.textContent = "Preparing your message...";
 
-    // 1. Attempt Firestore save (non-blocking for user flow)
+    // 1. Attempt API save
     try {
-      await addDoc(collection(db, "contact_messages"), {
-        name,
-        email,
-        phone,
-        subject,
-        message,
-        createdAt: serverTimestamp(),
-        resolved: false,
-      });
-    } catch (_) {
-      // Quiet fallback when live Firestore rules require auth
-    }
+      await api.post("/contact", { name, email, phone, subject, message }).catch(() => {});
+    } catch (_) {}
 
     // 2. Format and trigger direct Email (mailto)
     const emailSubject = `[KRUIZLY Inquiry] ${subject} - ${name}`;

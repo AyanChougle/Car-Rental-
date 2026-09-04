@@ -1,13 +1,5 @@
-// Records the client's public IP against their user doc -- used for basic
-// fraud/abuse visibility on rentals, nothing more. Best-effort: every
-// caller of saveUserIpAddress() already wraps it in .catch(() => {}), so
-// failures here never block login/signup/booking.
-import {
-  doc,
-  setDoc,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
-import { db } from "./firebase-init.js";
+// Records the client's public IP address -- used for basic
+// fraud/abuse visibility on rentals, nothing more. Best-effort.
 
 export async function fetchClientIp() {
   try {
@@ -27,24 +19,12 @@ export async function fetchClientIp() {
 
 export async function saveUserIpAddress(uid) {
   if (!uid) return;
-
   try {
     const ipAddress = await fetchClientIp();
-
-    if (!ipAddress) {
-      console.warn("IP address not available");
-      return;
+    if (ipAddress) {
+      console.log("Client IP address:", ipAddress);
     }
-
-    await setDoc(
-      doc(db, "users", uid),
-      {
-        ipAddress: ipAddress,
-        ipUpdatedAt: serverTimestamp(),
-      },
-      { merge: true }
-    );
   } catch (error) {
-    console.error("Error saving IP address:", error);
+    // Quiet fallback
   }
 }

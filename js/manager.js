@@ -1,18 +1,5 @@
-import { auth, db } from "./firebase-init.js";
-
-import {
-  onAuthStateChanged,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
-
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  updateDoc,
-  serverTimestamp,
-  arrayUnion,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
+import { checkAuth, getCurrentUser } from "./auth.js";
+import { api } from "./kruizly-api.js";
 
 import "./nav-helper.js";
 import { openReturnModal } from "./return-inspection.js";
@@ -95,53 +82,29 @@ function setVisible(element, visible) {
    AUTH / MANAGER ACCESS
 ========================================================= */
 
-onAuthStateChanged(auth, async (user) => {
-  currentUser = user;
-
-  // Start with everything hidden.
+async function initManagerAuth() {
   setVisible(managerContent, false);
   setVisible(accessDenied, false);
 
-  if (!user) {
+  const isAuthenticated = await checkAuth();
+  if (!isAuthenticated) {
     showAccessDenied();
     return;
   }
 
-  try {
-    const userSnap = await getDoc(
-      doc(db, "users", user.uid)
-    );
+  currentUser = getCurrentUser();
+  const role = String(currentUser?.role || "").trim().toLowerCase();
 
-    if (!userSnap.exists()) {
-      showAccessDenied();
-      return;
-    }
-
-    const userData = userSnap.data();
-
-    const role = String(
-      userData.role || ""
-    ).trim().toLowerCase();
-
-    console.log("Executive user role:", role);
-
-    if (role === "executive" || role === "admin") {
-      setVisible(accessDenied, false);
-      setVisible(managerContent, true);
-
-      await loadManagerData();
-    } else {
-      showAccessDenied();
-    }
-  } catch (error) {
-    console.error(
-      "Executive authentication error:",
-      error
-    );
-
+  if (role === "executive" || role === "manager" || role === "admin") {
+    setVisible(accessDenied, false);
+    setVisible(managerContent, true);
+    await loadManagerData();
+  } else {
     showAccessDenied();
   }
-});
+}
+
+initManagerAuth();
 
 /* =========================================================
    ACCESS DENIED

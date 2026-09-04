@@ -4,22 +4,8 @@
 // Collection: partner_cars
 // ============================================================
 
-import { auth, db } from "./firebase-init.js";
-
-import {
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
-
-import {
-  collection,
-  setDoc,
-  serverTimestamp,
-  doc,
-  getDoc,
-  query,
-  where,
-  getDocs
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
+import { checkAuth, getCurrentUser } from "./auth.js";
+import { api } from "./kruizly-api.js";
 
 import "./nav-helper.js";
 import { MEDIA_SERVER_URL } from "./media-config.js";
@@ -253,72 +239,24 @@ function clearStatus() {
 // Auth state
 // ============================================================
 
-onAuthStateChanged(auth, async (user) => {
-
-  currentUser = user;
-
-  if (!user) {
-    return;
-  }
-
-
-  // ----------------------------------------------------------
-  // Prefill user profile
-  // ----------------------------------------------------------
-
-  try {
-
-    const userRef = doc(
-      db,
-      "users",
-      user.uid
-    );
-
-    const snap = await getDoc(userRef);
-
-    if (snap.exists()) {
-
-      const data = snap.data();
-
-
-      const ownerName =
-        document.getElementById("ownerName");
-
-      const ownerPhone =
-        document.getElementById("ownerPhone");
-
-
-      if (
-        ownerName &&
-        data.name &&
-        !ownerName.value
-      ) {
-
-        ownerName.value = data.name;
-
+async function initPartnerAuth() {
+  const isAuthenticated = await checkAuth();
+  if (isAuthenticated) {
+    currentUser = getCurrentUser();
+    if (currentUser) {
+      const ownerName = document.getElementById("ownerName");
+      const ownerPhone = document.getElementById("ownerPhone");
+      if (ownerName && currentUser.name && !ownerName.value) {
+        ownerName.value = currentUser.name;
       }
-
-
-      if (
-        ownerPhone &&
-        data.phone &&
-        !ownerPhone.value
-      ) {
-
-        ownerPhone.value = data.phone;
-
+      if (ownerPhone && currentUser.phone && !ownerPhone.value) {
+        ownerPhone.value = currentUser.phone;
       }
-
     }
-
-  } catch (error) {
-
-    console.warn(
-      "Could not prefill user profile:",
-      error
-    );
-
   }
+}
+
+initPartnerAuth();
 
 
   // ----------------------------------------------------------

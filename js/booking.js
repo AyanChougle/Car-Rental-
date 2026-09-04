@@ -2,8 +2,7 @@
 // KRUIZLY — BOOKING PAGE
 // ============================================================
 
-import { auth } from "./firebase-init.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
+import { checkAuth, getCurrentUser } from "./auth.js";
 import { api } from "./kruizly-api.js";
 import "./nav-helper.js";
 import { generateNumericBookingId } from "./booking-reference.js";
@@ -101,7 +100,7 @@ if (!vehicle) {
   initBooking(vehicle);
 }
 
-function initBooking(vehicle) {
+async function initBooking(vehicle) {
   let currentUser = null;
   let appliedCoupons = [];
 
@@ -215,7 +214,7 @@ function initBooking(vehicle) {
 
     if (couponApplyBtn) couponApplyBtn.disabled = true;
     if (couponMsg) {
-      couponMsg.textContent = "Verifying coupon with Firebase...";
+      couponMsg.textContent = "Verifying coupon...";
       couponMsg.className = "booking-coupon-msg";
     }
 
@@ -492,16 +491,18 @@ function initBooking(vehicle) {
   synchroniseRentalDates(true);
   calculateBooking();
 
-  onAuthStateChanged(auth, async (user) => {
-    currentUser = user;
+  const isAuthenticated = await checkAuth();
+  if (isAuthenticated) {
+    currentUser = getCurrentUser();
+  }
 
-    if (!user) {
-      if (statusEl)
-        statusEl.textContent = "Please log in to continue with your booking.";
-      return;
-    }
+  if (!currentUser) {
+    if (statusEl)
+      statusEl.textContent = "Please log in to continue with your booking.";
+    return;
+  }
 
-    if (statusEl) statusEl.textContent = "";
+  if (statusEl) statusEl.textContent = "";
 
     try {
       const vRes = await api.get(`/vehicles/${vehicle.regNo}`).catch(() => null);
@@ -522,7 +523,6 @@ function initBooking(vehicle) {
     } catch (error) {
       console.warn("Could not load user profile.", error);
     }
-  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();

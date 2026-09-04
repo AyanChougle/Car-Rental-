@@ -5,15 +5,16 @@
  * Automatically attaches Firebase Auth ID tokens and manages standard response handling.
  */
 
-import { auth } from "./firebase-init.js";
-
 export const API_BASE_URL = window.__KRUIZLY_API_URL__ || `${window.location.origin}/api`;
 
 async function getAuthHeader() {
-  if (auth && auth.currentUser) {
+  const tokens = localStorage.getItem("kruizly_tokens");
+  if (tokens) {
     try {
-      const token = await auth.currentUser.getIdToken();
-      return { Authorization: `Bearer ${token}` };
+      const parsed = JSON.parse(tokens);
+      if (parsed.accessToken) {
+        return { Authorization: `Bearer ${parsed.accessToken}` };
+      }
     } catch (_) {}
   }
   return {};

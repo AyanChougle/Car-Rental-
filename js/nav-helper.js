@@ -1,7 +1,4 @@
 // Shared navigation helper to render dynamic staff and customer links.
-import { auth, db } from "./firebase-init.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 
 export function initDynamicNav() {
   const currentPath = window.location.pathname.split("/").pop() || "index.html";
@@ -75,29 +72,17 @@ export function initDynamicNav() {
     });
   };
 
-  // Always start with 'customer' — Firestore is the only source of truth
-  renderNavLinks("customer");
-
-  onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-      renderNavLinks("customer");
-      return;
-    }
-
-    let role = "customer";
+  // Get user from local storage
+  const storedUser = localStorage.getItem("kruizly_user");
+  let userRole = "customer";
+  if (storedUser) {
     try {
-      const snap = await getDoc(doc(db, "users", user.uid));
-      if (snap.exists()) {
-        role = String(snap.data().role || "customer")
-          .trim()
-          .toLowerCase();
-      }
-    } catch (e) {
-      // Quiet fallback — default to customer
-    }
+      const parsed = JSON.parse(storedUser);
+      userRole = parsed.role || "customer";
+    } catch (_) {}
+  }
 
-    renderNavLinks(role);
-  });
+  renderNavLinks(userRole);
 
   // Universal Mobile Navigation Toggle
   const toggleBtn = document.getElementById("mobileNavToggle") || document.querySelector(".mobile-nav-toggle");

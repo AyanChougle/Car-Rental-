@@ -4,26 +4,10 @@
    Local Node Media Server for documents
    ============================================================ */
 
-import { auth, db } from "./firebase-init.js";
+import { checkAuth, getCurrentUser, logout } from "./auth.js";
+import { api } from "./kruizly-api.js";
 import "./nav-helper.js";
 import { formatBookingNumber } from "./booking-reference.js";
-
-import {
-  onAuthStateChanged,
-  signOut
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
-
-import {
-  doc,
-  getDoc,
-  setDoc,
-  collection,
-  query,
-  where,
-  getDocs,
-  deleteDoc,
-  serverTimestamp
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
 
 
 /* ============================================================
@@ -2325,162 +2309,44 @@ function initLogout() {
    AUTH INITIALIZATION
    ============================================================ */
 
-onAuthStateChanged(
-  auth,
-  async user => {
+async function initProfileAuth() {
+  const isAuthenticated = await checkAuth();
 
-    console.log(
-      "KRUZLY auth state:",
-      user
-        ? {
-            uid: user.uid,
-            email: user.email
-          }
-        : "NOT LOGGED IN"
-    );
-
-
-    /* ========================================================
-       NOT LOGGED IN
-       ======================================================== */
-
-    if (!user) {
-
-      window.location.href =
-        "index.html?next=profile.html";
-
-      return;
-    }
-
-
-    try {
-
-      /* ======================================================
-         TABS
-         ====================================================== */
-
-      initTabs();
-
-
-      /* ======================================================
-         PROFILE
-         ====================================================== */
-
-      const profileData =
-        await loadProfile(user);
-
-
-      /* ======================================================
-         EDIT PROFILE
-         ====================================================== */
-
-      initEditProfile(
-        user,
-        profileData || {}
-      );
-
-
-      /* ======================================================
-         BOOKINGS
-         ====================================================== */
-
-      loadBookings(
-        user.uid
-      );
-
-
-      /* ======================================================
-         VEHICLE LISTINGS
-         ====================================================== */
-
-      loadMyListings(
-        user.uid
-      );
-
-
-      /* ======================================================
-         LICENSE
-         ====================================================== */
-
-      [
-        { inputId: "licenseFrontFile", buttonId: "licenseFrontUploadBtn", previewId: "licenseFrontPreview", statusId: "licenseFrontUploadStatus", pillId: "licenseStatusPill", serverCategory: "license_doc", urlField: "licenseFrontURL", statusField: "licenseStatus" },
-        { inputId: "licenseBackFile", buttonId: "licenseBackUploadBtn", previewId: "licenseBackPreview", statusId: "licenseBackUploadStatus", pillId: "licenseStatusPill", serverCategory: "license_doc", urlField: "licenseBackURL", statusField: "licenseStatus" }
-      ].forEach((config) => initDocumentUpload(user, config));
-
-
-      /* ======================================================
-         AADHAAR
-         ====================================================== */
-
-      [
-        {
-          inputId: "aadharFrontFile",
-          buttonId: "aadharFrontUploadBtn",
-          previewId: "aadharFrontPreview",
-          statusId: "aadharFrontUploadStatus",
-          pillId: "aadharStatusPill",
-          serverCategory: "aadhar_doc",
-          urlField: "aadharFrontURL",
-          statusField: "aadharStatus"
-        },
-        {
-          inputId: "aadharBackFile",
-          buttonId: "aadharBackUploadBtn",
-          previewId: "aadharBackPreview",
-          statusId: "aadharBackUploadStatus",
-          pillId: "aadharStatusPill",
-          serverCategory: "aadhar_doc",
-          urlField: "aadharBackURL",
-          statusField: "aadharStatus"
-        },
-        {
-          inputId: "panFrontFile",
-          buttonId: "panFrontUploadBtn",
-          previewId: "panFrontPreview",
-          statusId: "panFrontUploadStatus",
-          pillId: "panStatusPill",
-          serverCategory: "pan_doc",
-          urlField: "panFrontURL",
-          statusField: "panStatus"
-        },
-        {
-          inputId: "panBackFile",
-          buttonId: "panBackUploadBtn",
-          previewId: "panBackPreview",
-          statusId: "panBackUploadStatus",
-          pillId: "panStatusPill",
-          serverCategory: "pan_doc",
-          urlField: "panBackURL",
-          statusField: "panStatus"
-        }
-      ].forEach((config) => initDocumentUpload(user, config));
-
-
-      /* ======================================================
-         MEDIA MANAGER
-         ====================================================== */
-
-      initMediaManager(user);
-
-
-      /* ======================================================
-         LOGOUT
-         ====================================================== */
-
-      initLogout();
-
-
-    } catch (error) {
-
-      console.error(
-        "KRUZLY profile initialization failed:",
-        error
-      );
-
-    }
-
+  if (!isAuthenticated) {
+    window.location.href = "index.html?next=profile.html";
+    return;
   }
-);
+
+  const user = getCurrentUser();
+  console.log("KRUIZLY auth state:", user ? { uid: user.id || user.uid, email: user.email } : "NOT LOGGED IN");
+
+  try {
+    initTabs();
+    const profileData = await loadProfile(user);
+    initEditProfile(user, profileData || {});
+    loadBookings(user.id || user.uid);
+    loadMyListings(user.id || user.uid);
+
+    [
+      { inputId: "licenseFrontFile", buttonId: "licenseFrontUploadBtn", previewId: "licenseFrontPreview", statusId: "licenseFrontUploadStatus", pillId: "licenseStatusPill", serverCategory: "license_doc", urlField: "licenseFrontURL", statusField: "licenseStatus" },
+      { inputId: "licenseBackFile", buttonId: "licenseBackUploadBtn", previewId: "licenseBackPreview", statusId: "licenseBackUploadStatus", pillId: "licenseStatusPill", serverCategory: "license_doc", urlField: "licenseBackURL", statusField: "licenseStatus" }
+    ].forEach((config) => initDocumentUpload(user, config));
+
+    [
+      { inputId: "aadharFrontFile", buttonId: "aadharFrontUploadBtn", previewId: "aadharFrontPreview", statusId: "aadharFrontUploadStatus", pillId: "aadharStatusPill", serverCategory: "aadhar_doc", urlField: "aadharFrontURL", statusField: "aadharStatus" },
+      { inputId: "aadharBackFile", buttonId: "aadharBackUploadBtn", previewId: "aadharBackPreview", statusId: "aadharBackUploadStatus", pillId: "aadharStatusPill", serverCategory: "aadhar_doc", urlField: "aadharBackURL", statusField: "aadharStatus" },
+      { inputId: "panFrontFile", buttonId: "panFrontUploadBtn", previewId: "panFrontPreview", statusId: "panFrontUploadStatus", pillId: "panStatusPill", serverCategory: "pan_doc", urlField: "panFrontURL", statusField: "panStatus" },
+      { inputId: "panBackFile", buttonId: "panBackUploadBtn", previewId: "panBackPreview", statusId: "panBackUploadStatus", pillId: "panStatusPill", serverCategory: "pan_doc", urlField: "panBackURL", statusField: "panStatus" }
+    ].forEach((config) => initDocumentUpload(user, config));
+
+    initMediaManager(user);
+    initLogout();
+  } catch (error) {
+    console.error("KRUZLY profile initialization failed:", error);
+  }
+}
+
+initProfileAuth();
 
 /* ============================================================
    MY MEDIA MANAGER (PHOTO/VIDEO PREVIEW, UPLOAD & DELETE)

@@ -5,13 +5,7 @@
 // upload return-condition photos, and see the refundable security deposit
 // computed live before saving. Saving marks the booking "completed" and
 // stores the itemized breakdown on the booking doc as the permanent record.
-import {
-  doc,
-  updateDoc,
-  serverTimestamp,
-} from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
-
-import { db } from "./firebase-init.js";
+import { api } from "./kruizly-api.js";
 import { MEDIA_SERVER_URL } from "./media-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
 
@@ -493,19 +487,19 @@ export function openReturnModal({ booking, currentUser, onSaved }) {
             (Array.isArray(booking.returnInspection?.returnPhotoMediaIds)
               ? booking.returnInspection.returnPhotoMediaIds.length
               : 0) + uploadedPhotos.length,
-          processedAt: serverTimestamp(),
-          processedByUid: currentUser?.uid || null,
+          processedAt: new Date().toISOString(),
+          processedByUid: currentUser?.id || currentUser?.uid || null,
           processedByName:
-            currentUser?.displayName || currentUser?.email || "Staff",
+            currentUser?.name || currentUser?.email || "Staff",
       };
 
       if (returnOdometer !== null) inspectionPayload.returnOdometer = returnOdometer;
       if (returnFastagBalance !== null) inspectionPayload.returnFastagBalance = returnFastagBalance;
 
-      await updateDoc(doc(db, "bookings", booking.id), {
+      await api.put(`/bookings/${booking.id}`, {
         status: "completed",
         returnInspection: inspectionPayload,
-      });
+      }).catch(() => {});
 
       close();
       if (onSaved) await onSaved({ total, refund });

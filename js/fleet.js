@@ -244,8 +244,82 @@ function renderFleetCards(records) {
   grid.setAttribute("aria-busy", "false");
 }
 
+const CARS_PER_PAGE = 6;
+let currentFleetPage = 1;
+const fleetPagination = document.getElementById("fleetPagination");
+
 function getCards() {
   return [...grid.querySelectorAll(".fleet-card")];
+}
+
+function renderPagination(totalItems) {
+  if (!fleetPagination) return;
+
+  const totalPages = Math.ceil(totalItems / CARS_PER_PAGE);
+
+  if (totalPages <= 1 || totalItems === 0) {
+    fleetPagination.classList.add("hidden");
+    fleetPagination.hidden = true;
+    return;
+  }
+
+  fleetPagination.classList.remove("hidden");
+  fleetPagination.hidden = false;
+
+  currentFleetPage = Math.max(1, Math.min(currentFleetPage, totalPages));
+
+  let pageButtonsHtml = "";
+  for (let i = 1; i <= totalPages; i++) {
+    pageButtonsHtml += `
+      <button type="button" data-fleet-page="${i}" class="${i === currentFleetPage ? "active" : ""}">${i}</button>
+    `;
+  }
+
+  fleetPagination.innerHTML = `
+    <span class="data-pagination__summary">
+      Page <strong>${currentFleetPage}</strong> of <strong>${totalPages}</strong> · <strong>${totalItems}</strong> vehicles
+    </span>
+    <div class="data-pagination__actions">
+      <button type="button" data-fleet-page="prev" ${currentFleetPage === 1 ? "disabled" : ""}>Previous</button>
+      ${pageButtonsHtml}
+      <button type="button" data-fleet-page="next" ${currentFleetPage === totalPages ? "disabled" : ""}>Next</button>
+    </div>
+  `;
+
+  fleetPagination.querySelectorAll("[data-fleet-page]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = button.dataset.fleetPage;
+      if (target === "prev") {
+        currentFleetPage = Math.max(1, currentFleetPage - 1);
+      } else if (target === "next") {
+        currentFleetPage = Math.min(totalPages, currentFleetPage + 1);
+      } else {
+        currentFleetPage = Number(target) || 1;
+      }
+      applyPagination();
+      document.querySelector(".fleet-listing-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+}
+
+function applyPagination() {
+  const cards = getCards();
+  const visibleCards = cards.filter((card) => !card.classList.contains("filtered-out"));
+
+  const totalItems = visibleCards.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / CARS_PER_PAGE));
+  currentFleetPage = Math.max(1, Math.min(currentFleetPage, totalPages));
+
+  const startIndex = (currentFleetPage - 1) * CARS_PER_PAGE;
+  const endIndex = startIndex + CARS_PER_PAGE;
+
+  visibleCards.forEach((card, idx) => {
+    const isPageVisible = idx >= startIndex && idx < endIndex;
+    card.classList.toggle("hidden", !isPageVisible);
+    card.hidden = !isPageVisible;
+  });
+
+  renderPagination(totalItems);
 }
 
 function applyFilters() {
@@ -322,37 +396,32 @@ function applyFilters() {
       matchesSearch,
     );
 
-    card.classList.toggle("hidden", !isMatch);
-    card.hidden = !isMatch;
+    card.classList.toggle("filtered-out", !isMatch);
   });
 
-  // Nothing survived the filters — show the empty state
-  const anyVisible = getCards().some(
-    (card) => !card.classList.contains("hidden") && !card.hidden,
-  );
+  // Check if any survived
+  const anyMatching = getCards().some((card) => !card.classList.contains("filtered-out"));
 
   if (fleetEmptyState) {
-    fleetEmptyState.classList.toggle("hidden", anyVisible);
-    fleetEmptyState.hidden = anyVisible;
+    fleetEmptyState.classList.toggle("hidden", anyMatching);
+    fleetEmptyState.hidden = anyMatching;
   }
-  grid.classList.toggle("hidden", !anyVisible);
-  grid.hidden = !anyVisible;
+  grid.classList.toggle("hidden", !anyMatching);
+  grid.hidden = !anyMatching;
 
+  currentFleetPage = 1;
   sortCards();
 }
 
 function sortCards() {
   const cards = getCards();
 
-  const visibleCards = cards.filter(
-    (card) => !card.classList.contains("hidden"),
-  );
+  const matchingCards = cards.filter((card) => !card.classList.contains("filtered-out"));
+  const nonMatchingCards = cards.filter((card) => card.classList.contains("filtered-out"));
 
-  const hiddenCards = cards.filter((card) => card.classList.contains("hidden"));
+  const mode = sort ? sort.value : "recommended";
 
-  const mode = sort.value;
-
-  visibleCards.sort((firstCard, secondCard) => {
+  matchingCards.sort((firstCard, secondCard) => {
     const firstPrice = Number(firstCard.dataset.price);
     const secondPrice = Number(secondCard.dataset.price);
     const firstIndex = Number(firstCard.dataset.index || 0);
@@ -370,9 +439,11 @@ function sortCards() {
     return firstIndex - secondIndex;
   });
 
-  [...visibleCards, ...hiddenCards].forEach((card) => {
+  [...matchingCards, ...nonMatchingCards].forEach((card) => {
     grid.appendChild(card);
   });
+
+  applyPagination();
 }
 
 if (search) search.addEventListener("input", applyFilters);

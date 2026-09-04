@@ -1,9 +1,9 @@
-﻿<?php
+<?php
 /**
- * api/config/config.php
+ * api/config/config.php (UPDATED)
  * 
  * Central Configuration for KRUIZLY PHP Backend.
- * Supports environment variables with production defaults for Hostinger.
+ * Hostinger MySQL + JWT (no Firebase dependency).
  */
 
 declare(strict_types=1);
@@ -29,9 +29,18 @@ define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : 'Pa$$@12123'
 define('DB_CHARSET', 'utf8mb4');
 
 // ------------------------------------------------------------
-// 2. FIREBASE AUTH CONFIGURATION
+// 2. JWT AUTHENTICATION (No Firebase dependency)
 // ------------------------------------------------------------
-define('FIREBASE_PROJECT_ID', getenv('FIREBASE_PROJECT_ID') ?: 'carrentpeweb');
+// SECURITY: In production, this MUST come from environment variable
+// Generate a strong key: php -r "echo bin2hex(random_bytes(32));"
+define('JWT_SECRET', getenv('JWT_SECRET') ?: 'dev_key_change_in_production_immediately');
+
+// Admin emails that auto-get admin role on first login
+define('ADMIN_EMAILS', ['ayan@kruizly.com', 'admin@kruizly.com', 'carrentpedatabase@gmail.com']);
+
+// Token expiration times (seconds)
+define('JWT_ACCESS_TOKEN_TTL', 86400); // 24 hours
+define('JWT_REFRESH_TOKEN_TTL', 604800); // 7 days
 
 // ------------------------------------------------------------
 // 3. FILE STORAGE PATHS (Hostinger Filesystem)

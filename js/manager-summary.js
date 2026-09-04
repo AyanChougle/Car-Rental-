@@ -1,6 +1,5 @@
-import { auth, db } from "./firebase-init.js";
-import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
-import { collection, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-firestore.js";
+import { getCurrentUser, checkAuth } from "./auth.js";
+import { api } from "./kruizly-api.js";
 import "./nav-helper.js";
 import { formatBookingNumber } from "./booking-reference.js";
 
@@ -152,40 +151,37 @@ async function loadSummary() {
   if (content) {
     content.innerHTML = `<div class="card manager-panel manager-state">Loading management summary...</div>`;
   }
-  const snapshot = await getDocs(collection(db, "bookings"));
-  bookings = snapshot.docs
-    .map(item => ({ id: item.id, ...item.data() }))
-    .sort((a, b) => toMillis(b.createdAt || b.bookingDate || b.pickupDate) - toMillis(a.createdAt || a.bookingDate || a.pickupDate));
+  try {
+    const res = await api.get("/bookings");
+    bookings = (res.bookings || res.data || [])
+      .sort((a, b) => toMillis(b.createdAt || b.bookingDate || b.pickupDate) - toMillis(a.createdAt || a.bookingDate || a.pickupDate));
+  } catch (e) {
+    console.warn("API bookings fetch notice:", e);
+    bookings = [];
+  }
   renderDashboard();
 }
 
-onAuthStateChanged(auth, async user => {
+async function initManagerSummary() {
   setVisible(content, false);
   setVisible(denied, false);
 
-  if (!user) {
+  const isAuthenticated = await checkAuth();
+  if (!isAuthenticated) {
     setVisible(denied, true);
     return;
   }
 
-  try {
-    const snapshot = await getDoc(doc(db, "users", user.uid));
-    const role = snapshot.exists()
-      ? String(snapshot.data().role || "customer").trim().toLowerCase()
-      : "customer";
+  const user = getCurrentUser();
+  const role = String(user?.role || "customer").trim().toLowerCase();
 
-    if (role !== "manager" && role !== "admin") {
-      setVisible(denied, true);
-      return;
-    }
-
-    setVisible(content, true);
-    await loadSummary();
-  } catch (error) {
-    console.error("Manager summary error:", error);
-    setVisible(content, true);
-    if (content) {
-      content.innerHTML = `<div class="card manager-panel manager-state" style="color:#ef476f">Could not load the management summary.</div>`;
-    }
+  if (role !== "manager" && role !== "admin") {
+    setVisible(denied, true);
+    return;
   }
-});
+
+  setVisible(content, true);
+  await loadSummary();
+}
+
+initManagerSummary();
