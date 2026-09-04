@@ -106,7 +106,7 @@ function renderDashboard() {
       <div class="manager-panel-header">
         <h3 class="manager-panel-title">Operations Booking Ledger</h3>
       </div>
-      <div class="manager-table-wrap" style="max-height:680px;overflow-y:auto;overflow-x:auto;">
+      <div style="width:100%;overflow-x:auto;">
         <table class="manager-table">
           <thead>
             <tr>

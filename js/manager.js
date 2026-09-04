@@ -1203,7 +1203,7 @@ function renderManagerBookingsTable(bookings) {
   );
 
   let html = `
-    <div class="manager-table-wrap" style="width:100%;max-height:680px;overflow-y:auto;overflow-x:auto;">
+    <div style="width:100%;overflow-x:auto;">
 
       <table
         class="admin-table"

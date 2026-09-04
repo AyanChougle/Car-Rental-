@@ -898,8 +898,6 @@ input.kr-clean-input[type=number] {
 .executive-table-wrap,
 .data-table-scroll-container {
   width: 100%;
-  max-height: 680px;
-  overflow-y: auto;
   overflow-x: auto;
   border: 1px solid var(--kr-border);
   border-radius: var(--kr-radius-md, 14px);
