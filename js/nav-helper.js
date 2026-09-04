@@ -1,7 +1,7 @@
 // Shared navigation helper to render dynamic staff and customer links.
 import { auth } from "./firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
-import { api } from "./kruizly-api.js?v=20260904-v13";
+import { api } from "./kruizly-api.js?v=20260904-v14";
 
 export function initDynamicNav() {
   const currentPath = window.location.pathname.split("/").pop() || "index.html";

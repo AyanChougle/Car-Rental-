@@ -5,8 +5,8 @@
    ============================================================ */
 
 import { auth } from "./firebase-init.js";
-import { checkAuth, getCurrentUser, logout } from "./auth.js?v=20260904-v13";
-import { api } from "./kruizly-api.js?v=20260904-v13";
+import { checkAuth, getCurrentUser, logout } from "./auth.js?v=20260904-v14";
+import { api } from "./kruizly-api.js?v=20260904-v14";
 import "./nav-helper.js";
 import { formatBookingNumber } from "./booking-reference.js";
 

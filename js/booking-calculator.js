@@ -131,9 +131,8 @@ export function calculateDuration(pickup, drop) {
   const durationDays = Math.max(1, Math.ceil(durationHours / 24));
 
   const dayLabel = durationDays === 1 ? "1 Day" : `${durationDays} Days`;
-  const formattedDuration = durationHours % 24 === 0
-    ? dayLabel
-    : `${dayLabel} (${durationHours} hrs)`;
+  const hrLabel = `${durationHours} ${durationHours === 1 ? "hr" : "hrs"}`;
+  const formattedDuration = `${dayLabel} (${hrLabel})`;
 
   return {
     valid: true,

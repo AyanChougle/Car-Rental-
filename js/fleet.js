@@ -1,4 +1,4 @@
-import { api } from "./kruizly-api.js?v=20260904-v13";
+import { api } from "./kruizly-api.js?v=20260904-v14";
 import "./nav-helper.js";
 
 // Fleet page: card rendering, searching, filtering,
@@ -203,13 +203,6 @@ function renderFleetCards(records) {
                   <strong>Per Day</strong>
                   <span>
                     ₹${formatCurrency(vehicle.priceDay)}
-                  </span>
-                </div>
-
-                <div>
-                  <strong>Driver</strong>
-                  <span>
-                    ₹${formatCurrency(vehicle.driverPriceHour || Number(vehicle.driverPrice || 0) / 24)}
                   </span>
                 </div>
 
