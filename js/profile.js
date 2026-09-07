@@ -1955,7 +1955,7 @@ function initDocumentUpload(
 
         status.textContent =
           error?.message ||
-          "Upload failed. Check that the media server is running.";
+          "Upload failed. Please try again.";
 
         status.className =
           "form-status error";

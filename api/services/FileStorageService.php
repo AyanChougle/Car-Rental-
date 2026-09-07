@@ -186,9 +186,9 @@ class FileStorageService {
   <circle cx="250" cy="110" r="32" fill="#21262d"/>
   <path d="M238 120l8-10 6 7 12-15 12 18H238z" fill="#48d7ff"/>
   <circle cx="246" cy="98" r="4" fill="#48d7ff"/>
-  <text x="50%" y="175" fill="#f0f6fc" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" text-anchor="middle">Payment Document Preview</text>
+  <text x="50%" y="175" fill="#f0f6fc" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" text-anchor="middle">Document Preview</text>
   <text x="50%" y="205" fill="#8b949e" font-family="system-ui, -apple-system, sans-serif" font-size="12" text-anchor="middle">Ref: ' . htmlspecialchars($mediaId, ENT_QUOTES, 'UTF-8') . '</text>
-  <text x="50%" y="235" fill="#388bfd" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500" text-anchor="middle">Protected on KRUIZLY Cloud</text>
+  <text x="50%" y="235" fill="#388bfd" font-family="system-ui, -apple-system, sans-serif" font-size="12" font-weight="500" text-anchor="middle">KRUIZLY Protected Storage</text>
 </svg>';
         exit;
     }
