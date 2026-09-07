@@ -49,7 +49,8 @@ if ($user && !empty($user['firebase_uid'])) {
 
 // Calculate discount
 $discount = 0.00;
-$normType = ($coupon['discount_type'] === 'percentage' || $coupon['discount_type'] === 'percent') ? 'percent' : 'flat';
+$isPercent = ($coupon['discount_type'] === 'percentage' || $coupon['discount_type'] === 'percent' || str_contains($coupon['label'] ?? '', '%'));
+$normType = $isPercent ? 'percent' : 'flat';
 
 if ($normType === 'percent') {
     $discount = ($orderTotal * (float)$coupon['discount_value']) / 100;

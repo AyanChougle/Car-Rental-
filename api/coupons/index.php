@@ -15,11 +15,17 @@ if ($method === 'GET') {
     $user = Auth::optionalAuth();
     $isStaff = $user && in_array($user['role'] ?? '', ['admin', 'manager'], true);
 
+    // Auto-heal empty or invalid discount_type in coupons table
+    try {
+        Database::execute("UPDATE coupons SET discount_type = 'percentage' WHERE (discount_type = '' OR discount_type IS NULL OR discount_type = 'flat') AND label LIKE '%\\%%'");
+    } catch (Throwable $_) {}
+
     $sql = $isStaff ? "SELECT * FROM coupons ORDER BY created_at DESC" : "SELECT * FROM coupons WHERE active = 1 AND status = 'active' ORDER BY created_at DESC";
     $rows = Database::fetchAll($sql);
 
     $coupons = array_map(function($c) {
-        $normType = ($c['discount_type'] === 'percentage' || $c['discount_type'] === 'percent') ? 'percent' : 'flat';
+        $isPercent = ($c['discount_type'] === 'percentage' || $c['discount_type'] === 'percent' || str_contains($c['label'] ?? '', '%'));
+        $normType = $isPercent ? 'percent' : 'flat';
         return [
             'id' => $c['id'],
             'code' => $c['code'],

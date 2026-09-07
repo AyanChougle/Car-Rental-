@@ -1,4 +1,4 @@
-﻿// ============================================================================
+// ============================================================================
 // KRUIZLY ADMIN DASHBOARD
 // Complete admin controller
 // ============================================================================
@@ -1282,7 +1282,8 @@ function renderCouponsTable() {
         <tbody>
           ${couponsData.map((c) => {
             const active = c.status === "active" || c.active === true;
-            const discountLabel = c.type === "percent" || c.type === "percentage" || c.discountType === "percent" || c.discountType === "percentage"
+            const isPercent = c.type === "percent" || c.type === "percentage" || c.discountType === "percent" || c.discountType === "percentage" || (typeof c.label === "string" && c.label.includes("%"));
+            const discountLabel = isPercent
               ? `${c.val || c.discountValue}% Off`
               : `₹${Number(c.val || c.discountValue || 0).toLocaleString("en-IN")} Off`;
             return `
@@ -1324,8 +1325,9 @@ function renderCouponsTable() {
       const c = couponsData.find(item => item.code === btn.dataset.id || item.id === btn.dataset.id);
       if (!c) return;
       editingCouponId = c.code || c.id;
+      const isPercent = c.type === "percent" || c.type === "percentage" || c.discountType === "percent" || c.discountType === "percentage" || (typeof c.label === "string" && c.label.includes("%"));
       if ($("couponCodeInput")) $("couponCodeInput").value = c.code || "";
-      if ($("couponTypeSelect")) $("couponTypeSelect").value = c.type || c.discountType || "flat";
+      if ($("couponTypeSelect")) $("couponTypeSelect").value = isPercent ? "percent" : "flat";
       if ($("couponValueInput")) $("couponValueInput").value = c.val || c.discountValue || "";
       if ($("couponLabelInput")) $("couponLabelInput").value = c.label || "";
       if ($("couponMinOrderInput")) $("couponMinOrderInput").value = c.minOrder || c.minimumBookingAmount || 0;
