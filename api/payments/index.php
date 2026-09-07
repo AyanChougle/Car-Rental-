@@ -15,7 +15,7 @@ if (!$isStaff) {
     // Return customer's own payments
     $rows = Database::fetchAll(
         "SELECT p.*, 
-                COALESCE(NULLIF(b.user_name, ''), NULLIF(u.name, ''), NULLIF(u.full_name, ''), u.email, 'Customer') AS matched_user_name,
+                COALESCE(NULLIF(b.user_name, ''), NULLIF(u.name, ''), u.email, 'Customer') AS matched_user_name,
                 COALESCE(NULLIF(b.user_email, ''), NULLIF(u.email, ''), '') AS matched_user_email,
                 COALESCE(NULLIF(b.user_phone, ''), NULLIF(u.phone, ''), '') AS matched_user_phone,
                 COALESCE(NULLIF(b.vehicle_name, ''), NULLIF(v.model, ''), 'Vehicle') AS matched_vehicle_name,
@@ -39,7 +39,7 @@ if (!$isStaff) {
 } else {
     $rows = Database::fetchAll(
         "SELECT p.*, 
-                COALESCE(NULLIF(b.user_name, ''), NULLIF(u.name, ''), NULLIF(u.full_name, ''), u.email, 'Customer') AS matched_user_name,
+                COALESCE(NULLIF(b.user_name, ''), NULLIF(u.name, ''), u.email, 'Customer') AS matched_user_name,
                 COALESCE(NULLIF(b.user_email, ''), NULLIF(u.email, ''), '') AS matched_user_email,
                 COALESCE(NULLIF(b.user_phone, ''), NULLIF(u.phone, ''), '') AS matched_user_phone,
                 COALESCE(NULLIF(b.vehicle_name, ''), NULLIF(v.model, ''), 'Vehicle') AS matched_vehicle_name,

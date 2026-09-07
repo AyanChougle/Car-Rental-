@@ -23,7 +23,7 @@ if ($method === 'GET') {
     $search = trim((string)($_GET['search'] ?? ''));
 
     $sql = "SELECT b.*,
-                   COALESCE(NULLIF(b.user_name, ''), NULLIF(u.name, ''), NULLIF(u.full_name, ''), u.email, 'Customer') AS resolved_user_name,
+                   COALESCE(NULLIF(b.user_name, ''), NULLIF(u.name, ''), u.email, 'Customer') AS resolved_user_name,
                    COALESCE(NULLIF(b.user_email, ''), NULLIF(u.email, ''), '') AS resolved_user_email,
                    COALESCE(NULLIF(b.user_phone, ''), NULLIF(u.phone, ''), '') AS resolved_user_phone,
                    COALESCE(NULLIF(b.vehicle_name, ''), NULLIF(v.model, ''), 'Vehicle') AS resolved_vehicle_name
