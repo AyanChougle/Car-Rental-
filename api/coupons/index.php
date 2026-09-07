@@ -13,7 +13,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
     $user = Auth::optionalAuth();
-    $isStaff = $user && in_array($user['role'] ?? '', ['admin', 'manager'], true);
+    $isStaff = $user && in_array($user['role'] ?? '', ['admin', 'manager', 'executive'], true);
 
     // Auto-heal empty or invalid discount_type in coupons table
     try {

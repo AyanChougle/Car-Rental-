@@ -1,0 +1,1192 @@
+/**
+ * js/executive.js
+ * 
+ * Executive Operations Hub:
+ * - Start Trip / Pickup Handover (Photos, Odometer, FASTag, Fuel, Payment Collection)
+ * - Process Vehicle Return (Photos, Return Odometer, FASTag, Deductions, Invoice Notes)
+ * - Booking Approvals & Status Updates
+ * - UPI & Bank Transfer Payment Verification
+ * - Customer KYC / ID Verification (License, Aadhaar, PAN) with Image Previews
+ * - Fleet Inventory Preview
+ * - Coupon Offers Preview
+ */
+
+import { auth } from "./firebase-init.js";
+import { checkAuth, getCurrentUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260907-v3";
+import { api } from "./kruizly-api.js?v=20260907-v3";
+import "./nav-helper.js";
+import { formatBookingNumber } from "./booking-reference.js";
+
+function $(id) {
+  return document.getElementById(id);
+}
+
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function formatMoney(num) {
+  const val = Number(num || 0);
+  return `₹${Math.round(val).toLocaleString("en-IN")}`;
+}
+
+function formatReadableDate(dateStr) {
+  if (!dateStr) return "—";
+  try {
+    const d = new Date(dateStr);
+    if (Number.isNaN(d.getTime())) return dateStr;
+    return new Intl.DateTimeFormat("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric"
+    }).format(d);
+  } catch {
+    return dateStr;
+  }
+}
+
+// State
+let currentUser = null;
+let allBookings = [];
+let allPayments = [];
+let allVerifications = [];
+let allFleet = [];
+let allCoupons = [];
+
+let activePickupBooking = null;
+let pickupSelectedFiles = [];
+let pickupPreviewUrls = [];
+
+let activeReturnBooking = null;
+let returnSelectedFiles = [];
+let returnPreviewUrls = [];
+
+let activePaymentItem = null;
+let activeKycItem = null;
+let activeKycDocTab = "license";
+
+/* ==========================================================================
+   INITIALIZATION & AUTH CHECK
+   ========================================================================== */
+
+async function initExecutive() {
+  const accessDeniedEl = $("executiveAccessDenied");
+  const contentEl = $("executiveContent");
+
+  if (accessDeniedEl) accessDeniedEl.hidden = true;
+  if (contentEl) contentEl.hidden = true;
+
+  const isAuthenticated = await checkAuth();
+  if (!isAuthenticated) {
+    if (accessDeniedEl) accessDeniedEl.hidden = false;
+    return;
+  }
+
+  currentUser = getCurrentUser();
+  const hasStaffRole = isExecutiveUser(currentUser) || isManagerUser(currentUser) || isAdminUser(currentUser);
+
+  if (!hasStaffRole) {
+    if (accessDeniedEl) accessDeniedEl.hidden = false;
+    return;
+  }
+
+  if (contentEl) contentEl.hidden = false;
+
+  initTabs();
+  initModals();
+  initFilters();
+
+  await loadAllExecutiveData();
+}
+
+/* ==========================================================================
+   TAB NAVIGATION
+   ========================================================================== */
+
+function initTabs() {
+  const tabButtons = document.querySelectorAll(".admin-tabs .tab-btn");
+  const tabPanels = document.querySelectorAll(".tab-panel");
+
+  tabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const targetTab = btn.dataset.tab;
+
+      tabButtons.forEach((b) => {
+        b.classList.toggle("active", b === btn);
+        b.classList.toggle("btn-dark", b === btn);
+        b.classList.toggle("btn-outline", b !== btn);
+      });
+
+      tabPanels.forEach((panel) => {
+        panel.hidden = panel.id !== targetTab;
+      });
+
+      if (targetTab === "tab-exec-payments") renderPaymentsTable();
+      if (targetTab === "tab-exec-kyc") renderKycTable();
+      if (targetTab === "tab-exec-fleet") renderFleetGrid();
+      if (targetTab === "tab-exec-coupons") renderCouponsTable();
+    });
+  });
+}
+
+/* ==========================================================================
+   LOAD ALL DATA FROM HOSTINGER MYSQL VIA API
+   ========================================================================== */
+
+async function loadAllExecutiveData() {
+  try {
+    const [bookingsRes, paymentsRes, kycRes, fleetRes, couponsRes] = await Promise.all([
+      api.get("/bookings").catch(() => ({ bookings: [] })),
+      api.get("/payments").catch(() => ({ payments: [] })),
+      api.get("/verification").catch(() => ({ verifications: [] })),
+      api.get("/vehicles").catch(() => ({ vehicles: [] })),
+      api.get("/coupons").catch(() => ({ coupons: [] }))
+    ]);
+
+    allBookings = Array.isArray(bookingsRes?.bookings) ? bookingsRes.bookings : [];
+    allPayments = Array.isArray(paymentsRes?.payments) ? paymentsRes.payments : [];
+    allVerifications = Array.isArray(kycRes?.verifications) ? kycRes.verifications : [];
+    allFleet = Array.isArray(fleetRes?.vehicles) ? fleetRes.vehicles : [];
+    allCoupons = Array.isArray(couponsRes?.coupons) ? couponsRes.coupons : [];
+
+    updateStats();
+    renderBookingsTable();
+    renderPaymentsTable();
+    renderKycTable();
+    renderFleetGrid();
+    renderCouponsTable();
+  } catch (err) {
+    console.error("Failed to load executive data:", err);
+  }
+}
+
+function updateStats() {
+  const activeCountEl = $("execActiveCount");
+  const pickupCountEl = $("execPickupCount");
+  const returnCountEl = $("execReturnCount");
+  const pendingPaymentsCountEl = $("execPendingPaymentsCount");
+  const pendingKycCountEl = $("execPendingKycCount");
+
+  const paymentsBadge = $("execPaymentsBadge");
+  const kycBadge = $("execKycBadge");
+
+  const nowStr = new Date().toISOString().split("T")[0];
+
+  const activeCount = allBookings.filter((b) => b.status === "active" || b.pickupStatus === "picked_up").length;
+  const pickupsToday = allBookings.filter((b) => (b.pickupDate || "").startsWith(nowStr) && b.status !== "cancelled" && b.status !== "completed").length;
+  const returnsToday = allBookings.filter((b) => (b.dropDate || "").startsWith(nowStr) && (b.status === "active" || b.pickupStatus === "picked_up")).length;
+
+  const pendingPayments = allPayments.filter((p) => p.status === "pending").length;
+  const pendingKyc = allVerifications.filter((v) => v.overallStatus === "pending" || v.licenseStatus === "pending" || v.aadharStatus === "pending" || v.panStatus === "pending").length;
+
+  if (activeCountEl) activeCountEl.textContent = activeCount;
+  if (pickupCountEl) pickupCountEl.textContent = pickupsToday;
+  if (returnCountEl) returnCountEl.textContent = returnsToday;
+  if (pendingPaymentsCountEl) pendingPaymentsCountEl.textContent = pendingPayments;
+  if (pendingKycCountEl) pendingKycCountEl.textContent = pendingKyc;
+
+  if (paymentsBadge) {
+    paymentsBadge.textContent = pendingPayments;
+    paymentsBadge.style.display = pendingPayments > 0 ? "inline-block" : "none";
+  }
+
+  if (kycBadge) {
+    kycBadge.textContent = pendingKyc;
+    kycBadge.style.display = pendingKyc > 0 ? "inline-block" : "none";
+  }
+}
+
+/* ==========================================================================
+   TAB 1: BOOKINGS & OPERATIONS TABLE
+   ========================================================================== */
+
+function initFilters() {
+  const searchInput = $("execSearchInput");
+  const statusFilter = $("execStatusFilter");
+  const sortOrder = $("execSortOrder");
+  const refreshBtn = $("execRefreshBtn");
+
+  searchInput?.addEventListener("input", renderBookingsTable);
+  statusFilter?.addEventListener("change", renderBookingsTable);
+  sortOrder?.addEventListener("change", renderBookingsTable);
+  refreshBtn?.addEventListener("click", loadAllExecutiveData);
+}
+
+function getFilteredBookings() {
+  const search = ($("execSearchInput")?.value || "").toLowerCase().trim();
+  const status = $("execStatusFilter")?.value || "";
+  const sort = $("execSortOrder")?.value || "desc";
+
+  return allBookings
+    .filter((b) => {
+      if (status && b.status !== status && b.bookingStatus !== status) return false;
+      if (search) {
+        const hay = `${b.bookingNumber} ${b.id} ${b.userName} ${b.userEmail} ${b.userPhone} ${b.vehicleName} ${b.vehicleReg}`.toLowerCase();
+        if (!hay.includes(search)) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      const tA = new Date(a.pickupDate || a.createdAt).getTime() || 0;
+      const tB = new Date(b.pickupDate || b.createdAt).getTime() || 0;
+      return sort === "asc" ? tA - tB : tB - tA;
+    });
+}
+
+function renderBookingsTable() {
+  const wrap = $("execBookingsWrap");
+  if (!wrap) return;
+
+  const bookings = getFilteredBookings();
+
+  if (!bookings.length) {
+    wrap.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--sub);">No bookings found matching filters.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div style="overflow-x: auto;">
+      <table class="admin-table" style="width: 100%; min-width: 820px; border-collapse: collapse; text-align: left;">
+        <thead>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--sub); font-size: 12.5px; text-transform: uppercase;">
+            <th style="padding: 12px 10px;">Date</th>
+            <th style="padding: 12px 10px;">Booking Ref</th>
+            <th style="padding: 12px 10px;">Customer</th>
+            <th style="padding: 12px 10px;">Vehicle</th>
+            <th style="padding: 12px 10px;">Amount</th>
+            <th style="padding: 12px 10px;">Status</th>
+            <th style="padding: 12px 10px; text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${bookings
+            .map((b) => {
+              const statusClass =
+                b.status === "active" || b.status === "confirmed"
+                  ? "color: #06d6a0;"
+                  : b.status === "pending_verification" || b.status === "pending_payment"
+                  ? "color: #ffd166;"
+                  : b.status === "cancelled" || b.status === "rejected"
+                  ? "color: #ef476f;"
+                  : "color: #4fd7ff;";
+
+              const displayStatus = (b.status || "pending").replace(/_/g, " ").toUpperCase();
+              const isPickedUp = b.status === "active" || b.pickupStatus === "picked_up";
+              const isCompleted = b.status === "completed";
+              const isCancelled = b.status === "cancelled" || b.status === "rejected";
+
+              return `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13.5px;">
+                  <td style="padding: 12px 10px; color: var(--sub);">${escapeHtml(formatReadableDate(b.pickupDate || b.createdAt))}</td>
+                  <td style="padding: 12px 10px; font-family: monospace; font-weight: 700; color: var(--accent);">#${escapeHtml(formatBookingNumber(b))}</td>
+                  <td style="padding: 12px 10px;">
+                    <strong>${escapeHtml(b.userName || "Customer")}</strong><br/>
+                    <small style="color: var(--sub);">${escapeHtml(b.userPhone || b.userEmail || "—")}</small>
+                  </td>
+                  <td style="padding: 12px 10px;">
+                    <strong>${escapeHtml(b.vehicleName || "Vehicle")}</strong><br/>
+                    <small style="color: var(--sub); font-family: monospace;">${escapeHtml(b.vehicleReg || "—")}</small>
+                  </td>
+                  <td style="padding: 12px 10px; font-weight: 700; color: #fff;">${formatMoney(b.finalAmount || b.totalAmount)}</td>
+                  <td style="padding: 12px 10px; font-weight: 700; ${statusClass}">${escapeHtml(displayStatus)}</td>
+                  <td style="padding: 12px 10px; text-align: right;">
+                    <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: wrap;">
+                      ${
+                        !isPickedUp && !isCompleted && !isCancelled
+                          ? `<button type="button" class="btn btn-outline btn-sm btn-approve-booking" data-id="${escapeHtml(b.id)}" style="border-color: #06d6a0; color: #06d6a0; padding: 4px 8px; font-size: 12px;">Approve</button>`
+                          : ""
+                      }
+                      ${
+                        !isPickedUp && !isCompleted && !isCancelled
+                          ? `<button type="button" class="btn btn-dark btn-sm btn-start-pickup" data-id="${escapeHtml(b.id)}" style="background: #4fd7ff; color: #000; font-weight: 700; padding: 4px 10px; font-size: 12px;">Start Trip</button>`
+                          : ""
+                      }
+                      ${
+                        isPickedUp && !isCompleted
+                          ? `<button type="button" class="btn btn-dark btn-sm btn-process-return" data-id="${escapeHtml(b.id)}" style="background: #ffd166; color: #000; font-weight: 700; padding: 4px 10px; font-size: 12px;">Return</button>`
+                          : ""
+                      }
+                      <button type="button" class="btn btn-outline btn-sm btn-view-booking" data-id="${escapeHtml(b.id)}" style="padding: 4px 8px; font-size: 12px;">Details</button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  // Attach action listeners
+  wrap.querySelectorAll(".btn-approve-booking").forEach((btn) => {
+    btn.addEventListener("click", () => handleApproveBooking(btn.dataset.id));
+  });
+
+  wrap.querySelectorAll(".btn-start-pickup").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const booking = allBookings.find((item) => item.id === btn.dataset.id);
+      if (booking) openPickupModal(booking);
+    });
+  });
+
+  wrap.querySelectorAll(".btn-process-return").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const booking = allBookings.find((item) => item.id === btn.dataset.id);
+      if (booking) openReturnModal(booking);
+    });
+  });
+
+  wrap.querySelectorAll(".btn-view-booking").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const booking = allBookings.find((item) => item.id === btn.dataset.id);
+      if (booking) openBookingDetailModal(booking);
+    });
+  });
+}
+
+async function handleApproveBooking(bookingId) {
+  if (!confirm("Approve and confirm this booking reservation?")) return;
+
+  try {
+    await api.put(`/bookings/${encodeURIComponent(bookingId)}`, {
+      status: "confirmed",
+      bookingStatus: "confirmed"
+    });
+    alert("Booking approved successfully.");
+    await loadAllExecutiveData();
+  } catch (err) {
+    alert(`Failed to approve booking: ${err.message}`);
+  }
+}
+
+/* ==========================================================================
+   PICKUP HANDOVER MODAL & PHOTO UPLOAD
+   ========================================================================== */
+
+function openPickupModal(booking) {
+  activePickupBooking = booking;
+  pickupSelectedFiles = [];
+  pickupPreviewUrls.forEach((u) => URL.revokeObjectURL(u));
+  pickupPreviewUrls = [];
+
+  const modal = $("executivePickupModal");
+  const title = $("executivePickupModalTitle");
+  const odo = $("executivePickupOdo");
+  const fastag = $("executivePickupFastag");
+  const fuel = $("executivePickupFuel");
+  const notes = $("executivePickupNotes");
+  const balanceDisplay = $("executivePickupBalanceDisplay");
+  const fullPaidCheck = $("executivePickupFullPaidCheck");
+  const payRef = $("executivePickupPayRef");
+  const previewBox = $("executivePickupPreview");
+  const statusEl = $("executivePickupStatus");
+
+  if (title) title.textContent = `Pickup — ${booking.vehicleName || "Vehicle"} (#${formatBookingNumber(booking)})`;
+  if (odo) odo.value = booking.pickupOdometer ?? booking.startOdometer ?? "";
+  if (fastag) fastag.value = booking.pickupFastagBalance ?? booking.startFastag ?? "";
+  if (fuel) fuel.value = booking.pickupFuelLevel || "Full";
+  if (notes) notes.value = booking.pickupNotes || "";
+  if (payRef) payRef.value = booking.paymentRef || "";
+  if (previewBox) previewBox.innerHTML = "";
+  if (statusEl) statusEl.textContent = "";
+
+  const total = Number(booking.finalAmount || booking.totalAmount || 0);
+  const paid = Number(booking.advanceAmount || (booking.paymentStatus === "paid" ? total : 0));
+  const rem = Math.max(0, Number(booking.remainingBalance ?? (total - paid)));
+
+  if (balanceDisplay) balanceDisplay.textContent = `₹${Math.round(rem).toLocaleString("en-IN")}`;
+  if (fullPaidCheck) fullPaidCheck.checked = rem > 0;
+
+  if (modal) {
+    modal.hidden = false;
+    modal.style.display = "flex";
+  }
+}
+
+function closePickupModal() {
+  const modal = $("executivePickupModal");
+  if (modal) {
+    modal.hidden = true;
+    modal.style.display = "none";
+  }
+  pickupPreviewUrls.forEach((u) => URL.revokeObjectURL(u));
+  pickupPreviewUrls = [];
+  pickupSelectedFiles = [];
+  activePickupBooking = null;
+}
+
+function initModals() {
+  // Pickup modal
+  $("closeExecutivePickupModal")?.addEventListener("click", closePickupModal);
+  $("cancelExecutivePickupBtn")?.addEventListener("click", closePickupModal);
+
+  $("executivePickupPhotos")?.addEventListener("change", (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const previewBox = $("executivePickupPreview");
+    pickupSelectedFiles.push(...files);
+
+    files.forEach((file) => {
+      const url = URL.createObjectURL(file);
+      pickupPreviewUrls.push(url);
+
+      const item = document.createElement("div");
+      item.style.cssText = "position: relative; width: 80px; height: 80px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2);";
+      item.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;" />`;
+      previewBox?.appendChild(item);
+    });
+  });
+
+  $("saveExecutivePickupBtn")?.addEventListener("click", async () => {
+    if (!activePickupBooking) return;
+
+    const btn = $("saveExecutivePickupBtn");
+    const statusEl = $("executivePickupStatus");
+    const odo = Number($("executivePickupOdo")?.value || 0);
+    const fastag = Number($("executivePickupFastag")?.value || 0);
+    const fuel = $("executivePickupFuel")?.value || "Full";
+    const notes = $("executivePickupNotes")?.value || "";
+    const fullPaid = $("executivePickupFullPaidCheck")?.checked;
+    const payMode = $("executivePickupPayMode")?.value || "UPI";
+    const payRef = $("executivePickupPayRef")?.value || "";
+
+    if (odo <= 0) {
+      alert("Please enter the vehicle's starting odometer reading.");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Uploading & Saving...";
+    if (statusEl) statusEl.textContent = "Uploading condition photos...";
+
+    try {
+      const uploadedMediaIds = [];
+
+      for (const file of pickupSelectedFiles) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("category", "inspection_photo");
+        formData.append("relatedId", activePickupBooking.id);
+
+        const uploadRes = await api.upload("/media/upload", formData);
+        if (uploadRes?.mediaId || uploadRes?.id) {
+          uploadedMediaIds.push(uploadRes.mediaId || uploadRes.id);
+        }
+      }
+
+      if (statusEl) statusEl.textContent = "Updating booking trip state...";
+
+      const payload = {
+        status: "active",
+        bookingStatus: "active",
+        pickupStatus: "picked_up",
+        pickupOdometer: odo,
+        startOdometer: odo,
+        pickupFastagBalance: fastag,
+        startFastag: fastag,
+        pickupFuelLevel: fuel,
+        pickupNotes: notes,
+        pickupHandledBy: currentUser?.name || currentUser?.email || "Executive",
+        pickupAt: new Date().toISOString(),
+        pickupPhotoMediaIds: uploadedMediaIds
+      };
+
+      if (fullPaid) {
+        payload.paymentStatus = "paid";
+        payload.paymentMode = payMode;
+        payload.paymentRef = payRef || activePickupBooking.paymentRef || "Paid at Pickup";
+      }
+
+      await api.put(`/bookings/${encodeURIComponent(activePickupBooking.id)}`, payload);
+
+      alert("Trip started and vehicle handover confirmed successfully!");
+      closePickupModal();
+      await loadAllExecutiveData();
+    } catch (err) {
+      console.error("Pickup save error:", err);
+      alert(`Could not complete pickup handover: ${err.message}`);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Upload & Start Trip";
+    }
+  });
+
+  // Return modal
+  $("closeReturnModal")?.addEventListener("click", closeReturnModal);
+  $("cancelReturnBtn")?.addEventListener("click", closeReturnModal);
+
+  $("returnInspectionPhotos")?.addEventListener("change", (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const previewBox = $("returnInspectionPreview");
+    returnSelectedFiles.push(...files);
+
+    files.forEach((file) => {
+      const url = URL.createObjectURL(file);
+      returnPreviewUrls.push(url);
+
+      const item = document.createElement("div");
+      item.style.cssText = "position: relative; width: 80px; height: 80px; border-radius: 6px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2);";
+      item.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;" />`;
+      previewBox?.appendChild(item);
+    });
+  });
+
+  $("returnDeductionsInput")?.addEventListener("input", updateReturnRefundDisplay);
+
+  $("saveReturnBtn")?.addEventListener("click", async () => {
+    if (!activeReturnBooking) return;
+
+    const btn = $("saveReturnBtn");
+    const odo = Number($("returnOdometer")?.value || 0);
+    const fastag = Number($("returnFastag")?.value || 0);
+    const deductions = Number($("returnDeductionsInput")?.value || 0);
+    const notes = $("returnInvoiceNotes")?.value || "";
+
+    if (odo <= 0) {
+      alert("Please enter the vehicle's return odometer reading.");
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = "Processing Return...";
+
+    try {
+      const uploadedMediaIds = [];
+      for (const file of returnSelectedFiles) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("category", "inspection_photo");
+        formData.append("relatedId", activeReturnBooking.id);
+
+        const uploadRes = await api.upload("/media/upload", formData);
+        if (uploadRes?.mediaId || uploadRes?.id) {
+          uploadedMediaIds.push(uploadRes.mediaId || uploadRes.id);
+        }
+      }
+
+      const deposit = Number(activeReturnBooking.securityDeposit || 0);
+      const refund = Math.max(0, deposit - deductions);
+
+      await api.put(`/bookings/${encodeURIComponent(activeReturnBooking.id)}`, {
+        status: "completed",
+        bookingStatus: "completed",
+        pickupStatus: "returned",
+        returnOdometer: odo,
+        endOdometer: odo,
+        returnFastag: fastag,
+        returnFastagBalance: fastag,
+        returnDeductions: deductions,
+        refundableDeposit: refund,
+        returnNotes: notes,
+        returnPhotoMediaIds: uploadedMediaIds,
+        returnAt: new Date().toISOString()
+      });
+
+      alert("Vehicle return processed and trip marked Completed!");
+      closeReturnModal();
+      await loadAllExecutiveData();
+    } catch (err) {
+      console.error("Return save error:", err);
+      alert(`Could not process return: ${err.message}`);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Save & Mark Completed";
+    }
+  });
+
+  // Payment modal
+  $("closeManagerPaymentModal")?.addEventListener("click", closePaymentModal);
+  $("managerApprovePaymentBtn")?.addEventListener("click", handleApprovePayment);
+  $("managerRejectPaymentBtn")?.addEventListener("click", handleRejectPayment);
+
+  // KYC modal
+  $("closeExecutiveDocModal")?.addEventListener("click", closeKycModal);
+  $("execApproveDocBtn")?.addEventListener("click", handleApproveKyc);
+  $("execRejectDocBtn")?.addEventListener("click", handleRejectKyc);
+
+  document.querySelectorAll(".doc-tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".doc-tab-btn").forEach((b) => {
+        b.classList.toggle("active", b === btn);
+        b.classList.toggle("btn-dark", b === btn);
+        b.classList.toggle("btn-outline", b !== btn);
+      });
+      activeKycDocTab = btn.dataset.doc;
+      renderKycDocPreviews();
+    });
+  });
+
+  // Booking detail modal
+  $("closeExecutiveBookingDetailModal")?.addEventListener("click", () => {
+    const m = $("executiveBookingDetailModal");
+    if (m) {
+      m.hidden = true;
+      m.style.display = "none";
+    }
+  });
+}
+
+function openReturnModal(booking) {
+  activeReturnBooking = booking;
+  returnSelectedFiles = [];
+  returnPreviewUrls.forEach((u) => URL.revokeObjectURL(u));
+  returnPreviewUrls = [];
+
+  const modal = $("returnModal");
+  const title = $("returnModalTitle");
+  const odo = $("returnOdometer");
+  const fastag = $("returnFastag");
+  const origDep = $("returnDepositOriginal");
+  const deduct = $("returnDeductionsInput");
+  const previewBox = $("returnInspectionPreview");
+  const notes = $("returnInvoiceNotes");
+
+  if (title) title.textContent = `Return — ${booking.vehicleName || "Vehicle"} (#${formatBookingNumber(booking)})`;
+  if (odo) odo.value = booking.returnOdometer ?? booking.endOdometer ?? "";
+  if (fastag) fastag.value = booking.returnFastag ?? booking.returnFastagBalance ?? "";
+  if (origDep) origDep.textContent = formatMoney(booking.securityDeposit || 0);
+  if (deduct) deduct.value = "0";
+  if (previewBox) previewBox.innerHTML = "";
+  if (notes) notes.value = "";
+
+  updateReturnRefundDisplay();
+
+  if (modal) {
+    modal.hidden = false;
+    modal.style.display = "flex";
+  }
+}
+
+function updateReturnRefundDisplay() {
+  const deposit = Number(activeReturnBooking?.securityDeposit || 0);
+  const deductions = Number($("returnDeductionsInput")?.value || 0);
+  const refund = Math.max(0, deposit - deductions);
+  const refundEl = $("returnDepositRefund");
+  if (refundEl) refundEl.textContent = formatMoney(refund);
+}
+
+function closeReturnModal() {
+  const modal = $("returnModal");
+  if (modal) {
+    modal.hidden = true;
+    modal.style.display = "none";
+  }
+  returnPreviewUrls.forEach((u) => URL.revokeObjectURL(u));
+  returnPreviewUrls = [];
+  returnSelectedFiles = [];
+  activeReturnBooking = null;
+}
+
+/* ==========================================================================
+   TAB 2: PAYMENT VERIFICATION QUEUE
+   ========================================================================== */
+
+function renderPaymentsTable() {
+  const wrap = $("execPaymentsWrap");
+  if (!wrap) return;
+
+  if (!allPayments.length) {
+    wrap.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--sub);">No payment receipts awaiting review.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div style="overflow-x: auto;">
+      <table class="admin-table" style="width: 100%; min-width: 760px; border-collapse: collapse; text-align: left;">
+        <thead>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--sub); font-size: 12.5px; text-transform: uppercase;">
+            <th style="padding: 12px 10px;">Booking</th>
+            <th style="padding: 12px 10px;">Customer</th>
+            <th style="padding: 12px 10px;">Vehicle</th>
+            <th style="padding: 12px 10px;">Amount</th>
+            <th style="padding: 12px 10px;">Method / UTR</th>
+            <th style="padding: 12px 10px;">Status</th>
+            <th style="padding: 12px 10px; text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${allPayments
+            .map((p) => {
+              const statusColor = p.status === "verified" ? "#06d6a0" : p.status === "rejected" ? "#ef476f" : "#ffd166";
+              return `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13.5px;">
+                  <td style="padding: 12px 10px; font-family: monospace; font-weight: 700; color: var(--accent);">#${escapeHtml(p.bookingNumber || p.bookingId)}</td>
+                  <td style="padding: 12px 10px;">
+                    <strong>${escapeHtml(p.userName || "Customer")}</strong><br/>
+                    <small style="color: var(--sub);">${escapeHtml(p.userPhone || p.userEmail || "—")}</small>
+                  </td>
+                  <td style="padding: 12px 10px;">${escapeHtml(p.vehicleName || "Vehicle")}</td>
+                  <td style="padding: 12px 10px; font-weight: 700; color: #fff;">${formatMoney(p.amount)}</td>
+                  <td style="padding: 12px 10px; font-family: monospace;">
+                    <span style="font-size: 11px; text-transform: uppercase; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px;">${escapeHtml(p.method || "UPI")}</span><br/>
+                    ${escapeHtml(p.utr || p.paymentRef || "No UTR")}
+                  </td>
+                  <td style="padding: 12px 10px; font-weight: 700; color: ${statusColor};">${escapeHtml((p.status || "pending").toUpperCase())}</td>
+                  <td style="padding: 12px 10px; text-align: right;">
+                    <button type="button" class="btn btn-dark btn-sm btn-review-payment" data-id="${escapeHtml(p.id)}" style="padding: 5px 12px; font-size: 12.5px;">Review</button>
+                  </td>
+                </tr>
+              `;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  wrap.querySelectorAll(".btn-review-payment").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const p = allPayments.find((item) => item.id === btn.dataset.id);
+      if (p) openPaymentModal(p);
+    });
+  });
+}
+
+function openPaymentModal(payment) {
+  activePaymentItem = payment;
+  const modal = $("managerPaymentModal");
+  const title = $("managerPaymentModalTitle");
+  const body = $("managerPaymentModalBody");
+
+  if (title) title.textContent = `Payment Verification — #${payment.bookingNumber || payment.bookingId}`;
+
+  let screenshotImg = "";
+  if (payment.screenshotUrl) {
+    screenshotImg = `<img src="${escapeHtml(payment.screenshotUrl)}" alt="Payment Receipt" style="width: 100%; max-height: 380px; object-fit: contain; border-radius: 8px; background: #000; border: 1px solid rgba(255,255,255,0.1);" />`;
+  } else if (payment.screenshotMediaId) {
+    screenshotImg = `<img src="/api/media/file.php?id=${encodeURIComponent(payment.screenshotMediaId)}" alt="Payment Receipt" style="width: 100%; max-height: 380px; object-fit: contain; border-radius: 8px; background: #000; border: 1px solid rgba(255,255,255,0.1);" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:var(--sub);\\'>No image file found on server.</div>';" />`;
+  } else {
+    screenshotImg = `<div style="padding: 20px; text-align: center; color: var(--sub); border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;">No screenshot receipt attached.</div>`;
+  }
+
+  if (body) {
+    body.innerHTML = `
+      <div style="display: grid; gap: 10px; font-size: 13.5px;">
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
+          <span style="color: var(--sub);">Customer:</span>
+          <strong>${escapeHtml(payment.userName || "Customer")} (${escapeHtml(payment.userPhone || payment.userEmail || "—")})</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
+          <span style="color: var(--sub);">Vehicle:</span>
+          <strong>${escapeHtml(payment.vehicleName || "Vehicle")}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
+          <span style="color: var(--sub);">Amount:</span>
+          <strong style="color: #06d6a0; font-size: 16px;">${formatMoney(payment.amount)}</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
+          <span style="color: var(--sub);">UTR / Transaction Reference:</span>
+          <strong style="font-family: monospace; color: var(--accent);">${escapeHtml(payment.utr || payment.paymentRef || "Not provided")}</strong>
+        </div>
+        <div style="margin-top: 10px;">
+          <span style="display: block; font-weight: 700; color: var(--sub); margin-bottom: 6px; font-size: 12px; text-transform: uppercase;">Payment Screenshot</span>
+          ${screenshotImg}
+        </div>
+      </div>
+    `;
+  }
+
+  if (modal) {
+    modal.hidden = false;
+    modal.style.display = "flex";
+  }
+}
+
+function closePaymentModal() {
+  const modal = $("managerPaymentModal");
+  if (modal) {
+    modal.hidden = true;
+    modal.style.display = "none";
+  }
+  activePaymentItem = null;
+}
+
+async function handleApprovePayment() {
+  if (!activePaymentItem) return;
+  const btn = $("managerApprovePaymentBtn");
+  btn.disabled = true;
+  btn.textContent = "Approving...";
+
+  try {
+    await api.post(`/payments/${encodeURIComponent(activePaymentItem.id || activePaymentItem.bookingId)}/verify`, {
+      action: "approve",
+      status: "verified"
+    });
+    alert("Payment verified and booking confirmed successfully!");
+    closePaymentModal();
+    await loadAllExecutiveData();
+  } catch (err) {
+    alert(`Failed to approve payment: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Approve & Confirm Booking";
+  }
+}
+
+async function handleRejectPayment() {
+  if (!activePaymentItem) return;
+  const reason = prompt("Enter the reason for rejecting this payment receipt:");
+  if (reason === null) return;
+
+  const btn = $("managerRejectPaymentBtn");
+  btn.disabled = true;
+
+  try {
+    await api.post(`/payments/${encodeURIComponent(activePaymentItem.id || activePaymentItem.bookingId)}/verify`, {
+      action: "reject",
+      status: "rejected",
+      reason: reason || "Invalid or unverified transaction reference."
+    });
+    alert("Payment rejected.");
+    closePaymentModal();
+    await loadAllExecutiveData();
+  } catch (err) {
+    alert(`Failed to reject payment: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ==========================================================================
+   TAB 3: CUSTOMER KYC & ID VERIFICATION
+   ========================================================================== */
+
+function renderKycTable() {
+  const wrap = $("execKycWrap");
+  if (!wrap) return;
+
+  if (!allVerifications.length) {
+    wrap.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--sub);">No customer KYC submissions found.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div style="overflow-x: auto;">
+      <table class="admin-table" style="width: 100%; min-width: 800px; border-collapse: collapse; text-align: left;">
+        <thead>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--sub); font-size: 12.5px; text-transform: uppercase;">
+            <th style="padding: 12px 10px;">Customer</th>
+            <th style="padding: 12px 10px;">Contact</th>
+            <th style="padding: 12px 10px;">Driving License</th>
+            <th style="padding: 12px 10px;">Aadhaar</th>
+            <th style="padding: 12px 10px;">PAN</th>
+            <th style="padding: 12px 10px;">Overall</th>
+            <th style="padding: 12px 10px; text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${allVerifications
+            .map((v) => {
+              const pill = (st) => {
+                const s = (st || "not_submitted").toLowerCase();
+                const col = s === "verified" ? "#06d6a0" : s === "rejected" ? "#ef476f" : s === "pending" ? "#ffd166" : "var(--sub)";
+                return `<span style="color:${col}; font-weight:700; font-size:12px;">${s.replace(/_/g, " ").toUpperCase()}</span>`;
+              };
+
+              return `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13.5px;">
+                  <td style="padding: 12px 10px;"><strong>${escapeHtml(v.fullName || "Customer")}</strong></td>
+                  <td style="padding: 12px 10px; color: var(--sub);">${escapeHtml(v.phone || v.email || "—")}</td>
+                  <td style="padding: 12px 10px;">${pill(v.licenseStatus)}</td>
+                  <td style="padding: 12px 10px;">${pill(v.aadharStatus)}</td>
+                  <td style="padding: 12px 10px;">${pill(v.panStatus)}</td>
+                  <td style="padding: 12px 10px;">${pill(v.overallStatus)}</td>
+                  <td style="padding: 12px 10px; text-align: right;">
+                    <button type="button" class="btn btn-dark btn-sm btn-review-kyc" data-id="${escapeHtml(v.userId || v.firebaseUid)}" style="padding: 5px 12px; font-size: 12.5px;">Review ID</button>
+                  </td>
+                </tr>
+              `;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  wrap.querySelectorAll(".btn-review-kyc").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const v = allVerifications.find((item) => (item.userId || item.firebaseUid) === btn.dataset.id);
+      if (v) openKycModal(v);
+    });
+  });
+}
+
+function openKycModal(kycItem) {
+  activeKycItem = kycItem;
+  activeKycDocTab = "license";
+
+  const modal = $("executiveDocModal");
+  const title = $("executiveDocModalTitle");
+  const subtitle = $("executiveDocModalSubtitle");
+
+  if (title) title.textContent = `KYC Verification — ${kycItem.fullName || "Customer"}`;
+  if (subtitle) subtitle.textContent = `Phone: ${kycItem.phone || "—"} · Email: ${kycItem.email || "—"}`;
+
+  document.querySelectorAll(".doc-tab-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.doc === "license");
+    b.classList.toggle("btn-dark", b.dataset.doc === "license");
+    b.classList.toggle("btn-outline", b.dataset.doc !== "license");
+  });
+
+  renderKycDocPreviews();
+
+  if (modal) {
+    modal.hidden = false;
+    modal.style.display = "flex";
+  }
+}
+
+function renderKycDocPreviews() {
+  if (!activeKycItem) return;
+
+  const frontBox = $("execDocFrontPreview");
+  const backBox = $("execDocBackPreview");
+
+  let frontUrl = null;
+  let backUrl = null;
+
+  if (activeKycDocTab === "license") {
+    frontUrl = activeKycItem.licenseFrontURL || (activeKycItem.licenseFrontMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.licenseFrontMediaId)}` : null);
+    backUrl = activeKycItem.licenseBackURL || (activeKycItem.licenseBackMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.licenseBackMediaId)}` : null);
+  } else if (activeKycDocTab === "aadhar") {
+    frontUrl = activeKycItem.aadharFrontURL || (activeKycItem.aadharFrontMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.aadharFrontMediaId)}` : null);
+    backUrl = activeKycItem.aadharBackURL || (activeKycItem.aadharBackMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.aadharBackMediaId)}` : null);
+  } else if (activeKycDocTab === "pan") {
+    frontUrl = activeKycItem.panFrontURL || (activeKycItem.panFrontMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.panFrontMediaId)}` : null);
+    backUrl = activeKycItem.panBackURL || (activeKycItem.panBackMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.panBackMediaId)}` : null);
+  }
+
+  if (frontBox) {
+    frontBox.innerHTML = frontUrl
+      ? `<img src="${escapeHtml(frontUrl)}" alt="Front Document" style="width:100%;height:100%;object-fit:contain;" onerror="this.onerror=null;this.parentElement.innerHTML='<span style=\\'color:var(--sub);font-size:13px;\\'>Document image not accessible</span>';" />`
+      : `<span style="color:var(--sub);font-size:13px;">No front image submitted</span>`;
+  }
+
+  if (backBox) {
+    backBox.innerHTML = backUrl
+      ? `<img src="${escapeHtml(backUrl)}" alt="Back Document" style="width:100%;height:100%;object-fit:contain;" onerror="this.onerror=null;this.parentElement.innerHTML='<span style=\\'color:var(--sub);font-size:13px;\\'>Document image not accessible</span>';" />`
+      : `<span style="color:var(--sub);font-size:13px;">No back image submitted</span>`;
+  }
+}
+
+function closeKycModal() {
+  const modal = $("executiveDocModal");
+  if (modal) {
+    modal.hidden = true;
+    modal.style.display = "none";
+  }
+  activeKycItem = null;
+}
+
+async function handleApproveKyc() {
+  if (!activeKycItem) return;
+  const uid = activeKycItem.userId || activeKycItem.firebaseUid;
+  const btn = $("execApproveDocBtn");
+  btn.disabled = true;
+
+  try {
+    await api.post(`/verification/user/${encodeURIComponent(uid)}/status`, {
+      docType: activeKycDocTab,
+      status: "verified"
+    });
+    alert(`${activeKycDocTab.toUpperCase()} verified successfully.`);
+    closeKycModal();
+    await loadAllExecutiveData();
+  } catch (err) {
+    alert(`Could not verify document: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function handleRejectKyc() {
+  if (!activeKycItem) return;
+  const reason = prompt("Enter the reason for rejecting this document:");
+  if (reason === null) return;
+
+  const uid = activeKycItem.userId || activeKycItem.firebaseUid;
+  const btn = $("execRejectDocBtn");
+  btn.disabled = true;
+
+  try {
+    await api.post(`/verification/user/${encodeURIComponent(uid)}/status`, {
+      docType: activeKycDocTab,
+      status: "rejected",
+      reason: reason || "Document is blurry or invalid."
+    });
+    alert(`${activeKycDocTab.toUpperCase()} rejected.`);
+    closeKycModal();
+    await loadAllExecutiveData();
+  } catch (err) {
+    alert(`Could not reject document: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ==========================================================================
+   TAB 4: FLEET PREVIEW
+   ========================================================================== */
+
+function renderFleetGrid() {
+  const grid = $("execFleetGrid");
+  const countEl = $("execFleetCount");
+  if (!grid) return;
+
+  if (countEl) countEl.textContent = `${allFleet.length} Vehicles`;
+
+  if (!allFleet.length) {
+    grid.innerHTML = `<div style="grid-column: 1 / -1; padding: 24px; text-align: center; color: var(--sub);">No vehicles found in fleet inventory.</div>`;
+    return;
+  }
+
+  grid.innerHTML = allFleet
+    .map((car) => {
+      const isAvailable = car.available == 1 && car.status !== "maintenance" && car.status !== "removed";
+      const statusBadge = isAvailable
+        ? `<span style="background: rgba(6, 214, 160, 0.15); color: #06d6a0; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 6px;">Available</span>`
+        : `<span style="background: rgba(239, 71, 111, 0.15); color: #ef476f; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 6px;">${escapeHtml(car.status || "Unavailable")}</span>`;
+
+      return `
+        <div class="card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
+          <div style="height: 140px; background: #000; overflow: hidden; position: relative;">
+            <img src="${escapeHtml(car.imageUrl || 'assets/fleet/BMW.png')}" alt="${escapeHtml(car.brand)} ${escapeHtml(car.model)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null;this.src='assets/fleet/BMW.png';" />
+            <div style="position: absolute; top: 10px; right: 10px;">${statusBadge}</div>
+          </div>
+          <div style="padding: 14px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+              <span style="font-size: 11.5px; text-transform: uppercase; color: var(--sub); letter-spacing: 0.05em;">${escapeHtml(car.category || "Sedan")}</span>
+              <h3 style="font-size: 16px; margin: 2px 0 6px;">${escapeHtml(car.brand)} ${escapeHtml(car.model)}</h3>
+              <p style="font-family: monospace; font-size: 12px; color: var(--accent); margin-bottom: 10px;">Reg: ${escapeHtml(car.regNo)}</p>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px; margin-top: 8px;">
+              <span style="font-size: 12px; color: var(--sub);">${escapeHtml(car.fuel || "Petrol")} · ${escapeHtml(car.transmission || "Auto")}</span>
+              <strong style="color: #fff; font-size: 15px;">₹${Math.round(car.priceDay || 0).toLocaleString("en-IN")}<small style="font-size: 11px; color: var(--sub);">/day</small></strong>
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+/* ==========================================================================
+   TAB 5: COUPON PREVIEW
+   ========================================================================== */
+
+function renderCouponsTable() {
+  const wrap = $("execCouponsWrap");
+  if (!wrap) return;
+
+  if (!allCoupons.length) {
+    wrap.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--sub);">No promotional coupons active.</div>`;
+    return;
+  }
+
+  wrap.innerHTML = `
+    <div style="overflow-x: auto;">
+      <table class="admin-table" style="width: 100%; min-width: 700px; border-collapse: collapse; text-align: left;">
+        <thead>
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--sub); font-size: 12.5px; text-transform: uppercase;">
+            <th style="padding: 12px 10px;">Promo Code</th>
+            <th style="padding: 12px 10px;">Discount</th>
+            <th style="padding: 12px 10px;">Min. Booking</th>
+            <th style="padding: 12px 10px;">Max. Cap</th>
+            <th style="padding: 12px 10px;">Used Count</th>
+            <th style="padding: 12px 10px;">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${allCoupons
+            .map((c) => {
+              const discountText = c.type === "percent" || c.discountType === "percent" ? `${c.discountValue || c.val}% OFF` : `₹${c.discountValue || c.val} FLAT OFF`;
+              const statusPill = c.active
+                ? `<span style="color: #06d6a0; font-weight: 700;">ACTIVE</span>`
+                : `<span style="color: #ef476f; font-weight: 700;">INACTIVE</span>`;
+
+              return `
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13.5px;">
+                  <td style="padding: 12px 10px; font-family: monospace; font-weight: 700; color: #4fd7ff; font-size: 15px;">${escapeHtml(c.code)}</td>
+                  <td style="padding: 12px 10px; font-weight: 700; color: #ffd166;">${escapeHtml(discountText)}</td>
+                  <td style="padding: 12px 10px;">${formatMoney(c.minOrder || 0)}</td>
+                  <td style="padding: 12px 10px;">${c.maxDiscount ? formatMoney(c.maxDiscount) : "No limit"}</td>
+                  <td style="padding: 12px 10px;">${c.usedCount || 0} times</td>
+                  <td style="padding: 12px 10px;">${statusPill}</td>
+                </tr>
+              `;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ==========================================================================
+   BOOKING DETAIL MODAL
+   ========================================================================== */
+
+function openBookingDetailModal(b) {
+  const modal = $("executiveBookingDetailModal");
+  const title = $("execBookingDetailTitle");
+  const body = $("execBookingDetailBody");
+
+  if (title) title.textContent = `Booking #${formatBookingNumber(b)} — ${b.vehicleName || "Vehicle"}`;
+
+  if (body) {
+    body.innerHTML = `
+      <div style="display: grid; gap: 12px; font-size: 13.5px;">
+        <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px;">
+          <strong style="color: var(--accent); display: block; margin-bottom: 6px;">Customer Information</strong>
+          <div><strong>Name:</strong> ${escapeHtml(b.userName || "Customer")}</div>
+          <div><strong>Phone:</strong> <a href="tel:${escapeHtml(b.userPhone || '')}" style="color:#4fd7ff;">${escapeHtml(b.userPhone || "Not provided")}</a></div>
+          <div><strong>Email:</strong> ${escapeHtml(b.userEmail || "Not provided")}</div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px;">
+          <strong style="color: var(--accent); display: block; margin-bottom: 6px;">Trip Schedule &amp; Location</strong>
+          <div><strong>Vehicle:</strong> ${escapeHtml(b.vehicleName)} (${escapeHtml(b.vehicleReg || "—")})</div>
+          <div><strong>Pickup Date:</strong> ${escapeHtml(formatReadableDate(b.pickupDate))}</div>
+          <div><strong>Drop Date:</strong> ${escapeHtml(formatReadableDate(b.dropDate))}</div>
+          <div><strong>Location:</strong> ${escapeHtml(b.location || "Ghansoli, Navi Mumbai")}</div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px;">
+          <strong style="color: var(--accent); display: block; margin-bottom: 6px;">Financial Breakdown</strong>
+          <div><strong>Base Amount:</strong> ${formatMoney(b.baseAmount)}</div>
+          <div><strong>Coupon Discount:</strong> ${b.couponDiscount ? `-₹${b.couponDiscount}` : "₹0"} (${escapeHtml(b.couponCode || "None")})</div>
+          <div><strong>Security Deposit:</strong> ${formatMoney(b.securityDeposit)}</div>
+          <div style="font-size: 15px; font-weight: 700; color: #06d6a0; margin-top: 4px;"><strong>Total Amount:</strong> ${formatMoney(b.finalAmount || b.totalAmount)}</div>
+          <div><strong>Payment Status:</strong> <span style="font-weight:700; text-transform:uppercase;">${escapeHtml(b.paymentStatus || "pending")}</span></div>
+          <div><strong>Payment Ref:</strong> <span style="font-family:monospace;">${escapeHtml(b.paymentRef || "—")}</span></div>
+        </div>
+
+        <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px;">
+          <strong style="color: var(--accent); display: block; margin-bottom: 6px;">Operations &amp; Odometer Log</strong>
+          <div><strong>Start Odometer:</strong> ${b.pickupOdometer ? `${b.pickupOdometer} km` : "Not recorded"}</div>
+          <div><strong>Return Odometer:</strong> ${b.returnOdometer ? `${b.returnOdometer} km` : "Not returned yet"}</div>
+          <div><strong>Start FASTag Balance:</strong> ${b.pickupFastagBalance ? `₹${b.pickupFastagBalance}` : "—"}</div>
+          <div><strong>Return FASTag Balance:</strong> ${b.returnFastag ? `₹${b.returnFastag}` : "—"}</div>
+          <div><strong>Handover Notes:</strong> ${escapeHtml(b.pickupNotes || "None")}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (modal) {
+    modal.hidden = false;
+    modal.style.display = "flex";
+  }
+}
+
+// Start
+initExecutive();

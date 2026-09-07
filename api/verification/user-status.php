@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
 
-$admin = Auth::requireRole('admin', 'manager');
+$admin = Auth::requireRole('admin', 'manager', 'executive');
 $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 
 $targetUid = trim((string)($_GET['uid'] ?? $input['uid'] ?? $input['firebaseUid'] ?? ''));

@@ -9,11 +9,12 @@ declare(strict_types=1);
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../services/InvoicePdfService.php';
 
-$admin = Auth::requireRole('admin', 'manager');
+$admin = Auth::requireRole('admin', 'manager', 'executive');
 $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 
 $id = trim((string)($_GET['id'] ?? $input['id'] ?? $input['paymentId'] ?? $input['bookingId'] ?? ''));
-$action = strtolower(trim((string)($input['action'] ?? 'approve')));
+$rawAction = strtolower(trim((string)($input['action'] ?? $input['status'] ?? 'approve')));
+$action = ($rawAction === 'verified' || $rawAction === 'approved' || $rawAction === 'approve') ? 'approve' : 'reject';
 $reason = trim((string)($input['reason'] ?? $input['rejectionReason'] ?? ''));
 
 if (!$id) {
