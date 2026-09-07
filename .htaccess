@@ -37,8 +37,12 @@ Options -Indexes
 
 # Browser caching
 <IfModule mod_expires.c>
-    ExpiresActive On
+    AddType image/avif .avif
+    AddType image/webp .webp
+    AddType image/png .png
+    AddType image/jpeg .jpg .jpeg
 
+    ExpiresByType image/avif "access plus 1 month"
     ExpiresByType image/jpg "access plus 1 month"
     ExpiresByType image/jpeg "access plus 1 month"
     ExpiresByType image/png "access plus 1 month"

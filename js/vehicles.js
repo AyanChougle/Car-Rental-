@@ -1158,8 +1158,8 @@ const fleetImageOverrides = {
   "bolero": "assets/fleet/Mahindra Scorpio N.png",
   "mahindra thar": "assets/fleet/Mahindra Thar.png",
   "thar": "assets/fleet/Mahindra Thar.png",
-  "mahindra thar roxx": "assets/fleet/Thar Roxx.avif",
-  "thar roxx": "assets/fleet/Thar Roxx.avif",
+  "mahindra thar roxx": "assets/fleet/Mahindra Thar.png",
+  "thar roxx": "assets/fleet/Mahindra Thar.png",
   "mahindra xuv500": "assets/fleet/Mahindra XUV500.png",
   "xuv500": "assets/fleet/Mahindra XUV500.png",
 
