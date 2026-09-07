@@ -65,12 +65,30 @@ try {
             ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             ) ON DUPLICATE KEY UPDATE
+                vehicle_id = COALESCE(VALUES(vehicle_id), vehicle_id),
+                vehicle_reg = COALESCE(NULLIF(VALUES(vehicle_reg), ''), vehicle_reg),
+                vehicle_name = COALESCE(NULLIF(VALUES(vehicle_name), ''), vehicle_name),
+                vehicle_category = COALESCE(NULLIF(VALUES(vehicle_category), ''), vehicle_category),
+                pickup_date = VALUES(pickup_date),
+                drop_date = VALUES(drop_date),
+                duration = VALUES(duration),
+                days = VALUES(days),
+                hours = VALUES(hours),
+                with_driver = VALUES(with_driver),
+                base_amount = VALUES(base_amount),
+                total_amount = VALUES(total_amount),
+                final_amount = VALUES(final_amount),
+                advance_amount = VALUES(advance_amount),
+                remaining_balance = VALUES(remaining_balance),
+                remaining_amount = VALUES(remaining_amount),
+                payment_plan = VALUES(payment_plan),
+                location = VALUES(location),
+                security_deposit = VALUES(security_deposit),
                 user_name = COALESCE(NULLIF(VALUES(user_name), ''), user_name),
                 user_phone = COALESCE(NULLIF(VALUES(user_phone), ''), user_phone),
                 payment_status = VALUES(payment_status),
                 status = VALUES(status),
-                advance_amount = VALUES(advance_amount),
-                remaining_balance = VALUES(remaining_balance),
+                booking_status = VALUES(booking_status),
                 payment_screenshot_url = COALESCE(VALUES(payment_screenshot_url), payment_screenshot_url),
                 updated_at = CURRENT_TIMESTAMP"
         );

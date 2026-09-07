@@ -51,7 +51,27 @@ if ($method === 'GET') {
         $inspection = [];
         if (!empty($b['return_inspection'])) {
             $inspection = is_string($b['return_inspection']) ? json_decode($b['return_inspection'], true) : $b['return_inspection'];
+            if (!is_array($inspection)) {
+                $inspection = [];
+            }
         }
+
+        $isPickedUp = !empty($b['pickup_at']) ||
+                      !empty($b['start_odometer']) ||
+                      in_array($status, ['active', 'in_trip', 'completed'], true) ||
+                      (!empty($inspection['pickupStatus']) && $inspection['pickupStatus'] === 'picked_up');
+
+        $pickupStatus = $isPickedUp ? 'picked_up' : ($inspection['pickupStatus'] ?? 'awaiting pickup');
+        $pickupAt = $b['pickup_at'] ?? ($inspection['pickupAt'] ?? null);
+        $pickupHandledBy = $b['pickup_handled_by'] ?? ($inspection['pickupHandledBy'] ?? null);
+        $pickupOdometer = $b['start_odometer'] ?? ($inspection['pickupOdometer'] ?? null);
+        $returnOdometer = $b['end_odometer'] ?? ($inspection['returnOdometer'] ?? null);
+        $pickupFastag = $b['start_fastag'] ?? ($inspection['pickupFastagBalance'] ?? $inspection['pickupFastag'] ?? null);
+        $returnFastag = $b['return_fastag'] ?? ($inspection['returnFastagBalance'] ?? $inspection['returnFastag'] ?? null);
+        $pickupFuelLevel = $inspection['pickupFuelLevel'] ?? $inspection['fuelLevel'] ?? null;
+        $pickupNotes = $inspection['pickupNotes'] ?? null;
+        $pickupPhotoMediaIds = $inspection['pickupPhotoMediaIds'] ?? [];
+        $pickupPhotos = $inspection['pickupPhotos'] ?? [];
 
         return [
             'id' => $b['booking_id'],
@@ -82,13 +102,25 @@ if ($method === 'GET') {
             'paymentPlan' => $b['payment_plan'],
             'paymentStatus' => $b['payment_status'],
             'status' => $status,
-            'bookingStatus' => $status,
+            'bookingStatus' => $b['booking_status'] ?? $status,
             'paymentRef' => $b['payment_ref'],
             'location' => $b['location'],
-            'startOdometer' => $b['start_odometer'],
-            'endOdometer' => $b['end_odometer'],
-            'startFastag' => $b['start_fastag'],
-            'returnFastag' => $b['return_fastag'],
+            'pickupStatus' => $pickupStatus,
+            'pickup_status' => $pickupStatus,
+            'pickupAt' => $pickupAt,
+            'pickupHandledBy' => $pickupHandledBy,
+            'pickupOdometer' => $pickupOdometer,
+            'startOdometer' => $pickupOdometer,
+            'returnOdometer' => $returnOdometer,
+            'endOdometer' => $returnOdometer,
+            'pickupFastagBalance' => $pickupFastag,
+            'startFastag' => $pickupFastag,
+            'returnFastag' => $returnFastag,
+            'returnFastagBalance' => $returnFastag,
+            'pickupFuelLevel' => $pickupFuelLevel,
+            'pickupNotes' => $pickupNotes,
+            'pickupPhotoMediaIds' => $pickupPhotoMediaIds,
+            'pickupPhotos' => $pickupPhotos,
             'returnInspection' => $inspection,
             'paymentScreenshotUrl' => $b['payment_screenshot_url'],
             'createdAt' => $b['created_at'],
