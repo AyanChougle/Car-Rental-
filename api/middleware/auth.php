@@ -148,6 +148,7 @@ class Auth {
     }
 
     return null;
+    }
 
     /**
      * Enforces user authentication via Firebase ID Token

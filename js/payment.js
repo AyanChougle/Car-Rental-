@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // KRUIZLY - PAYMENT / CHECKOUT
 // Direct PHP + MySQL Backend
 // ============================================================
@@ -738,34 +738,42 @@ async function loadVehicleImage(
   booking
 ) {
   try {
+    if (!booking) return;
+
     const catalog =
       Array.isArray(window.fleetVehicles) ? window.fleetVehicles : [];
 
-    const vehicle =
+    let vehicle =
       catalog.find(
         (item) =>
-          item.regNo === (booking.vehicleReg || booking.carId)
+          item.regNo && (item.regNo === booking.vehicleReg || item.regNo === booking.carId)
       );
 
+    if (!vehicle && booking.vehicleName) {
+      vehicle = catalog.find(
+        (item) => `${item.brand} ${item.model}`.toLowerCase() === String(booking.vehicleName).toLowerCase().trim()
+      );
+    }
+
+    if (!vehicle && booking.vehicleName) {
+      const parts = String(booking.vehicleName).trim().split(" ");
+      vehicle = { brand: parts[0] || "", model: parts.slice(1).join(" ") || "" };
+    }
 
     if (
       !vehicle ||
-      typeof window.fleetImagePath !==
-        "function"
+      typeof window.fleetImagePath !== "function"
     ) {
       return;
     }
-
 
     const imagePath =
       window.fleetImagePath(
         vehicle
       );
 
-
     const container =
       $("paymentVehicleImage");
-
 
     if (
       !container ||
@@ -774,6 +782,8 @@ async function loadVehicleImage(
       return;
     }
 
+    // Clean up any previously appended images
+    container.querySelectorAll("img").forEach((img) => img.remove());
 
     const image =
       document.createElement(
@@ -787,21 +797,18 @@ async function loadVehicleImage(
       booking.vehicleName ||
       "Vehicle";
 
-
     image.onload =
       () => {
-        if (paymentVehicleIcon) {
-          paymentVehicleIcon.style.display =
+        if ($("paymentVehicleIcon")) {
+          $("paymentVehicleIcon").style.display =
             "none";
         }
       };
-
 
     image.onerror =
       () => {
         image.remove();
       };
-
 
     container.prepend(
       image
