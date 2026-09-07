@@ -67,16 +67,60 @@ try {
             $screenshotUrl ?: null, $screenshotMediaId ?: null
         ]);
 
-        // 2. Update booking payment status
-        $stmt2 = $pdo->prepare(
-            "UPDATE bookings SET
-                payment_status = 'pending_verification',
-                payment_ref = ?,
-                payment_screenshot_url = COALESCE(?, payment_screenshot_url),
-                updated_at = CURRENT_TIMESTAMP
-             WHERE booking_id = ? OR booking_number = ?"
+        // 2. Ensure booking record exists in bookings table
+        $existing = Database::fetchOne(
+            "SELECT id FROM bookings WHERE booking_id = ? OR booking_number = ? LIMIT 1",
+            [$bookingId, $bookingId]
         );
-        $stmt2->execute([$utr, $screenshotUrl ?: null, $bookingId, $bookingId]);
+
+        if ($existing) {
+            $stmt2 = $pdo->prepare(
+                "UPDATE bookings SET
+                    payment_status = 'pending_verification',
+                    payment_ref = ?,
+                    payment_screenshot_url = COALESCE(?, payment_screenshot_url),
+                    updated_at = CURRENT_TIMESTAMP
+                 WHERE booking_id = ? OR booking_number = ?"
+            );
+            $stmt2->execute([$utr, $screenshotUrl ?: null, $bookingId, $bookingId]);
+        } else {
+            // Auto-create booking shell so it never goes missing
+            $bMaxRow = Database::fetchOne("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM bookings");
+            $bNextId = (int)($bMaxRow['next_id'] ?? 1);
+            $plan = $amount <= 500 ? 'advance' : 'full';
+            $uId = (!empty($user['id']) && (int)$user['id'] > 0) ? (int)$user['id'] : null;
+            $now = date('Y-m-d H:i:s');
+            $nextDay = date('Y-m-d H:i:s', strtotime('+1 day'));
+
+            $vReg = trim((string)($input['vehicleReg'] ?? $input['carId'] ?? 'BMW-320D'));
+            $vRow = Database::fetchOne("SELECT id, brand, model, category FROM vehicles WHERE reg_no = ? LIMIT 1", [$vReg]);
+            $vId = $vRow ? (int)$vRow['id'] : null;
+            $vName = $vRow ? ($vRow['brand'] . ' ' . $vRow['model']) : 'BMW 3 Series';
+            $vCat = $vRow ? $vRow['category'] : 'Luxury Sedan';
+
+            $stmt2 = $pdo->prepare(
+                "INSERT INTO bookings (
+                    id, booking_id, booking_number, user_id, firebase_uid, user_name, user_email, user_phone,
+                    vehicle_id, vehicle_reg, vehicle_name, vehicle_category, pickup_date, drop_date,
+                    duration, days, hours, with_driver, base_amount, total_amount, final_amount,
+                    advance_amount, remaining_balance, remaining_amount, payment_plan, payment_status,
+                    status, booking_status, location, security_deposit, payment_ref, payment_screenshot_url, created_at
+                ) VALUES (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '1 Day', 1, 24, 0,
+                    ?, ?, ?, ?, 0.00, 0.00, ?, 'pending_verification',
+                    'pending_verification', 'pending_verification', 'Gavson Business Park, Ghansoli', 0.00, ?, ?, ?
+                ) ON DUPLICATE KEY UPDATE
+                    payment_status = 'pending_verification',
+                    payment_ref = VALUES(payment_ref),
+                    payment_screenshot_url = COALESCE(VALUES(payment_screenshot_url), payment_screenshot_url),
+                    updated_at = CURRENT_TIMESTAMP"
+            );
+            $stmt2->execute([
+                $bNextId, $bookingId, $bookingId, $uId, $user['firebase_uid'], $user['name'] ?: 'Customer',
+                $user['email'], $user['phone'] ?: null, $vId, $vReg, $vName, $vCat, $now, $nextDay,
+                $amount, $amount, $amount, $amount, $plan, $utr, $screenshotUrl ?: null, $now
+            ]);
+        }
     });
 
     sendJsonResponse([

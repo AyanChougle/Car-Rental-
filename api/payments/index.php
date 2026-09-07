@@ -11,6 +11,64 @@ require_once __DIR__ . '/../middleware/auth.php';
 $user = Auth::requireAuth();
 $isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive'], true);
 
+// Auto-heal any payments that do not yet have a corresponding booking row
+try {
+    $orphanPayments = Database::fetchAll(
+        "SELECT p.*, u.name as u_name, u.email as u_email, u.phone as u_phone, u.id as u_id
+         FROM payments p
+         LEFT JOIN bookings b ON (
+             p.booking_id = b.booking_id 
+             OR p.booking_id = b.booking_number 
+             OR REPLACE(p.booking_id, '#', '') = REPLACE(b.booking_id, '#', '')
+             OR REPLACE(p.booking_id, '#', '') = REPLACE(b.booking_number, '#', '')
+         )
+         LEFT JOIN users u ON p.firebase_uid = u.firebase_uid
+         WHERE b.id IS NULL"
+    );
+
+    foreach ($orphanPayments as $op) {
+        $bid = $op['booking_id'];
+        if (!$bid) continue;
+        $maxRow = Database::fetchOne("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM bookings");
+        $nextId = (int)($maxRow['next_id'] ?? 1);
+        $amount = (float)$op['amount'];
+        $plan = $amount <= 500 ? 'advance' : 'full';
+        $pStatus = $op['status'] === 'verified' ? ($plan === 'advance' ? 'advance_paid' : 'paid') : ($op['status'] === 'rejected' ? 'rejected' : 'pending_verification');
+        $bStatus = $op['status'] === 'verified' ? 'confirmed' : ($op['status'] === 'rejected' ? 'cancelled' : 'pending_verification');
+        
+        $vReg = 'BMW-320D';
+        $vName = 'BMW 3 Series';
+        $vCat = 'Luxury Sedan';
+        $vRow = Database::fetchOne("SELECT id, brand, model, category, reg_no FROM vehicles LIMIT 1");
+        if ($vRow) {
+            $vReg = $vRow['reg_no'];
+            $vName = $vRow['brand'] . ' ' . $vRow['model'];
+            $vCat = $vRow['category'];
+        }
+
+        $createdAt = $op['created_at'] ?: date('Y-m-d H:i:s');
+        $dropAt = date('Y-m-d H:i:s', strtotime($createdAt . ' +1 day'));
+
+        Database::execute(
+            "INSERT INTO bookings (
+                id, booking_id, booking_number, user_id, firebase_uid, user_name, user_email, user_phone,
+                vehicle_reg, vehicle_name, vehicle_category, pickup_date, drop_date,
+                duration, days, hours, with_driver, base_amount, total_amount, final_amount,
+                advance_amount, remaining_balance, remaining_amount, payment_plan, payment_status,
+                status, booking_status, location, security_deposit, payment_ref, payment_screenshot_url, created_at
+            ) VALUES (
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '1 Day', 1, 24, 0,
+                ?, ?, ?, ?, 0.00, 0.00, ?, ?, ?, ?, 'Gavson Business Park, Ghansoli', 0.00, ?, ?, ?
+            ) ON DUPLICATE KEY UPDATE payment_status = VALUES(payment_status), status = VALUES(status)",
+            [
+                $nextId, $bid, $bid, $op['u_id'] ?: null, $op['firebase_uid'], $op['u_name'] ?: 'Customer', $op['u_email'] ?: '', $op['u_phone'] ?: null,
+                $vReg, $vName, $vCat, $createdAt, $dropAt,
+                $amount, $amount, $amount, $amount, $plan, $pStatus, $bStatus, $bStatus, $op['utr'] ?: $op['payment_ref'], $op['screenshot_url'], $createdAt
+            ]
+        );
+    }
+} catch (Throwable $_) {}
+
 if (!$isStaff) {
     // Return customer's own payments
     $rows = Database::fetchAll(

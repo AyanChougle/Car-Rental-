@@ -37,18 +37,33 @@ $status = trim((string)($input['status'] ?? 'pending_payment'));
 $location = trim((string)($input['location'] ?? 'Gavson Business Park, Ghansoli'));
 
 // Fetch vehicle
-$vehicle = Database::fetchOne("SELECT * FROM vehicles WHERE reg_no = ? LIMIT 1", [$vehicleReg]);
-$vehicleId = $vehicle['id'] ?? null;
+$vehicle = $vehicleReg ? Database::fetchOne("SELECT * FROM vehicles WHERE reg_no = ? LIMIT 1", [$vehicleReg]) : null;
+$vehicleId = $vehicle && !empty($vehicle['id']) ? (int)$vehicle['id'] : null;
 $vehicleName = $vehicle ? ($vehicle['brand'] . ' ' . $vehicle['model']) : ($input['vehicleName'] ?? 'Vehicle');
 $vehicleCategory = $vehicle ? $vehicle['category'] : ($input['vehicleCategory'] ?? 'Sedan');
+
+$dbUserId = null;
+if (!empty($user['id']) && (int)$user['id'] > 0) {
+    $dbUserId = (int)$user['id'];
+}
+if (!$dbUserId && !empty($user['firebase_uid'])) {
+    $uRow = Database::fetchOne("SELECT id FROM users WHERE firebase_uid = ? LIMIT 1", [$user['firebase_uid']]);
+    if ($uRow && !empty($uRow['id'])) {
+        $dbUserId = (int)$uRow['id'];
+    }
+}
 
 $userName = trim((string)($input['userName'] ?? $input['name'] ?? $input['customerName'] ?? $user['name'] ?? ''));
 $userPhone = trim((string)($input['userPhone'] ?? $input['phone'] ?? $input['customerPhone'] ?? $user['phone'] ?? ''));
 $userAge = isset($input['age']) ? (int)$input['age'] : (isset($input['userAge']) ? (int)$input['userAge'] : (isset($input['customerAge']) ? (int)$input['customerAge'] : (isset($user['age']) ? (int)$user['age'] : null)));
 
+Database::autoHealTable('bookings');
+$maxRow = Database::fetchOne("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM bookings");
+$nextId = (int)($maxRow['next_id'] ?? 1);
+
 try {
     Database::transaction(function($pdo) use (
-        $bookingId, $bookingNumber, $user, $vehicleId, $vehicleReg, $vehicleName, $vehicleCategory,
+        $nextId, $bookingId, $bookingNumber, $user, $dbUserId, $vehicleId, $vehicleReg, $vehicleName, $vehicleCategory,
         $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $baseAmount, $couponCode,
         $couponDiscount, $totalAmount, $advanceAmount, $remainingBalance, $paymentPlan, $paymentStatus,
         $status, $location, $securityDeposit, $userName, $userPhone, $userAge, $input
@@ -56,15 +71,17 @@ try {
         // 1. Insert or update booking
         $stmt = $pdo->prepare(
             "INSERT INTO bookings (
-                booking_id, booking_number, user_id, firebase_uid, user_name, user_email, user_phone,
+                id, booking_id, booking_number, user_id, firebase_uid, user_name, user_email, user_phone,
                 vehicle_id, vehicle_reg, vehicle_name, vehicle_category, pickup_date, drop_date,
                 duration, days, hours, with_driver, base_amount, coupon_code, coupon_discount,
                 total_amount, final_amount, advance_amount, remaining_balance, remaining_amount,
                 payment_plan, payment_status, status, booking_status, location, security_deposit,
                 payment_screenshot_url
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             ) ON DUPLICATE KEY UPDATE
+                id = COALESCE(id, VALUES(id)),
+                user_id = COALESCE(VALUES(user_id), user_id),
                 vehicle_id = COALESCE(VALUES(vehicle_id), vehicle_id),
                 vehicle_reg = COALESCE(NULLIF(VALUES(vehicle_reg), ''), vehicle_reg),
                 vehicle_name = COALESCE(NULLIF(VALUES(vehicle_name), ''), vehicle_name),
@@ -94,8 +111,8 @@ try {
         );
 
         $stmt->execute([
-            $bookingId, $bookingNumber, $user['id'], $user['firebase_uid'], $userName ?: ($user['name'] ?: $user['email']),
-            $user['email'], $userPhone ?: ($user['phone'] ?: null), $vehicleId, $vehicleReg, $vehicleName, $vehicleCategory,
+            $nextId, $bookingId, $bookingNumber, $dbUserId, $user['firebase_uid'], $userName ?: ($user['name'] ?: $user['email']),
+            $user['email'], $userPhone ?: ($user['phone'] ?: null), $vehicleId, $vehicleReg ?: 'TBD', $vehicleName, $vehicleCategory,
             $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $baseAmount, $couponCode ?: null,
             $couponDiscount, $totalAmount, $totalAmount, $advanceAmount, $remainingBalance, $remainingBalance,
             $paymentPlan, $paymentStatus, $status, $status, $location, $securityDeposit,
@@ -125,14 +142,16 @@ try {
         // 3. If coupon applied, record coupon_usage
         if ($couponCode && $couponDiscount > 0) {
             $coupon = Database::fetchOne("SELECT id FROM coupons WHERE code = ? LIMIT 1", [$couponCode]);
-            if ($coupon) {
-                $pdo->prepare(
-                    "INSERT INTO coupon_usage (coupon_id, coupon_code, user_id, firebase_uid, booking_id, discount_applied)
-                     VALUES (?, ?, ?, ?, ?, ?)
-                     ON DUPLICATE KEY UPDATE discount_applied = VALUES(discount_applied)"
-                )->execute([$coupon['id'], $couponCode, $user['id'], $user['firebase_uid'], $bookingId, $couponDiscount]);
+            if ($coupon && !empty($coupon['id'])) {
+                try {
+                    $pdo->prepare(
+                        "INSERT INTO coupon_usage (coupon_id, coupon_code, user_id, firebase_uid, booking_id, discount_applied)
+                         VALUES (?, ?, ?, ?, ?, ?)
+                         ON DUPLICATE KEY UPDATE discount_applied = VALUES(discount_applied)"
+                    )->execute([(int)$coupon['id'], $couponCode, $dbUserId, $user['firebase_uid'], $bookingId, $couponDiscount]);
 
-                $pdo->prepare("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?")->execute([$coupon['id']]);
+                    $pdo->prepare("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?")->execute([(int)$coupon['id']]);
+                } catch (Throwable $_) {}
             }
         }
     });
