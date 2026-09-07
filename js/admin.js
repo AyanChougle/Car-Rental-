@@ -6957,53 +6957,42 @@ function attachHostCarEvents() {
       button.addEventListener(
         "click",
         async () => {
-          const id =
-            button.dataset.hid;
+          const id = button.dataset.hid;
+          if (!id) {
+            alert("Could not determine host car ID. Please refresh the page.");
+            return;
+          }
 
           try {
-            button.disabled =
-              true;
+            button.disabled = true;
+            button.textContent = "Approving...";
 
-            button.textContent =
-              "Approving...";
+            try {
+              await api.put(`/users/partner-cars/${encodeURIComponent(id)}/status`, {
+                id,
+                carId: id,
+                status: "approved"
+              });
+            } catch (err) {
+              await api.put(`/users/partner-cars`, {
+                id,
+                carId: id,
+                status: "approved"
+              });
+            }
 
-            await api.put(`/users/partner-cars/${id}/status`, {
-              status: "approved"
-            });
-
-            const car =
-              hostCarsData.find(
-                (item) =>
-                  item.id === id
-              );
-
+            const car = hostCarsData.find((item) => item.id === id || item.carId === id);
             if (car) {
-              car.status =
-                "approved";
+              car.status = "approved";
             }
 
             updateHostCount();
-
-            renderHostCarsTable(
-              hostCarsData
-            );
-
+            renderHostCarsTable(hostCarsData);
           } catch (error) {
-            console.error(
-              "HOST APPROVAL ERROR:",
-              error
-            );
-
-            button.disabled =
-              false;
-
-            button.textContent =
-              "Approve";
-
-            alert(
-              "Could not approve host car.\n\n" +
-              error.message
-            );
+            console.error("HOST APPROVAL ERROR:", error);
+            button.disabled = false;
+            button.textContent = "Approve";
+            alert("Could not approve host car.\n\n" + error.message);
           }
         }
       );
@@ -7011,68 +7000,51 @@ function attachHostCarEvents() {
 
   // REJECT
   hostCarsTableWrap
-    .querySelectorAll(
-      ".reject-host-btn"
-    )
+    .querySelectorAll(".reject-host-btn")
     .forEach((button) => {
-      button.addEventListener(
-        "click",
-        async () => {
-          const id =
-            button.dataset.hid;
+      button.addEventListener("click", async () => {
+        const id = button.dataset.hid;
+        if (!id) {
+          alert("Could not determine host car ID. Please refresh the page.");
+          return;
+        }
 
-          const reason =
-            prompt(
-              "Reason for rejecting this host car:"
-            );
+        const reason = prompt("Reason for rejecting this host car:");
+        if (reason === null) {
+          return;
+        }
 
-          if (
-            reason ===
-            null
-          ) {
-            return;
-          }
+        try {
+          button.disabled = true;
 
           try {
-            button.disabled =
-              true;
-
-            await api.put(`/users/partner-cars/${id}/status`, {
+            await api.put(`/users/partner-cars/${encodeURIComponent(id)}/status`, {
+              id,
+              carId: id,
               status: "rejected",
               rejectionReason: reason || "Listing rejected."
             });
-
-            const car =
-              hostCarsData.find(
-                (item) =>
-                  item.id === id
-              );
-
-            if (car) {
-              car.status =
-                "rejected";
-            }
-
-            updateHostCount();
-
-            renderHostCarsTable(
-              hostCarsData
-            );
-
-          } catch (error) {
-            console.error(
-              "HOST REJECTION ERROR:",
-              error
-            );
-
-            button.disabled =
-              false;
-
-            alert(
-              "Could not reject host car.\n\n" +
-              error.message
-            );
+          } catch (err) {
+            await api.put(`/users/partner-cars`, {
+              id,
+              carId: id,
+              status: "rejected",
+              rejectionReason: reason || "Listing rejected."
+            });
           }
+
+          const car = hostCarsData.find((item) => item.id === id || item.carId === id);
+          if (car) {
+            car.status = "rejected";
+          }
+
+          updateHostCount();
+          renderHostCarsTable(hostCarsData);
+        } catch (error) {
+          console.error("HOST REJECTION ERROR:", error);
+          button.disabled = false;
+          alert("Could not reject host car.\n\n" + error.message);
+        }
         }
       );
     });

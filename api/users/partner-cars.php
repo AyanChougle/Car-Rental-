@@ -15,6 +15,15 @@ $isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive'], true
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
+    // Auto-heal missing car_id in partner_cars
+    try {
+        $missing = Database::fetchAll("SELECT id FROM partner_cars WHERE car_id IS NULL OR car_id = ''");
+        foreach ($missing as $m) {
+            $genId = 'HC-' . strtoupper(bin2hex(random_bytes(4)));
+            Database::execute("UPDATE partner_cars SET car_id = ? WHERE id = ?", [$genId, $m['id']]);
+        }
+    } catch (Throwable $_) {}
+
     if ($isStaff) {
         $rows = Database::fetchAll("SELECT * FROM partner_cars ORDER BY created_at DESC");
     } else {
@@ -26,9 +35,10 @@ if ($method === 'GET') {
         if (!empty($c['photos'])) {
             $photos = is_string($c['photos']) ? json_decode($c['photos'], true) : $c['photos'];
         }
+        $identifier = !empty($c['car_id']) ? (string)$c['car_id'] : (!empty($c['id']) ? (string)$c['id'] : 'HC-' . ($c['reg_no'] ?? 'TEMP'));
         return [
-            'id' => $c['car_id'] ?: $c['id'],
-            'carId' => $c['car_id'] ?: $c['id'],
+            'id' => $identifier,
+            'carId' => $identifier,
             'dbId' => $c['id'],
             'userId' => $c['firebase_uid'],
             'firebaseUid' => $c['firebase_uid'],
@@ -132,6 +142,10 @@ if ($method === 'PUT') {
     $status = trim((string)($input['status'] ?? ''));
     $reason = trim((string)($input['rejectionReason'] ?? ''));
     $photos = isset($input['photos']) ? (is_array($input['photos']) ? json_encode($input['photos']) : $input['photos']) : null;
+
+    if (!$id) {
+        sendErrorResponse('Host car ID is required.', 400);
+    }
 
     Database::execute(
         "UPDATE partner_cars SET
