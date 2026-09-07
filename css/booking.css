@@ -765,6 +765,34 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
   }
 }
 
+@media (max-width: 480px) {
+  .booking-main {
+    padding: 12px 0 50px;
+  }
+
+  .booking-title {
+    font-size: 1.6rem;
+  }
+
+  .booking-card {
+    padding: 16px 12px;
+    border-radius: 14px;
+  }
+
+  .booking-specs {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .booking-total-row--payment {
+    padding: 12px 10px;
+  }
+
+  .booking-total-row--payment strong {
+    font-size: 1.3rem;
+  }
+}
+
 /* =========================================================
    GLOBAL WHITE CALENDAR & TIME PICKER ICONS
    ========================================================= */

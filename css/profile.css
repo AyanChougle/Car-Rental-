@@ -1017,3 +1017,33 @@ body header.site-header {
   border-color: #ef476f !important;
 }
 
+@media (max-width: 600px) {
+  .profile-page {
+    padding: 20px 0 60px;
+  }
+
+  .profile-container {
+    padding-inline: 12px;
+  }
+
+  .profile-page-title {
+    font-size: 1.75rem;
+  }
+
+  .profile-card {
+    padding: 18px 14px;
+    border-radius: 16px;
+  }
+
+  .prof-tab-btn {
+    padding: 0 14px;
+    height: 36px;
+    font-size: 12px;
+  }
+
+  .profile-tabs {
+    gap: 6px;
+    margin-bottom: 20px;
+  }
+}
+

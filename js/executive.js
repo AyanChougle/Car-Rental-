@@ -907,34 +907,43 @@ function openPaymentModal(payment) {
 
   let screenshotImg = "";
   if (payment.screenshotUrl) {
-    screenshotImg = `<img src="${escapeHtml(payment.screenshotUrl)}" alt="Payment Receipt" style="width: 100%; max-height: 380px; object-fit: contain; border-radius: 8px; background: #000; border: 1px solid rgba(255,255,255,0.1);" />`;
+    screenshotImg = `<img src="${escapeHtml(payment.screenshotUrl)}" alt="Payment Receipt" class="manager-modal-screenshot-img" />`;
   } else if (payment.screenshotMediaId) {
-    screenshotImg = `<img src="/api/media/file.php?id=${encodeURIComponent(payment.screenshotMediaId)}" alt="Payment Receipt" style="width: 100%; max-height: 380px; object-fit: contain; border-radius: 8px; background: #000; border: 1px solid rgba(255,255,255,0.1);" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:var(--sub);\\'>No image file found on server.</div>';" />`;
+    screenshotImg = `<img src="/api/media/file.php?id=${encodeURIComponent(payment.screenshotMediaId)}" alt="Payment Receipt" class="manager-modal-screenshot-img" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:var(--sub);\\'>No image file found on server.</div>';" />`;
   } else {
     screenshotImg = `<div style="padding: 20px; text-align: center; color: var(--sub); border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;">No screenshot receipt attached.</div>`;
   }
 
   if (body) {
     body.innerHTML = `
-      <div style="display: grid; gap: 10px; font-size: 13.5px;">
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
-          <span style="color: var(--sub);">Customer:</span>
-          <strong>${escapeHtml(payment.userName || "Customer")} (${escapeHtml(payment.userPhone || payment.userEmail || "—")})</strong>
+      <div class="manager-modal-details-list">
+        <div class="manager-modal-detail-row">
+          <span class="manager-modal-detail-label">Customer</span>
+          <div class="manager-modal-detail-val">
+            <strong class="manager-modal-name">${escapeHtml(payment.userName || "Customer")}</strong>
+            <span class="manager-modal-subval">${escapeHtml(payment.userPhone || payment.userEmail || "—")}</span>
+          </div>
         </div>
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
-          <span style="color: var(--sub);">Vehicle:</span>
-          <strong>${escapeHtml(payment.vehicleName || "Vehicle")}</strong>
+        <div class="manager-modal-detail-row">
+          <span class="manager-modal-detail-label">Vehicle</span>
+          <div class="manager-modal-detail-val">
+            <strong>${escapeHtml(payment.vehicleName || "Vehicle")}</strong>
+          </div>
         </div>
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
-          <span style="color: var(--sub);">Amount:</span>
-          <strong style="color: #06d6a0; font-size: 16px;">${formatMoney(payment.amount)}</strong>
+        <div class="manager-modal-detail-row">
+          <span class="manager-modal-detail-label">Amount</span>
+          <div class="manager-modal-detail-val">
+            <strong class="price-highlight">${formatMoney(payment.amount)}</strong>
+          </div>
         </div>
-        <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.06); padding-bottom: 6px;">
-          <span style="color: var(--sub);">UTR / Transaction Reference:</span>
-          <strong style="font-family: monospace; color: var(--accent);">${escapeHtml(payment.utr || payment.paymentRef || "Not provided")}</strong>
+        <div class="manager-modal-detail-row">
+          <span class="manager-modal-detail-label">UTR / Ref</span>
+          <div class="manager-modal-detail-val">
+            <strong class="mono-highlight">${escapeHtml(payment.utr || payment.paymentRef || "Not provided")}</strong>
+          </div>
         </div>
-        <div style="margin-top: 10px;">
-          <span style="display: block; font-weight: 700; color: var(--sub); margin-bottom: 6px; font-size: 12px; text-transform: uppercase;">Payment Screenshot</span>
+        <div class="manager-modal-screenshot-section">
+          <span class="manager-modal-section-title">Payment Screenshot</span>
           ${screenshotImg}
         </div>
       </div>

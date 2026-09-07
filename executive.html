@@ -342,16 +342,16 @@
 
     <!-- MODAL 3: PAYMENT VERIFICATION REVIEW -->
     <div id="managerPaymentModal" class="manager-modal" hidden>
-      <div class="card manager-modal-card" style="max-width: 580px;">
+      <div class="card manager-modal-card">
         <button id="closeManagerPaymentModal" class="manager-modal-close" type="button" aria-label="Close">&times;</button>
         <h3 id="managerPaymentModalTitle" class="manager-modal-title">Payment Verification</h3>
         <p class="manager-modal-subtitle">Review payment details and attached transaction receipt.</p>
-        <div id="managerPaymentModalBody" style="margin: 14px 0;"></div>
-        <div class="manager-modal-actions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 16px;">
-          <button id="managerRejectPaymentBtn" class="btn btn-outline" style="border-color: #ef476f; color: #ef476f;" type="button">
+        <div id="managerPaymentModalBody"></div>
+        <div class="manager-modal-actions">
+          <button id="managerRejectPaymentBtn" class="btn btn-outline manager-btn-reject" type="button">
             Reject Payment
           </button>
-          <button id="managerApprovePaymentBtn" class="btn btn-dark" style="background: #06d6a0; color: #000; font-weight: 700;" type="button">
+          <button id="managerApprovePaymentBtn" class="btn btn-dark manager-btn-approve" type="button">
             Approve &amp; Confirm Booking
           </button>
         </div>
@@ -360,45 +360,45 @@
 
     <!-- MODAL 4: CUSTOMER KYC DOCUMENT REVIEW -->
     <div id="executiveDocModal" class="manager-modal" hidden>
-      <div class="card manager-modal-card" style="max-width: 680px;">
+      <div class="card manager-modal-card">
         <button id="closeExecutiveDocModal" class="manager-modal-close" type="button" aria-label="Close">&times;</button>
         <h3 id="executiveDocModalTitle" class="manager-modal-title">KYC Document Verification</h3>
         <p id="executiveDocModalSubtitle" class="manager-modal-subtitle">Review submitted identification documents.</p>
 
         <!-- Document Selector Tabs -->
-        <div style="display: flex; gap: 8px; margin: 12px 0 16px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 8px;">
+        <div class="doc-tabs-wrapper">
           <button type="button" class="btn btn-dark btn-sm doc-tab-btn active" data-doc="license">Driving License</button>
           <button type="button" class="btn btn-outline btn-sm doc-tab-btn" data-doc="aadhar">Aadhaar Card</button>
           <button type="button" class="btn btn-outline btn-sm doc-tab-btn" data-doc="pan">PAN Card</button>
         </div>
 
-        <div id="executiveDocModalBody" style="display: grid; gap: 14px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+        <div id="executiveDocModalBody">
+          <div class="exec-doc-preview-grid">
             <div>
-              <span style="font-size: 12px; font-weight: 700; color: var(--sub); text-transform: uppercase;">Front Side</span>
-              <div id="execDocFrontPreview" style="margin-top: 6px; border-radius: 8px; background: #000; min-height: 180px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,0.1); overflow: hidden;">
+              <span class="exec-doc-side-title">Front Side</span>
+              <div id="execDocFrontPreview" class="exec-doc-preview-box">
                 <span style="color: var(--sub); font-size: 13px;">No front image</span>
               </div>
             </div>
             <div>
-              <span style="font-size: 12px; font-weight: 700; color: var(--sub); text-transform: uppercase;">Back Side</span>
-              <div id="execDocBackPreview" style="margin-top: 6px; border-radius: 8px; background: #000; min-height: 180px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,0.1); overflow: hidden;">
+              <span class="exec-doc-side-title">Back Side</span>
+              <div id="execDocBackPreview" class="exec-doc-preview-box">
                 <span style="color: var(--sub); font-size: 13px;">No back image</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="manager-modal-actions" style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;">
-          <button id="execRejectDocBtn" class="btn btn-outline" style="border-color: #ef476f; color: #ef476f;" type="button">Reject Document</button>
-          <button id="execApproveDocBtn" class="btn btn-dark" style="background: #06d6a0; color: #000; font-weight: 700;" type="button">Verify &amp; Approve</button>
+        <div class="manager-modal-actions">
+          <button id="execRejectDocBtn" class="btn btn-outline manager-btn-reject" type="button">Reject Document</button>
+          <button id="execApproveDocBtn" class="btn btn-dark manager-btn-approve" type="button">Verify &amp; Approve</button>
         </div>
       </div>
     </div>
 
     <!-- MODAL 5: BOOKING DETAILS -->
     <div id="executiveBookingDetailModal" class="manager-modal" hidden>
-      <div class="card manager-modal-card" style="max-width: 620px;">
+      <div class="card manager-modal-card">
         <button id="closeExecutiveBookingDetailModal" class="manager-modal-close" type="button" aria-label="Close">&times;</button>
         <h3 id="execBookingDetailTitle" class="manager-modal-title">Booking Details</h3>
         <div id="execBookingDetailBody" style="margin: 14px 0; max-height: 70vh; overflow-y: auto;"></div>

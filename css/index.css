@@ -481,6 +481,32 @@ input[name="auth-tab"] {
   }
 }
 
+@media (max-width: 480px) {
+  .hero {
+    padding: 20px 0 36px;
+  }
+
+  .auth-card {
+    padding: 18px 14px;
+    border-radius: 16px;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
+  }
+
+  .cta-box {
+    padding: 28px 14px;
+    border-radius: 16px;
+  }
+}
+
 /* =========================================================
    GLOBAL WHITE CALENDAR & TIME PICKER ICONS
    ========================================================= */

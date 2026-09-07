@@ -736,6 +736,15 @@
     padding: 12px 0 60px;
   }
 
+  .checkout-hero,
+  .checkout-container {
+    padding-inline: 14px;
+  }
+
+  .checkout-title {
+    font-size: 1.5rem;
+  }
+
   .payment-tabs,
   .upi-apps {
     grid-template-columns: 1fr;
@@ -747,5 +756,22 @@
 
   .checkout-card {
     padding: 16px 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .checkout-hero,
+  .checkout-container {
+    padding-inline: 10px;
+  }
+
+  .checkout-card {
+    padding: 14px 10px;
+    border-radius: 14px;
+  }
+
+  .qr-frame {
+    width: 170px !important;
+    height: 170px !important;
   }
 }
