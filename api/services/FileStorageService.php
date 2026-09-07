@@ -90,7 +90,7 @@ class FileStorageService {
 
         // Get user ID
         $user = Database::fetchOne("SELECT id FROM users WHERE firebase_uid = ? LIMIT 1", [$firebaseUid]);
-        $userId = $user['id'] ?? null;
+        $userId = (!empty($user['id']) && (int)$user['id'] > 0) ? (int)$user['id'] : null;
 
         // Auto-calculate next ID so insert never fails with duplicate key 0
         $maxRow = Database::fetchOne("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM media");

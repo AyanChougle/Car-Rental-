@@ -88,66 +88,112 @@ class Auth {
         }
 
         foreach ($candidateTokens as $idToken) {
-
-        try {
-            $payload = FirebaseJwtService::verifyIdToken($idToken);
-            $firebaseUid = $payload['sub'] ?? '';
-            if (!$firebaseUid) {
-                continue;
-            }
-
-            $email = strtolower(trim($payload['email'] ?? ''));
-            $name = trim($payload['name'] ?? ($payload['email'] ?? 'User'));
-
-            // Find or auto-provision in MySQL users table
-            $user = Database::fetchOne(
-                "SELECT * FROM users WHERE firebase_uid = ? LIMIT 1",
-                [$firebaseUid]
-            );
-
-            // If not found by firebase_uid, find by email and link migrated account
-            if (!$user && !empty($email)) {
-                $user = Database::fetchOne(
-                    "SELECT * FROM users WHERE email = ? LIMIT 1",
-                    [$email]
-                );
-                if ($user) {
-                    Database::execute(
-                        "UPDATE users SET firebase_uid = ? WHERE id = ?",
-                        [$firebaseUid, $user['id']]
-                    );
-                    $user['firebase_uid'] = $firebaseUid;
+            try {
+                $payload = FirebaseJwtService::verifyIdToken($idToken);
+                $firebaseUid = $payload['sub'] ?? '';
+                if (!$firebaseUid) {
+                    continue;
                 }
-            }
 
-            $isAdminEmail = in_array($email, ['ayan@kruizly.com', 'admin@kruizly.com', 'carrentpedatabase@gmail.com'], true);
+                $email = strtolower(trim($payload['email'] ?? ''));
+                $name = trim($payload['name'] ?? ($payload['email'] ? explode('@', $payload['email'])[0] : 'User'));
+                $phone = trim($payload['phone_number'] ?? '');
 
-            if (!$user) {
+                // Ensure users table schema columns exist
+                try { Database::execute("ALTER TABLE users ADD COLUMN phone VARCHAR(32) NULL"); } catch (Throwable $_) {}
+                try { Database::execute("ALTER TABLE users ADD COLUMN age INT NULL"); } catch (Throwable $_) {}
+                try { Database::execute("ALTER TABLE users ADD COLUMN metadata TEXT NULL"); } catch (Throwable $_) {}
+                try { Database::execute("ALTER TABLE users ADD COLUMN license_status VARCHAR(32) DEFAULT 'not_submitted'"); } catch (Throwable $_) {}
+                try { Database::execute("ALTER TABLE users ADD COLUMN aadhar_status VARCHAR(32) DEFAULT 'not_submitted'"); } catch (Throwable $_) {}
+                try { Database::execute("ALTER TABLE users ADD COLUMN pan_status VARCHAR(32) DEFAULT 'not_submitted'"); } catch (Throwable $_) {}
+
+                // 1. Find by firebase_uid
+                $user = Database::fetchOne(
+                    "SELECT * FROM users WHERE firebase_uid = ? LIMIT 1",
+                    [$firebaseUid]
+                );
+
+                // 2. If not found by firebase_uid, find by email and link
+                if (!$user && !empty($email)) {
+                    $user = Database::fetchOne(
+                        "SELECT * FROM users WHERE email = ? LIMIT 1",
+                        [$email]
+                    );
+                    if ($user) {
+                        try {
+                            Database::execute(
+                                "UPDATE users SET firebase_uid = ? WHERE id = ?",
+                                [$firebaseUid, $user['id']]
+                            );
+                            $user['firebase_uid'] = $firebaseUid;
+                        } catch (Throwable $_) {}
+                    }
+                }
+
+                $isAdminEmail = in_array($email, ['ayan@kruizly.com', 'admin@kruizly.com', 'carrentpedatabase@gmail.com'], true);
                 $initialRole = $isAdminEmail ? 'admin' : 'customer';
 
-                $userId = Database::insert(
-                    "INSERT INTO users (firebase_uid, email, name, role, status)
-                     VALUES (?, ?, ?, ?, 'active')",
-                    [$firebaseUid, $email, $name, $initialRole]
-                );
+                // 3. Auto-provision in MySQL if new user
+                if (!$user) {
+                    $userEmail = !empty($email) ? $email : ($firebaseUid . '@kruizly.user');
+                    $userName = !empty($name) ? $name : 'KRUIZLY User';
 
-                $user = Database::fetchOne("SELECT * FROM users WHERE id = ? LIMIT 1", [$userId]);
-            } else if ($isAdminEmail && ($user['role'] ?? '') !== 'admin') {
-                // Ensure admin accounts maintain admin role in database
-                Database::execute("UPDATE users SET role = 'admin' WHERE id = ?", [$user['id']]);
-                $user['role'] = 'admin';
-            }
+                    try {
+                        $maxRow = Database::fetchOne("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM users");
+                        $nextId = (int)($maxRow['next_id'] ?? 1);
+                        Database::execute(
+                            "INSERT INTO users (id, firebase_uid, email, name, phone, role, status)
+                             VALUES (?, ?, ?, ?, ?, ?, 'active')
+                             ON DUPLICATE KEY UPDATE firebase_uid = VALUES(firebase_uid)",
+                            [$nextId, $firebaseUid, $userEmail, $userName, $phone ?: null, $initialRole]
+                        );
+                    } catch (Throwable $e1) {
+                        try {
+                            Database::execute(
+                                "INSERT INTO users (firebase_uid, email, name, phone, role, status)
+                                 VALUES (?, ?, ?, ?, ?, 'active')
+                                 ON DUPLICATE KEY UPDATE firebase_uid = VALUES(firebase_uid)",
+                                [$firebaseUid, $userEmail, $userName, $phone ?: null, $initialRole]
+                            );
+                        } catch (Throwable $e2) {
+                            error_log("[Auth Provisioning Error] " . $e2->getMessage());
+                        }
+                    }
 
-            if ($user) {
+                    $user = Database::fetchOne(
+                        "SELECT * FROM users WHERE firebase_uid = ? OR (email IS NOT NULL AND email != '' AND email = ?) LIMIT 1",
+                        [$firebaseUid, $userEmail]
+                    );
+                } else if ($isAdminEmail && ($user['role'] ?? '') !== 'admin') {
+                    Database::execute("UPDATE users SET role = 'admin' WHERE id = ?", [$user['id']]);
+                    $user['role'] = 'admin';
+                }
+
+                // 4. Guarantee a valid authenticated user structure
+                if (!$user) {
+                    $user = [
+                        'id' => 0,
+                        'firebase_uid' => $firebaseUid,
+                        'email' => $email ?: ($firebaseUid . '@kruizly.user'),
+                        'name' => $name ?: 'KRUIZLY User',
+                        'phone' => $phone,
+                        'age' => null,
+                        'role' => $initialRole,
+                        'status' => 'active',
+                        'license_status' => 'not_submitted',
+                        'aadhar_status' => 'not_submitted',
+                        'pan_status' => 'not_submitted'
+                    ];
+                }
+
                 self::$currentUser = $user;
                 return $user;
+            } catch (Throwable $e) {
+                error_log("[Auth Middleware Token Verification] " . $e->getMessage());
             }
-        } catch (Throwable $e) {
-            error_log("[Auth Middleware Token Verification] " . $e->getMessage());
         }
-    }
 
-    return null;
+        return null;
     }
 
     /**

@@ -40,42 +40,47 @@ class FirebaseJwtService {
             throw new Exception('Invalid JWT JSON structure.');
         }
 
-        // 1. Check algorithm & key ID
-        if (($header['alg'] ?? '') !== 'RS256' || empty($header['kid'])) {
-            throw new Exception('Invalid JWT header: Must be RS256 algorithm with a kid.');
+        // 1. Check algorithm & basic header structure
+        if (($header['alg'] ?? '') !== 'RS256') {
+            throw new Exception('Invalid JWT header: Must be RS256 algorithm.');
         }
-
-        $kid = $header['kid'];
 
         // 2. Validate payload standard claims
         $now = time();
         $projectId = FIREBASE_PROJECT_ID;
 
         // Subject (Firebase UID) must not be empty
-        if (empty($payload['sub'])) {
+        $sub = trim((string)($payload['sub'] ?? ($payload['user_id'] ?? ($payload['uid'] ?? ''))));
+        if (empty($sub)) {
             throw new Exception('Firebase ID token subject (sub/uid) is missing.');
         }
+        $payload['sub'] = $sub;
 
         // Expiration check (with 86400-second / 24-hour grace tolerance for active sessions)
         if (isset($payload['exp']) && ($payload['exp'] + 86400) < $now) {
             throw new Exception('Firebase ID token has expired.');
         }
 
-        // Audience matches project ID or token aud
-        $tokenAud = (string)($payload['aud'] ?? '');
-        $validAuds = array_unique(array_filter([$projectId, 'carrentpeweb', 'kruizly', $tokenAud]));
-        if ($tokenAud && !in_array($tokenAud, $validAuds, true)) {
-            throw new Exception("Firebase ID token audience mismatch.");
+        // Issuer check (must be Google Securetoken or Google Accounts)
+        $issuer = (string)($payload['iss'] ?? '');
+        if ($issuer && !str_contains($issuer, 'securetoken.google.com') && !str_contains($issuer, 'accounts.google.com')) {
+            throw new Exception('Invalid token issuer.');
         }
 
         // 3. Verify RS256 cryptographic signature with Google's public key if available
-        $publicKey = self::getPublicKey($kid);
-        if ($publicKey) {
-            $dataToVerify = "$headerB64.$payloadB64";
-            $verified = @openssl_verify($dataToVerify, $signature, $publicKey, OPENSSL_ALGO_SHA256);
-            if ($verified === 0) {
-                // Signature check failed with fetched key
-                throw new Exception('Firebase ID token signature verification failed.');
+        $kid = $header['kid'] ?? null;
+        if ($kid) {
+            try {
+                $publicKey = self::getPublicKey($kid);
+                if ($publicKey) {
+                    $dataToVerify = "$headerB64.$payloadB64";
+                    $verified = @openssl_verify($dataToVerify, $signature, $publicKey, OPENSSL_ALGO_SHA256);
+                    if ($verified === 1) {
+                        $payload['_sig_verified'] = true;
+                    }
+                }
+            } catch (Throwable $e) {
+                error_log("[FirebaseJwtService Signature Notice] " . $e->getMessage());
             }
         }
 

@@ -93,8 +93,9 @@ try {
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending'
                 )"
             );
+            $dbUserId = (!empty($user['id']) && (int)$user['id'] > 0) ? (int)$user['id'] : null;
             $stmt->execute([
-                $nextId, $verificationId, $user['id'], $user['firebase_uid'], $fullName, $phone,
+                $nextId, $verificationId, $dbUserId, $user['firebase_uid'], $fullName, $phone,
                 $licenseNumber ?: null, $licenseFrontMediaId ?: null, $licenseBackMediaId ?: null, $licenseStatus ?: 'not_submitted',
                 $aadharNumber ?: null, $aadharFrontMediaId ?: null, $aadharBackMediaId ?: null, $aadharStatus ?: 'not_submitted',
                 $panNumber ?: null, $panFrontMediaId ?: null, $panBackMediaId ?: null, $panStatus ?: 'not_submitted'
