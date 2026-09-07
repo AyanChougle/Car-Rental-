@@ -11,17 +11,78 @@ require_once __DIR__ . '/../middleware/auth.php';
 $user = Auth::requireAuth();
 
 $uid = trim((string)($user['firebase_uid'] ?? ''));
-$email = trim((string)($user['email'] ?? ''));
+$email = strtolower(trim((string)($user['email'] ?? '')));
+$name = trim((string)($user['name'] ?? ''));
+$phone = trim((string)($user['phone'] ?? ''));
+$cleanPhone = preg_replace('/\D/', '', $phone);
+if (strlen($cleanPhone) === 12 && str_starts_with($cleanPhone, '91')) {
+    $cleanPhone = substr($cleanPhone, 2);
+}
 $dbId = (int)($user['id'] ?? 0);
 
-$rows = Database::fetchAll(
-    "SELECT * FROM bookings 
-     WHERE (firebase_uid IS NOT NULL AND firebase_uid != '' AND firebase_uid = ?) 
-        OR (user_email IS NOT NULL AND user_email != '' AND user_email = ?) 
-        OR (user_id IS NOT NULL AND user_id > 0 AND user_id = ?) 
-     ORDER BY created_at DESC",
-    [$uid, $email, $dbId]
-);
+// Link any unlinked bookings that match user's email or phone to this user's firebase_uid
+if ($uid) {
+    if (!empty($email) && !empty($cleanPhone)) {
+        try {
+            Database::execute(
+                "UPDATE bookings SET firebase_uid = ?, user_id = COALESCE(NULLIF(user_id, 0), ?) 
+                 WHERE (firebase_uid IS NULL OR firebase_uid = '' OR firebase_uid != ?) 
+                   AND (user_email = ? OR user_phone = ? OR REPLACE(REPLACE(user_phone, '+91', ''), ' ', '') = ?)",
+                [$uid, $dbId ?: null, $uid, $email, $phone, $cleanPhone]
+            );
+        } catch (Throwable $_) {}
+    } elseif (!empty($email)) {
+        try {
+            Database::execute(
+                "UPDATE bookings SET firebase_uid = ?, user_id = COALESCE(NULLIF(user_id, 0), ?) 
+                 WHERE (firebase_uid IS NULL OR firebase_uid = '' OR firebase_uid != ?) 
+                   AND user_email = ?",
+                [$uid, $dbId ?: null, $uid, $email]
+            );
+        } catch (Throwable $_) {}
+    } elseif (!empty($cleanPhone)) {
+        try {
+            Database::execute(
+                "UPDATE bookings SET firebase_uid = ?, user_id = COALESCE(NULLIF(user_id, 0), ?) 
+                 WHERE (firebase_uid IS NULL OR firebase_uid = '' OR firebase_uid != ?) 
+                   AND (user_phone = ? OR REPLACE(REPLACE(user_phone, '+91', ''), ' ', '') = ?)",
+                [$uid, $dbId ?: null, $uid, $phone, $cleanPhone]
+            );
+        } catch (Throwable $_) {}
+    }
+
+    try {
+        Database::execute(
+            "UPDATE payments p 
+             JOIN bookings b ON (p.booking_id = b.booking_id OR p.booking_id = b.booking_number)
+             SET p.firebase_uid = ?
+             WHERE b.firebase_uid = ? AND (p.firebase_uid IS NULL OR p.firebase_uid = '' OR p.firebase_uid != ?)",
+            [$uid, $uid, $uid]
+        );
+    } catch (Throwable $_) {}
+}
+
+$whereClauses = ["(firebase_uid IS NOT NULL AND firebase_uid != '' AND firebase_uid = ?)"];
+$params = [$uid];
+
+if (!empty($email)) {
+    $whereClauses[] = "(user_email IS NOT NULL AND user_email != '' AND LOWER(user_email) = ?)";
+    $params[] = $email;
+}
+
+if ($dbId > 0) {
+    $whereClauses[] = "(user_id IS NOT NULL AND user_id > 0 AND user_id = ?)";
+    $params[] = $dbId;
+}
+
+if (!empty($cleanPhone)) {
+    $whereClauses[] = "(user_phone IS NOT NULL AND user_phone != '' AND (user_phone = ? OR REPLACE(REPLACE(user_phone, '+91', ''), ' ', '') = ?))";
+    $params[] = $phone;
+    $params[] = $cleanPhone;
+}
+
+$sql = "SELECT * FROM bookings WHERE " . implode(" OR ", $whereClauses) . " ORDER BY created_at DESC";
+$rows = Database::fetchAll($sql, $params);
 
 $bookings = array_map(function($b) {
     $status = $b['status'];
