@@ -19,14 +19,18 @@ if ($method === 'GET') {
     $rows = Database::fetchAll($sql);
 
     $coupons = array_map(function($c) {
+        $normType = ($c['discount_type'] === 'percentage' || $c['discount_type'] === 'percent') ? 'percent' : 'flat';
         return [
             'id' => $c['id'],
             'code' => $c['code'],
-            'discountType' => $c['discount_type'],
+            'type' => $normType,
+            'discountType' => $normType,
+            'discount_type' => $normType,
             'discountValue' => (float)$c['discount_value'],
+            'val' => (float)$c['discount_value'],
             'minOrder' => (float)$c['min_order'],
             'maxDiscount' => $c['max_discount'] ? (float)$c['max_discount'] : null,
-            'label' => $c['label'] ?: ($c['discount_type'] === 'percentage' ? "{$c['discount_value']}% Off" : "₹{$c['discount_value']} Flat Off"),
+            'label' => $c['label'] ?: ($normType === 'percent' ? "{$c['discount_value']}% Off" : "₹{$c['discount_value']} Flat Off"),
             'description' => $c['description'] ?: "Enjoy discount on your booking",
             'active' => (bool)$c['active'],
             'status' => $c['status'],
@@ -44,13 +48,15 @@ if ($method === 'POST') {
     $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 
     $code = strtoupper(trim((string)($input['code'] ?? '')));
-    $discountType = strtolower(trim((string)($input['discountType'] ?? 'flat')));
-    $discountValue = (float)($input['discountValue'] ?? 0.00);
-    $minOrder = (float)($input['minOrder'] ?? 0.00);
+    $rawType = strtolower(trim((string)($input['discountType'] ?? $input['type'] ?? 'flat')));
+    $discountType = ($rawType === 'percent' || $rawType === 'percentage') ? 'percentage' : 'flat';
+    $discountValue = (float)($input['discountValue'] ?? $input['val'] ?? 0.00);
+    $minOrder = (float)($input['minOrder'] ?? $input['minimumBookingAmount'] ?? 0.00);
     $maxDiscount = isset($input['maxDiscount']) ? (float)$input['maxDiscount'] : null;
     $label = trim((string)($input['label'] ?? ''));
     $description = trim((string)($input['description'] ?? ''));
     $active = isset($input['active']) ? (int)(bool)$input['active'] : 1;
+    $status = trim((string)($input['status'] ?? ($active ? 'active' : 'inactive')));
 
     if (!$code || $discountValue <= 0) {
         sendErrorResponse('Coupon code and valid discount value are required.', 400);
@@ -58,7 +64,7 @@ if ($method === 'POST') {
 
     Database::execute(
         "INSERT INTO coupons (code, discount_type, discount_value, min_order, max_discount, label, description, active, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON DUPLICATE KEY UPDATE
             discount_type = VALUES(discount_type),
             discount_value = VALUES(discount_value),
@@ -67,8 +73,8 @@ if ($method === 'POST') {
             label = VALUES(label),
             description = VALUES(description),
             active = VALUES(active),
-            status = 'active'",
-        [$code, $discountType, $discountValue, $minOrder, $maxDiscount, $label, $description, $active]
+            status = VALUES(status)",
+        [$code, $discountType, $discountValue, $minOrder, $maxDiscount, $label, $description, $active, $status]
     );
 
     sendJsonResponse(['success' => true, 'message' => "Coupon $code saved successfully."]);
