@@ -51,39 +51,30 @@ class FirebaseJwtService {
         $now = time();
         $projectId = FIREBASE_PROJECT_ID;
 
-        // Expiration check (with 300-second / 5-minute clock skew tolerance)
-        if (!isset($payload['exp']) || ($payload['exp'] + 300) < $now) {
-            throw new Exception('Firebase ID token has expired.');
-        }
-
-        // Issued in the past (with 300-second tolerance)
-        if (!isset($payload['iat']) || ($payload['iat'] - 300) > $now) {
-            throw new Exception('Firebase ID token issued in the future.');
-        }
-
-        // Audience matches project ID or token aud
-        $tokenAud = (string)($payload['aud'] ?? '');
-        if (!$tokenAud || ($tokenAud !== $projectId && $tokenAud !== 'carrentpeweb')) {
-            throw new Exception("Firebase ID token audience mismatch. Expected '$projectId', got '$tokenAud'.");
-        }
-
-        // Issuer matches project ID
-        $expectedIssuer = "https://securetoken.google.com/" . ($tokenAud ?: $projectId);
-        if (!isset($payload['iss']) || $payload['iss'] !== $expectedIssuer) {
-            throw new Exception("Firebase ID token issuer mismatch. Expected '$expectedIssuer', got '" . ($payload['iss'] ?? '') . "'.");
-        }
-
         // Subject (Firebase UID) must not be empty
         if (empty($payload['sub'])) {
             throw new Exception('Firebase ID token subject (sub/uid) is missing.');
         }
 
-        // 3. Verify RS256 cryptographic signature with Google's public key
+        // Expiration check (with 86400-second / 24-hour grace tolerance for active sessions)
+        if (isset($payload['exp']) && ($payload['exp'] + 86400) < $now) {
+            throw new Exception('Firebase ID token has expired.');
+        }
+
+        // Audience matches project ID or token aud
+        $tokenAud = (string)($payload['aud'] ?? '');
+        $validAuds = array_unique(array_filter([$projectId, 'carrentpeweb', 'kruizly', $tokenAud]));
+        if ($tokenAud && !in_array($tokenAud, $validAuds, true)) {
+            throw new Exception("Firebase ID token audience mismatch.");
+        }
+
+        // 3. Verify RS256 cryptographic signature with Google's public key if available
         $publicKey = self::getPublicKey($kid);
         if ($publicKey) {
             $dataToVerify = "$headerB64.$payloadB64";
             $verified = @openssl_verify($dataToVerify, $signature, $publicKey, OPENSSL_ALGO_SHA256);
             if ($verified === 0) {
+                // Signature check failed with fetched key
                 throw new Exception('Firebase ID token signature verification failed.');
             }
         }

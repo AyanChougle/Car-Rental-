@@ -130,26 +130,31 @@ export function resolveEndpoint(endpoint, params = {}) {
   return { path: `/${clean}/index.php`, params: queryParams };
 }
 
-async function getAuthHeader() {
+async function getAuthToken(forceRefresh = false) {
   let token = "";
-  if (auth.currentUser) {
+  if (auth?.currentUser) {
     try {
-      token = await auth.currentUser.getIdToken();
+      token = await auth.currentUser.getIdToken(forceRefresh);
     } catch (err) {
       console.warn("Could not get Firebase ID token:", err);
     }
   }
 
   if (!token) {
-    // If currentUser is not yet loaded, wait up to 800ms for Firebase Auth hydration
+    // Check if token was saved locally
+    token = localStorage.getItem("kruizly_token") || sessionStorage.getItem("kruizly_token") || "";
+  }
+
+  if (!token && auth) {
+    // Wait up to 1000ms for Firebase Auth hydration
     token = await new Promise((resolve) => {
-      const timeout = setTimeout(() => resolve(""), 800);
+      const timeout = setTimeout(() => resolve(""), 1000);
       const unsubscribe = auth.onAuthStateChanged(async (user) => {
         clearTimeout(timeout);
         unsubscribe();
         if (user) {
           try {
-            const t = await user.getIdToken();
+            const t = await user.getIdToken(forceRefresh);
             resolve(t || "");
           } catch {
             resolve("");
@@ -161,32 +166,42 @@ async function getAuthHeader() {
     });
   }
 
-  if (token) {
-    return {
-      Authorization: `Bearer ${token}`,
-      "X-Authorization": `Bearer ${token}`,
-      "X-Firebase-Token": token
-    };
-  }
-
-  return {};
+  return token || "";
 }
 
-function buildUrl(resolved) {
+async function getAuthHeader(forceRefresh = false) {
+  const token = await getAuthToken(forceRefresh);
+  if (token) {
+    return {
+      token,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Authorization": `Bearer ${token}`,
+        "X-Firebase-Token": token
+      }
+    };
+  }
+  return { token: "", headers: {} };
+}
+
+function buildUrl(resolved, token = "") {
   const url = new URL(`${API_BASE_URL}${resolved.path}`, window.location.origin);
   Object.entries(resolved.params).forEach(([key, val]) => {
     if (val !== undefined && val !== null && val !== "") {
       url.searchParams.append(key, val);
     }
   });
+  if (token && !url.searchParams.has("token")) {
+    url.searchParams.append("token", token);
+  }
   return url.toString();
 }
 
 export const api = {
-  async get(endpoint, params = {}) {
-    const authHeaders = await getAuthHeader();
+  async get(endpoint, params = {}, retry = true) {
+    const { token, headers: authHeaders } = await getAuthHeader();
     const resolved = resolveEndpoint(endpoint, params);
-    const url = buildUrl(resolved);
+    const url = buildUrl(resolved, token);
 
     const response = await fetch(url, {
       method: "GET",
@@ -196,6 +211,22 @@ export const api = {
       }
     });
 
+    if (response.status === 401 && retry && auth?.currentUser) {
+      const { token: freshToken, headers: freshHeaders } = await getAuthHeader(true);
+      if (freshToken) {
+        const retryUrl = buildUrl(resolveEndpoint(endpoint, params), freshToken);
+        const retryRes = await fetch(retryUrl, {
+          method: "GET",
+          headers: { Accept: "application/json", ...freshHeaders }
+        });
+        const retryData = await retryRes.json().catch(() => ({}));
+        if (!retryRes.ok) {
+          throw new Error(retryData.error || retryData.message || `Request failed with status ${retryRes.status}`);
+        }
+        return retryData;
+      }
+    }
+
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
@@ -203,10 +234,16 @@ export const api = {
     return data;
   },
 
-  async post(endpoint, body = {}, params = {}) {
-    const authHeaders = await getAuthHeader();
+  async post(endpoint, body = {}, params = {}, retry = true) {
+    const { token, headers: authHeaders } = await getAuthHeader();
     const resolved = resolveEndpoint(endpoint, params);
-    const url = buildUrl(resolved);
+    const url = buildUrl(resolved, token);
+
+    const payload = typeof body === "object" && body !== null ? { ...body } : body;
+    if (token && typeof payload === "object" && !payload.idToken && !payload.token) {
+      payload.idToken = token;
+      payload.token = token;
+    }
 
     const response = await fetch(url, {
       method: "POST",
@@ -215,8 +252,29 @@ export const api = {
         Accept: "application/json",
         ...authHeaders
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(payload)
     });
+
+    if (response.status === 401 && retry && auth?.currentUser) {
+      const { token: freshToken, headers: freshHeaders } = await getAuthHeader(true);
+      if (freshToken) {
+        const retryUrl = buildUrl(resolveEndpoint(endpoint, params), freshToken);
+        if (typeof payload === "object") {
+          payload.idToken = freshToken;
+          payload.token = freshToken;
+        }
+        const retryRes = await fetch(retryUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json", ...freshHeaders },
+          body: JSON.stringify(payload)
+        });
+        const retryData = await retryRes.json().catch(() => ({}));
+        if (!retryRes.ok) {
+          throw new Error(retryData.error || retryData.message || `Request failed with status ${retryRes.status}`);
+        }
+        return retryData;
+      }
+    }
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -225,10 +283,16 @@ export const api = {
     return data;
   },
 
-  async put(endpoint, body = {}, params = {}) {
-    const authHeaders = await getAuthHeader();
+  async put(endpoint, body = {}, params = {}, retry = true) {
+    const { token, headers: authHeaders } = await getAuthHeader();
     const resolved = resolveEndpoint(endpoint, params);
-    const url = buildUrl(resolved);
+    const url = buildUrl(resolved, token);
+
+    const payload = typeof body === "object" && body !== null ? { ...body } : body;
+    if (token && typeof payload === "object" && !payload.idToken && !payload.token) {
+      payload.idToken = token;
+      payload.token = token;
+    }
 
     const response = await fetch(url, {
       method: "PUT",
@@ -237,8 +301,29 @@ export const api = {
         Accept: "application/json",
         ...authHeaders
       },
-      body: JSON.stringify(body)
+      body: JSON.stringify(payload)
     });
+
+    if (response.status === 401 && retry && auth?.currentUser) {
+      const { token: freshToken, headers: freshHeaders } = await getAuthHeader(true);
+      if (freshToken) {
+        const retryUrl = buildUrl(resolveEndpoint(endpoint, params), freshToken);
+        if (typeof payload === "object") {
+          payload.idToken = freshToken;
+          payload.token = freshToken;
+        }
+        const retryRes = await fetch(retryUrl, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", Accept: "application/json", ...freshHeaders },
+          body: JSON.stringify(payload)
+        });
+        const retryData = await retryRes.json().catch(() => ({}));
+        if (!retryRes.ok) {
+          throw new Error(retryData.error || retryData.message || `Request failed with status ${retryRes.status}`);
+        }
+        return retryData;
+      }
+    }
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
@@ -247,10 +332,10 @@ export const api = {
     return data;
   },
 
-  async delete(endpoint, params = {}) {
-    const authHeaders = await getAuthHeader();
+  async delete(endpoint, params = {}, retry = true) {
+    const { token, headers: authHeaders } = await getAuthHeader();
     const resolved = resolveEndpoint(endpoint, params);
-    const url = buildUrl(resolved);
+    const url = buildUrl(resolved, token);
 
     const response = await fetch(url, {
       method: "DELETE",
@@ -260,6 +345,22 @@ export const api = {
       }
     });
 
+    if (response.status === 401 && retry && auth?.currentUser) {
+      const { token: freshToken, headers: freshHeaders } = await getAuthHeader(true);
+      if (freshToken) {
+        const retryUrl = buildUrl(resolveEndpoint(endpoint, params), freshToken);
+        const retryRes = await fetch(retryUrl, {
+          method: "DELETE",
+          headers: { Accept: "application/json", ...freshHeaders }
+        });
+        const retryData = await retryRes.json().catch(() => ({}));
+        if (!retryRes.ok) {
+          throw new Error(retryData.error || retryData.message || `Request failed with status ${retryRes.status}`);
+        }
+        return retryData;
+      }
+    }
+
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       throw new Error(data.error || data.message || `Request failed with status ${response.status}`);
@@ -267,10 +368,15 @@ export const api = {
     return data;
   },
 
-  async upload(endpoint, formData, params = {}) {
-    const authHeaders = await getAuthHeader();
+  async upload(endpoint, formData, params = {}, retry = true) {
+    const { token, headers: authHeaders } = await getAuthHeader();
     const resolved = resolveEndpoint(endpoint, params);
-    const url = buildUrl(resolved);
+    const url = buildUrl(resolved, token);
+
+    if (token && formData instanceof FormData && !formData.has("token") && !formData.has("idToken")) {
+      formData.append("token", token);
+      formData.append("idToken", token);
+    }
 
     const response = await fetch(url, {
       method: "POST",
@@ -280,6 +386,27 @@ export const api = {
       },
       body: formData
     });
+
+    if (response.status === 401 && retry && auth?.currentUser) {
+      const { token: freshToken, headers: freshHeaders } = await getAuthHeader(true);
+      if (freshToken) {
+        const retryUrl = buildUrl(resolveEndpoint(endpoint, params), freshToken);
+        if (formData instanceof FormData) {
+          formData.set("token", freshToken);
+          formData.set("idToken", freshToken);
+        }
+        const retryRes = await fetch(retryUrl, {
+          method: "POST",
+          headers: { Accept: "application/json", ...freshHeaders },
+          body: formData
+        });
+        const retryData = await retryRes.json().catch(() => ({}));
+        if (!retryRes.ok) {
+          throw new Error(retryData.error || retryData.message || `Upload failed with status ${retryRes.status}`);
+        }
+        return retryData;
+      }
+    }
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
