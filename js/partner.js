@@ -1,12 +1,12 @@
-// ============================================================
+﻿// ============================================================
 // KRUIZLY - Partner / Host Car
 // Handles vehicle submissions to Firestore
 // Collection: partner_cars
 // ============================================================
 
 import { auth } from "./firebase-init.js";
-import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v17";
-import { api } from "./kruizly-api.js?v=20260904-v17";
+import { checkAuth, getCurrentUser } from "./auth.js?v=20260907-v1";
+import { api } from "./kruizly-api.js?v=20260907-v1";
 
 import "./nav-helper.js";
 import { MEDIA_SERVER_URL } from "./media-config.js";

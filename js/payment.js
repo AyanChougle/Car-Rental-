@@ -1,6 +1,6 @@
-// ============================================================
+﻿// ============================================================
 // KRUIZLY - PAYMENT / CHECKOUT
-// COMPLETE REPLACEMENT - LOCAL SQL MEDIA SERVER
+// Direct PHP + MySQL Backend
 // ============================================================
 //
 // Payment flow:
@@ -10,34 +10,14 @@
 // 3. Customer makes payment
 // 4. Customer enters UTR / transaction ID
 // 5. Customer selects payment screenshot
-// 6. Screenshot uploads to Node.js media server
-// 7. Node.js saves file to /uploads
-// 8. SQLite saves media record
-// 9. Firestore booking is updated
-// 10. paymentStatus = pending_verification
-//
-// IMPORTANT:
-//
-// Firebase Storage is NOT used here.
-//
-// Firebase is used ONLY for:
-// - Authentication
-// - Firestore booking data
-//
-// Files are stored through:
-//
-// Browser
-//    ↓
-// Node.js /api/media/upload
-//    ↓
-// uploads/<firebaseUid>/<random-file>
-//    ↓
-// SQLite media.sqlite
-//
+// 6. Screenshot uploads to Hostinger PHP API (/api/media/upload)
+// 7. Hostinger PHP saves file to /uploads/
+// 8. MySQL saves media & payment records
+// 9. Booking payment status updated to pending_verification
 // ============================================================
 
-import { checkAuth, getCurrentUser } from "./auth.js?v=20260904-v17";
-import { api } from "./kruizly-api.js?v=20260904-v17";
+import { checkAuth, getCurrentUser } from "./auth.js?v=20260907-v1";
+import { api } from "./kruizly-api.js?v=20260907-v1";
 
 import { PAYMENT_CONFIG } from "./payment-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
@@ -54,18 +34,6 @@ import { recordCouponUsage } from "./coupon-service.js";
 
 // ============================================================
 // CONFIGURATION
-// ============================================================
-//
-// Your Node server is running on PORT=4001.
-//
-// If you later deploy the API somewhere else, change this URL.
-//
-// You can also define:
-//
-// window.MEDIA_API_URL = "https://your-api-domain.com";
-//
-// before this script loads.
-//
 // ============================================================
 
 const MEDIA_API_URL =
@@ -1344,7 +1312,7 @@ async function submitPayment(
   try {
 
     // ========================================================
-    // STEP 1 — UPLOAD TO NODE + SQLITE
+    // STEP 1 — UPLOAD SCREENSHOT TO MEDIA API
     // ========================================================
 
     const media =
@@ -1534,7 +1502,7 @@ async function submitPayment(
       TypeError
     ) {
       message =
-        `Could not connect to the payment upload server at ${MEDIA_API_URL}. Make sure your Node.js server is running.`;
+        "Unable to connect to the KRUIZLY payment server. Please check your internet connection and try again.";
     }
 
 

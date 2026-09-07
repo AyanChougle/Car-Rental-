@@ -48,8 +48,9 @@ if ($method === 'GET') {
 
     $bookings = array_map(function($b) {
         $status = $b['status'];
-        if ($b['payment_status'] === 'rejected' && ($status === 'pending_verification' || $status === 'pending_payment')) {
-            $status = 'cancelled';
+        $inspection = [];
+        if (!empty($b['return_inspection'])) {
+            $inspection = is_string($b['return_inspection']) ? json_decode($b['return_inspection'], true) : $b['return_inspection'];
         }
 
         return [

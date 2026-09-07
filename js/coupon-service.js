@@ -1,11 +1,11 @@
-/**
+﻿/**
  * js/coupon-service.js
  * 
  * Production server-side coupon validation and suggestion catalog for KRUIZLY.
  * Authoritative source: Hostinger MySQL Backend API (/api/coupons).
  */
 
-import { api } from "./kruizly-api.js?v=20260904-v17";
+import { api } from "./kruizly-api.js?v=20260907-v1";
 
 /**
  * Fetches active available coupons from backend database for suggestions in UI.

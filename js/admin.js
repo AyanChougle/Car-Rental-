@@ -1,11 +1,11 @@
-// ============================================================================
+﻿// ============================================================================
 // KRUIZLY ADMIN DASHBOARD
 // Complete admin controller
 // ============================================================================
 
 import { auth } from "./firebase-init.js";
-import { api, API_BASE_URL } from "./kruizly-api.js?v=20260904-v17";
-import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260904-v17";
+import { api, API_BASE_URL } from "./kruizly-api.js?v=20260907-v1";
+import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260907-v1";
 
 import "./nav-helper.js";
 

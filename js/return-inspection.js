@@ -1,4 +1,4 @@
-// Shared "Process Return & Damage Assessment" modal, used from both the
+﻿// Shared "Process Return & Damage Assessment" modal, used from both the
 // Manager console and the Admin panel when a booking's car comes back.
 // Staff check off whatever applies (scratch, dent, accident, etc.), edit
 // the deduction amount for each checked item, add free-text invoice notes,
@@ -6,7 +6,7 @@
 // computed live before saving. Saving marks the booking "completed" and
 // stores the itemized breakdown on the booking doc as the permanent record.
 import { auth } from "./firebase-init.js";
-import { api } from "./kruizly-api.js?v=20260904-v17";
+import { api } from "./kruizly-api.js?v=20260907-v1";
 import { MEDIA_SERVER_URL } from "./media-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
 
