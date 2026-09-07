@@ -12,13 +12,46 @@ require_once __DIR__ . '/../middleware/auth.php';
 $user = Auth::requireAuth();
 $method = $_SERVER['REQUEST_METHOD'];
 
+// Auto-heal missing columns in users table
+try {
+    Database::execute("ALTER TABLE users ADD COLUMN phone VARCHAR(32) NULL AFTER email");
+} catch (Throwable $_) {}
+try {
+    Database::execute("ALTER TABLE users ADD COLUMN age INT NULL AFTER phone");
+} catch (Throwable $_) {}
+try {
+    Database::execute("ALTER TABLE users ADD COLUMN metadata TEXT NULL");
+} catch (Throwable $_) {}
+try {
+    Database::execute("ALTER TABLE users ADD COLUMN license_status VARCHAR(32) DEFAULT 'not_submitted'");
+} catch (Throwable $_) {}
+try {
+    Database::execute("ALTER TABLE users ADD COLUMN aadhar_status VARCHAR(32) DEFAULT 'not_submitted'");
+} catch (Throwable $_) {}
+try {
+    Database::execute("ALTER TABLE users ADD COLUMN pan_status VARCHAR(32) DEFAULT 'not_submitted'");
+} catch (Throwable $_) {}
+
 if ($method === 'GET') {
+    // Re-fetch fresh user record
+    $freshUser = Database::fetchOne(
+        "SELECT * FROM users WHERE id = ? OR firebase_uid = ? OR (email IS NOT NULL AND email != '' AND email = ?) LIMIT 1",
+        [$user['id'] ?? 0, $user['firebase_uid'] ?? '', $user['email'] ?? '']
+    );
+    if ($freshUser) {
+        $user = $freshUser;
+    }
+
     $metadata = [];
     if (!empty($user['metadata'])) {
         $metadata = is_string($user['metadata']) ? json_decode($user['metadata'], true) : $user['metadata'];
+        if (!is_array($metadata)) $metadata = [];
     }
 
-    $v = Database::fetchOne("SELECT * FROM verification WHERE firebase_uid = ? LIMIT 1", [$user['firebase_uid']]);
+    $v = Database::fetchOne(
+        "SELECT * FROM verification WHERE firebase_uid = ? OR (user_id IS NOT NULL AND user_id = ?) LIMIT 1",
+        [$user['firebase_uid'], $user['id'] ?? 0]
+    );
 
     $formatMediaUrl = function(?string $val): ?string {
         if (!$val) return null;
@@ -49,7 +82,7 @@ if ($method === 'GET') {
             'email' => $user['email'],
             'name' => $user['name'],
             'phone' => $user['phone'],
-            'age' => $user['age'],
+            'age' => $user['age'] !== null ? (int)$user['age'] : null,
             'role' => $user['role'],
             'status' => $user['status'],
             'licenseStatus' => $resolveStatus($v['license_status'] ?? null, $user['license_status'] ?? null),
@@ -72,7 +105,7 @@ if ($method === 'PUT' || $method === 'POST') {
     $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
     $name = trim((string)($input['name'] ?? ''));
     $phone = trim((string)($input['phone'] ?? ''));
-    $age = isset($input['age']) ? (int)$input['age'] : null;
+    $age = isset($input['age']) && $input['age'] !== '' && (int)$input['age'] > 0 ? (int)$input['age'] : null;
 
     Database::execute(
         "UPDATE users SET
@@ -80,11 +113,26 @@ if ($method === 'PUT' || $method === 'POST') {
             phone = COALESCE(NULLIF(?, ''), phone),
             age = COALESCE(?, age),
             updated_at = CURRENT_TIMESTAMP
-         WHERE firebase_uid = ?",
-        [$name, $phone, $age, $user['firebase_uid']]
+         WHERE id = ? OR firebase_uid = ? OR (email IS NOT NULL AND email != '' AND email = ?)",
+        [$name, $phone, $age, $user['id'] ?? 0, $user['firebase_uid'] ?? '', $user['email'] ?? '']
     );
 
-    sendJsonResponse(['success' => true, 'message' => 'Profile updated successfully.']);
+    $updated = Database::fetchOne(
+        "SELECT * FROM users WHERE id = ? OR firebase_uid = ? OR (email IS NOT NULL AND email != '' AND email = ?) LIMIT 1",
+        [$user['id'] ?? 0, $user['firebase_uid'] ?? '', $user['email'] ?? '']
+    );
+
+    sendJsonResponse([
+        'success' => true,
+        'message' => 'Profile updated successfully.',
+        'user' => [
+            'id' => $updated['id'] ?? $user['id'],
+            'name' => $updated['name'] ?? $name,
+            'phone' => $updated['phone'] ?? $phone,
+            'age' => $updated['age'] ?? $age,
+            'email' => $updated['email'] ?? $user['email']
+        ]
+    ]);
 }
 
 sendErrorResponse('Method not allowed.', 405);

@@ -1116,57 +1116,31 @@ function initEditProfile(
 
 
       try {
-        await api.put("/users/me", {
+        const updateRes = await api.put("/users/me", {
           name: name || null,
           phone: cleanPhone || null,
           age: age || null
         });
 
+        const updatedUser = updateRes?.user || {};
 
-        /* Update UI */
-
-        if ($("profileName")) {
-          $("profileName").textContent =
-            name;
-        }
-
-        if ($("profileAvatar")) {
-          $("profileAvatar").textContent =
-            initials(name);
-        }
-
-        if ($("profilePhone")) {
-          $("profilePhone").textContent =
-            cleanPhone ||
-            "Phone not added";
-        }
-
-        if ($("profileAge")) {
-          $("profileAge").textContent =
-            age
-              ? `${age} yrs`
-              : "Age not set";
-        }
-
-
+        /* Update local profileData and UI immediately */
         if (profileData) {
-          profileData.name =
-            name;
-
-          profileData.phone =
-            cleanPhone || null;
-
-          profileData.age =
-            age || null;
+          profileData.name = updatedUser.name || name;
+          profileData.phone = updatedUser.phone || cleanPhone || null;
+          profileData.age = updatedUser.age || age || null;
         }
 
+        renderProfileData({
+          ...(profileData || {}),
+          name: updatedUser.name || name,
+          phone: updatedUser.phone || cleanPhone || "",
+          age: updatedUser.age || age || ""
+        }, user);
 
         if (status) {
-          status.textContent =
-            "Profile saved successfully.";
-
-          status.className =
-            "form-status success";
+          status.textContent = "Profile saved successfully.";
+          status.className = "form-status success";
         }
 
 
