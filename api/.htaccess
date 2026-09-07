@@ -1,7 +1,13 @@
-﻿# KRUIZLY API Routing & Security
+# KRUIZLY API Routing & Security
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /api/
+
+    # Pass Authorization & Custom Auth Headers to PHP in FastCGI / FPM environments
+    SetEnvIfNoCase ^Authorization$ "(.+)" HTTP_AUTHORIZATION=$1
+    SetEnvIfNoCase ^X-Authorization$ "(.+)" HTTP_X_AUTHORIZATION=$1
+    SetEnvIfNoCase ^X-Firebase-Token$ "(.+)" HTTP_X_FIREBASE_TOKEN=$1
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization},E=HTTP_X_AUTHORIZATION:%{HTTP:X-Authorization},E=HTTP_X_FIREBASE_TOKEN:%{HTTP:X-Firebase-Token}]
 
     # Direct existing PHP files
     RewriteCond %{REQUEST_FILENAME} -f

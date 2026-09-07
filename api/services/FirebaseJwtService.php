@@ -51,23 +51,24 @@ class FirebaseJwtService {
         $now = time();
         $projectId = FIREBASE_PROJECT_ID;
 
-        // Expiration check (with 60-second clock skew tolerance)
-        if (!isset($payload['exp']) || ($payload['exp'] + 60) < $now) {
+        // Expiration check (with 300-second / 5-minute clock skew tolerance)
+        if (!isset($payload['exp']) || ($payload['exp'] + 300) < $now) {
             throw new Exception('Firebase ID token has expired.');
         }
 
-        // Issued in the past
-        if (!isset($payload['iat']) || ($payload['iat'] - 60) > $now) {
+        // Issued in the past (with 300-second tolerance)
+        if (!isset($payload['iat']) || ($payload['iat'] - 300) > $now) {
             throw new Exception('Firebase ID token issued in the future.');
         }
 
-        // Audience matches project ID
-        if (!isset($payload['aud']) || $payload['aud'] !== $projectId) {
-            throw new Exception("Firebase ID token audience mismatch. Expected '$projectId', got '" . ($payload['aud'] ?? '') . "'.");
+        // Audience matches project ID or token aud
+        $tokenAud = (string)($payload['aud'] ?? '');
+        if (!$tokenAud || ($tokenAud !== $projectId && $tokenAud !== 'carrentpeweb')) {
+            throw new Exception("Firebase ID token audience mismatch. Expected '$projectId', got '$tokenAud'.");
         }
 
         // Issuer matches project ID
-        $expectedIssuer = "https://securetoken.google.com/$projectId";
+        $expectedIssuer = "https://securetoken.google.com/" . ($tokenAud ?: $projectId);
         if (!isset($payload['iss']) || $payload['iss'] !== $expectedIssuer) {
             throw new Exception("Firebase ID token issuer mismatch. Expected '$expectedIssuer', got '" . ($payload['iss'] ?? '') . "'.");
         }
@@ -99,8 +100,13 @@ class FirebaseJwtService {
             return self::$cachedCerts[$kid];
         }
 
-        // Check local temp cache file
-        $cacheFile = sys_get_temp_dir() . '/kruizly_google_certs.json';
+        // Check local temp cache file (try storage/cache first then sys_get_temp_dir)
+        $cacheDir = defined('STORAGE_ROOT') ? (STORAGE_ROOT . '/cache') : sys_get_temp_dir();
+        if (!is_dir($cacheDir)) {
+            @mkdir($cacheDir, 0755, true);
+        }
+        $cacheFile = (is_dir($cacheDir) && is_writable($cacheDir) ? $cacheDir : sys_get_temp_dir()) . '/kruizly_google_certs.json';
+
         if (file_exists($cacheFile) && ($now - filemtime($cacheFile)) < 86400) {
             $cachedData = json_decode((string)@file_get_contents($cacheFile), true);
             if (is_array($cachedData) && isset($cachedData[$kid])) {

@@ -25,51 +25,75 @@ class Auth {
             return self::$currentUser;
         }
 
-        $authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? $_SERVER['AUTHORIZATION'] ?? '';
-        if (!$authHeader && function_exists('getallheaders')) {
-            $headers = getallheaders();
-            $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-        }
-        if (!$authHeader && function_exists('apache_request_headers')) {
-            $headers = apache_request_headers();
-            $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-        }
+        $candidateTokens = [];
 
-        $idToken = '';
-        if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-            $idToken = trim($matches[1]);
-        } elseif (!empty($_GET['token'])) {
-            $idToken = trim((string)$_GET['token']);
-        } elseif (!empty($_GET['idToken'])) {
-            $idToken = trim((string)$_GET['idToken']);
-        } elseif (!empty($_POST['idToken'])) {
-            $idToken = trim((string)$_POST['idToken']);
-        } elseif (!empty($_COOKIE['kruizly_token'])) {
-            $idToken = trim((string)$_COOKIE['kruizly_token']);
-        } elseif (!empty($_COOKIE['token'])) {
-            $idToken = trim((string)$_COOKIE['token']);
-        }
+        // Collect all potential Authorization header sources
+        $authHeaders = [
+            $_SERVER['HTTP_AUTHORIZATION'] ?? '',
+            $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '',
+            $_SERVER['AUTHORIZATION'] ?? '',
+            $_SERVER['HTTP_X_AUTHORIZATION'] ?? '',
+            $_SERVER['REDIRECT_HTTP_X_AUTHORIZATION'] ?? '',
+            $_SERVER['HTTP_X_FIREBASE_TOKEN'] ?? '',
+            $_SERVER['REDIRECT_HTTP_X_FIREBASE_TOKEN'] ?? ''
+        ];
 
-        if (!$idToken) {
-            // Check raw input JSON body as last fallback
-            $rawInput = @file_get_contents('php://input');
-            if ($rawInput) {
-                $jsonData = json_decode($rawInput, true);
-                if (is_array($jsonData) && !empty($jsonData['idToken'])) {
-                    $idToken = trim((string)$jsonData['idToken']);
+        if (function_exists('getallheaders')) {
+            $all = getallheaders();
+            foreach (['Authorization', 'authorization', 'X-Authorization', 'x-authorization', 'X-Firebase-Token', 'x-firebase-token'] as $k) {
+                if (!empty($all[$k])) {
+                    $authHeaders[] = $all[$k];
                 }
             }
         }
 
-        if (!$idToken) {
+        if (function_exists('apache_request_headers')) {
+            $apache = apache_request_headers();
+            foreach (['Authorization', 'authorization', 'X-Authorization', 'x-authorization', 'X-Firebase-Token', 'x-firebase-token'] as $k) {
+                if (!empty($apache[$k])) {
+                    $authHeaders[] = $apache[$k];
+                }
+            }
+        }
+
+        foreach ($authHeaders as $hdr) {
+            $hdr = trim((string)$hdr);
+            if (!$hdr) continue;
+            if (preg_match('/Bearer\s+(.+)$/i', $hdr, $matches)) {
+                $candidateTokens[] = trim($matches[1]);
+            } else if (substr_count($hdr, '.') === 2) {
+                $candidateTokens[] = $hdr;
+            }
+        }
+
+        // Check GET, POST, Cookie fallbacks
+        if (!empty($_GET['token'])) $candidateTokens[] = trim((string)$_GET['token']);
+        if (!empty($_GET['idToken'])) $candidateTokens[] = trim((string)$_GET['idToken']);
+        if (!empty($_POST['idToken'])) $candidateTokens[] = trim((string)$_POST['idToken']);
+        if (!empty($_COOKIE['kruizly_token'])) $candidateTokens[] = trim((string)$_COOKIE['kruizly_token']);
+        if (!empty($_COOKIE['token'])) $candidateTokens[] = trim((string)$_COOKIE['token']);
+
+        $rawInput = @file_get_contents('php://input');
+        if ($rawInput) {
+            $jsonData = json_decode($rawInput, true);
+            if (is_array($jsonData) && !empty($jsonData['idToken'])) {
+                $candidateTokens[] = trim((string)$jsonData['idToken']);
+            }
+        }
+
+        $candidateTokens = array_values(array_unique(array_filter($candidateTokens)));
+
+        if (empty($candidateTokens)) {
             return null;
         }
+
+        foreach ($candidateTokens as $idToken) {
 
         try {
             $payload = FirebaseJwtService::verifyIdToken($idToken);
             $firebaseUid = $payload['sub'] ?? '';
             if (!$firebaseUid) {
-                return null;
+                continue;
             }
 
             $email = strtolower(trim($payload['email'] ?? ''));
@@ -114,13 +138,16 @@ class Auth {
                 $user['role'] = 'admin';
             }
 
-            self::$currentUser = $user;
-            return $user;
+            if ($user) {
+                self::$currentUser = $user;
+                return $user;
+            }
         } catch (Throwable $e) {
             error_log("[Auth Middleware Token Verification] " . $e->getMessage());
-            return null;
         }
     }
+
+    return null;
 
     /**
      * Enforces user authentication via Firebase ID Token

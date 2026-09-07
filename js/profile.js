@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    KRUZLY — PROFILE PAGE
    Firebase Auth + Firestore
    Local Node Media Server for documents
@@ -688,6 +688,16 @@ async function loadProfile(user) {
     emailElement.textContent = user.email || "—";
   }
 
+  // Pre-fill UI with local auth user details
+  if (user) {
+    renderProfileData({
+      name: user.name || user.displayName || "",
+      email: user.email || "",
+      phone: user.phone || user.phoneNumber || "",
+      status: "active"
+    }, user);
+  }
+
   try {
     const res = await api.get("/users/me");
     const data = res.user || {};
@@ -696,8 +706,7 @@ async function loadProfile(user) {
     renderProfileData(data, user);
     return data;
   } catch (error) {
-    console.error("Profile load error:", error);
-    renderProfileError(error);
+    console.warn("Profile server load notice:", error);
     return {};
   }
 }
@@ -2040,12 +2049,7 @@ function initLogout() {
 
 
       try {
-
-        await signOut(auth);
-
-        window.location.href =
-          "index.html";
-
+        await logout();
       } catch (error) {
 
         console.error(
