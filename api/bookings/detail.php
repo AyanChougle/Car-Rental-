@@ -20,8 +20,8 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
     $b = Database::fetchOne(
-        "SELECT * FROM bookings WHERE booking_id = ? OR booking_number = ? LIMIT 1",
-        [$bookingId, $bookingId]
+        "SELECT * FROM bookings WHERE booking_id = ? OR booking_number = ? OR id = ? LIMIT 1",
+        [$bookingId, $bookingId, $bookingId]
     );
 
     if (!$b) {
@@ -120,8 +120,8 @@ if ($method === 'PUT' || $method === 'POST') {
     $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 
     $existing = Database::fetchOne(
-        "SELECT * FROM bookings WHERE booking_id = ? OR booking_number = ? LIMIT 1",
-        [$bookingId, $bookingId]
+        "SELECT * FROM bookings WHERE booking_id = ? OR booking_number = ? OR id = ? LIMIT 1",
+        [$bookingId, $bookingId, $bookingId]
     );
 
     if (!$existing) {
@@ -328,8 +328,9 @@ if ($method === 'PUT' || $method === 'POST') {
     if (!empty($updates)) {
         $params[] = $bookingId;
         $params[] = $bookingId;
+        $params[] = $bookingId;
         Database::execute(
-            "UPDATE bookings SET " . implode(', ', $updates) . ", updated_at = CURRENT_TIMESTAMP WHERE booking_id = ? OR booking_number = ?",
+            "UPDATE bookings SET " . implode(', ', $updates) . ", updated_at = CURRENT_TIMESTAMP WHERE booking_id = ? OR booking_number = ? OR id = ?",
             $params
         );
     }
@@ -342,9 +343,17 @@ if ($method === 'DELETE') {
         sendErrorResponse('Access denied. Staff only.', 403);
     }
     Database::execute(
-        "DELETE FROM bookings WHERE booking_id = ? OR booking_number = ?",
-        [$bookingId, $bookingId]
+        "DELETE FROM bookings WHERE booking_id = ? OR booking_number = ? OR id = ?",
+        [$bookingId, $bookingId, $bookingId]
     );
+    // Also clean up any associated payment records if needed
+    try {
+        Database::execute(
+            "DELETE FROM payments WHERE booking_id = ? OR booking_id = (SELECT booking_id FROM bookings WHERE id = ? LIMIT 1)",
+            [$bookingId, $bookingId]
+        );
+    } catch (\Throwable $e) {}
+
     sendJsonResponse(['success' => true, 'message' => "Booking '$bookingId' removed successfully."]);
 }
 

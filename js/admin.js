@@ -7333,8 +7333,10 @@ let adminCalMonth = new Date().getMonth(); // 0 to 11
 let adminCalViewMode = "grid"; // "grid" | "agenda"
 let adminCalSearchQuery = "";
 let adminCalStatusFilter = "all";
+let adminCalVehicleFilter = "all";
 let adminFleetVehicles = [];
 let activeEditingBooking = null;
+let activeDayScheduleDate = "";
 
 const CAL_MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -7440,6 +7442,7 @@ function initialiseAdminCalendar() {
   const todayBtn = $("adminCalTodayBtn");
   const searchInput = $("adminCalSearchInput");
   const statusFilter = $("adminCalStatusFilter");
+  const vehicleFilter = $("adminCalVehicleFilter");
   const viewGridBtn = $("adminCalViewGridBtn");
   const viewAgendaBtn = $("adminCalViewAgendaBtn");
   const addBookingBtn = $("adminCalAddBookingBtn");
@@ -7489,6 +7492,13 @@ function initialiseAdminCalendar() {
     });
   }
 
+  if (vehicleFilter) {
+    vehicleFilter.addEventListener("change", (e) => {
+      adminCalVehicleFilter = e.target.value || "all";
+      renderAdminCalendarView();
+    });
+  }
+
   if (viewGridBtn && viewAgendaBtn) {
     viewGridBtn.addEventListener("click", () => {
       adminCalViewMode = "grid";
@@ -7517,7 +7527,18 @@ function initialiseAdminCalendar() {
     addBookingBtn.addEventListener("click", () => openAdminAddBookingModal());
   }
 
-  // Modals setup
+  // Day Bookings Schedule Modal setup
+  const closeDayBtn = $("closeAdminDayBookingsModal");
+  const dayAddBtn = $("adminDayAddBookingBtn");
+  if (closeDayBtn) closeDayBtn.addEventListener("click", () => hideModal("adminDayBookingsModal"));
+  if (dayAddBtn) {
+    dayAddBtn.addEventListener("click", () => {
+      hideModal("adminDayBookingsModal");
+      openAdminAddBookingModal(activeDayScheduleDate);
+    });
+  }
+
+  // Add Booking Modal setup
   const closeAddBtn = $("closeAdminAddBookingModal");
   const cancelAddBtn = $("cancelAddBookingBtn");
   const addForm = $("adminAddBookingForm");
@@ -7526,6 +7547,7 @@ function initialiseAdminCalendar() {
   if (cancelAddBtn) cancelAddBtn.addEventListener("click", () => hideModal("adminAddBookingModal"));
   if (addForm) addForm.addEventListener("submit", handleAdminCreateBooking);
 
+  // Edit Booking Modal setup
   const closeEditBtn = $("closeAdminEditBookingModal");
   const editForm = $("adminEditBookingForm");
   const cancelBkBtn = $("adminCancelBookingBtn");
@@ -7537,7 +7559,7 @@ function initialiseAdminCalendar() {
   if (deleteBkBtn) deleteBkBtn.addEventListener("click", handleAdminDeleteBookingAction);
 
   // Close modals on overlay click
-  ["adminAddBookingModal", "adminEditBookingModal"].forEach((modalId) => {
+  ["adminAddBookingModal", "adminEditBookingModal", "adminDayBookingsModal"].forEach((modalId) => {
     const modalEl = $(modalId);
     if (modalEl) {
       modalEl.addEventListener("click", (e) => {
@@ -7573,19 +7595,27 @@ async function loadAdminCalendar() {
 function populateAdminVehicleDropdowns() {
   const addSelect = $("addBkVehicleSelect");
   const editSelect = $("editBkVehicleSelect");
+  const calVehFilter = $("adminCalVehicleFilter");
   
   let optionsHtml = `<option value="">-- Choose Fleet Vehicle --</option>`;
+  let filterOptionsHtml = `<option value="all">All Vehicles (Fleet)</option>`;
+
   if (adminFleetVehicles && adminFleetVehicles.length > 0) {
     adminFleetVehicles.forEach((v) => {
       const name = `${v.brand || ""} ${v.model || ""}`.trim() || v.name || "Car";
       const reg = v.reg_no || v.regNo || v.id || "";
       const price = v.price_per_day || v.price || "";
       optionsHtml += `<option value="${escapeHtml(reg)}">${escapeHtml(name)} (${escapeHtml(reg)}) ${price ? "- ₹" + price + "/day" : ""}</option>`;
+      filterOptionsHtml += `<option value="${escapeHtml(reg || name)}">${escapeHtml(name)} (${escapeHtml(reg)})</option>`;
     });
   }
 
   if (addSelect) addSelect.innerHTML = optionsHtml;
   if (editSelect) editSelect.innerHTML = optionsHtml;
+  if (calVehFilter) {
+    calVehFilter.innerHTML = filterOptionsHtml;
+    calVehFilter.value = adminCalVehicleFilter;
+  }
 }
 
 function getFilteredCalendarBookings() {
@@ -7599,6 +7629,16 @@ function getFilteredCalendarBookings() {
       if (adminCalStatusFilter === "completed" && b.badgeCategory !== "completed") return false;
       if (adminCalStatusFilter === "pending_payment" && b.badgeCategory !== "pending") return false;
       if (adminCalStatusFilter === "cancelled" && b.badgeCategory !== "cancelled") return false;
+    }
+
+    // Vehicle Filter (Per Car)
+    if (adminCalVehicleFilter && adminCalVehicleFilter !== "all") {
+      const vTarget = adminCalVehicleFilter.toLowerCase();
+      const vReg = (b.carReg || "").toLowerCase();
+      const vName = (b.carName || "").toLowerCase();
+      if (vReg !== vTarget && !vName.includes(vTarget) && !vTarget.includes(vReg)) {
+        return false;
+      }
     }
 
     // Search Query
@@ -7621,7 +7661,11 @@ function getFilteredCalendarBookings() {
 function renderAdminCalendarView() {
   const titleEl = $("adminCalMonthTitle");
   if (titleEl) {
-    titleEl.textContent = `${CAL_MONTH_NAMES[adminCalMonth]} ${adminCalYear}`;
+    let titleText = `${CAL_MONTH_NAMES[adminCalMonth]} ${adminCalYear}`;
+    if (adminCalVehicleFilter && adminCalVehicleFilter !== "all") {
+      titleText += ` · Filtered: ${adminCalVehicleFilter}`;
+    }
+    titleEl.textContent = titleText;
   }
 
   if (adminCalViewMode === "grid") {
@@ -7669,7 +7713,7 @@ function renderAdminCalendarGrid() {
 
   gridEl.innerHTML = gridHtml;
 
-  // Attach event listeners to pills and cell add triggers
+  // Attach event listeners to pills
   gridEl.querySelectorAll(".cal-event-pill").forEach((pill) => {
     pill.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -7681,8 +7725,30 @@ function renderAdminCalendarGrid() {
     });
   });
 
+  // Attach event listeners to "+N more" buttons
+  gridEl.querySelectorAll(".cal-event-more").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const dateStr = btn.dataset.date;
+      if (dateStr) openAdminDayBookingsModal(dateStr);
+    });
+  });
+
+  // Attach event listeners to badge count
+  gridEl.querySelectorAll(".admin-cal-badge-count").forEach((badge) => {
+    badge.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const dateStr = badge.dataset.date;
+      if (dateStr) openAdminDayBookingsModal(dateStr);
+    });
+  });
+
+  // Clicking an empty area in cell opens Add Booking for that date
   gridEl.querySelectorAll(".admin-cal-cell").forEach((cell) => {
-    cell.addEventListener("click", () => {
+    cell.addEventListener("click", (e) => {
+      if (e.target.closest(".cal-event-pill") || e.target.closest(".cal-event-more") || e.target.closest(".admin-cal-badge-count")) {
+        return;
+      }
       const dateStr = cell.dataset.date;
       if (dateStr) {
         openAdminAddBookingModal(dateStr);
@@ -7711,7 +7777,7 @@ function renderCalendarCell(cellDate, dayNumber, isOtherMonth, todayStr, allBook
   if (isToday) classes += " admin-cal-cell--today";
 
   let pillsHtml = "";
-  const maxDisplay = 3;
+  const maxDisplay = 2;
   const displayed = matchingBookings.slice(0, maxDisplay);
 
   displayed.forEach((b) => {
@@ -7736,20 +7802,104 @@ function renderCalendarCell(cellDate, dayNumber, isOtherMonth, todayStr, allBook
   });
 
   if (matchingBookings.length > maxDisplay) {
-    pillsHtml += `<div class="cal-event-more">+${matchingBookings.length - maxDisplay} more</div>`;
+    pillsHtml += `<div class="cal-event-more" data-date="${cellDateStr}">+${matchingBookings.length - maxDisplay} more (view all)</div>`;
   }
 
   return `
     <div class="${classes}" data-date="${cellDateStr}">
       <div class="admin-cal-cell-header">
         <span class="admin-cal-day-num">${dayNumber}</span>
-        ${matchingBookings.length > 0 ? `<span class="admin-cal-badge-count">${matchingBookings.length}</span>` : ""}
+        ${matchingBookings.length > 0 ? `<span class="admin-cal-badge-count" data-date="${cellDateStr}" title="View all ${matchingBookings.length} bookings for this day">${matchingBookings.length}</span>` : ""}
       </div>
       <div class="cal-events-wrap">
         ${pillsHtml}
       </div>
     </div>
   `;
+}
+
+function openAdminDayBookingsModal(dateStr) {
+  if (!dateStr) return;
+  activeDayScheduleDate = dateStr;
+
+  const parts = dateStr.split("-");
+  let dateFormatted = dateStr;
+  if (parts.length === 3) {
+    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+    dateFormatted = d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  }
+
+  const allBookings = getFilteredCalendarBookings();
+  const dParts = dateStr.split("-");
+  const cellDate = new Date(parseInt(dParts[0], 10), parseInt(dParts[1], 10) - 1, parseInt(dParts[2], 10));
+  const cellDayStart = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate(), 0, 0, 0).getTime();
+  const cellDayEnd = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate(), 23, 59, 59).getTime();
+
+  const matching = allBookings.filter((b) => {
+    if (!b.pickupDate) return false;
+    const pTime = b.pickupDate.getTime();
+    const dTime = b.dropDate ? b.dropDate.getTime() : pTime;
+    return cellDayEnd >= pTime && cellDayStart <= dTime;
+  });
+
+  const titleEl = $("adminDayBookingsTitle");
+  if (titleEl) {
+    titleEl.textContent = `Schedule: ${dateFormatted} (${matching.length} Bookings)`;
+  }
+
+  const listEl = $("adminDayBookingsList");
+  if (listEl) {
+    if (matching.length === 0) {
+      listEl.innerHTML = `
+        <div style="text-align:center; padding: 28px 12px; color: var(--kr-text-secondary);">
+          <p style="margin:0 0 12px;">No reservations scheduled for this day.</p>
+        </div>
+      `;
+    } else {
+      let html = "";
+      matching.forEach((b) => {
+        const statusLabel = b.badgeCategory.toUpperCase();
+        html += `
+          <div class="day-schedule-item cal-agenda-card--${escapeHtml(b.badgeCategory)}">
+            <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 200px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="cal-status-tag cal-status-tag--${escapeHtml(b.badgeCategory)}">${statusLabel}</span>
+                <strong style="color: #ffffff; font-size: 0.95rem;">${escapeHtml(b.userName)}</strong>
+                <span style="color: var(--kr-text-secondary); font-size: 0.8rem;">#${escapeHtml(b.id.slice(0, 8))}</span>
+              </div>
+              <div style="color: #4fd7ff; font-weight: 700; font-size: 0.85rem;">
+                ${escapeHtml(b.carName)} ${b.carReg ? `(${escapeHtml(b.carReg)})` : ""}
+              </div>
+              <div style="font-size: 0.78rem; color: var(--kr-text-secondary);">
+                <span>🟢 ${formatCalDateTime(b.pickupDate)}</span> &rarr; <span>🏁 ${formatCalDateTime(b.dropDate)}</span>
+              </div>
+              ${b.userPhone || b.userEmail ? `<div style="font-size: 0.78rem; color: var(--kr-text-muted);">📞 ${escapeHtml(b.userPhone || "")} ${b.userEmail ? `· ✉️ ${escapeHtml(b.userEmail)}` : ""}</div>` : ""}
+            </div>
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-weight: 800; color: #ffffff; font-size: 1rem;">₹${Number(b.totalAmount).toLocaleString("en-IN")}</span>
+              <button type="button" class="btn btn-outline btn-sm edit-day-item-btn" data-bid="${escapeHtml(b.id)}" style="padding: 6px 12px; font-size: 0.8rem;">
+                Edit
+              </button>
+            </div>
+          </div>
+        `;
+      });
+      listEl.innerHTML = html;
+
+      listEl.querySelectorAll(".edit-day-item-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const bid = btn.dataset.bid;
+          const bk = bookingsData.find((item) => String(item.id || item.bookingId || item.bookingNumber) === String(bid));
+          if (bk) {
+            hideModal("adminDayBookingsModal");
+            openAdminEditBookingModal(bk);
+          }
+        });
+      });
+    }
+  }
+
+  showModal("adminDayBookingsModal");
 }
 
 function renderAdminCalendarAgenda() {
@@ -8050,10 +8200,13 @@ async function handleAdminDeleteBookingAction() {
 
   try {
     const res = await api.delete(`/bookings/detail.php?id=${encodeURIComponent(id)}`);
-    if (res && res.success) {
+    if (res && (res.success || res.status === 200)) {
+      // Remove locally from state
+      bookingsData = bookingsData.filter((b) => String(b.id || b.bookingId || b.bookingNumber) !== String(id));
       hideModal("adminEditBookingModal");
-      await loadAdminCalendar();
+      renderAdminCalendarView();
       if (typeof loadBookings === "function") loadBookings();
+      alert(`Booking #${id.slice(0, 8)} has been permanently deleted.`);
     } else {
       alert("Could not delete booking: " + (res?.message || "Unknown error"));
     }
