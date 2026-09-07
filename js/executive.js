@@ -16,6 +16,8 @@ import { checkAuth, getCurrentUser, isExecutiveUser, isManagerUser, isAdminUser 
 import { api } from "./kruizly-api.js?v=20260907-v3";
 import "./nav-helper.js";
 import { formatBookingNumber } from "./booking-reference.js";
+import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260907-v4";
+
 
 function $(id) {
   return document.getElementById(id);
@@ -174,6 +176,11 @@ async function initExecutive() {
   initTabs();
   initModals();
   initFilters();
+  try {
+    initialiseAdminCalendar();
+  } catch (err) {
+    console.warn("Calendar init notice:", err);
+  }
 
   await loadAllExecutiveData();
 }
@@ -203,6 +210,9 @@ function initTabs() {
       if (targetTab === "tab-exec-bookings") {
         execBookingPage = 1;
         renderBookingsTable();
+      }
+      if (targetTab === "tab-exec-calendar") {
+        loadAdminCalendar();
       }
       if (targetTab === "tab-exec-payments") {
         execPaymentPage = 1;

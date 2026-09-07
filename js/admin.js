@@ -7643,7 +7643,7 @@ function formatInputDateTime(d) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function initialiseAdminCalendar() {
+export function initialiseAdminCalendar() {
   const prevBtn = $("adminCalPrevMonthBtn");
   const nextBtn = $("adminCalNextMonthBtn");
   const todayBtn = $("adminCalTodayBtn");
@@ -7776,7 +7776,7 @@ function initialiseAdminCalendar() {
   });
 }
 
-async function loadAdminCalendar() {
+export async function loadAdminCalendar() {
   try {
     const [bookingsRes, vehiclesRes] = await Promise.allSettled([
       api.get("/bookings"),

@@ -1326,7 +1326,8 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 
 .admin-cal-weekdays {
   display: grid;
-  grid-template-columns: repeat(7, minmax(100px, 1fr));
+  grid-template-columns: repeat(7, minmax(115px, 1fr));
+  min-width: 820px;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--kr-border);
   border-bottom: none;
@@ -1340,14 +1341,15 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   text-align: center;
   font-size: 12px;
   font-weight: 800;
-  color: var(--kr-text-muted);
+  color: var(--kr-text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
 
 .admin-cal-grid {
   display: grid;
-  grid-template-columns: repeat(7, minmax(100px, 1fr));
+  grid-template-columns: repeat(7, minmax(115px, 1fr));
+  min-width: 820px;
   background: rgba(255, 255, 255, 0.08);
   gap: 1px;
   border: 1px solid var(--kr-border);
