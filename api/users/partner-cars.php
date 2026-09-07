@@ -158,6 +158,9 @@ if ($method === 'POST') {
         sendErrorResponse('Brand, model, and registration number are required.', 400);
     }
 
+    $userId = !empty($user['id']) ? (int)$user['id'] : null;
+    $uid = trim((string)($user['firebase_uid'] ?? ''));
+
     Database::execute(
         "INSERT INTO partner_cars (
             car_id, user_id, firebase_uid, user_name, user_phone, user_email,
@@ -169,7 +172,7 @@ if ($method === 'POST') {
             'pending_approval', ?
         )",
         [
-            $carId, $user['id'], $user['firebase_uid'], $userName, $userPhone, $userEmail,
+            $carId, $userId, $uid, $userName, $userPhone, $userEmail,
             $brand, $model, $year, $regNo, $transmission, $fuel, $city, $expectedPrice,
             $photos
         ]

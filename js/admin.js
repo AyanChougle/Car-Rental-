@@ -5349,25 +5349,20 @@ function renderPaymentsTable() {
       (b) => b.id === bookingId || b.bookingNumber === bookingId || (b.id && p.id && b.id === p.id) || (b.bookingId && p.bookingId && b.bookingId === p.bookingId)
     );
 
+    const pStatus = String(p.status || "").toLowerCase();
+    const bStatus = String(matchingBooking?.status || "").toLowerCase();
+    const bPayStatus = String(matchingBooking?.paymentStatus || "").toLowerCase();
+
     const isVerified =
-      p.status === "verified" ||
-      p.status === "approved" ||
-      p.status === "paid" ||
-      (matchingBooking && (
-        matchingBooking.paymentStatus === "paid" ||
-        matchingBooking.paymentStatus === "advance_paid" ||
-        matchingBooking.status === "confirmed" ||
-        matchingBooking.status === "verified" ||
-        matchingBooking.status === "completed"
-      ));
+      ["verified", "approved", "paid", "advance_paid", "confirmed", "completed"].includes(pStatus) ||
+      ["verified", "approved", "paid", "advance_paid", "confirmed", "completed"].includes(bPayStatus) ||
+      ["verified", "approved", "paid", "advance_paid", "confirmed", "completed"].includes(bStatus);
 
     const isRejected =
-      p.status === "rejected" ||
-      (matchingBooking && (
-        matchingBooking.paymentStatus === "rejected" ||
-        matchingBooking.status === "cancelled" ||
-        matchingBooking.status === "rejected"
-      ));
+      ["rejected", "cancelled", "failed"].includes(pStatus) ||
+      ["rejected", "cancelled", "failed"].includes(bPayStatus) ||
+      ["rejected", "cancelled", "failed"].includes(bStatus);
+
 
     const statusClass = isVerified ? "verified" : isRejected ? "rejected" : "pending";
     const statusLabel = isVerified ? "VERIFIED" : isRejected ? "REJECTED" : "PENDING";

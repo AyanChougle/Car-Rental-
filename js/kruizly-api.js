@@ -81,6 +81,35 @@ export function resolveEndpoint(endpoint, params = {}) {
     return { path: "/verification/user-status.php", params: queryParams };
   }
 
+  // /users/:uid/role
+  const userRoleMatch = clean.match(/^users\/([^/]+)\/role$/);
+  if (userRoleMatch) {
+    queryParams.uid = userRoleMatch[1];
+    return { path: "/users/role.php", params: queryParams };
+  }
+
+  // /users/partner-cars/:id/status
+  const partnerCarStatusMatch = clean.match(/^users\/partner-cars\/([^/]+)\/status$/);
+  if (partnerCarStatusMatch) {
+    queryParams.id = partnerCarStatusMatch[1];
+    return { path: "/users/partner-cars.php", params: queryParams };
+  }
+
+  // /users/partner-cars/:id
+  const partnerCarDetailMatch = clean.match(/^users\/partner-cars\/([^/]+)$/);
+  if (partnerCarDetailMatch) {
+    queryParams.id = partnerCarDetailMatch[1];
+    return { path: "/users/partner-cars.php", params: queryParams };
+  }
+
+  // /media/:id
+  const mediaDeleteMatch = clean.match(/^media\/([^/]+)$/);
+  if (mediaDeleteMatch && !["upload", "my-media", "file", "delete"].includes(mediaDeleteMatch[1])) {
+    queryParams.id = mediaDeleteMatch[1];
+    return { path: "/media/delete.php", params: queryParams };
+  }
+
+
   // Route map for standard endpoints
   const routeMap = {
     "health": "/health.php",

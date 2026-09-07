@@ -74,6 +74,8 @@ document.addEventListener("DOMContentLoaded", function () {
   function createCustomDropdown(selectEl, config = {}) {
     const parent = selectEl.closest('.partner-field') || selectEl.parentElement;
     selectEl.style.display = 'none'; // visually hide native select
+    selectEl.required = false;
+    selectEl.removeAttribute('required');
 
     const selectWrap = selectEl.closest('.select-wrapper');
     if (selectWrap) selectWrap.style.display = 'none';

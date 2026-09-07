@@ -109,7 +109,7 @@
 
       <div class="card partner-card">
 
-        <form id="partnerForm" autocomplete="on">
+        <form id="partnerForm" novalidate autocomplete="on">
 
           <!-- =================================================
                VEHICLE DETAILS
@@ -133,7 +133,7 @@
               <div class="partner-field">
                 <label for="carBrand">Vehicle Brand *</label>
                 <div class="select-wrapper">
-                  <select id="carBrand" required>
+                  <select id="carBrand">
                     <option value="">Select Brand</option>
                     <optgroup label="Popular & Premium">
                       <option value="Mahindra">Mahindra</option>
@@ -165,7 +165,7 @@
               <div class="partner-field">
                 <label for="carModel">Vehicle Model *</label>
                 <div class="select-wrapper">
-                  <select id="carModel" required disabled>
+                  <select id="carModel" disabled>
                     <option value="">Select Model</option>
                   </select>
                 </div>
@@ -201,7 +201,7 @@
               <div class="partner-field">
                 <label for="carTransmission">Transmission *</label>
                 <div class="select-wrapper">
-                  <select id="carTransmission" required>
+                  <select id="carTransmission">
                     <option value="Manual">Manual</option>
                     <option value="Automatic">Automatic</option>
                     <option value="AMT">AMT</option>
@@ -214,7 +214,7 @@
               <div class="partner-field">
                 <label for="carFuel">Fuel Type *</label>
                 <div class="select-wrapper">
-                  <select id="carFuel" required>
+                  <select id="carFuel">
                     <option value="Petrol">Petrol</option>
                     <option value="Diesel">Diesel</option>
                     <option value="Petrol + CNG">Petrol + CNG</option>

@@ -29,8 +29,9 @@ Database::execute(
         role = COALESCE(NULLIF(?, ''), role),
         status = COALESCE(NULLIF(?, ''), status),
         updated_at = CURRENT_TIMESTAMP
-     WHERE firebase_uid = ?",
-    [$role, $status, $targetUid]
+     WHERE firebase_uid = ? OR id = ?",
+    [$role, $status, $targetUid, is_numeric($targetUid) ? (int)$targetUid : 0]
 );
 
 sendJsonResponse(['success' => true, 'message' => "User permissions updated."]);
+

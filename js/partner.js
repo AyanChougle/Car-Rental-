@@ -218,8 +218,8 @@ if (form) {
     const model = getValue("carModel");
     const year = Number(document.getElementById("carYear")?.value || 0);
     const odometer = Number(document.getElementById("carOdometer")?.value || 0);
-    const transmission = getValue("carTransmission");
-    const fuel = getValue("carFuel");
+    const transmission = getValue("carTransmission") || "Manual";
+    const fuel = getValue("carFuel") || "Petrol";
     const seats = Number(document.getElementById("carSeats")?.value || 5);
     const regNumber = getValue("carRegNumber").toUpperCase();
     const location = getValue("carLocation");
@@ -234,6 +234,31 @@ if (form) {
     // Owner
     const ownerName = getValue("ownerName");
     const ownerPhone = getValue("ownerPhone");
+
+    if (!brand) {
+      showError("Please select your vehicle brand.");
+      return;
+    }
+
+    if (!model) {
+      showError("Please select your vehicle model.");
+      return;
+    }
+
+    if (!regNumber || regNumber.length < 5) {
+      showError("Please enter a valid vehicle registration number (e.g. MH 12 AB 1234).");
+      return;
+    }
+
+    if (!location) {
+      showError("Please select or enter the vehicle pickup location / city.");
+      return;
+    }
+
+    if (!ownerName || ownerName.trim().length < 2) {
+      showError("Please enter the vehicle owner's full legal name.");
+      return;
+    }
 
     let cleanOwnerPhone = String(ownerPhone || "").replace(/\D/g, "");
     if (cleanOwnerPhone.length === 12 && cleanOwnerPhone.startsWith("91")) {
@@ -335,7 +360,7 @@ if (form) {
       window.location.assign("profile.html?tab=listings");
     } catch (error) {
       console.error("Partner submission error:", error);
-      showError("Failed to submit vehicle listing. Please check your connection and try again.");
+      showError(`Failed to submit vehicle listing: ${error.message || "Please check your connection and try again."}`);
       if (submitBtn) {
         submitBtn.disabled = false;
         submitBtn.textContent = "Submit Car for Approval";
