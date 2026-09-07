@@ -3789,6 +3789,24 @@ function renderBookingsTable(
 
               ${returnButton}
 
+              <button
+                type="button"
+                class="btn btn-outline admin-edit-booking-row-btn"
+                data-bid="${escapeHtml(id)}"
+                style="padding:7px 14px;font-size:.8rem;display:inline-flex;align-items:center;gap:6px;"
+              >
+                <i class="ri-edit-line"></i> Edit Booking
+              </button>
+
+              <button
+                type="button"
+                class="btn btn-primary admin-invoice-row-btn"
+                data-bid="${escapeHtml(id)}"
+                style="padding:7px 14px;font-size:.8rem;display:inline-flex;align-items:center;gap:6px;"
+              >
+                <i class="ri-file-text-line"></i> Manage Invoice
+              </button>
+
               ${Array.isArray(booking.pickupPhotoMediaIds) && booking.pickupPhotoMediaIds.length
                 ? `
                   <button
@@ -3926,6 +3944,29 @@ async function openAdminPickupPhotos(booking) {
 
 function attachBookingEvents() {
   bookingsTableWrap
+    .querySelectorAll(".admin-edit-booking-row-btn")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        const bid = button.dataset.bid;
+        const booking = bookingsData.find(
+          (item) => item.id === bid || item.bookingNumber === bid
+        );
+        if (booking) {
+          openAdminEditBookingModal(booking);
+        } else {
+          openAdminEditBookingModal({ id: bid, bookingNumber: bid });
+        }
+      });
+    });
+
+  bookingsTableWrap
+    .querySelectorAll(".admin-invoice-row-btn")
+    .forEach((button) => {
+      button.addEventListener("click", async () => {
+        const bid = button.dataset.bid;
+        if (bid) await openInvoiceEditorModal(bid, button);
+      });
+    });
 
   bookingsTableWrap
     .querySelectorAll(".admin-view-pickup-photos-btn")
@@ -5269,7 +5310,7 @@ function renderPaymentsTable() {
         utr: b.paymentRef || "",
         paymentRef: b.paymentRef || "",
         screenshotUrl: b.paymentScreenshotUrl || "",
-        status: b.paymentStatus === "paid" || b.paymentStatus === "advance_paid" ? "verified" : b.paymentStatus === "rejected" ? "rejected" : "pending",
+        status: b.paymentStatus === "paid" || b.paymentStatus === "advance_paid" || b.status === "confirmed" ? "verified" : b.paymentStatus === "rejected" ? "rejected" : "pending",
         createdAt: b.createdAt || b.pickupDate || ""
       }));
   }
@@ -5303,33 +5344,98 @@ function renderPaymentsTable() {
   `;
 
   pagePayments.forEach((p) => {
-    const statusClass = p.status === "verified" ? "verified" : p.status === "rejected" ? "rejected" : "pending";
-    const statusLabel = p.status === "verified" ? "VERIFIED" : p.status === "rejected" ? "REJECTED" : "PENDING";
-    const paymentDate = formatDate(p.createdAt || p.date);
+    const bookingId = p.bookingId || p.id || p.bookingNumber;
+    const matchingBooking = bookingsData.find(
+      (b) => b.id === bookingId || b.bookingNumber === bookingId || (b.id && p.id && b.id === p.id) || (b.bookingId && p.bookingId && b.bookingId === p.bookingId)
+    );
+
+    const isVerified =
+      p.status === "verified" ||
+      p.status === "approved" ||
+      p.status === "paid" ||
+      (matchingBooking && (
+        matchingBooking.paymentStatus === "paid" ||
+        matchingBooking.paymentStatus === "advance_paid" ||
+        matchingBooking.status === "confirmed" ||
+        matchingBooking.status === "verified" ||
+        matchingBooking.status === "completed"
+      ));
+
+    const isRejected =
+      p.status === "rejected" ||
+      (matchingBooking && (
+        matchingBooking.paymentStatus === "rejected" ||
+        matchingBooking.status === "cancelled" ||
+        matchingBooking.status === "rejected"
+      ));
+
+    const statusClass = isVerified ? "verified" : isRejected ? "rejected" : "pending";
+    const statusLabel = isVerified ? "VERIFIED" : isRejected ? "REJECTED" : "PENDING";
+    const paymentDate = formatDate(p.createdAt || p.date || (matchingBooking && (matchingBooking.createdAt || matchingBooking.pickupDate)));
+    const targetBid = matchingBooking ? (matchingBooking.id || matchingBooking.bookingNumber) : bookingId;
+
+    let actionsHtml = "";
+    if (isVerified) {
+      actionsHtml = `
+        <div style="display:inline-flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap;">
+          <button type="button" class="btn btn-primary edit-invoice-btn" data-bid="${escapeHtml(targetBid)}" title="Generate or Edit Invoice" style="padding:5px 10px;font-size:12px;display:inline-flex;align-items:center;gap:4px;">
+            <i class="ri-file-text-line"></i> Invoice
+          </button>
+          <button type="button" class="btn btn-outline edit-booking-btn" data-bid="${escapeHtml(targetBid)}" title="Edit Booking Details" style="padding:5px 10px;font-size:12px;display:inline-flex;align-items:center;gap:4px;">
+            <i class="ri-edit-line"></i> Edit
+          </button>
+          <button type="button" class="btn btn-dark review-payment-btn" data-pid="${escapeHtml(p.id || p.paymentId || targetBid)}" data-bid="${escapeHtml(targetBid)}" title="View Payment Proof & Receipt" style="padding:5px 10px;font-size:12px;display:inline-flex;align-items:center;gap:4px;">
+            <i class="ri-eye-line"></i> Receipt
+          </button>
+        </div>
+      `;
+    } else if (isRejected) {
+      actionsHtml = `
+        <div style="display:inline-flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap;">
+          <button type="button" class="btn btn-outline edit-booking-btn" data-bid="${escapeHtml(targetBid)}" title="Edit Booking Details" style="padding:5px 10px;font-size:12px;display:inline-flex;align-items:center;gap:4px;">
+            <i class="ri-edit-line"></i> Edit
+          </button>
+          <button type="button" class="btn btn-dark review-payment-btn" data-pid="${escapeHtml(p.id || p.paymentId || targetBid)}" data-bid="${escapeHtml(targetBid)}" title="Review Rejected Payment" style="padding:5px 10px;font-size:12px;display:inline-flex;align-items:center;gap:4px;">
+            <i class="ri-refresh-line"></i> Review
+          </button>
+        </div>
+      `;
+    } else {
+      actionsHtml = `
+        <div style="display:inline-flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap;">
+          <button type="button" class="btn btn-primary review-payment-btn" data-pid="${escapeHtml(p.id || p.paymentId || targetBid)}" data-bid="${escapeHtml(targetBid)}" title="Review and Approve Payment" style="padding:5px 12px;font-size:12px;display:inline-flex;align-items:center;gap:4px;">
+            <i class="ri-shield-check-line"></i> Review
+          </button>
+          <button type="button" class="btn btn-outline edit-booking-btn" data-bid="${escapeHtml(targetBid)}" title="Edit Booking Details" style="padding:5px 10px;font-size:12px;display:inline-flex;align-items:center;gap:4px;">
+            <i class="ri-edit-line"></i> Edit
+          </button>
+        </div>
+      `;
+    }
 
     html += `
       <tr style="border-bottom:1px solid rgba(255,255,255,.06);font-size:13.5px;">
         <td style="padding:12px;color:var(--sub);white-space:nowrap;">${escapeHtml(paymentDate)}</td>
-        <td style="padding:12px;font-family:monospace;font-weight:700;color:var(--accent);">#${escapeHtml(p.bookingNumber || p.bookingId)}</td>
+        <td style="padding:12px;font-family:monospace;font-weight:700;color:var(--accent);">#${escapeHtml(p.bookingNumber || p.bookingId || p.id)}</td>
         <td style="padding:12px;">
-          <strong style="color:#fff;">${escapeHtml(p.userName || "Customer")}</strong><br/>
-          <small style="color:#4fd7ff;font-size:12px;">${escapeHtml(p.userEmail || "")}</small>
-          ${p.userPhone ? `<br/><small style="color:var(--sub);font-size:11.5px;">${escapeHtml(p.userPhone)}</small>` : ""}
+          <strong style="color:#fff;">${escapeHtml(p.userName || (matchingBooking && (matchingBooking.userName || matchingBooking.name)) || "Customer")}</strong><br/>
+          <small style="color:#4fd7ff;font-size:12px;">${escapeHtml(p.userEmail || (matchingBooking && (matchingBooking.userEmail || matchingBooking.email)) || "")}</small>
+          ${(p.userPhone || (matchingBooking && (matchingBooking.userPhone || matchingBooking.phone))) ? `<br/><small style="color:var(--sub);font-size:11.5px;">${escapeHtml(p.userPhone || (matchingBooking && (matchingBooking.userPhone || matchingBooking.phone)))}</small>` : ""}
         </td>
         <td style="padding:12px;">
-          <strong>${escapeHtml(p.vehicleName || "Vehicle")}</strong>
-          ${p.vehicleReg ? `<br/><small style="color:var(--sub);font-family:monospace;">${escapeHtml(p.vehicleReg)}</small>` : ""}
+          <strong>${escapeHtml(p.vehicleName || (matchingBooking && (matchingBooking.vehicleName || matchingBooking.carName)) || "Vehicle")}</strong>
+          ${(p.vehicleReg || (matchingBooking && (matchingBooking.vehicleReg || matchingBooking.registration))) ? `<br/><small style="color:var(--sub);font-family:monospace;">${escapeHtml(p.vehicleReg || (matchingBooking && (matchingBooking.vehicleReg || matchingBooking.registration)))}</small>` : ""}
         </td>
-        <td style="padding:12px;font-weight:700;color:#fff;">${formatINR(p.amount)}</td>
+        <td style="padding:12px;font-weight:700;color:#fff;">${formatINR(p.amount || (matchingBooking && (matchingBooking.paymentAmountPaid || matchingBooking.advanceAmount || matchingBooking.totalAmount)) || 0)}</td>
         <td style="padding:12px;font-family:monospace;">
-          <span style="font-size:11px;text-transform:uppercase;background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">${escapeHtml(p.method || "UPI")}</span><br/>
-          ${escapeHtml(p.utr || p.paymentRef || "No UTR")}
+          <span style="font-size:11px;text-transform:uppercase;background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">${escapeHtml(p.method || (matchingBooking && matchingBooking.paymentMethod) || "UPI")}</span><br/>
+          ${escapeHtml(p.utr || p.paymentRef || (matchingBooking && matchingBooking.paymentRef) || "No UTR")}
         </td>
         <td style="padding:12px;">
           <span class="status-pill ${statusClass}">${escapeHtml(statusLabel)}</span>
         </td>
         <td style="padding:12px;text-align:right;">
-          <button type="button" class="btn btn-dark review-payment-btn" data-pid="${escapeHtml(p.id || p.paymentId)}" data-bid="${escapeHtml(p.bookingId || p.bookingNumber)}" style="padding:5px 12px;font-size:12.5px;">Review</button>
+          ${actionsHtml}
         </td>
       </tr>
     `;
@@ -5353,9 +5459,29 @@ function renderPaymentsTable() {
     button.addEventListener("click", () => {
       const pid = button.dataset.pid;
       const bid = button.dataset.bid;
-      const payment = paymentsData.find((item) => item.id === pid || item.bookingId === bid) ||
-                      bookingsData.find((item) => item.id === bid);
+      const payment = paymentsData.find((item) => item.id === pid || item.bookingId === bid || item.id === bid) ||
+                      bookingsData.find((item) => item.id === bid || item.bookingNumber === bid || item.id === pid);
       if (payment) openPaymentModal(payment);
+    });
+  });
+
+  paymentsTableWrap.querySelectorAll(".edit-invoice-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const bid = button.dataset.bid;
+      if (bid) await openInvoiceEditorModal(bid, button);
+    });
+  });
+
+  paymentsTableWrap.querySelectorAll(".edit-booking-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const bid = button.dataset.bid;
+      const bk = bookingsData.find((item) => item.id === bid || item.bookingNumber === bid) ||
+                 paymentsData.find((item) => item.bookingId === bid || item.id === bid);
+      if (bk) {
+        openAdminEditBookingModal(bk);
+      } else {
+        openAdminEditBookingModal({ id: bid, bookingNumber: bid });
+      }
     });
   });
 
@@ -5780,6 +5906,27 @@ function initialisePaymentModal() {
     );
   }
 
+  const payInvoiceBtn = $("paymentModalInvoiceBtn");
+  if (payInvoiceBtn) {
+    payInvoiceBtn.addEventListener("click", async () => {
+      if (!activePaymentBooking) return;
+      const targetId = activePaymentBooking.id || activePaymentBooking.bookingId || activePaymentBooking.bookingNumber;
+      hideModal("paymentModal");
+      await openInvoiceEditorModal(targetId, payInvoiceBtn);
+    });
+  }
+
+  const payEditBtn = $("paymentModalEditBtn");
+  if (payEditBtn) {
+    payEditBtn.addEventListener("click", () => {
+      if (!activePaymentBooking) return;
+      const targetId = activePaymentBooking.id || activePaymentBooking.bookingId || activePaymentBooking.bookingNumber;
+      const bk = bookingsData.find(b => b.id === targetId || b.bookingNumber === targetId) || activePaymentBooking;
+      hideModal("paymentModal");
+      openAdminEditBookingModal(bk);
+    });
+  }
+
   const approve =
     $("approvePaymentBtn");
 
@@ -5801,10 +5948,11 @@ function initialisePaymentModal() {
             "Approving...";
 
           const isAdvancePayment = activePaymentBooking.paymentPlan === "advance";
+          const targetBookingId = activePaymentBooking.id || activePaymentBooking.bookingId;
 
-          await api.post(`/payments/${activePaymentBooking.id}/verify`, {
+          await api.post(`/payments/${targetBookingId}/verify`, {
             action: "approve",
-            bookingId: activePaymentBooking.id
+            bookingId: targetBookingId
           });
 
           activePaymentBooking.paymentStatus =
@@ -5813,9 +5961,29 @@ function initialisePaymentModal() {
           activePaymentBooking.status =
             "confirmed";
 
+          // Update matching items in memory
+          const pItem = paymentsData.find(p => p.id === targetBookingId || p.bookingId === targetBookingId);
+          if (pItem) {
+            pItem.status = "verified";
+          }
+          const bItem = bookingsData.find(b => b.id === targetBookingId || b.bookingNumber === targetBookingId);
+          if (bItem) {
+            bItem.paymentStatus = isAdvancePayment ? "advance_paid" : "paid";
+            bItem.status = "confirmed";
+          }
+
           hideModal(
             "paymentModal"
           );
+
+          // Full sync with DB
+          try {
+            if (typeof loadPayments === "function") await loadPayments();
+            if (typeof loadBookings === "function") await loadBookings();
+            if (typeof loadAdminCalendar === "function") await loadAdminCalendar();
+          } catch (syncErr) {
+            console.warn("Sync error after payment approval:", syncErr);
+          }
 
           renderBookingsTable(
             getFilteredBookings()
@@ -5873,18 +6041,38 @@ function initialisePaymentModal() {
         }
 
         try {
-          await api.post(`/payments/${activePaymentBooking.id}/verify`, {
+          const targetBookingId = activePaymentBooking.id || activePaymentBooking.bookingId;
+
+          await api.post(`/payments/${targetBookingId}/verify`, {
             action: "reject",
             reason: reason || "Payment could not be verified.",
-            bookingId: activePaymentBooking.id
+            bookingId: targetBookingId
           });
 
           activePaymentBooking.paymentStatus =
             "rejected";
 
+          const pItem = paymentsData.find(p => p.id === targetBookingId || p.bookingId === targetBookingId);
+          if (pItem) {
+            pItem.status = "rejected";
+          }
+          const bItem = bookingsData.find(b => b.id === targetBookingId || b.bookingNumber === targetBookingId);
+          if (bItem) {
+            bItem.paymentStatus = "rejected";
+          }
+
           hideModal(
             "paymentModal"
           );
+
+          // Full sync with DB
+          try {
+            if (typeof loadPayments === "function") await loadPayments();
+            if (typeof loadBookings === "function") await loadBookings();
+            if (typeof loadAdminCalendar === "function") await loadAdminCalendar();
+          } catch (syncErr) {
+            console.warn("Sync error after payment rejection:", syncErr);
+          }
 
           renderPaymentsTable();
 
@@ -5918,15 +6106,39 @@ async function openPaymentModal(
     activePaymentScreenshotObjectUrl = null;
   }
 
-  activePaymentBooking =
-    booking;
+  // Ensure we have full booking record if available
+  const bookingId = booking.id || booking.bookingId || booking.bookingNumber;
+  const fullBooking = bookingsData.find(b => b.id === bookingId || b.bookingNumber === bookingId) || booking;
+  activePaymentBooking = fullBooking;
+
+  const isVerified =
+    fullBooking.status === "confirmed" ||
+    fullBooking.status === "verified" ||
+    fullBooking.paymentStatus === "paid" ||
+    fullBooking.paymentStatus === "advance_paid" ||
+    fullBooking.status === "completed";
+
+  const payInvoiceBtn = $("paymentModalInvoiceBtn");
+  if (payInvoiceBtn) {
+    payInvoiceBtn.style.display = isVerified ? "inline-flex" : "none";
+  }
+
+  const payEditBtn = $("paymentModalEditBtn");
+  if (payEditBtn) {
+    payEditBtn.style.display = "inline-flex";
+  }
+
+  const approve = $("approvePaymentBtn");
+  if (approve) {
+    approve.textContent = isVerified ? "Re-Confirm & Sync" : "Approve & Confirm Booking";
+  }
 
   const title =
     $("paymentModalTitle");
 
   if (title) {
     title.textContent =
-      `Booking #${formatBookingNumber(booking)}`;
+      `Booking #${formatBookingNumber(fullBooking)}`;
   }
 
   let screenshotSrc =
