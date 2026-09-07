@@ -42,6 +42,8 @@ if ($method === 'GET') {
             'dbId' => $c['id'],
             'userId' => $c['firebase_uid'],
             'firebaseUid' => $c['firebase_uid'],
+            'dbUserId' => $c['user_id'],
+            'user_id' => $c['user_id'],
             'userName' => $c['user_name'],
             'userPhone' => $c['user_phone'],
             'userEmail' => $c['user_email'],
@@ -49,9 +51,11 @@ if ($method === 'GET') {
             'model' => $c['model'],
             'year' => (int)$c['year'],
             'regNo' => $c['reg_no'],
+            'regNumber' => $c['reg_no'],
             'transmission' => $c['transmission'],
             'fuel' => $c['fuel'],
             'city' => $c['city'],
+            'location' => $c['city'],
             'expectedPrice' => (float)$c['expected_price'],
             'status' => $c['status'],
             'photos' => $photos,
@@ -158,6 +162,19 @@ if ($method === 'PUT') {
     );
 
     sendJsonResponse(['success' => true, 'message' => 'Partner car updated.']);
+}
+
+if ($method === 'DELETE') {
+    $id = trim((string)($_GET['id'] ?? ''));
+    if (!$id) {
+        sendErrorResponse('Host car ID is required.', 400);
+    }
+    if ($isStaff) {
+        Database::execute("DELETE FROM partner_cars WHERE id = ? OR car_id = ?", [$id, $id]);
+    } else {
+        Database::execute("DELETE FROM partner_cars WHERE (id = ? OR car_id = ?) AND firebase_uid = ?", [$id, $id, $user['firebase_uid']]);
+    }
+    sendJsonResponse(['success' => true, 'message' => 'Partner car deleted.']);
 }
 
 sendErrorResponse('Method not allowed.', 405);

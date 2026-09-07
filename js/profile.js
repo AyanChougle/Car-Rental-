@@ -499,16 +499,28 @@ const LISTING_STATUS = {
 };
 
 
-async function loadMyListings(uid) {
+async function loadMyListings(userParam) {
   const grid = $("profListingsGrid");
   const summary = $("profListingsSummary");
 
   if (!grid || !summary) return;
 
+  const currentU = (typeof userParam === "object" && userParam) ? userParam : (currentUser || {});
+  const currentUid = String(currentU.uid || currentU.firebaseUid || currentU.id || "").trim();
+  const currentEmail = String(currentU.email || "").trim().toLowerCase();
+
   try {
     const res = await api.get("/users/partner-cars");
     const allListings = Array.isArray(res.partnerCars) ? res.partnerCars : [];
-    const listings = allListings.filter(item => (item.userId === uid || item.firebaseUid === uid || !item.userId));
+    const listings = allListings.filter(item => {
+      if (!currentUid && !currentEmail) return true;
+      const itemUid = String(item.firebaseUid || item.userId || "").trim();
+      const itemDbId = String(item.dbUserId || item.user_id || "").trim();
+      const itemEmail = String(item.userEmail || item.email || "").trim().toLowerCase();
+      return (currentUid && (itemUid === currentUid || itemDbId === currentUid)) ||
+             (currentEmail && itemEmail === currentEmail) ||
+             (!itemUid && !itemEmail);
+    });
     const approvedCount = listings.filter(
       listing => listing.status === "approved"
     ).length;
@@ -537,23 +549,24 @@ async function loadMyListings(uid) {
       };
       const vehicleName =
         `${listing.brand || "Vehicle"} ${listing.model || ""}`.trim();
-      const imageUrl =
-        typeof listing.imageUrl === "string" ? listing.imageUrl.trim() : "";
-      const firstPhotoMediaId =
-        Array.isArray(listing.photoMediaIds) && listing.photoMediaIds.length
-          ? listing.photoMediaIds[0]
-          : null;
+      
+      let firstPhoto = "";
+      if (Array.isArray(listing.photos) && listing.photos.length) {
+        const p0 = listing.photos[0];
+        firstPhoto = typeof p0 === "object" && p0 ? (p0.url || p0.mediaUrl || "") : String(p0 || "");
+      } else if (typeof listing.imageUrl === "string") {
+        firstPhoto = listing.imageUrl.trim();
+      }
+
       const rejectionNote =
         listing.rejectionReason || listing.adminNote || listing.reviewNote || "";
 
       return `
         <article class="profile-listing-card">
           <div class="profile-listing-card__media">
-            ${firstPhotoMediaId
-              ? `<img data-listing-photo-media="${escapeHtml(firstPhotoMediaId)}" data-fallback-img="${escapeHtml(imageUrl || '')}" alt="${escapeHtml(vehicleName)}" loading="lazy" hidden /><div class="profile-listing-card__placeholder" aria-hidden="true">CAR</div>`
-              : imageUrl
-              ? `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(vehicleName)}" loading="lazy" />`
-              : `<div class="profile-listing-card__placeholder" aria-hidden="true">CAR</div>`}
+            ${firstPhoto
+              ? `<img src="${escapeHtml(firstPhoto)}" alt="${escapeHtml(vehicleName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'profile-listing-card__placeholder\\'>CAR</div>';" />`
+              : `<div class="profile-listing-card__placeholder" aria-hidden="true">${escapeHtml(listing.brand || "CAR")}</div>`}
           </div>
           <div class="profile-listing-card__body">
             <div class="profile-listing-card__top">
@@ -564,17 +577,17 @@ async function loadMyListings(uid) {
               <span class="profile-listing-status ${status.className}">${escapeHtml(status.label)}</span>
             </div>
             <dl class="profile-listing-meta">
-              <div><dt>Registration</dt><dd>${escapeHtml(listing.regNumber || "Not provided")}</dd></div>
-              <div><dt>Location</dt><dd>${escapeHtml(listing.location || "Not provided")}</dd></div>
+              <div><dt>Registration</dt><dd>${escapeHtml(listing.regNo || listing.regNumber || "Not provided")}</dd></div>
+              <div><dt>Location</dt><dd>${escapeHtml(listing.city || listing.location || "Not provided")}</dd></div>
               <div><dt>Transmission</dt><dd>${escapeHtml(listing.transmission || "—")}</dd></div>
-              <div><dt>Odometer</dt><dd>${listing.odometer != null ? `${Number(listing.odometer).toLocaleString("en-IN")} KM` : "—"}</dd></div>
+              <div><dt>Year</dt><dd>${listing.year || "—"}</dd></div>
               <div><dt>Submitted</dt><dd>${escapeHtml(formatDate(listing.createdAt))}</dd></div>
             </dl>
             ${rejectionNote
               ? `<p class="profile-listing-note"><strong>Review note:</strong> ${escapeHtml(rejectionNote)}</p>`
               : ""}
             <div class="profile-listing-card__footer">
-              <span>Listing ID ${escapeHtml(listing.id.slice(0, 8).toUpperCase())}</span>
+              <span>Listing ID #${escapeHtml(String(listing.id || "").slice(0, 8).toUpperCase())}</span>
               <div style="display: flex; gap: 8px; align-items: center;">
                 <button type="button" class="btn-delete-listing" data-listing-id="${escapeHtml(listing.id)}" style="background: rgba(239, 71, 111, 0.12); color: #ef476f; border: 1px solid rgba(239, 71, 111, 0.3); border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer;">Delete</button>
                 <a href="partner.html" style="color: var(--kr-cyan); text-decoration: none; font-weight: 700; font-size: 12.5px;">Manage</a>
@@ -593,8 +606,8 @@ async function loadMyListings(uid) {
         btn.disabled = true;
         btn.textContent = "Deleting...";
         try {
-          await deleteDoc(doc(db, "partner_cars", id));
-          loadMyListings(uid);
+          await api.delete(`/users/partner-cars/${encodeURIComponent(id)}`);
+          loadMyListings(currentU);
         } catch (err) {
           console.error("Delete listing error:", err);
           alert(`Could not delete listing: ${err.message}`);
@@ -602,24 +615,6 @@ async function loadMyListings(uid) {
           btn.textContent = "Delete";
         }
       });
-    });
-
-    grid.querySelectorAll("[data-listing-photo-media]").forEach(async (image) => {
-      const fallback = image.dataset.fallbackImg;
-      await loadProtectedMediaPreview(
-        auth.currentUser,
-        `/api/media/file/${encodeURIComponent(image.dataset.listingPhotoMedia)}`,
-        image
-      );
-      if (!image.hidden && image.nextElementSibling) {
-        image.nextElementSibling.hidden = true;
-      } else if (image.hidden && fallback) {
-        image.src = fallback;
-        image.hidden = false;
-        if (image.nextElementSibling) {
-          image.nextElementSibling.hidden = true;
-        }
-      }
     });
   } catch (error) {
     console.error("Could not load profile listings:", error);
@@ -2040,7 +2035,7 @@ async function initProfileAuth() {
     const profileData = await loadProfile(user);
     initEditProfile(user, profileData || {});
     loadBookings(user.id || user.uid);
-    loadMyListings(user.id || user.uid);
+    loadMyListings(user);
 
     [
       { inputId: "licenseFrontFile", buttonId: "licenseFrontUploadBtn", previewId: "licenseFrontPreview", statusId: "licenseFrontUploadStatus", pillId: "licenseStatusPill", serverCategory: "license_doc", urlField: "licenseFrontURL", statusField: "licenseStatus" },
