@@ -429,7 +429,9 @@ async function initAdminAuth() {
   loadAllAdminData();
 }
 
-initAdminAuth();
+if (typeof window !== "undefined" && (window.location.pathname.includes("admin.html") || document.getElementById("adminContent"))) {
+  initAdminAuth();
+}
 
 let currentKpiStats = null;
 
@@ -635,7 +637,9 @@ function initialiseAdmin() {
   initialiseAdminCalendar();
 }
 
-initialiseAdmin();
+if (typeof window !== "undefined" && (window.location.pathname.includes("admin.html") || document.getElementById("adminContent"))) {
+  initialiseAdmin();
+}
 
 // ============================================================================
 // TABS
