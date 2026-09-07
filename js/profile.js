@@ -1440,37 +1440,35 @@ function renderBooking(
       "unknown"
     ).toLowerCase();
 
-
-  let statusClass =
-    "";
-
+  let statusClass = "pending";
+  let displayStatus = status
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 
   if (
     status === "confirmed" ||
     status === "completed"
   ) {
-
-    statusClass =
-      "verified";
-
+    statusClass = "verified";
+    displayStatus = status === "completed" ? "Completed" : "Confirmed";
   } else if (
-    status === "pending_payment" ||
+    status === "pending_payment"
+  ) {
+    statusClass = "pending";
+    displayStatus = "Pending Payment";
+  } else if (
     status === "pending_verification" ||
     status === "pending"
   ) {
-    statusClass =
-      "pending";
-
+    statusClass = "pending";
+    displayStatus = "Under Review";
   } else if (
     status === "cancelled" ||
     status === "rejected" ||
     booking.paymentStatus === "rejected"
   ) {
-    statusClass =
-      "rejected";
-    if (booking.paymentStatus === "rejected") {
-      displayStatus = "Payment Rejected";
-    }
+    statusClass = "rejected";
+    displayStatus = booking.paymentStatus === "rejected" ? "Payment Rejected" : "Cancelled";
   }
 
 

@@ -60,12 +60,40 @@ class Database {
     }
 
     /**
+     * Auto-heals missing AUTO_INCREMENT schema constraint on tables
+     */
+    public static function autoHealTable(string $table): void {
+        $table = preg_replace('/[^a-zA-Z0-9_]/', '', $table);
+        if (!$table) return;
+        $pdo = self::getConnection();
+        try {
+            $pdo->exec("ALTER TABLE `$table` MODIFY `id` INT NOT NULL AUTO_INCREMENT");
+        } catch (Throwable $_) {
+            try {
+                $pdo->exec("ALTER TABLE `$table` MODIFY `id` INT AUTO_INCREMENT PRIMARY KEY");
+            } catch (Throwable $__) {}
+        }
+    }
+
+    /**
      * Executes an INSERT / UPDATE / DELETE statement and returns affected rows or last insert ID
      */
     public static function execute(string $sql, array $params = []): int {
-        $stmt = self::getConnection()->prepare($sql);
-        $stmt->execute($params);
-        return $stmt->rowCount();
+        try {
+            $stmt = self::getConnection()->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->rowCount();
+        } catch (PDOException $e) {
+            if ($e->getCode() === '23000' && str_contains($e->getMessage(), 'Duplicate entry') && str_contains($e->getMessage(), 'PRIMARY')) {
+                if (preg_match('/(?:INSERT\s+INTO|UPDATE)\s+[`]?([a-zA-Z0-9_]+)[`]?/i', $sql, $m)) {
+                    self::autoHealTable($m[1]);
+                    $stmt = self::getConnection()->prepare($sql);
+                    $stmt->execute($params);
+                    return $stmt->rowCount();
+                }
+            }
+            throw $e;
+        }
     }
 
     /**
@@ -73,9 +101,21 @@ class Database {
      */
     public static function insert(string $sql, array $params = []): int {
         $pdo = self::getConnection();
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        return (int)$pdo->lastInsertId();
+        try {
+            $stmt = $pdo->prepare($sql);
+            $stmt->execute($params);
+            return (int)$pdo->lastInsertId();
+        } catch (PDOException $e) {
+            if ($e->getCode() === '23000' && str_contains($e->getMessage(), 'Duplicate entry') && str_contains($e->getMessage(), 'PRIMARY')) {
+                if (preg_match('/(?:INSERT\s+INTO)\s+[`]?([a-zA-Z0-9_]+)[`]?/i', $sql, $m)) {
+                    self::autoHealTable($m[1]);
+                    $stmt = $pdo->prepare($sql);
+                    $stmt->execute($params);
+                    return (int)$pdo->lastInsertId();
+                }
+            }
+            throw $e;
+        }
     }
 
     /**
