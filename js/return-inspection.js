@@ -1,4 +1,4 @@
-﻿// Shared "Process Return & Damage Assessment" modal, used from both the
+// Shared "Process Return & Damage Assessment" modal, used from both the
 // Manager console and the Admin panel when a booking's car comes back.
 // Staff check off whatever applies (scratch, dent, accident, etc.), edit
 // the deduction amount for each checked item, add free-text invoice notes,
@@ -6,7 +6,7 @@
 // computed live before saving. Saving marks the booking "completed" and
 // stores the itemized breakdown on the booking doc as the permanent record.
 import { auth } from "./firebase-init.js";
-import { api } from "./kruizly-api.js?v=20260907-v2";
+import { api } from "./kruizly-api.js?v=20260907-v5";
 import { MEDIA_SERVER_URL } from "./media-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
 
@@ -45,7 +45,7 @@ const RETURN_PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 const RETURN_PHOTO_MAX_BYTES = 6 * 1024 * 1024;
 
 function formatCurrency(n) {
-  return `₹${Math.round(n).toLocaleString("en-IN")}`;
+  return `?${Math.round(n).toLocaleString("en-IN")}`;
 }
 
 function safeFileName(value) {
@@ -291,7 +291,7 @@ export function openReturnModal({ booking, currentUser, onSaved }) {
             <span class="return-item-label">${item.label}</span>
           </div>
           <div class="return-item-input-wrap">
-            <span class="return-item-currency">₹</span>
+            <span class="return-item-currency">?</span>
             <input type="number" class="return-item-amount" min="0" step="50" value="${item.amount}" ${item.checked ? "" : "disabled"} />
           </div>
         </label>

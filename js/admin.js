@@ -4,7 +4,7 @@
 // ============================================================================
 
 import { auth } from "./firebase-init.js";
-import { api, API_BASE_URL } from "./kruizly-api.js?v=20260907-v2";
+import { api, API_BASE_URL } from "./kruizly-api.js?v=20260907-v5";
 import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260907-v2";
 
 import "./nav-helper.js";

@@ -1,4 +1,4 @@
-import { api } from "./kruizly-api.js?v=20260907-v2";
+import { api } from "./kruizly-api.js?v=20260907-v5";
 import "./nav-helper.js";
 
 // Fleet page: card rendering, searching, filtering,

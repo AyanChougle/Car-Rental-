@@ -1,4 +1,4 @@
-﻿/**
+/**
  * js/auth.js
  * 
  * KRUIZLY Authentication using Firebase Auth SDK + Hostinger MySQL Synchronization.
@@ -17,7 +17,7 @@ import {
   updateProfile
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 
-import { api } from "./kruizly-api.js?v=20260907-v2";
+import { api } from "./kruizly-api.js?v=20260907-v5";
 import { initDynamicNav } from "./nav-helper.js?v=20260907-v2";
 
 // ============================================================

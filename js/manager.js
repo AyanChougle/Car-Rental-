@@ -1,6 +1,6 @@
-ï»¿import { auth } from "./firebase-init.js";
+import { auth } from "./firebase-init.js";
 import { checkAuth, getCurrentUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260907-v2";
-import { api } from "./kruizly-api.js?v=20260907-v2";
+import { api } from "./kruizly-api.js?v=20260907-v5";
 
 import "./nav-helper.js";
 import { openReturnModal } from "./return-inspection.js";
@@ -253,7 +253,7 @@ async function openManagerPaymentModal(booking) {
       </div>
       <div class="manager-summary-row">
         <span>Reference</span>
-        <strong style="font-family:monospace;">${escapeHtml(booking.paymentRef || "â€”")}</strong>
+        <strong style="font-family:monospace;">${escapeHtml(booking.paymentRef || "—")}</strong>
       </div>
       ${screenshotMarkup}
     </div>
@@ -346,7 +346,7 @@ function renderManagerPayments() {
               <td style="padding:12px;">${escapeHtml(booking.userName || "Customer")}</td>
               <td style="padding:12px;">${escapeHtml(booking.vehicleName || "Vehicle")}</td>
               <td style="padding:12px;color:var(--accent);font-weight:700;">&#8377;${formatMoney(booking.totalAmount)}</td>
-              <td style="padding:12px;font-family:monospace;">${escapeHtml(booking.paymentRef || "â€”")}</td>
+              <td style="padding:12px;font-family:monospace;">${escapeHtml(booking.paymentRef || "—")}</td>
               <td style="padding:12px;text-align:right;">
                 <button type="button" class="btn btn-dark manager-review-payment-btn" data-booking-id="${escapeHtml(booking.id)}">
                   Review
@@ -500,7 +500,7 @@ function openExecutivePickupModal(booking) {
 
   if (title) {
     title.textContent =
-      `Pickup â€” ${booking.vehicleName || "Vehicle"} (#${formatBookingNumber(booking)})`;
+      `Pickup — ${booking.vehicleName || "Vehicle"} (#${formatBookingNumber(booking)})`;
   }
 
   if (notes) notes.value = booking.pickupNotes || "";
@@ -518,7 +518,7 @@ function openExecutivePickupModal(booking) {
   const remaining = Math.max(0, Number(booking.remainingBalance ?? (totalAmount - paidSoFar)));
 
   if (balanceDisplay) {
-    balanceDisplay.textContent = `â‚¹${Math.round(remaining).toLocaleString("en-IN")}`;
+    balanceDisplay.textContent = `?${Math.round(remaining).toLocaleString("en-IN")}`;
   }
 
   if (fullPaidCheck) {
@@ -824,20 +824,20 @@ async function openExecutiveBookingDetails(booking) {
         <div class="executive-details-grid">
           ${[
             ["Customer", customer.name || customer.fullName || customer.displayName || booking.userName || booking.customerName || "Customer"],
-            ["Email", customer.email || booking.userEmail || booking.customerEmail || "â€”"],
-            ["Phone", customer.phone || customer.phoneNumber || booking.userPhone || booking.customerPhone || booking.phone || "â€”"],
-            ["Age", customer.age || booking.userAge || booking.age || "â€”"],
+            ["Email", customer.email || booking.userEmail || booking.customerEmail || "—"],
+            ["Phone", customer.phone || customer.phoneNumber || booking.userPhone || booking.customerPhone || booking.phone || "—"],
+            ["Age", customer.age || booking.userAge || booking.age || "—"],
             ["Vehicle", booking.vehicleName || "Vehicle"],
-            ["Registration", booking.vehicleReg || booking.registration || booking.vehicleRegistration || booking.regNo || booking.regNumber || "â€”"],
+            ["Registration", booking.vehicleReg || booking.registration || booking.vehicleRegistration || booking.regNo || booking.regNumber || "—"],
             ["Pickup", formatDisplayDate(booking.pickupDate)],
             ["Drop", formatDisplayDate(booking.dropDate)],
             ["Booking status", formatStatus(booking.status || booking.bookingStatus)],
             ["Pickup status", formatStatus(booking.pickupStatus || (booking.status === "in_trip" || booking.status === "completed" ? "picked_up" : "awaiting pickup"))],
-            ["Pickup Odometer", booking.pickupOdometer != null ? `${Number(booking.pickupOdometer).toLocaleString("en-IN")} km` : (booking.startOdometer != null ? `${Number(booking.startOdometer).toLocaleString("en-IN")} km` : "â€”")],
-            ["Return Odometer", returnInspection.returnOdometer != null ? `${Number(returnInspection.returnOdometer).toLocaleString("en-IN")} km` : (booking.endOdometer != null ? `${Number(booking.endOdometer).toLocaleString("en-IN")} km` : "â€”")],
-            ["Pickup FASTag", booking.pickupFastagBalance != null ? `â‚¹${Number(booking.pickupFastagBalance).toLocaleString("en-IN")}` : (booking.startFastag != null ? `â‚¹${Number(booking.startFastag).toLocaleString("en-IN")}` : "â€”")],
-            ["Return FASTag", returnInspection.returnFastagBalance != null ? `â‚¹${Number(returnInspection.returnFastagBalance).toLocaleString("en-IN")}` : (booking.returnFastag != null ? `â‚¹${Number(booking.returnFastag).toLocaleString("en-IN")}` : "â€”")],
-            ["Fuel Level", booking.pickupFuelLevel || booking.fuelLevel || returnInspection.fuelLevel || "â€”"],
+            ["Pickup Odometer", booking.pickupOdometer != null ? `${Number(booking.pickupOdometer).toLocaleString("en-IN")} km` : (booking.startOdometer != null ? `${Number(booking.startOdometer).toLocaleString("en-IN")} km` : "—")],
+            ["Return Odometer", returnInspection.returnOdometer != null ? `${Number(returnInspection.returnOdometer).toLocaleString("en-IN")} km` : (booking.endOdometer != null ? `${Number(booking.endOdometer).toLocaleString("en-IN")} km` : "—")],
+            ["Pickup FASTag", booking.pickupFastagBalance != null ? `?${Number(booking.pickupFastagBalance).toLocaleString("en-IN")}` : (booking.startFastag != null ? `?${Number(booking.startFastag).toLocaleString("en-IN")}` : "—")],
+            ["Return FASTag", returnInspection.returnFastagBalance != null ? `?${Number(returnInspection.returnFastagBalance).toLocaleString("en-IN")}` : (booking.returnFastag != null ? `?${Number(booking.returnFastag).toLocaleString("en-IN")}` : "—")],
+            ["Fuel Level", booking.pickupFuelLevel || booking.fuelLevel || returnInspection.fuelLevel || "—"],
           ].map(([label, value]) => `
             <div class="executive-detail-item">
               <span>${escapeHtml(label)}</span>
@@ -856,14 +856,14 @@ async function openExecutiveBookingDetails(booking) {
               ${returnItems.map((item) => `
                 <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px dashed var(--line);">
                   <span>${escapeHtml(item.label || item.name || item.key)}</span>
-                  <strong style="color:#ef476f;">â‚¹${Number(item.amount || 0).toLocaleString("en-IN")}</strong>
+                  <strong style="color:#ef476f;">?${Number(item.amount || 0).toLocaleString("en-IN")}</strong>
                 </div>
               `).join("")}
             </div>
           ` : `<p style="margin:0 0 8px; color:var(--sub); font-size:0.85rem;">No damage deductions recorded.</p>`}
           <div style="display:flex; justify-content:space-between; font-size:0.85rem; border-top:1px solid var(--line); padding-top:8px;">
-            <span>Total Deductions: <strong style="color:#ef476f;">â‚¹${Number(returnInspection.deductionTotal || 0).toLocaleString("en-IN")}</strong></span>
-            <span>Deposit Refund: <strong style="color:#34d399;">â‚¹${Number(returnInspection.depositRefund ?? Math.max(0, (booking.securityDeposit || 0) - (returnInspection.deductionTotal || 0))).toLocaleString("en-IN")}</strong></span>
+            <span>Total Deductions: <strong style="color:#ef476f;">?${Number(returnInspection.deductionTotal || 0).toLocaleString("en-IN")}</strong></span>
+            <span>Deposit Refund: <strong style="color:#34d399;">?${Number(returnInspection.depositRefund ?? Math.max(0, (booking.securityDeposit || 0) - (returnInspection.deductionTotal || 0))).toLocaleString("en-IN")}</strong></span>
           </div>
         </div>
         ` : ""}
@@ -1115,7 +1115,7 @@ function getManagerBookingDateMillis(booking) {
 }
 
 function formatDisplayDate(value) {
-  if (!value) return "â€”";
+  if (!value) return "—";
   let date;
   if (value instanceof Date) {
     date = value;
@@ -1136,7 +1136,7 @@ function formatDisplayDate(value) {
     }
   }
 
-  if (!date || Number.isNaN(date.getTime())) return String(value || "â€”");
+  if (!date || Number.isNaN(date.getTime())) return String(value || "—");
 
   return date.toLocaleDateString("en-IN", {
     day: "2-digit",
@@ -1283,7 +1283,7 @@ function renderManagerBookingsTable(bookings) {
       booking.phone ||
       booking.userEmail ||
       booking.email ||
-      "â€”";
+      "—";
 
     /* =====================================================
        VEHICLE
@@ -1299,7 +1299,7 @@ function renderManagerBookingsTable(bookings) {
       booking.vehicleReg ||
       booking.regNumber ||
       booking.registration ||
-      "â€”";
+      "—";
 
     /* =====================================================
        DATES
@@ -1502,7 +1502,7 @@ function renderManagerBookingsTable(bookings) {
         </td>
 
         <td style="padding: 14px;">
-          <strong>â‚¹${Number.isFinite(paymentAmount) ? paymentAmount.toLocaleString("en-IN") : "0"}</strong>
+          <strong>?${Number.isFinite(paymentAmount) ? paymentAmount.toLocaleString("en-IN") : "0"}</strong>
           <div style="margin-top: 4px; color: var(--sub); font-size: 0.75rem;">
             ${escapeHtml(paymentStatus)}
           </div>
@@ -1568,7 +1568,7 @@ function renderManagerPagination(totalPages, totalItems) {
   return `
     <nav class="data-pagination" aria-label="Executive booking pages">
       <span class="data-pagination__summary">
-        Page <strong>${managerBookingPage}</strong> of <strong>${totalPages}</strong> Â· <span style="color:var(--kr-text-muted);">${totalItems} bookings</span>
+        Page <strong>${managerBookingPage}</strong> of <strong>${totalPages}</strong> · <span style="color:var(--kr-text-muted);">${totalItems} bookings</span>
       </span>
       <div class="data-pagination__actions">
         <button type="button" class="btn-pagination" data-manager-page-action="previous" ${managerBookingPage === 1 ? "disabled" : ""}>
@@ -1828,7 +1828,7 @@ function openReturnReport(booking) {
     booking.vehicleReg ||
     booking.regNumber ||
     booking.registration ||
-    "â€”";
+    "—";
 
   const customer =
     booking.userName ||
@@ -2010,7 +2010,7 @@ function openReturnReport(booking) {
                         color: #ef476f;
                         white-space: nowrap;
                       ">
-                        â‚¹${formatMoney(amount)}
+                        ?${formatMoney(amount)}
                       </strong>
                     `
                     : ""
@@ -2077,27 +2077,27 @@ function openReturnReport(booking) {
       <div class="rr-info-grid" style="margin-top: 10px;">
         <div class="rr-info-cell">
           <span class="rr-info-key">Pickup Odometer</span>
-          <strong class="rr-info-val">${booking.pickupOdometer != null ? `${Number(booking.pickupOdometer).toLocaleString("en-IN")} km` : "â€”"}</strong>
+          <strong class="rr-info-val">${booking.pickupOdometer != null ? `${Number(booking.pickupOdometer).toLocaleString("en-IN")} km` : "—"}</strong>
         </div>
         <div class="rr-info-cell">
           <span class="rr-info-key">Return Odometer</span>
-          <strong class="rr-info-val">${inspection.returnOdometer != null ? `${Number(inspection.returnOdometer).toLocaleString("en-IN")} km` : "â€”"}</strong>
+          <strong class="rr-info-val">${inspection.returnOdometer != null ? `${Number(inspection.returnOdometer).toLocaleString("en-IN")} km` : "—"}</strong>
         </div>
         <div class="rr-info-cell">
           <span class="rr-info-key">Distance Driven</span>
-          <strong class="rr-info-val">${(inspection.returnOdometer != null && booking.pickupOdometer != null && Number(inspection.returnOdometer) >= Number(booking.pickupOdometer)) ? `${(Number(inspection.returnOdometer) - Number(booking.pickupOdometer)).toLocaleString("en-IN")} km` : "â€”"}</strong>
+          <strong class="rr-info-val">${(inspection.returnOdometer != null && booking.pickupOdometer != null && Number(inspection.returnOdometer) >= Number(booking.pickupOdometer)) ? `${(Number(inspection.returnOdometer) - Number(booking.pickupOdometer)).toLocaleString("en-IN")} km` : "—"}</strong>
         </div>
         <div class="rr-info-cell">
           <span class="rr-info-key">Pickup FASTag</span>
-          <strong class="rr-info-val">${booking.pickupFastagBalance != null ? `â‚¹${Number(booking.pickupFastagBalance).toLocaleString("en-IN")}` : "â€”"}</strong>
+          <strong class="rr-info-val">${booking.pickupFastagBalance != null ? `?${Number(booking.pickupFastagBalance).toLocaleString("en-IN")}` : "—"}</strong>
         </div>
         <div class="rr-info-cell">
           <span class="rr-info-key">Return FASTag</span>
-          <strong class="rr-info-val">${inspection.returnFastagBalance != null ? `â‚¹${Number(inspection.returnFastagBalance).toLocaleString("en-IN")}` : "â€”"}</strong>
+          <strong class="rr-info-val">${inspection.returnFastagBalance != null ? `?${Number(inspection.returnFastagBalance).toLocaleString("en-IN")}` : "—"}</strong>
         </div>
         <div class="rr-info-cell">
           <span class="rr-info-key">Fuel Level</span>
-          <strong class="rr-info-val">${escapeHtml(booking.pickupFuelLevel || "â€”")}</strong>
+          <strong class="rr-info-val">${escapeHtml(booking.pickupFuelLevel || "—")}</strong>
         </div>
       </div>
 
@@ -2105,15 +2105,15 @@ function openReturnReport(booking) {
       <div class="rr-finance">
         <div class="rr-finance-row">
           <span>Security Deposit</span>
-          <strong>â‚¹${formatMoney(deposit)}</strong>
+          <strong>?${formatMoney(deposit)}</strong>
         </div>
         <div class="rr-finance-row">
           <span>Total Deductions</span>
-          <strong class="rr-deduct">â‚¹${formatMoney(deductions)}</strong>
+          <strong class="rr-deduct">?${formatMoney(deductions)}</strong>
         </div>
         <div class="rr-finance-row rr-finance-row--total">
           <span>Refundable to Customer</span>
-          <strong class="rr-refund">â‚¹${formatMoney(refund)}</strong>
+          <strong class="rr-refund">?${formatMoney(refund)}</strong>
         </div>
       </div>
 
@@ -2131,7 +2131,7 @@ function openReturnReport(booking) {
             return `
               <div class="rr-item">
                 <span class="rr-item-name">${escapeHtml(title)}</span>
-                ${amount > 0 ? `<span class="rr-item-amount">â‚¹${formatMoney(amount)}</span>` : `<span class="rr-item-nil">â€”</span>`}
+                ${amount > 0 ? `<span class="rr-item-amount">?${formatMoney(amount)}</span>` : `<span class="rr-item-nil">—</span>`}
               </div>
             `;
           }).join("")}
@@ -2382,7 +2382,7 @@ async function openManagerDocumentModal(user, type) {
 
   if (title) {
     title.textContent =
-      `${user.name || "Customer"} â€” ${documentLabel}`;
+      `${user.name || "Customer"} — ${documentLabel}`;
   }
 
   const isComplete = isLicense ? mediaUrls.length === 2 : mediaUrls.length > 0;
@@ -2783,7 +2783,7 @@ function renderManagerDocsList(users) {
 
           ${escapeHtml(
             user.email ||
-            "â€”"
+            "—"
           )}
 
           <br>
@@ -2794,7 +2794,7 @@ function renderManagerDocsList(users) {
           ">
             ${escapeHtml(
               user.phone ||
-              "â€”"
+              "—"
             )}
           </span>
 

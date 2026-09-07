@@ -1,10 +1,10 @@
-﻿// Contact form: saves every submission to Firestore (contact_messages)
+// Contact form: saves every submission to Firestore (contact_messages)
 // so it's never silently lost, then opens the visitor's mail client as a
 // bonus (mailto: does nothing on many phones/browsers with no mail app
 // configured, so it can no longer be the only delivery path). Also
 // prefills the form for links coming from fleet.html / vehicle.html
 // "Book Now" buttons (contact.html?subject=Booking%20Support&vehicle=Tata%20Nexon).
-import { api } from "./kruizly-api.js?v=20260907-v2";
+import { api } from "./kruizly-api.js?v=20260907-v5";
 import "./nav-helper.js";
 
 const form = document.getElementById("contact-form");
@@ -83,10 +83,10 @@ if (form && status) {
 
     // Show success status with quick WhatsApp fallback
     status.innerHTML = `
-      <span style="color: #4fd7ff; font-weight: 700;">✓ Opening your email client to send to support@kruizly.com...</span>
+      <span style="color: #4fd7ff; font-weight: 700;">? Opening your email client to send to support@kruizly.com...</span>
       <div style="margin-top: 8px;">
         <a href="${waLink}" target="_blank" rel="noopener noreferrer" style="color: #25d366; font-size: 13px; font-weight: 700; text-decoration: underline;">
-          Or click here to send via WhatsApp →
+          Or click here to send via WhatsApp ?
         </a>
       </div>
     `;

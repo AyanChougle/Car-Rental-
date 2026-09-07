@@ -1,11 +1,11 @@
-﻿/**
+/**
  * js/coupon-service.js
  * 
  * Production server-side coupon validation and suggestion catalog for KRUIZLY.
  * Authoritative source: Hostinger MySQL Backend API (/api/coupons).
  */
 
-import { api } from "./kruizly-api.js?v=20260907-v2";
+import { api } from "./kruizly-api.js?v=20260907-v5";
 
 /**
  * Fetches active available coupons from backend database for suggestions in UI.
@@ -22,7 +22,7 @@ export async function getAvailableCoupons(rentalTotal = 0) {
       const isEligible = rentalTotal <= 0 || rentalTotal >= minAmount;
       const type = c.discountType || c.type || "flat";
       const val = Number(c.discountValue || c.val || 0);
-      const badge = type === "percentage" || type === "percent" ? `${val}% OFF` : `SAVE ₹${val}`;
+      const badge = type === "percentage" || type === "percent" ? `${val}% OFF` : `SAVE ?${val}`;
 
       return {
         ...c,
@@ -32,8 +32,8 @@ export async function getAvailableCoupons(rentalTotal = 0) {
         minimumBookingAmount: minAmount,
         isEligible,
         badge,
-        label: c.label || (type === "percentage" || type === "percent" ? `${val}% Off` : `₹${val} Flat Off`),
-        description: c.description || (minAmount > 0 ? `Min booking ₹${minAmount.toLocaleString("en-IN")}` : "No min booking")
+        label: c.label || (type === "percentage" || type === "percent" ? `${val}% Off` : `?${val} Flat Off`),
+        description: c.description || (minAmount > 0 ? `Min booking ?${minAmount.toLocaleString("en-IN")}` : "No min booking")
       };
     });
   } catch (err) {

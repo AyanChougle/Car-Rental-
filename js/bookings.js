@@ -1,5 +1,5 @@
-ï»¿import { checkAuth, getCurrentUser } from "./auth.js?v=20260907-v2";
-import { api } from "./kruizly-api.js?v=20260907-v2";
+import { checkAuth, getCurrentUser } from "./auth.js?v=20260907-v2";
+import { api } from "./kruizly-api.js?v=20260907-v5";
 import "./nav-helper.js";
 
 import {
@@ -33,17 +33,17 @@ const STATUS_COPY = {
 function paymentStatusLabel(booking) {
   switch (booking.paymentStatus) {
     case "paid":
-      return `Paid â€¢ ${booking.paymentRef || ""}`;
+      return `Paid • ${booking.paymentRef || ""}`;
     case "advance_paid":
-      return `â‚¹${formatCurrency(booking.paymentAmountPaid || booking.paymentAmount || 500)} advance paid â€” â‚¹${formatCurrency(booking.remainingBalance || 0)} due at pickup`;
+      return `?${formatCurrency(booking.paymentAmountPaid || booking.paymentAmount || 500)} advance paid — ?${formatCurrency(booking.remainingBalance || 0)} due at pickup`;
     case "pay_at_pickup":
       return "Pay at pickup";
     case "pending_verification":
-      return `Verifying payment â€¢ ${booking.paymentRef || ""}`;
+      return `Verifying payment • ${booking.paymentRef || ""}`;
     case "refunded":
-      return `Refunded â€¢ Booking cancelled`;
+      return `Refunded • Booking cancelled`;
     case "rejected":
-      return `Payment rejected${booking.paymentRejectionReason ? ` â€” ${booking.paymentRejectionReason}` : ""}. Please resubmit.`;
+      return `Payment rejected${booking.paymentRejectionReason ? ` — ${booking.paymentRejectionReason}` : ""}. Please resubmit.`;
     default:
       return "Unpaid";
   }
@@ -91,7 +91,7 @@ function bookingCard(b, isLive) {
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;padding:12px 14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;margin-bottom:12px;font-size:0.9rem;">
         <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">PICKUP</strong> ${formatDate(b.pickupDate)}</div>
         <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">DROP</strong> ${formatDate(b.dropDate)}</div>
-        <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">TOTAL</strong> â‚¹${formatCurrency(b.totalAmount || b.finalAmount || 0)}</div>
+        <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">TOTAL</strong> ?${formatCurrency(b.totalAmount || b.finalAmount || 0)}</div>
         <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">PAYMENT STATUS</strong> ${paymentStatusLabel(b)}</div>
       </div>
 
