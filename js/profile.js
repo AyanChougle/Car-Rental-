@@ -451,6 +451,12 @@ function initTabs() {
     const tabName =
       target.replace("prof-tab-", "");
 
+    if (tabName === "bookings") {
+      loadBookings(currentUser?.id || currentUser?.uid);
+    } else if (tabName === "listings") {
+      loadMyListings(currentUser);
+    }
+
     const url = new URL(window.location.href);
 
     if (tabName === "info") {
