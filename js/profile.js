@@ -1,4 +1,4 @@
-﻿/* ============================================================
+/* ============================================================
    KRUZLY — PROFILE PAGE
    Firebase Auth + Firestore
    Local Node Media Server for documents
@@ -226,62 +226,17 @@ async function uploadDocumentToServer(
     throw new Error("No file selected.");
   }
 
-  // Upload to Hostinger server storage via kruizly-api
-  try {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("category", category);
+  // Upload directly to Hostinger server storage via kruizly-api
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("category", category);
 
-    const result = await api.upload("/media/upload", formData);
-    if (result && (result.url || result.mediaUrl || result.mediaId || result.id)) {
-      return result;
-    }
-  } catch (serverErr) {
-    console.warn("[Upload] Media upload via API failed, using client fallback:", serverErr);
+  const result = await api.upload("/media/upload", formData);
+  if (result && (result.url || result.mediaUrl || result.mediaId || result.id)) {
+    return result;
   }
 
-  // 2. Client-side compressed document processing for direct Firestore/Cloud verification
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX_DIM = 1200;
-        let width = img.width;
-        let height = img.height;
-        if (width > height && width > MAX_DIM) {
-          height = Math.round((height * MAX_DIM) / width);
-          width = MAX_DIM;
-        } else if (height > MAX_DIM) {
-          width = Math.round((width * MAX_DIM) / height);
-          height = MAX_DIM;
-        }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.78);
-        resolve({
-          url: dataUrl,
-          id: `doc_${Date.now()}`,
-          category,
-          originalName: file.name
-        });
-      };
-      img.onerror = () => {
-        resolve({
-          url: e.target.result,
-          id: `doc_${Date.now()}`,
-          category,
-          originalName: file.name
-        });
-      };
-      img.src = e.target.result;
-    };
-    reader.onerror = () => reject(new Error("Could not process selected document."));
-    reader.readAsDataURL(file);
-  });
+  throw new Error("Document upload failed: No URL returned from server.");
 }
 
 
