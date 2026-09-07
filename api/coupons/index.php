@@ -58,9 +58,15 @@ if ($method === 'POST') {
     $discountType = ($rawType === 'percent' || $rawType === 'percentage') ? 'percentage' : 'flat';
     $discountValue = (float)($input['discountValue'] ?? $input['val'] ?? 0.00);
     $minOrder = (float)($input['minOrder'] ?? $input['minimumBookingAmount'] ?? 0.00);
-    $maxDiscount = isset($input['maxDiscount']) ? (float)$input['maxDiscount'] : null;
+    $maxDiscount = isset($input['maxDiscount']) && $input['maxDiscount'] !== '' ? (float)$input['maxDiscount'] : null;
     $label = trim((string)($input['label'] ?? ''));
+    if (!$label) {
+        $label = $discountType === 'percentage' ? "{$discountValue}% Off" : "₹{$discountValue} Flat Off";
+    }
     $description = trim((string)($input['description'] ?? ''));
+    if (!$description) {
+        $description = "Enjoy discount on your booking";
+    }
     $active = isset($input['active']) ? (int)(bool)$input['active'] : 1;
     $status = trim((string)($input['status'] ?? ($active ? 'active' : 'inactive')));
 
@@ -83,7 +89,19 @@ if ($method === 'POST') {
         [$code, $discountType, $discountValue, $minOrder, $maxDiscount, $label, $description, $active, $status]
     );
 
-    sendJsonResponse(['success' => true, 'message' => "Coupon $code saved successfully."]);
+    sendJsonResponse([
+        'success' => true,
+        'message' => "Coupon $code saved successfully.",
+        'coupon' => [
+            'code' => $code,
+            'type' => $discountType === 'percentage' ? 'percent' : 'flat',
+            'discountValue' => $discountValue,
+            'label' => $label,
+            'minOrder' => $minOrder,
+            'active' => (bool)$active,
+            'status' => $status
+        ]
+    ]);
 }
 
 sendErrorResponse('Method not allowed.', 405);

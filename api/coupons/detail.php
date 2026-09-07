@@ -23,6 +23,13 @@ if ($method === 'PUT' || $method === 'POST') {
     $updates = [];
     $params = [];
 
+    if (!empty($input['newCode']) || (!empty($input['code']) && strtoupper(trim((string)$input['code'])) !== $code)) {
+        $newCode = strtoupper(trim((string)($input['newCode'] ?? $input['code'])));
+        if ($newCode) {
+            $updates[] = "code = ?";
+            $params[] = $newCode;
+        }
+    }
     if (isset($input['active'])) {
         $updates[] = "active = ?";
         $params[] = (int)(bool)$input['active'];
@@ -55,18 +62,20 @@ if ($method === 'PUT' || $method === 'POST') {
 
     if ($updates) {
         $params[] = $code;
+        $params[] = is_numeric($code) ? (int)$code : 0;
         Database::execute(
-            "UPDATE coupons SET " . implode(', ', $updates) . ", updated_at = CURRENT_TIMESTAMP WHERE code = ?",
+            "UPDATE coupons SET " . implode(', ', $updates) . ", updated_at = CURRENT_TIMESTAMP WHERE code = ? OR id = ?",
             $params
         );
     }
 
-    sendJsonResponse(['success' => true, 'message' => "Coupon $code updated."]);
+    sendJsonResponse(['success' => true, 'message' => "Coupon $code updated successfully."]);
 }
 
 if ($method === 'DELETE') {
-    Database::execute("DELETE FROM coupons WHERE code = ?", [$code]);
-    sendJsonResponse(['success' => true, 'message' => "Coupon $code deleted."]);
+    $numericId = is_numeric($code) ? (int)$code : 0;
+    Database::execute("DELETE FROM coupons WHERE code = ? OR id = ?", [$code, $numericId]);
+    sendJsonResponse(['success' => true, 'message' => "Coupon $code deleted successfully."]);
 }
 
 sendErrorResponse('Method not allowed.', 405);

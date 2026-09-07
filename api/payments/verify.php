@@ -27,19 +27,31 @@ try {
 
         if ($action === 'approve') {
             // Update payment record
+            $cleanId = ltrim($id, '#');
+            $numId = is_numeric($id) ? (int)$id : 0;
             $pdo->prepare(
                 "UPDATE payments SET
                     status = 'verified',
                     verified_by = ?,
                     verified_at = ?,
                     updated_at = CURRENT_TIMESTAMP
-                 WHERE payment_id = ? OR booking_id = ?"
-            )->execute([$admin['firebase_uid'], $now, $id, $id]);
+                 WHERE payment_id = ? 
+                    OR booking_id = ? 
+                    OR id = ? 
+                    OR REPLACE(booking_id, '#', '') = ?
+                    OR REPLACE(payment_id, '#', '') = ?"
+            )->execute([$admin['firebase_uid'], $now, $id, $id, $numId, $cleanId, $cleanId]);
 
             // Update booking status
             $booking = Database::fetchOne(
-                "SELECT * FROM bookings WHERE booking_id = ? OR booking_number = ? LIMIT 1",
-                [$id, $id]
+                "SELECT * FROM bookings 
+                 WHERE booking_id = ? 
+                    OR booking_number = ? 
+                    OR id = ? 
+                    OR REPLACE(booking_id, '#', '') = ? 
+                    OR REPLACE(booking_number, '#', '') = ? 
+                 LIMIT 1",
+                [$id, $id, $numId, $cleanId, $cleanId]
             );
 
             if ($booking) {
@@ -63,6 +75,8 @@ try {
                 }
             }
         } elseif ($action === 'reject') {
+            $cleanId = ltrim($id, '#');
+            $numId = is_numeric($id) ? (int)$id : 0;
             $pdo->prepare(
                 "UPDATE payments SET
                     status = 'rejected',
@@ -70,8 +84,12 @@ try {
                     verified_by = ?,
                     verified_at = ?,
                     updated_at = CURRENT_TIMESTAMP
-                 WHERE payment_id = ? OR booking_id = ?"
-            )->execute([$reason ?: 'Payment receipt could not be verified.', $admin['firebase_uid'], $now, $id, $id]);
+                 WHERE payment_id = ? 
+                    OR booking_id = ? 
+                    OR id = ? 
+                    OR REPLACE(booking_id, '#', '') = ?
+                    OR REPLACE(payment_id, '#', '') = ?"
+            )->execute([$reason ?: 'Payment receipt could not be verified.', $admin['firebase_uid'], $now, $id, $id, $numId, $cleanId, $cleanId]);
 
             $pdo->prepare(
                 "UPDATE bookings SET
@@ -79,8 +97,12 @@ try {
                     booking_status = 'cancelled',
                     payment_status = 'rejected',
                     updated_at = CURRENT_TIMESTAMP
-                 WHERE booking_id = ? OR booking_number = ?"
-            )->execute([$id, $id]);
+                 WHERE booking_id = ? 
+                    OR booking_number = ? 
+                    OR id = ? 
+                    OR REPLACE(booking_id, '#', '') = ? 
+                    OR REPLACE(booking_number, '#', '') = ?"
+            )->execute([$id, $id, $numId, $cleanId, $cleanId]);
         } else {
             throw new Exception("Invalid action '$action'. Must be 'approve' or 'reject'.");
         }

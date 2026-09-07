@@ -674,6 +674,21 @@ function initialiseTabs() {
         .forEach((panel) => {
           panel.hidden = panel.id !== targetId;
         });
+
+      if (targetId === "tab-coupons") {
+        resetCouponForm();
+        loadCoupons();
+      } else if (targetId === "tab-payments") {
+        loadPayments();
+      } else if (targetId === "tab-fleet") {
+        loadFleetManagement();
+      } else if (targetId === "tab-hosts") {
+        loadHostCars();
+      } else if (targetId === "tab-users") {
+        loadUsers();
+      } else if (targetId === "tab-bookings") {
+        loadBookings();
+      }
     });
   });
 
@@ -1383,11 +1398,20 @@ function resetCouponForm() {
   $("couponForm")?.reset();
   if ($("couponBoxHeading")) $("couponBoxHeading").textContent = "Add New Coupon Code";
   if ($("couponFormSubmit")) $("couponFormSubmit").textContent = "Save Coupon";
-  if ($("couponCancelBtn")) $("couponCancelBtn").style.display = "none";
+  const cancelBtn = $("couponCancelBtn");
+  if (cancelBtn) cancelBtn.style.display = "none";
 }
 
 function initialiseCouponManagement() {
-  $("couponCancelBtn")?.addEventListener("click", resetCouponForm);
+  const cancelBtn = $("couponCancelBtn");
+  cancelBtn?.addEventListener("click", () => {
+    resetCouponForm();
+    const statusMsg = $("couponFormStatus");
+    if (statusMsg) {
+      statusMsg.textContent = "Coupon editing cancelled.";
+      statusMsg.style.color = "var(--kr-cyan)";
+    }
+  });
 
   $("couponForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -1403,15 +1427,18 @@ function initialiseCouponManagement() {
       return;
     }
 
+    const isEditing = Boolean(editingCouponId);
+    const currentEditId = editingCouponId;
     const submitBtn = $("couponFormSubmit");
     if (submitBtn) submitBtn.disabled = true;
     const statusMsg = $("couponFormStatus");
-    if (statusMsg) statusMsg.textContent = "Saving coupon code...";
+    if (statusMsg) statusMsg.textContent = isEditing ? `Updating coupon "${currentEditId}"...` : "Creating new coupon...";
 
     try {
       const isActive = status === "active";
       const data = {
         code,
+        newCode: code,
         active: isActive,
         status,
         type,
@@ -1423,11 +1450,17 @@ function initialiseCouponManagement() {
         minimumBookingAmount: minOrder
       };
 
-      await api.post("/coupons", data);
+      if (isEditing) {
+        await api.put(`/coupons/${encodeURIComponent(currentEditId)}`, data);
+      } else {
+        await api.post("/coupons", data);
+      }
 
       resetCouponForm();
       if (statusMsg) {
-        statusMsg.textContent = `Coupon "${code}" saved successfully!`;
+        statusMsg.textContent = isEditing
+          ? `Coupon "${code}" updated successfully!`
+          : `New coupon "${code}" created successfully!`;
         statusMsg.style.color = "#00f0a0";
       }
       await loadCoupons();
