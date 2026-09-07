@@ -23,6 +23,20 @@ function $(id) {
   return document.getElementById(id);
 }
 
+function showEl(el) {
+  if (!el) return;
+  el.hidden = false;
+  el.removeAttribute("hidden");
+  el.style.display = "block";
+}
+
+function hideEl(el) {
+  if (!el) return;
+  el.hidden = true;
+  el.setAttribute("hidden", "hidden");
+  el.style.display = "none";
+}
+
 function escapeHtml(str) {
   return String(str ?? "")
     .replaceAll("&", "&amp;")
