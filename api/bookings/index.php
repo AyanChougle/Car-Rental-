@@ -22,19 +22,30 @@ if ($method === 'GET') {
     $status = trim((string)($_GET['status'] ?? ''));
     $search = trim((string)($_GET['search'] ?? ''));
 
-    $sql = "SELECT * FROM bookings WHERE 1=1";
+    $sql = "SELECT b.*,
+                   COALESCE(NULLIF(b.user_name, ''), NULLIF(u.name, ''), NULLIF(u.full_name, ''), u.email, 'Customer') AS resolved_user_name,
+                   COALESCE(NULLIF(b.user_email, ''), NULLIF(u.email, ''), '') AS resolved_user_email,
+                   COALESCE(NULLIF(b.user_phone, ''), NULLIF(u.phone, ''), '') AS resolved_user_phone,
+                   COALESCE(NULLIF(b.vehicle_name, ''), NULLIF(v.model, ''), 'Vehicle') AS resolved_vehicle_name
+            FROM bookings b
+            LEFT JOIN users u ON b.firebase_uid = u.firebase_uid
+            LEFT JOIN vehicles v ON (b.vehicle_id = v.id OR b.vehicle_reg = v.reg_no)
+            WHERE 1=1";
     $params = [];
 
     if ($status && $status !== 'all') {
-        $sql .= " AND (status = ? OR booking_status = ? OR payment_status = ?)";
+        $sql .= " AND (b.status = ? OR b.booking_status = ? OR b.payment_status = ?)";
         $params[] = $status;
         $params[] = $status;
         $params[] = $status;
     }
 
     if ($search) {
-        $sql .= " AND (booking_id LIKE ? OR user_name LIKE ? OR user_email LIKE ? OR vehicle_name LIKE ? OR payment_ref LIKE ?)";
+        $sql .= " AND (b.booking_id LIKE ? OR b.booking_number LIKE ? OR b.user_name LIKE ? OR u.name LIKE ? OR b.user_email LIKE ? OR u.email LIKE ? OR b.vehicle_name LIKE ? OR b.payment_ref LIKE ?)";
         $pat = "%$search%";
+        $params[] = $pat;
+        $params[] = $pat;
+        $params[] = $pat;
         $params[] = $pat;
         $params[] = $pat;
         $params[] = $pat;
@@ -42,7 +53,7 @@ if ($method === 'GET') {
         $params[] = $pat;
     }
 
-    $sql .= " ORDER BY created_at DESC";
+    $sql .= " ORDER BY b.created_at DESC";
 
     $rows = Database::fetchAll($sql, $params);
 
@@ -76,14 +87,14 @@ if ($method === 'GET') {
         return [
             'id' => $b['booking_id'],
             'bookingId' => $b['booking_id'],
-            'bookingNumber' => $b['booking_number'],
+            'bookingNumber' => $b['booking_number'] ?? $b['booking_id'],
             'userId' => $b['firebase_uid'],
             'firebaseUid' => $b['firebase_uid'],
-            'userName' => $b['user_name'],
-            'userEmail' => $b['user_email'],
-            'userPhone' => $b['user_phone'],
+            'userName' => $b['resolved_user_name'] ?? ($b['user_name'] ?: 'Customer'),
+            'userEmail' => $b['resolved_user_email'] ?? ($b['user_email'] ?: ''),
+            'userPhone' => $b['resolved_user_phone'] ?? ($b['user_phone'] ?: ''),
             'vehicleReg' => $b['vehicle_reg'],
-            'vehicleName' => $b['vehicle_name'],
+            'vehicleName' => $b['resolved_vehicle_name'] ?? ($b['vehicle_name'] ?: 'Vehicle'),
             'vehicleCategory' => $b['vehicle_category'],
             'pickupDate' => $b['pickup_date'],
             'dropDate' => $b['drop_date'],

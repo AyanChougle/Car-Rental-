@@ -1,4 +1,4 @@
-﻿import { api } from "./kruizly-api.js?v=20260907-v2";
+import { api } from "./kruizly-api.js?v=20260907-v2";
 import "./nav-helper.js";
 
 // Fleet page: card rendering, searching, filtering,
@@ -253,6 +253,7 @@ function renderPagination(totalItems) {
   if (totalPages <= 1 || totalItems === 0) {
     fleetPagination.classList.add("hidden");
     fleetPagination.hidden = true;
+    fleetPagination.innerHTML = "";
     return;
   }
 
@@ -261,21 +262,48 @@ function renderPagination(totalItems) {
 
   currentFleetPage = Math.max(1, Math.min(currentFleetPage, totalPages));
 
-  let pageButtonsHtml = "";
-  for (let i = 1; i <= totalPages; i++) {
-    pageButtonsHtml += `
-      <button type="button" data-fleet-page="${i}" class="${i === currentFleetPage ? "active" : ""}">${i}</button>
-    `;
-  }
+  const getPageWindow = (curr, total) => {
+    if (total <= 6) return Array.from({ length: total }, (_, i) => i + 1);
+    const pages = [1];
+    const start = Math.max(2, curr - 1);
+    const end = Math.min(total - 1, curr + 1);
+    if (start > 2) pages.push("...");
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < total - 1) pages.push("...");
+    pages.push(total);
+    return pages;
+  };
+
+  const windowPages = getPageWindow(currentFleetPage, totalPages);
+
+  const pageButtonsHtml = windowPages
+    .map((p) => {
+      if (p === "...") {
+        return `<span class="data-pagination__ellipsis" aria-hidden="true">...</span>`;
+      }
+      const isActive = p === currentFleetPage;
+      return `
+        <button type="button" data-fleet-page="${p}" class="${isActive ? "active" : ""}" aria-current="${isActive ? "page" : "false"}" aria-label="Page ${p}">
+          ${p}
+        </button>
+      `;
+    })
+    .join("");
 
   fleetPagination.innerHTML = `
     <span class="data-pagination__summary">
       Page <strong>${currentFleetPage}</strong> of <strong>${totalPages}</strong> · <strong>${totalItems}</strong> vehicles
     </span>
     <div class="data-pagination__actions">
-      <button type="button" data-fleet-page="prev" ${currentFleetPage === 1 ? "disabled" : ""}>Previous</button>
+      <button type="button" data-fleet-page="prev" ${currentFleetPage === 1 ? "disabled" : ""} aria-label="Previous Page">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:2px;"><path d="m15 18-6-6 6-6"/></svg>
+        <span>Prev</span>
+      </button>
       ${pageButtonsHtml}
-      <button type="button" data-fleet-page="next" ${currentFleetPage === totalPages ? "disabled" : ""}>Next</button>
+      <button type="button" data-fleet-page="next" ${currentFleetPage === totalPages ? "disabled" : ""} aria-label="Next Page">
+        <span>Next</span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:2px;"><path d="m9 18 6-6-6-6"/></svg>
+      </button>
     </div>
   `;
 
@@ -290,7 +318,10 @@ function renderPagination(totalItems) {
         currentFleetPage = Number(target) || 1;
       }
       applyPagination();
-      document.querySelector(".fleet-listing-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const listingSection = document.querySelector(".fleet-listing-section") || document.getElementById("fleetGrid");
+      if (listingSection) {
+        listingSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     });
   });
 }

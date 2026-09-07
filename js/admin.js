@@ -51,6 +51,7 @@ let currentUser = null;
 
 let usersData = [];
 let bookingsData = [];
+let paymentsData = [];
 let hostCarsData = [];
 
 let activeDocUser = null;
@@ -933,6 +934,7 @@ async function loadAllAdminData() {
   await Promise.allSettled([
     loadUsers(),
     loadBookings(),
+    loadPayments(),
     loadHostCars(),
     loadFleetManagement(),
     loadCoupons(),
@@ -5180,8 +5182,24 @@ function openReturnReport(
 // PAYMENT
 // ============================================================================
 
+async function loadPayments() {
+  if (paymentsTableWrap) {
+    paymentsTableWrap.innerHTML = `<p style="color:var(--sub);">Loading payments...</p>`;
+  }
+  try {
+    const res = await api.get("/payments");
+    paymentsData = Array.isArray(res.payments) ? res.payments : [];
+    renderPaymentsTable();
+  } catch (err) {
+    console.error("LOAD PAYMENTS ERROR:", err);
+    if (paymentsTableWrap) {
+      paymentsTableWrap.innerHTML = `<p style="color:#ff5c77;">Unable to load payments: ${escapeHtml(err.message)}</p>`;
+    }
+  }
+}
+
 async function loadPaymentData() {
-  renderPaymentsTable();
+  await loadPayments();
 }
 
 function renderPaymentsTable() {
@@ -5189,191 +5207,101 @@ function renderPaymentsTable() {
     return;
   }
 
-  const paymentRecords = bookingsData
-    .filter((booking) =>
-      booking.paymentStatus === "pending_verification" ||
-      booking.paymentStatus === "paid" ||
-      booking.paymentStatus === "advance_paid" ||
-      booking.paymentStatus === "pending_payment" ||
-      booking.paymentStatus === "pay_at_pickup" ||
-      booking.paymentStatus === "rejected" ||
-      booking.paymentRef ||
-      booking.paymentScreenshotURL ||
-      booking.paymentScreenshotMediaId
-    )
-    .sort((a, b) =>
-      toMillis(b.createdAt || b.paymentVerifiedAt || b.paymentSubmittedAt) -
-      toMillis(a.createdAt || a.paymentVerifiedAt || a.paymentSubmittedAt)
-    );
+  // Combine paymentsData and any fallback booking payments
+  let paymentRecords = [...paymentsData];
 
   if (!paymentRecords.length) {
-    paymentsTableWrap.innerHTML =
-      `<p style="color:var(--sub);">
-        No submitted or verified payment records.
-      </p>`;
+    paymentRecords = bookingsData
+      .filter((b) =>
+        b.paymentStatus === "pending_verification" ||
+        b.paymentStatus === "paid" ||
+        b.paymentStatus === "advance_paid" ||
+        b.paymentRef ||
+        b.paymentScreenshotUrl
+      )
+      .map((b) => ({
+        id: b.id || b.bookingId,
+        bookingId: b.id || b.bookingId,
+        bookingNumber: b.bookingNumber || b.id || b.bookingId,
+        userName: b.userName || "Customer",
+        userEmail: b.userEmail || "",
+        userPhone: b.userPhone || "",
+        vehicleName: b.vehicleName || "Vehicle",
+        vehicleReg: b.vehicleReg || "",
+        amount: Number(b.paymentAmountPaid || b.advanceAmount || b.totalAmount || 0),
+        method: b.paymentMethod || "UPI",
+        utr: b.paymentRef || "",
+        paymentRef: b.paymentRef || "",
+        screenshotUrl: b.paymentScreenshotUrl || "",
+        status: b.paymentStatus === "paid" || b.paymentStatus === "advance_paid" ? "verified" : b.paymentStatus === "rejected" ? "rejected" : "pending",
+        createdAt: b.createdAt || b.pickupDate || ""
+      }));
+  }
 
+  if (!paymentRecords.length) {
+    paymentsTableWrap.innerHTML = `<p style="color:var(--sub);padding:24px;text-align:center;">No payment receipts awaiting verification.</p>`;
     return;
   }
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(paymentRecords.length / ADMIN_PAYMENTS_PER_PAGE)
-  );
-  adminPaymentPage = Math.min(adminPaymentPage, totalPages);
-  const pageStart =
-    (adminPaymentPage - 1) * ADMIN_PAYMENTS_PER_PAGE;
-  const pagePayments = paymentRecords.slice(
-    pageStart,
-    pageStart + ADMIN_PAYMENTS_PER_PAGE
-  );
+  const totalPages = Math.max(1, Math.ceil(paymentRecords.length / ADMIN_PAYMENTS_PER_PAGE));
+  adminPaymentPage = Math.max(1, Math.min(adminPaymentPage, totalPages));
+  const pageStart = (adminPaymentPage - 1) * ADMIN_PAYMENTS_PER_PAGE;
+  const pagePayments = paymentRecords.slice(pageStart, pageStart + ADMIN_PAYMENTS_PER_PAGE);
 
   let html = `
     <div style="width:100%;overflow-x:auto;">
-
-      <table
-        class="admin-table"
-        style="
-          width:100%;
-          min-width:900px;
-          border-collapse:collapse;
-          text-align:left;
-        "
-      >
-
+      <table class="admin-table" style="width:100%;min-width:920px;border-collapse:collapse;text-align:left;">
         <thead>
-          <tr
-            style="
-              border-bottom:1px solid var(--line);
-              color:var(--sub);
-            "
-          >
-
-            <th style="padding:12px;">
-              Booking
-            </th>
-
-            <th style="padding:12px;">
-              Customer
-            </th>
-
-            <th style="padding:12px;">
-              Vehicle
-            </th>
-
-            <th style="padding:12px;">
-              Amount
-            </th>
-
-            <th style="padding:12px;">
-              Reference
-            </th>
-
-            <th style="padding:12px;">
-              Status
-            </th>
-
-            <th
-              style="
-                padding:12px;
-                text-align:right;
-              "
-            >
-              Action
-            </th>
-
+          <tr style="border-bottom:1px solid var(--line);color:var(--sub);font-size:12px;text-transform:uppercase;">
+            <th style="padding:12px;">Date</th>
+            <th style="padding:12px;">Booking</th>
+            <th style="padding:12px;">Customer</th>
+            <th style="padding:12px;">Vehicle</th>
+            <th style="padding:12px;">Amount</th>
+            <th style="padding:12px;">Method / UTR</th>
+            <th style="padding:12px;">Status</th>
+            <th style="padding:12px;text-align:right;">Action</th>
           </tr>
         </thead>
-
         <tbody>
   `;
 
-  pagePayments.forEach(
-    (booking) => {
-      html += `
-        <tr
-          style="
-            border-bottom:
-              1px solid rgba(255,255,255,.06);
-          "
-        >
+  pagePayments.forEach((p) => {
+    const statusClass = p.status === "verified" ? "verified" : p.status === "rejected" ? "rejected" : "pending";
+    const statusLabel = p.status === "verified" ? "VERIFIED" : p.status === "rejected" ? "REJECTED" : "PENDING";
+    const paymentDate = formatDate(p.createdAt || p.date);
 
-          <td
-            style="
-              padding:12px;
-              font-family:monospace;
-            "
-          >
-            #${escapeHtml(
-              booking.id.slice(
-                -8
-              )
-            )}
-          </td>
-
-          <td style="padding:12px;">
-            ${escapeHtml(
-              booking.userName ||
-                "Customer"
-            )}
-          </td>
-
-          <td style="padding:12px;">
-            ${escapeHtml(
-              booking.vehicleName ||
-                "Vehicle"
-            )}
-          </td>
-
-          <td
-            style="
-              padding:12px;
-              color:var(--accent);
-              font-weight:700;
-            "
-          >
-            ${formatINR(booking.paymentAmountPaid || booking.paymentAmount || booking.totalAmount)}
-            ${booking.paymentPlan === "advance" ? `<small style="display:block;color:var(--sub);font-weight:500;margin-top:3px;">Balance: ${formatINR(booking.remainingBalance || 0)}</small>` : ""}
-          </td>
-
-          <td
-            style="
-              padding:12px;
-              font-family:monospace;
-            "
-          >
-            ${escapeHtml(
-              booking.paymentRef ||
-                "—"
-            )}
-          </td>
-
-          <td style="padding:12px;">
-            <span class="fleet-status ${booking.paymentStatus === "paid" || booking.paymentStatus === "advance_paid" ? "verified" : booking.paymentStatus === "rejected" ? "rejected" : "pending"}">
-              ${booking.paymentStatus === "paid" ? "Paid in Full" : booking.paymentStatus === "advance_paid" ? "Advance Paid" : booking.paymentStatus === "rejected" ? "Rejected" : "Pending Review"}
-            </span>
-          </td>
-
-          <td
-            style="
-              padding:12px;
-              text-align:right;
-              white-space:nowrap;
-            "
-          >
-            ${booking.paymentStatus === "pending_verification" || booking.paymentStatus === "rejected"
-              ? `<button type="button" class="btn btn-dark review-payment-btn" data-bid="${escapeHtml(booking.id)}" style="padding:6px 12px;font-size:.8rem;">Review</button>`
-              : `<button type="button" class="btn btn-outline edit-invoice-btn" data-bid="${escapeHtml(booking.id)}" style="padding:6px 12px;font-size:.8rem;">Edit / Send Invoice</button>`}
-          </td>
-
-        </tr>
-      `;
-    }
-  );
+    html += `
+      <tr style="border-bottom:1px solid rgba(255,255,255,.06);font-size:13.5px;">
+        <td style="padding:12px;color:var(--sub);white-space:nowrap;">${escapeHtml(paymentDate)}</td>
+        <td style="padding:12px;font-family:monospace;font-weight:700;color:var(--accent);">#${escapeHtml(p.bookingNumber || p.bookingId)}</td>
+        <td style="padding:12px;">
+          <strong style="color:#fff;">${escapeHtml(p.userName || "Customer")}</strong><br/>
+          <small style="color:#4fd7ff;font-size:12px;">${escapeHtml(p.userEmail || "")}</small>
+          ${p.userPhone ? `<br/><small style="color:var(--sub);font-size:11.5px;">${escapeHtml(p.userPhone)}</small>` : ""}
+        </td>
+        <td style="padding:12px;">
+          <strong>${escapeHtml(p.vehicleName || "Vehicle")}</strong>
+          ${p.vehicleReg ? `<br/><small style="color:var(--sub);font-family:monospace;">${escapeHtml(p.vehicleReg)}</small>` : ""}
+        </td>
+        <td style="padding:12px;font-weight:700;color:#fff;">${formatINR(p.amount)}</td>
+        <td style="padding:12px;font-family:monospace;">
+          <span style="font-size:11px;text-transform:uppercase;background:rgba(255,255,255,0.08);padding:2px 6px;border-radius:4px;">${escapeHtml(p.method || "UPI")}</span><br/>
+          ${escapeHtml(p.utr || p.paymentRef || "No UTR")}
+        </td>
+        <td style="padding:12px;">
+          <span class="status-pill ${statusClass}">${escapeHtml(statusLabel)}</span>
+        </td>
+        <td style="padding:12px;text-align:right;">
+          <button type="button" class="btn btn-dark review-payment-btn" data-pid="${escapeHtml(p.id || p.paymentId)}" data-bid="${escapeHtml(p.bookingId || p.bookingNumber)}" style="padding:5px 12px;font-size:12.5px;">Review</button>
+        </td>
+      </tr>
+    `;
+  });
 
   html += `
         </tbody>
       </table>
-
     </div>
     ${renderAdminPagination({
       page: adminPaymentPage,
@@ -5385,29 +5313,23 @@ function renderPaymentsTable() {
 
   paymentsTableWrap.innerHTML = html;
 
-  paymentsTableWrap
-    .querySelectorAll(".review-payment-btn")
-    .forEach((button) => {
-      button.addEventListener("click", () => {
-        const booking = bookingsData.find((item) => item.id === button.dataset.bid);
-        if (booking) openPaymentModal(booking);
-      });
+  paymentsTableWrap.querySelectorAll(".review-payment-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const pid = button.dataset.pid;
+      const bid = button.dataset.bid;
+      const payment = paymentsData.find((item) => item.id === pid || item.bookingId === bid) ||
+                      bookingsData.find((item) => item.id === bid);
+      if (payment) openPaymentModal(payment);
     });
-
-  paymentsTableWrap.querySelectorAll(".edit-invoice-btn, .send-invoice-btn").forEach((button) => {
-    button.addEventListener("click", () => openInvoiceEditorModal(button.dataset.bid, button));
   });
 
-  paymentsTableWrap
-    .querySelectorAll("[data-admin-payments-page-action]")
-    .forEach((button) => {
-      button.addEventListener("click", () => {
-        adminPaymentPage +=
-          button.dataset.adminPaymentsPageAction === "next" ? 1 : -1;
-        renderPaymentsTable();
-        paymentsTableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
+  paymentsTableWrap.querySelectorAll("[data-admin-payments-page-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      adminPaymentPage += button.dataset.adminPaymentsPageAction === "next" ? 1 : -1;
+      renderPaymentsTable();
+      paymentsTableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+  });
 }
 
 async function convertBookingToFullPayment(bookingId, triggerBtn) {

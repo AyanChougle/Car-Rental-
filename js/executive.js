@@ -58,6 +58,18 @@ let allVerifications = [];
 let allFleet = [];
 let allCoupons = [];
 
+const EXEC_BOOKINGS_PER_PAGE = 10;
+const EXEC_PAYMENTS_PER_PAGE = 10;
+const EXEC_KYC_PER_PAGE = 10;
+const EXEC_FLEET_PER_PAGE = 8;
+const EXEC_COUPONS_PER_PAGE = 10;
+
+let execBookingPage = 1;
+let execPaymentPage = 1;
+let execKycPage = 1;
+let execFleetPage = 1;
+let execCouponsPage = 1;
+
 let activePickupBooking = null;
 let pickupSelectedFiles = [];
 let pickupPreviewUrls = [];
@@ -69,6 +81,69 @@ let returnPreviewUrls = [];
 let activePaymentItem = null;
 let activeKycItem = null;
 let activeKycDocTab = "license";
+
+function getCarImage(car) {
+  if (!car) return "assets/fleet/BMW.png";
+  if (typeof window !== "undefined" && typeof window.fleetImagePath === "function") {
+    const path = window.fleetImagePath(car);
+    if (path && !path.includes("BMW.png")) return path;
+    if (path && car.brand && car.brand.toLowerCase() === "bmw") return path;
+  }
+  if (Array.isArray(car.gallery) && car.gallery[0] && !car.gallery[0].includes("BMW.png")) {
+    return car.gallery[0];
+  }
+  if (car.imageUrl && !car.imageUrl.includes("BMW.png")) {
+    return car.imageUrl;
+  }
+  const brand = (car.brand || "").trim();
+  const model = (car.model || "").trim();
+  const fullName = `${brand} ${model}`.trim();
+  if (typeof window !== "undefined" && typeof window.fleetImagePath === "function") {
+    return window.fleetImagePath(fullName) || window.fleetImagePath(model) || "assets/fleet/BMW.png";
+  }
+  return "assets/fleet/BMW.png";
+}
+
+function renderPaginationHtml(currentPage, totalPages, totalItems, itemLabel = "items") {
+  if (totalPages <= 1) return "";
+
+  const getPageWindow = (curr, total) => {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+    const pages = [1];
+    const start = Math.max(2, curr - 1);
+    const end = Math.min(total - 1, curr + 1);
+    if (start > 2) pages.push("...");
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < total - 1) pages.push("...");
+    pages.push(total);
+    return pages;
+  };
+
+  const windowPages = getPageWindow(currentPage, totalPages);
+
+  const buttonsHtml = windowPages
+    .map((p) => {
+      if (p === "...") {
+        return `<span class="data-pagination__ellipsis" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:36px;color:var(--sub);font-weight:700;">...</span>`;
+      }
+      const isActive = p === currentPage;
+      return `<button type="button" class="btn-pagination ${isActive ? "active" : ""}" data-page="${p}" style="min-width:36px;height:36px;padding:0 10px;border-radius:8px;font-weight:700;${isActive ? "background:#4fd7ff;color:#000;border-color:#4fd7ff;" : "background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.12);"}">${p}</button>`;
+    })
+    .join("");
+
+  return `
+    <div class="data-pagination" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-top:1px solid rgba(255,255,255,0.08);background:rgba(6,10,16,0.45);flex-wrap:wrap;margin-top:12px;border-radius:0 0 12px 12px;">
+      <span class="data-pagination__summary" style="font-size:13px;color:var(--sub);">
+        Page <strong>${currentPage}</strong> of <strong>${totalPages}</strong> · <strong>${totalItems}</strong> ${itemLabel}
+      </span>
+      <div class="data-pagination__actions" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+        <button type="button" class="btn-pagination" data-page="prev" ${currentPage === 1 ? "disabled" : ""} style="height:36px;padding:0 14px;border-radius:8px;font-size:12.5px;font-weight:700;background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.12);${currentPage === 1 ? "opacity:0.35;cursor:not-allowed;" : "cursor:pointer;"}">Previous</button>
+        ${buttonsHtml}
+        <button type="button" class="btn-pagination" data-page="next" ${currentPage === totalPages ? "disabled" : ""} style="height:36px;padding:0 14px;border-radius:8px;font-size:12.5px;font-weight:700;background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.12);${currentPage === totalPages ? "opacity:0.35;cursor:not-allowed;" : "cursor:pointer;"}">Next</button>
+      </div>
+    </div>
+  `;
+}
 
 /* ==========================================================================
    INITIALIZATION & AUTH CHECK
@@ -126,10 +201,26 @@ function initTabs() {
         panel.hidden = panel.id !== targetTab;
       });
 
-      if (targetTab === "tab-exec-payments") renderPaymentsTable();
-      if (targetTab === "tab-exec-kyc") renderKycTable();
-      if (targetTab === "tab-exec-fleet") renderFleetGrid();
-      if (targetTab === "tab-exec-coupons") renderCouponsTable();
+      if (targetTab === "tab-exec-bookings") {
+        execBookingPage = 1;
+        renderBookingsTable();
+      }
+      if (targetTab === "tab-exec-payments") {
+        execPaymentPage = 1;
+        renderPaymentsTable();
+      }
+      if (targetTab === "tab-exec-kyc") {
+        execKycPage = 1;
+        renderKycTable();
+      }
+      if (targetTab === "tab-exec-fleet") {
+        execFleetPage = 1;
+        renderFleetGrid();
+      }
+      if (targetTab === "tab-exec-coupons") {
+        execCouponsPage = 1;
+        renderCouponsTable();
+      }
     });
   });
 }
@@ -242,16 +333,23 @@ function renderBookingsTable() {
   const wrap = $("execBookingsWrap");
   if (!wrap) return;
 
-  const bookings = getFilteredBookings();
+  const filtered = getFilteredBookings();
+  const totalItems = filtered.length;
 
-  if (!bookings.length) {
+  if (!totalItems) {
     wrap.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--sub);">No bookings found matching filters.</div>`;
     return;
   }
 
+  const totalPages = Math.max(1, Math.ceil(totalItems / EXEC_BOOKINGS_PER_PAGE));
+  execBookingPage = Math.max(1, Math.min(execBookingPage, totalPages));
+
+  const startIndex = (execBookingPage - 1) * EXEC_BOOKINGS_PER_PAGE;
+  const paginatedBookings = filtered.slice(startIndex, startIndex + EXEC_BOOKINGS_PER_PAGE);
+
   wrap.innerHTML = `
     <div style="overflow-x: auto;">
-      <table class="admin-table" style="width: 100%; min-width: 820px; border-collapse: collapse; text-align: left;">
+      <table class="admin-table" style="width: 100%; min-width: 840px; border-collapse: collapse; text-align: left;">
         <thead>
           <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--sub); font-size: 12.5px; text-transform: uppercase;">
             <th style="padding: 12px 10px;">Date</th>
@@ -264,7 +362,7 @@ function renderBookingsTable() {
           </tr>
         </thead>
         <tbody>
-          ${bookings
+          ${paginatedBookings
             .map((b) => {
               const statusClass =
                 b.status === "active" || b.status === "confirmed"
@@ -282,11 +380,12 @@ function renderBookingsTable() {
 
               return `
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13.5px;">
-                  <td style="padding: 12px 10px; color: var(--sub);">${escapeHtml(formatReadableDate(b.pickupDate || b.createdAt))}</td>
+                  <td style="padding: 12px 10px; color: var(--sub); white-space: nowrap;">${escapeHtml(formatReadableDate(b.pickupDate || b.createdAt))}</td>
                   <td style="padding: 12px 10px; font-family: monospace; font-weight: 700; color: var(--accent);">#${escapeHtml(formatBookingNumber(b))}</td>
                   <td style="padding: 12px 10px;">
-                    <strong>${escapeHtml(b.userName || "Customer")}</strong><br/>
-                    <small style="color: var(--sub);">${escapeHtml(b.userPhone || b.userEmail || "—")}</small>
+                    <strong style="color: #fff;">${escapeHtml(b.userName || "Customer")}</strong><br/>
+                    <small style="color: #4fd7ff; font-size: 12px;">${escapeHtml(b.userEmail || "")}</small>
+                    ${b.userPhone ? `<br/><small style="color: var(--sub); font-size: 11.5px;">${escapeHtml(b.userPhone)}</small>` : ""}
                   </td>
                   <td style="padding: 12px 10px;">
                     <strong>${escapeHtml(b.vehicleName || "Vehicle")}</strong><br/>
@@ -321,6 +420,7 @@ function renderBookingsTable() {
         </tbody>
       </table>
     </div>
+    ${renderPaginationHtml(execBookingPage, totalPages, totalItems, "bookings")}
   `;
 
   // Attach action listeners
@@ -346,6 +446,22 @@ function renderBookingsTable() {
     btn.addEventListener("click", () => {
       const booking = allBookings.find((item) => item.id === btn.dataset.id);
       if (booking) openBookingDetailModal(booking);
+    });
+  });
+
+  // Attach pagination listeners
+  wrap.querySelectorAll("[data-page]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.page;
+      if (target === "prev") {
+        execBookingPage = Math.max(1, execBookingPage - 1);
+      } else if (target === "next") {
+        execBookingPage = Math.min(totalPages, execBookingPage + 1);
+      } else {
+        execBookingPage = Number(target) || 1;
+      }
+      renderBookingsTable();
+      wrap.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
 }
@@ -694,16 +810,24 @@ function renderPaymentsTable() {
   const wrap = $("execPaymentsWrap");
   if (!wrap) return;
 
-  if (!allPayments.length) {
+  const totalItems = allPayments.length;
+  if (!totalItems) {
     wrap.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--sub);">No payment receipts awaiting review.</div>`;
     return;
   }
 
+  const totalPages = Math.max(1, Math.ceil(totalItems / EXEC_PAYMENTS_PER_PAGE));
+  execPaymentPage = Math.max(1, Math.min(execPaymentPage, totalPages));
+
+  const startIndex = (execPaymentPage - 1) * EXEC_PAYMENTS_PER_PAGE;
+  const paginatedPayments = allPayments.slice(startIndex, startIndex + EXEC_PAYMENTS_PER_PAGE);
+
   wrap.innerHTML = `
     <div style="overflow-x: auto;">
-      <table class="admin-table" style="width: 100%; min-width: 760px; border-collapse: collapse; text-align: left;">
+      <table class="admin-table" style="width: 100%; min-width: 840px; border-collapse: collapse; text-align: left;">
         <thead>
           <tr style="border-bottom: 1px solid rgba(255,255,255,0.1); color: var(--sub); font-size: 12.5px; text-transform: uppercase;">
+            <th style="padding: 12px 10px;">Date</th>
             <th style="padding: 12px 10px;">Booking</th>
             <th style="padding: 12px 10px;">Customer</th>
             <th style="padding: 12px 10px;">Vehicle</th>
@@ -714,17 +838,24 @@ function renderPaymentsTable() {
           </tr>
         </thead>
         <tbody>
-          ${allPayments
+          ${paginatedPayments
             .map((p) => {
               const statusColor = p.status === "verified" ? "#06d6a0" : p.status === "rejected" ? "#ef476f" : "#ffd166";
+              const paymentDate = formatReadableDate(p.createdAt || p.date);
+
               return `
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13.5px;">
+                  <td style="padding: 12px 10px; color: var(--sub); white-space: nowrap;">${escapeHtml(paymentDate)}</td>
                   <td style="padding: 12px 10px; font-family: monospace; font-weight: 700; color: var(--accent);">#${escapeHtml(p.bookingNumber || p.bookingId)}</td>
                   <td style="padding: 12px 10px;">
-                    <strong>${escapeHtml(p.userName || "Customer")}</strong><br/>
-                    <small style="color: var(--sub);">${escapeHtml(p.userPhone || p.userEmail || "—")}</small>
+                    <strong style="color: #fff;">${escapeHtml(p.userName || "Customer")}</strong><br/>
+                    <small style="color: #4fd7ff; font-size: 12px;">${escapeHtml(p.userEmail || "")}</small>
+                    ${p.userPhone ? `<br/><small style="color: var(--sub); font-size: 11.5px;">${escapeHtml(p.userPhone)}</small>` : ""}
                   </td>
-                  <td style="padding: 12px 10px;">${escapeHtml(p.vehicleName || "Vehicle")}</td>
+                  <td style="padding: 12px 10px;">
+                    <strong>${escapeHtml(p.vehicleName || "Vehicle")}</strong>
+                    ${p.vehicleReg ? `<br/><small style="color: var(--sub); font-family: monospace;">${escapeHtml(p.vehicleReg)}</small>` : ""}
+                  </td>
                   <td style="padding: 12px 10px; font-weight: 700; color: #fff;">${formatMoney(p.amount)}</td>
                   <td style="padding: 12px 10px; font-family: monospace;">
                     <span style="font-size: 11px; text-transform: uppercase; background: rgba(255,255,255,0.08); padding: 2px 6px; border-radius: 4px;">${escapeHtml(p.method || "UPI")}</span><br/>
@@ -741,12 +872,28 @@ function renderPaymentsTable() {
         </tbody>
       </table>
     </div>
+    ${renderPaginationHtml(execPaymentPage, totalPages, totalItems, "payments")}
   `;
 
   wrap.querySelectorAll(".btn-review-payment").forEach((btn) => {
     btn.addEventListener("click", () => {
       const p = allPayments.find((item) => item.id === btn.dataset.id);
       if (p) openPaymentModal(p);
+    });
+  });
+
+  wrap.querySelectorAll("[data-page]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.page;
+      if (target === "prev") {
+        execPaymentPage = Math.max(1, execPaymentPage - 1);
+      } else if (target === "next") {
+        execPaymentPage = Math.min(totalPages, execPaymentPage + 1);
+      } else {
+        execPaymentPage = Number(target) || 1;
+      }
+      renderPaymentsTable();
+      wrap.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
 }
@@ -864,10 +1011,17 @@ function renderKycTable() {
   const wrap = $("execKycWrap");
   if (!wrap) return;
 
-  if (!allVerifications.length) {
+  const totalItems = allVerifications.length;
+  if (!totalItems) {
     wrap.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--sub);">No customer KYC submissions found.</div>`;
     return;
   }
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / EXEC_KYC_PER_PAGE));
+  execKycPage = Math.max(1, Math.min(execKycPage, totalPages));
+
+  const startIndex = (execKycPage - 1) * EXEC_KYC_PER_PAGE;
+  const paginatedKyc = allVerifications.slice(startIndex, startIndex + EXEC_KYC_PER_PAGE);
 
   wrap.innerHTML = `
     <div style="overflow-x: auto;">
@@ -884,7 +1038,7 @@ function renderKycTable() {
           </tr>
         </thead>
         <tbody>
-          ${allVerifications
+          ${paginatedKyc
             .map((v) => {
               const pill = (st) => {
                 const s = (st || "not_submitted").toLowerCase();
@@ -895,7 +1049,10 @@ function renderKycTable() {
               return `
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13.5px;">
                   <td style="padding: 12px 10px;"><strong>${escapeHtml(v.fullName || "Customer")}</strong></td>
-                  <td style="padding: 12px 10px; color: var(--sub);">${escapeHtml(v.phone || v.email || "—")}</td>
+                  <td style="padding: 12px 10px; color: var(--sub);">
+                    <small style="color: #4fd7ff; font-size: 12px;">${escapeHtml(v.email || "")}</small>
+                    ${v.phone ? `<br/><small style="color: var(--sub);">${escapeHtml(v.phone)}</small>` : ""}
+                  </td>
                   <td style="padding: 12px 10px;">${pill(v.licenseStatus)}</td>
                   <td style="padding: 12px 10px;">${pill(v.aadharStatus)}</td>
                   <td style="padding: 12px 10px;">${pill(v.panStatus)}</td>
@@ -910,12 +1067,28 @@ function renderKycTable() {
         </tbody>
       </table>
     </div>
+    ${renderPaginationHtml(execKycPage, totalPages, totalItems, "customer IDs")}
   `;
 
   wrap.querySelectorAll(".btn-review-kyc").forEach((btn) => {
     btn.addEventListener("click", () => {
       const v = allVerifications.find((item) => (item.userId || item.firebaseUid) === btn.dataset.id);
       if (v) openKycModal(v);
+    });
+  });
+
+  wrap.querySelectorAll("[data-page]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.page;
+      if (target === "prev") {
+        execKycPage = Math.max(1, execKycPage - 1);
+      } else if (target === "next") {
+        execKycPage = Math.min(totalPages, execKycPage + 1);
+      } else {
+        execKycPage = Number(target) || 1;
+      }
+      renderKycTable();
+      wrap.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
 }
@@ -1042,31 +1215,40 @@ function renderFleetGrid() {
   const countEl = $("execFleetCount");
   if (!grid) return;
 
-  if (countEl) countEl.textContent = `${allFleet.length} Vehicles`;
+  const totalItems = allFleet.length;
+  if (countEl) countEl.textContent = `${totalItems} Vehicles`;
 
-  if (!allFleet.length) {
+  if (!totalItems) {
     grid.innerHTML = `<div style="grid-column: 1 / -1; padding: 24px; text-align: center; color: var(--sub);">No vehicles found in fleet inventory.</div>`;
     return;
   }
 
-  grid.innerHTML = allFleet
+  const totalPages = Math.max(1, Math.ceil(totalItems / EXEC_FLEET_PER_PAGE));
+  execFleetPage = Math.max(1, Math.min(execFleetPage, totalPages));
+
+  const startIndex = (execFleetPage - 1) * EXEC_FLEET_PER_PAGE;
+  const paginatedFleet = allFleet.slice(startIndex, startIndex + EXEC_FLEET_PER_PAGE);
+
+  const cardsHtml = paginatedFleet
     .map((car) => {
       const isAvailable = car.available == 1 && car.status !== "maintenance" && car.status !== "removed";
       const statusBadge = isAvailable
         ? `<span style="background: rgba(6, 214, 160, 0.15); color: #06d6a0; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 6px;">Available</span>`
         : `<span style="background: rgba(239, 71, 111, 0.15); color: #ef476f; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 6px;">${escapeHtml(car.status || "Unavailable")}</span>`;
 
+      const imgSrc = getCarImage(car);
+
       return `
         <div class="card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
-          <div style="height: 140px; background: #000; overflow: hidden; position: relative;">
-            <img src="${escapeHtml(car.imageUrl || 'assets/fleet/BMW.png')}" alt="${escapeHtml(car.brand)} ${escapeHtml(car.model)}" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.onerror=null;this.src='assets/fleet/BMW.png';" />
+          <div style="height: 140px; background: #000; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center;">
+            <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(car.brand)} ${escapeHtml(car.model)}" style="width: 100%; height: 100%; object-fit: contain; padding: 6px;" onerror="this.onerror=null;this.src='assets/fleet/BMW.png';" />
             <div style="position: absolute; top: 10px; right: 10px;">${statusBadge}</div>
           </div>
           <div style="padding: 14px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between;">
             <div>
               <span style="font-size: 11.5px; text-transform: uppercase; color: var(--sub); letter-spacing: 0.05em;">${escapeHtml(car.category || "Sedan")}</span>
               <h3 style="font-size: 16px; margin: 2px 0 6px;">${escapeHtml(car.brand)} ${escapeHtml(car.model)}</h3>
-              <p style="font-family: monospace; font-size: 12px; color: var(--accent); margin-bottom: 10px;">Reg: ${escapeHtml(car.regNo)}</p>
+              <p style="font-family: monospace; font-size: 12px; color: var(--accent); margin-bottom: 10px;">Reg: ${escapeHtml(car.regNo || car.reg_no || "—")}</p>
             </div>
             <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 10px; margin-top: 8px;">
               <span style="font-size: 12px; color: var(--sub);">${escapeHtml(car.fuel || "Petrol")} · ${escapeHtml(car.transmission || "Auto")}</span>
@@ -1077,6 +1259,30 @@ function renderFleetGrid() {
       `;
     })
     .join("");
+
+  grid.innerHTML = `
+    <div style="grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px;">
+      ${cardsHtml}
+    </div>
+    <div style="grid-column: 1 / -1;">
+      ${renderPaginationHtml(execFleetPage, totalPages, totalItems, "vehicles")}
+    </div>
+  `;
+
+  grid.querySelectorAll("[data-page]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.page;
+      if (target === "prev") {
+        execFleetPage = Math.max(1, execFleetPage - 1);
+      } else if (target === "next") {
+        execFleetPage = Math.min(totalPages, execFleetPage + 1);
+      } else {
+        execFleetPage = Number(target) || 1;
+      }
+      renderFleetGrid();
+      grid.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
 }
 
 /* ==========================================================================
@@ -1087,10 +1293,17 @@ function renderCouponsTable() {
   const wrap = $("execCouponsWrap");
   if (!wrap) return;
 
-  if (!allCoupons.length) {
+  const totalItems = allCoupons.length;
+  if (!totalItems) {
     wrap.innerHTML = `<div style="padding: 24px; text-align: center; color: var(--sub);">No promotional coupons active.</div>`;
     return;
   }
+
+  const totalPages = Math.max(1, Math.ceil(totalItems / EXEC_COUPONS_PER_PAGE));
+  execCouponsPage = Math.max(1, Math.min(execCouponsPage, totalPages));
+
+  const startIndex = (execCouponsPage - 1) * EXEC_COUPONS_PER_PAGE;
+  const paginatedCoupons = allCoupons.slice(startIndex, startIndex + EXEC_COUPONS_PER_PAGE);
 
   wrap.innerHTML = `
     <div style="overflow-x: auto;">
@@ -1106,7 +1319,7 @@ function renderCouponsTable() {
           </tr>
         </thead>
         <tbody>
-          ${allCoupons
+          ${paginatedCoupons
             .map((c) => {
               const discountText = c.type === "percent" || c.discountType === "percent" ? `${c.discountValue || c.val}% OFF` : `₹${c.discountValue || c.val} FLAT OFF`;
               const statusPill = c.active
@@ -1128,7 +1341,23 @@ function renderCouponsTable() {
         </tbody>
       </table>
     </div>
+    ${renderPaginationHtml(execCouponsPage, totalPages, totalItems, "coupons")}
   `;
+
+  wrap.querySelectorAll("[data-page]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.page;
+      if (target === "prev") {
+        execCouponsPage = Math.max(1, execCouponsPage - 1);
+      } else if (target === "next") {
+        execCouponsPage = Math.min(totalPages, execCouponsPage + 1);
+      } else {
+        execCouponsPage = Number(target) || 1;
+      }
+      renderCouponsTable();
+      wrap.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
 }
 
 /* ==========================================================================

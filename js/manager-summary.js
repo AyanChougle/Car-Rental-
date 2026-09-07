@@ -1,4 +1,4 @@
-﻿import { getCurrentUser, checkAuth, isManagerUser, isAdminUser } from "./auth.js?v=20260907-v2";
+import { getCurrentUser, checkAuth, isManagerUser, isAdminUser } from "./auth.js?v=20260907-v2";
 import { api } from "./kruizly-api.js?v=20260907-v2";
 import "./nav-helper.js";
 import { formatBookingNumber } from "./booking-reference.js";
@@ -132,9 +132,13 @@ function renderDashboard() {
           <tbody>
             ${pageItems.map(item => `
               <tr>
-                <td><strong>${escapeHtml(formatBookingNumber(item.bookingNumber || item.id))}</strong><br><span style="color:var(--sub);font-size:12px;">${escapeHtml(item.carName || item.vehicleName || "Vehicle")}</span></td>
-                <td>${escapeHtml(item.userName || item.name || "Customer")}<br><span style="color:var(--sub);font-size:12px;">${escapeHtml(item.userPhone || item.phone || item.userEmail || "—")}</span></td>
-                <td>${escapeHtml(formatDate(item.pickupDate))}<br><span style="color:var(--sub);font-size:12px;">to ${escapeHtml(formatDate(item.dropDate))}</span></td>
+                <td><strong>#${escapeHtml(formatBookingNumber(item.bookingNumber || item.id))}</strong><br><span style="color:var(--sub);font-size:12px;">${escapeHtml(item.carName || item.vehicleName || "Vehicle")}</span></td>
+                <td>
+                  <strong>${escapeHtml(item.userName || item.name || "Customer")}</strong><br>
+                  <small style="color:#4fd7ff;font-size:12px;">${escapeHtml(item.userEmail || "")}</small>
+                  ${item.userPhone ? `<br><small style="color:var(--sub);font-size:11.5px;">${escapeHtml(item.userPhone)}</small>` : ""}
+                </td>
+                <td>${escapeHtml(formatDate(item.pickupDate || item.createdAt))}<br><span style="color:var(--sub);font-size:12px;">to ${escapeHtml(formatDate(item.dropDate))}</span></td>
                 <td><strong>${formatINR(bookingAmount(item))}</strong></td>
                 <td><span class="status-pill status-${escapeHtml(item.paymentStatus || 'pending')}">${escapeHtml(item.paymentStatus || 'Pending')}</span></td>
                 <td><span class="status-pill status-${escapeHtml(item.status || 'pending')}">${escapeHtml(item.status || 'Pending')}</span></td>
