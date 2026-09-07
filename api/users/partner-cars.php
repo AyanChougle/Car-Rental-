@@ -2,8 +2,9 @@
 /**
  * api/users/partner-cars.php
  * GET /api/users/partner-cars - List host listings (customer gets their own, staff gets all)
- * POST /api/users/partner-cars - Submit new host car listing
+ * POST /api/users/partner-cars - Submit new host car listing / update status
  * PUT /api/users/partner-cars - Update host listing status (admin/manager)
+ * DELETE /api/users/partner-cars - Delete host listing
  */
 
 declare(strict_types=1);
@@ -13,6 +14,37 @@ require_once __DIR__ . '/../middleware/auth.php';
 $user = Auth::requireAuth();
 $isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive'], true);
 $method = $_SERVER['REQUEST_METHOD'];
+
+// Ensure partner_cars table exists
+try {
+    Database::execute("
+        CREATE TABLE IF NOT EXISTS partner_cars (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            car_id VARCHAR(64) UNIQUE,
+            user_id INT NULL,
+            firebase_uid VARCHAR(128) NULL,
+            user_name VARCHAR(128) NULL,
+            user_phone VARCHAR(32) NULL,
+            user_email VARCHAR(128) NULL,
+            brand VARCHAR(64) NOT NULL,
+            model VARCHAR(64) NOT NULL,
+            year INT DEFAULT 2024,
+            reg_no VARCHAR(32) NOT NULL,
+            transmission VARCHAR(32) DEFAULT 'Automatic',
+            fuel VARCHAR(32) DEFAULT 'Petrol',
+            city VARCHAR(128) DEFAULT 'Navi Mumbai',
+            expected_price DECIMAL(10,2) DEFAULT 0.00,
+            status VARCHAR(32) DEFAULT 'pending_approval',
+            photos TEXT NULL,
+            rejection_reason TEXT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_partner_fb (firebase_uid),
+            INDEX idx_partner_email (user_email),
+            INDEX idx_partner_status (status)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    ");
+} catch (Throwable $_) {}
 
 if ($method === 'GET') {
     // Auto-heal missing car_id in partner_cars
@@ -27,13 +59,24 @@ if ($method === 'GET') {
     if ($isStaff) {
         $rows = Database::fetchAll("SELECT * FROM partner_cars ORDER BY created_at DESC");
     } else {
-        $rows = Database::fetchAll("SELECT * FROM partner_cars WHERE firebase_uid = ? ORDER BY created_at DESC", [$user['firebase_uid']]);
+        $uid = trim((string)($user['firebase_uid'] ?? ''));
+        $email = trim((string)($user['email'] ?? ''));
+        $dbId = (int)($user['id'] ?? 0);
+        $rows = Database::fetchAll(
+            "SELECT * FROM partner_cars 
+             WHERE (firebase_uid IS NOT NULL AND firebase_uid != '' AND firebase_uid = ?) 
+                OR (user_email IS NOT NULL AND user_email != '' AND user_email = ?) 
+                OR (user_id IS NOT NULL AND user_id > 0 AND user_id = ?) 
+             ORDER BY created_at DESC", 
+            [$uid, $email, $dbId]
+        );
     }
 
     $partnerCars = array_map(function($c) {
         $photos = [];
         if (!empty($c['photos'])) {
             $photos = is_string($c['photos']) ? json_decode($c['photos'], true) : $c['photos'];
+            if (!is_array($photos)) $photos = [];
         }
         $identifier = !empty($c['car_id']) ? (string)$c['car_id'] : (!empty($c['id']) ? (string)$c['id'] : 'HC-' . ($c['reg_no'] ?? 'TEMP'));
         return [
@@ -172,7 +215,9 @@ if ($method === 'DELETE') {
     if ($isStaff) {
         Database::execute("DELETE FROM partner_cars WHERE id = ? OR car_id = ?", [$id, $id]);
     } else {
-        Database::execute("DELETE FROM partner_cars WHERE (id = ? OR car_id = ?) AND firebase_uid = ?", [$id, $id, $user['firebase_uid']]);
+        $uid = trim((string)($user['firebase_uid'] ?? ''));
+        $email = trim((string)($user['email'] ?? ''));
+        Database::execute("DELETE FROM partner_cars WHERE (id = ? OR car_id = ?) AND (firebase_uid = ? OR user_email = ?)", [$id, $id, $uid, $email]);
     }
     sendJsonResponse(['success' => true, 'message' => 'Partner car deleted.']);
 }

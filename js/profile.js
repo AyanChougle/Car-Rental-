@@ -511,16 +511,7 @@ async function loadMyListings(userParam) {
 
   try {
     const res = await api.get("/users/partner-cars");
-    const allListings = Array.isArray(res.partnerCars) ? res.partnerCars : [];
-    const listings = allListings.filter(item => {
-      if (!currentUid && !currentEmail) return true;
-      const itemUid = String(item.firebaseUid || item.userId || "").trim();
-      const itemDbId = String(item.dbUserId || item.user_id || "").trim();
-      const itemEmail = String(item.userEmail || item.email || "").trim().toLowerCase();
-      return (currentUid && (itemUid === currentUid || itemDbId === currentUid)) ||
-             (currentEmail && itemEmail === currentEmail) ||
-             (!itemUid && !itemEmail);
-    });
+    const listings = Array.isArray(res?.partnerCars) ? res.partnerCars : [];
     const approvedCount = listings.filter(
       listing => listing.status === "approved"
     ).length;

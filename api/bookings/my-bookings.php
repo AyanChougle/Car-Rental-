@@ -10,9 +10,17 @@ require_once __DIR__ . '/../middleware/auth.php';
 
 $user = Auth::requireAuth();
 
+$uid = trim((string)($user['firebase_uid'] ?? ''));
+$email = trim((string)($user['email'] ?? ''));
+$dbId = (int)($user['id'] ?? 0);
+
 $rows = Database::fetchAll(
-    "SELECT * FROM bookings WHERE firebase_uid = ? ORDER BY created_at DESC",
-    [$user['firebase_uid']]
+    "SELECT * FROM bookings 
+     WHERE (firebase_uid IS NOT NULL AND firebase_uid != '' AND firebase_uid = ?) 
+        OR (user_email IS NOT NULL AND user_email != '' AND user_email = ?) 
+        OR (user_id IS NOT NULL AND user_id > 0 AND user_id = ?) 
+     ORDER BY created_at DESC",
+    [$uid, $email, $dbId]
 );
 
 $bookings = array_map(function($b) {
