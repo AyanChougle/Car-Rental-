@@ -154,24 +154,38 @@ async function initExecutive() {
   const accessDeniedEl = $("executiveAccessDenied");
   const contentEl = $("executiveContent");
 
-  if (accessDeniedEl) accessDeniedEl.hidden = true;
-  if (contentEl) contentEl.hidden = true;
+  hideEl(accessDeniedEl);
+  hideEl(contentEl);
 
   const isAuthenticated = await checkAuth();
   if (!isAuthenticated) {
-    if (accessDeniedEl) accessDeniedEl.hidden = false;
+    showEl(accessDeniedEl);
     return;
   }
 
   currentUser = getCurrentUser();
+
+  // Real-time backend role sync: if role in localStorage is not staff yet, query /users/me
+  if (!isExecutiveUser(currentUser) && !isManagerUser(currentUser) && !isAdminUser(currentUser)) {
+    try {
+      const meRes = await api.get("/users/me");
+      if (meRes && meRes.user) {
+        setStoredUser(meRes.user);
+        currentUser = getCurrentUser();
+      }
+    } catch (err) {
+      console.warn("User role sync notice:", err);
+    }
+  }
+
   const hasStaffRole = isExecutiveUser(currentUser) || isManagerUser(currentUser) || isAdminUser(currentUser);
 
   if (!hasStaffRole) {
-    if (accessDeniedEl) accessDeniedEl.hidden = false;
+    showEl(accessDeniedEl);
     return;
   }
 
-  if (contentEl) contentEl.hidden = false;
+  showEl(contentEl);
 
   initTabs();
   initModals();
