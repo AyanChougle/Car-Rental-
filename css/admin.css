@@ -1403,61 +1403,89 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
 }
 
 .admin-cal-badge-count {
-  font-size: 10.5px !important;
+  font-size: 11px !important;
   font-weight: 800 !important;
   color: #4fd7ff !important;
-  background: rgba(79, 215, 255, 0.15) !important;
-  border: 1px solid rgba(79, 215, 255, 0.35) !important;
-  padding: 1px 7px !important;
-  border-radius: 10px !important;
+  background: rgba(79, 215, 255, 0.18) !important;
+  border: 1px solid rgba(79, 215, 255, 0.4) !important;
+  padding: 2px 8px !important;
+  border-radius: 12px !important;
   line-height: 1.2 !important;
   cursor: pointer !important;
   transition: all 140ms ease !important;
+  user-select: none !important;
 }
 
 .admin-cal-badge-count:hover {
-  background: rgba(79, 215, 255, 0.3) !important;
-  transform: scale(1.05) !important;
+  background: rgba(79, 215, 255, 0.35) !important;
+  border-color: #4fd7ff !important;
+  transform: scale(1.04) !important;
 }
 
 .cal-event-more {
   font-size: 11px !important;
   font-weight: 800 !important;
   color: #4fd7ff !important;
-  background: rgba(79, 215, 255, 0.12) !important;
-  border: 1px solid rgba(79, 215, 255, 0.3) !important;
-  border-radius: 6px !important;
-  padding: 4px 6px !important;
+  background: rgba(79, 215, 255, 0.14) !important;
+  border: 1px solid rgba(79, 215, 255, 0.35) !important;
+  border-radius: 8px !important;
+  padding: 5px 8px !important;
   text-align: center !important;
   cursor: pointer !important;
   margin-top: 3px !important;
   transition: all 140ms ease !important;
   user-select: none !important;
   display: block !important;
+  letter-spacing: 0.2px !important;
 }
 
 .cal-event-more:hover {
-  background: rgba(79, 215, 255, 0.28) !important;
+  background: rgba(79, 215, 255, 0.3) !important;
   border-color: #4fd7ff !important;
+  color: #ffffff !important;
   transform: translateY(-1px) !important;
 }
 
 .day-schedule-item {
-  padding: 12px 14px !important;
+  padding: 14px 16px !important;
   background: rgba(255, 255, 255, 0.04) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  border-radius: 12px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 14px !important;
   display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
+  flex-direction: column !important;
   gap: 12px !important;
-  flex-wrap: wrap !important;
   transition: all 160ms ease !important;
 }
 
 .day-schedule-item:hover {
   background: rgba(255, 255, 255, 0.07) !important;
-  border-color: rgba(79, 215, 255, 0.3) !important;
+  border-color: rgba(79, 215, 255, 0.35) !important;
+}
+
+.day-schedule-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+  padding-bottom: 8px !important;
+}
+
+.day-schedule-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.day-schedule-actions {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+  padding-top: 8px !important;
+  border-top: 1px dashed rgba(255, 255, 255, 0.08) !important;
 }
 
 .admin-cal-cell-add-icon {

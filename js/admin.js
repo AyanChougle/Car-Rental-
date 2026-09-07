@@ -7925,45 +7925,71 @@ function renderAdminCalendarGrid() {
 
   gridEl.innerHTML = gridHtml;
 
-  // Attach event listeners to pills
+  // Clicking an event pill opens Day Schedule Modal for that date
   gridEl.querySelectorAll(".cal-event-pill").forEach((pill) => {
     pill.addEventListener("click", (e) => {
       e.stopPropagation();
-      const bid = pill.dataset.bid;
-      const bk = bookingsData.find((item) => String(item.id || item.bookingId || item.bookingNumber) === String(bid));
-      if (bk) {
-        openAdminEditBookingModal(bk);
+      const dateStr = pill.dataset.date;
+      if (dateStr) {
+        openAdminDayBookingsModal(dateStr);
+      } else {
+        const bid = pill.dataset.bid;
+        const bk = bookingsData.find((item) => String(item.id || item.bookingId || item.bookingNumber) === String(bid));
+        if (bk) openAdminEditBookingModal(bk);
       }
     });
   });
 
-  // Attach event listeners to "+N more" buttons
+  // Clicking "+N more" button opens Day Schedule Modal
   gridEl.querySelectorAll(".cal-event-more").forEach((btn) => {
     btn.addEventListener("click", (e) => {
+      e.preventDefault();
       e.stopPropagation();
       const dateStr = btn.dataset.date;
       if (dateStr) openAdminDayBookingsModal(dateStr);
     });
   });
 
-  // Attach event listeners to badge count
+  // Clicking day badge count opens Day Schedule Modal
   gridEl.querySelectorAll(".admin-cal-badge-count").forEach((badge) => {
     badge.addEventListener("click", (e) => {
+      e.preventDefault();
       e.stopPropagation();
       const dateStr = badge.dataset.date;
       if (dateStr) openAdminDayBookingsModal(dateStr);
     });
   });
 
-  // Clicking an empty area in cell opens Add Booking for that date
+  // Clicking cell header opens Day Schedule Modal if bookings exist, else Add Booking
+  gridEl.querySelectorAll(".admin-cal-cell-header").forEach((header) => {
+    header.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const dateStr = header.dataset.date;
+      const count = parseInt(header.dataset.count || "0", 10);
+      if (dateStr) {
+        if (count > 0) {
+          openAdminDayBookingsModal(dateStr);
+        } else {
+          openAdminAddBookingModal(dateStr);
+        }
+      }
+    });
+  });
+
+  // Clicking anywhere on cell
   gridEl.querySelectorAll(".admin-cal-cell").forEach((cell) => {
     cell.addEventListener("click", (e) => {
-      if (e.target.closest(".cal-event-pill") || e.target.closest(".cal-event-more") || e.target.closest(".admin-cal-badge-count")) {
+      if (e.target.closest(".cal-event-pill") || e.target.closest(".cal-event-more") || e.target.closest(".admin-cal-badge-count") || e.target.closest(".admin-cal-cell-header")) {
         return;
       }
       const dateStr = cell.dataset.date;
+      const count = parseInt(cell.dataset.count || "0", 10);
       if (dateStr) {
-        openAdminAddBookingModal(dateStr);
+        if (count > 0) {
+          openAdminDayBookingsModal(dateStr);
+        } else {
+          openAdminAddBookingModal(dateStr);
+        }
       }
     });
   });
@@ -7998,30 +8024,40 @@ function renderCalendarCell(cellDate, dayNumber, isOtherMonth, todayStr, allBook
 
     let flag = "";
     if (isPickupDay && isDropDay) {
-      flag = ` <span style="font-size:0.7rem; opacity:0.85;">(${formatCalTime(b.pickupDate)} - ${formatCalTime(b.dropDate)})</span>`;
+      flag = `🟢 ${formatCalTime(b.pickupDate)} - 🏁 ${formatCalTime(b.dropDate)}`;
     } else if (isPickupDay) {
-      flag = ` <span style="font-size:0.7rem; opacity:0.85;">(Pickup ${formatCalTime(b.pickupDate)})</span>`;
+      flag = `🟢 Pickup: ${formatCalTime(b.pickupDate)}`;
     } else if (isDropDay) {
-      flag = ` <span style="font-size:0.7rem; opacity:0.85;">(Return ${formatCalTime(b.dropDate)})</span>`;
+      flag = `🏁 Return: ${formatCalTime(b.dropDate)}`;
+    } else {
+      flag = `🔄 Active Trip`;
     }
 
     pillsHtml += `
-      <div class="cal-event-pill cal-event-pill--${escapeHtml(b.badgeCategory)}" data-bid="${escapeHtml(b.id)}" title="${escapeHtml(b.userName)} - ${escapeHtml(b.carName)} [₹${b.totalAmount}]">
-        <span class="cal-event-pill__name">${escapeHtml(b.userName)}</span>
-        <span class="cal-event-pill__car">· ${escapeHtml(b.carName)}${flag}</span>
+      <div class="cal-event-pill cal-event-pill--${escapeHtml(b.badgeCategory)}" data-bid="${escapeHtml(b.id)}" data-date="${cellDateStr}" title="Click to view booking details: ${escapeHtml(b.userName)} · ${escapeHtml(b.carName)} [₹${b.totalAmount}]">
+        <div class="cal-event-user">
+          <strong>${escapeHtml(b.userName)}</strong>
+          <span style="font-size:10.5px;font-weight:700;color:var(--kr-cyan);">₹${Number(b.totalAmount).toLocaleString("en-IN")}</span>
+        </div>
+        <div class="cal-event-car">🚗 ${escapeHtml(b.carName)} ${b.carReg ? `(${escapeHtml(b.carReg)})` : ""}</div>
+        <div class="cal-event-time">${flag}</div>
       </div>
     `;
   });
 
   if (matchingBookings.length > maxDisplay) {
-    pillsHtml += `<div class="cal-event-more" data-date="${cellDateStr}">+${matchingBookings.length - maxDisplay} more (view all)</div>`;
+    pillsHtml += `
+      <div class="cal-event-more" data-date="${cellDateStr}" role="button" tabindex="0" title="Click to view all ${matchingBookings.length} bookings for this day">
+        🔍 +${matchingBookings.length - maxDisplay} more (view details)
+      </div>
+    `;
   }
 
   return `
-    <div class="${classes}" data-date="${cellDateStr}">
-      <div class="admin-cal-cell-header">
+    <div class="${classes}" data-date="${cellDateStr}" data-count="${matchingBookings.length}">
+      <div class="admin-cal-cell-header" data-date="${cellDateStr}" data-count="${matchingBookings.length}" style="cursor:pointer;" title="${matchingBookings.length > 0 ? `Click to view schedule for this day (${matchingBookings.length} bookings)` : 'Click to add a booking for this day'}">
         <span class="admin-cal-day-num">${dayNumber}</span>
-        ${matchingBookings.length > 0 ? `<span class="admin-cal-badge-count" data-date="${cellDateStr}" title="View all ${matchingBookings.length} bookings for this day">${matchingBookings.length}</span>` : ""}
+        ${matchingBookings.length > 0 ? `<span class="admin-cal-badge-count" data-date="${cellDateStr}" title="Click to view all ${matchingBookings.length} bookings for this day">${matchingBookings.length} ${matchingBookings.length === 1 ? 'Booking' : 'Bookings'}</span>` : ""}
       </div>
       <div class="cal-events-wrap">
         ${pillsHtml}
@@ -8063,34 +8099,89 @@ function openAdminDayBookingsModal(dateStr) {
   if (listEl) {
     if (matching.length === 0) {
       listEl.innerHTML = `
-        <div style="text-align:center; padding: 28px 12px; color: var(--kr-text-secondary);">
-          <p style="margin:0 0 12px;">No reservations scheduled for this day.</p>
+        <div style="text-align:center; padding: 32px 16px; color: var(--kr-text-secondary); background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px dashed rgba(255,255,255,0.1);">
+          <p style="margin:0 0 12px; font-size:1rem; color:#fff;">No bookings scheduled for this date.</p>
+          <p style="margin:0; font-size:0.85rem; color:var(--kr-text-muted);">You can create a new booking using the button below.</p>
         </div>
       `;
     } else {
       let html = "";
       matching.forEach((b) => {
+        const rawBk = bookingsData.find((item) => String(item.id || item.bookingId || item.bookingNumber) === String(b.id)) || b.raw || b;
         const statusLabel = b.badgeCategory.toUpperCase();
+        const payStatus = rawBk.paymentStatus ? rawBk.paymentStatus.replace(/_/g, " ").toUpperCase() : "CONFIRMED";
+        const payMethod = rawBk.paymentMethod || rawBk.method || "UPI";
+        const payRef = rawBk.paymentRef || rawBk.utr || rawBk.transactionId || "";
+
         html += `
           <div class="day-schedule-item cal-agenda-card--${escapeHtml(b.badgeCategory)}">
-            <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 200px;">
-              <div style="display: flex; align-items: center; gap: 8px;">
+            <!-- Header: Status + ID + Amount -->
+            <div class="day-schedule-header">
+              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                 <span class="cal-status-tag cal-status-tag--${escapeHtml(b.badgeCategory)}">${statusLabel}</span>
-                <strong style="color: #ffffff; font-size: 0.95rem;">${escapeHtml(b.userName)}</strong>
-                <span style="color: var(--kr-text-secondary); font-size: 0.8rem;">#${escapeHtml(b.id.slice(0, 8))}</span>
+                <span style="font-family:monospace; font-weight:700; color:var(--kr-cyan); font-size:0.9rem;">#${escapeHtml(b.id)}</span>
               </div>
-              <div style="color: #4fd7ff; font-weight: 700; font-size: 0.85rem;">
-                ${escapeHtml(b.carName)} ${b.carReg ? `(${escapeHtml(b.carReg)})` : ""}
+              <div style="font-size: 1.15rem; font-weight: 800; color: #ffffff;">
+                ₹${Number(b.totalAmount).toLocaleString("en-IN")}
               </div>
-              <div style="font-size: 0.78rem; color: var(--kr-text-secondary);">
-                <span>🟢 ${formatCalDateTime(b.pickupDate)}</span> &rarr; <span>🏁 ${formatCalDateTime(b.dropDate)}</span>
-              </div>
-              ${b.userPhone || b.userEmail ? `<div style="font-size: 0.78rem; color: var(--kr-text-muted);">📞 ${escapeHtml(b.userPhone || "")} ${b.userEmail ? `· ✉️ ${escapeHtml(b.userEmail)}` : ""}</div>` : ""}
             </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <span style="font-weight: 800; color: #ffffff; font-size: 1rem;">₹${Number(b.totalAmount).toLocaleString("en-IN")}</span>
-              <button type="button" class="btn btn-outline btn-sm edit-day-item-btn" data-bid="${escapeHtml(b.id)}" style="padding: 6px 12px; font-size: 0.8rem;">
-                Edit
+
+            <!-- Details Grid: Customer, Vehicle, Timeline, Payment -->
+            <div class="day-schedule-grid">
+              <!-- Customer Info -->
+              <div style="background: rgba(0,0,0,0.25); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="font-size: 0.75rem; color: var(--kr-text-secondary); text-transform: uppercase; margin-bottom: 4px;">Customer Details</div>
+                <strong style="color: #ffffff; font-size: 0.95rem; display:block; margin-bottom: 4px;">${escapeHtml(b.userName)}</strong>
+                ${b.userPhone ? `<div style="font-size: 0.82rem; margin-bottom: 2px;"><a href="tel:${escapeHtml(b.userPhone)}" style="color:var(--kr-cyan); text-decoration:none; display:inline-flex; align-items:center; gap:4px;"><i class="ri-phone-fill"></i> ${escapeHtml(b.userPhone)}</a></div>` : ""}
+                ${b.userEmail ? `<div style="font-size: 0.8rem;"><a href="mailto:${escapeHtml(b.userEmail)}" style="color:#a5d8ff; text-decoration:none; display:inline-flex; align-items:center; gap:4px;"><i class="ri-mail-fill"></i> ${escapeHtml(b.userEmail)}</a></div>` : ""}
+              </div>
+
+              <!-- Vehicle Info -->
+              <div style="background: rgba(0,0,0,0.25); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="font-size: 0.75rem; color: var(--kr-text-secondary); text-transform: uppercase; margin-bottom: 4px;">Vehicle Assigned</div>
+                <strong style="color: #ffffff; font-size: 0.95rem; display:block; margin-bottom: 4px;">🚗 ${escapeHtml(b.carName)}</strong>
+                <div style="display:inline-block; font-family:monospace; background:rgba(79, 215, 255, 0.12); color:#4fd7ff; padding:2px 8px; border-radius:6px; font-size:0.8rem; border:1px solid rgba(79, 215, 255, 0.3);">
+                  ${escapeHtml(b.carReg || "Registration Pending")}
+                </div>
+              </div>
+
+              <!-- Trip Timeline -->
+              <div style="background: rgba(0,0,0,0.25); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="font-size: 0.75rem; color: var(--kr-text-secondary); text-transform: uppercase; margin-bottom: 4px;">Trip Dates & Times</div>
+                <div style="font-size: 0.82rem; color: #ffffff; margin-bottom: 4px;">
+                  <span style="color:#06d6a0; font-weight:700;">🟢 Pickup:</span> ${formatCalDateTime(b.pickupDate)}
+                </div>
+                <div style="font-size: 0.82rem; color: #ffffff;">
+                  <span style="color:#ffd166; font-weight:700;">🏁 Return:</span> ${formatCalDateTime(b.dropDate)}
+                </div>
+              </div>
+
+              <!-- Payment & Booking State -->
+              <div style="background: rgba(0,0,0,0.25); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="font-size: 0.75rem; color: var(--kr-text-secondary); text-transform: uppercase; margin-bottom: 4px;">Payment & Notes</div>
+                <div style="font-size: 0.82rem; color: #ffffff; margin-bottom: 3px;">
+                  <span style="color:var(--kr-text-secondary);">Status:</span> <strong>${escapeHtml(payStatus)}</strong>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--kr-text-muted);">
+                  ${escapeHtml(payMethod)} ${payRef ? `· Ref: ${escapeHtml(payRef)}` : ""}
+                </div>
+                ${b.notes ? `<div style="font-size: 0.78rem; color: #ffd166; margin-top:3px;">📝 ${escapeHtml(b.notes)}</div>` : ""}
+              </div>
+            </div>
+
+            <!-- Action Toolbar for this Booking -->
+            <div class="day-schedule-actions">
+              <button type="button" class="btn btn-outline btn-sm day-modal-edit-btn" data-bid="${escapeHtml(b.id)}" style="padding: 6px 12px; font-size: 0.82rem; display:inline-flex; align-items:center; gap:5px;">
+                <i class="ri-edit-line"></i> Edit Booking
+              </button>
+              <button type="button" class="btn btn-primary btn-sm day-modal-inv-btn" data-bid="${escapeHtml(b.id)}" style="padding: 6px 12px; font-size: 0.82rem; display:inline-flex; align-items:center; gap:5px;">
+                <i class="ri-file-text-line"></i> Invoice
+              </button>
+              <button type="button" class="btn btn-dark btn-sm day-modal-receipt-btn" data-bid="${escapeHtml(b.id)}" style="padding: 6px 12px; font-size: 0.82rem; display:inline-flex; align-items:center; gap:5px;">
+                <i class="ri-eye-line"></i> Receipt
+              </button>
+              <button type="button" class="btn btn-outline btn-sm day-modal-del-btn" data-bid="${escapeHtml(b.id)}" style="padding: 6px 10px; font-size: 0.82rem; color:#ef476f; border-color:rgba(239,71,111,0.4);" title="Delete Booking Permanently">
+                <i class="ri-delete-bin-line"></i> Delete
               </button>
             </div>
           </div>
@@ -8098,13 +8189,62 @@ function openAdminDayBookingsModal(dateStr) {
       });
       listEl.innerHTML = html;
 
-      listEl.querySelectorAll(".edit-day-item-btn").forEach((btn) => {
+      // Event handlers inside modal:
+      listEl.querySelectorAll(".day-modal-edit-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           const bid = btn.dataset.bid;
           const bk = bookingsData.find((item) => String(item.id || item.bookingId || item.bookingNumber) === String(bid));
           if (bk) {
             hideModal("adminDayBookingsModal");
             openAdminEditBookingModal(bk);
+          }
+        });
+      });
+
+      listEl.querySelectorAll(".day-modal-inv-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const bid = btn.dataset.bid;
+          hideModal("adminDayBookingsModal");
+          await openInvoiceEditorModal(bid, btn);
+        });
+      });
+
+      listEl.querySelectorAll(".day-modal-receipt-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const bid = btn.dataset.bid;
+          const bk = bookingsData.find((item) => String(item.id || item.bookingId || item.bookingNumber) === String(bid)) ||
+                     paymentsData.find((item) => item.id === bid || item.bookingId === bid);
+          if (bk) {
+            hideModal("adminDayBookingsModal");
+            openPaymentModal(bk);
+          }
+        });
+      });
+
+      listEl.querySelectorAll(".day-modal-del-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const bid = btn.dataset.bid;
+          if (!confirm(`Are you sure you want to permanently delete Booking #${bid}?\n\nThis will remove the reservation completely.`)) {
+            return;
+          }
+          try {
+            btn.disabled = true;
+            btn.textContent = "Deleting...";
+            const res = await api.delete(`/bookings/detail.php?id=${encodeURIComponent(bid)}`);
+            if (res && (res.success || res.status === 200)) {
+              bookingsData = bookingsData.filter((item) => String(item.id || item.bookingId || item.bookingNumber) !== String(bid));
+              hideModal("adminDayBookingsModal");
+              await loadAdminCalendar();
+              if (typeof loadBookings === "function") loadBookings();
+              alert("Booking deleted successfully.");
+            } else {
+              throw new Error((res && res.error) || "Delete failed");
+            }
+          } catch (err) {
+            console.error("DELETE BOOKING ERROR:", err);
+            alert("Could not delete booking: " + err.message);
+          } finally {
+            btn.disabled = false;
           }
         });
       });
