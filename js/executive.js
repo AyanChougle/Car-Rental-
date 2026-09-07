@@ -12,30 +12,34 @@
  */
 
 import { auth } from "./firebase-init.js";
-import { checkAuth, getCurrentUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260907-v3";
-import { api } from "./kruizly-api.js?v=20260907-v5";
+import { checkAuth, getCurrentUser, setStoredUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260907-v10";
+import { api } from "./kruizly-api.js?v=20260907-v10";
 import "./nav-helper.js";
 import { formatBookingNumber } from "./booking-reference.js";
-import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260907-v6";
+import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260907-v10";
 
 
 function $(id) {
   return document.getElementById(id);
 }
 
-function showEl(el) {
+function safeShow(el) {
   if (!el) return;
   el.hidden = false;
   el.removeAttribute("hidden");
   el.style.display = "block";
 }
 
-function hideEl(el) {
+function safeHide(el) {
   if (!el) return;
   el.hidden = true;
   el.setAttribute("hidden", "hidden");
   el.style.display = "none";
 }
+
+// Fallbacks for backwards compatibility
+const showEl = safeShow;
+const hideEl = safeHide;
 
 function escapeHtml(str) {
   return String(str ?? "")
@@ -168,12 +172,12 @@ async function initExecutive() {
   const accessDeniedEl = $("executiveAccessDenied");
   const contentEl = $("executiveContent");
 
-  hideEl(accessDeniedEl);
-  hideEl(contentEl);
+  safeHide(accessDeniedEl);
+  safeHide(contentEl);
 
   const isAuthenticated = await checkAuth();
   if (!isAuthenticated) {
-    showEl(accessDeniedEl);
+    safeShow(accessDeniedEl);
     return;
   }
 
@@ -195,11 +199,11 @@ async function initExecutive() {
   const hasStaffRole = isExecutiveUser(currentUser) || isManagerUser(currentUser) || isAdminUser(currentUser);
 
   if (!hasStaffRole) {
-    showEl(accessDeniedEl);
+    safeShow(accessDeniedEl);
     return;
   }
 
-  showEl(contentEl);
+  safeShow(contentEl);
 
   initTabs();
   initModals();
