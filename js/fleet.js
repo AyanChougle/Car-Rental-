@@ -263,15 +263,10 @@ function renderPagination(totalItems) {
   currentFleetPage = Math.max(1, Math.min(currentFleetPage, totalPages));
 
   const getPageWindow = (curr, total) => {
-    if (total <= 6) return Array.from({ length: total }, (_, i) => i + 1);
-    const pages = [1];
-    const start = Math.max(2, curr - 1);
-    const end = Math.min(total - 1, curr + 1);
-    if (start > 2) pages.push("...");
-    for (let i = start; i <= end; i++) pages.push(i);
-    if (end < total - 1) pages.push("...");
-    pages.push(total);
-    return pages;
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+    if (curr <= 3) return [1, 2, 3, "...", total];
+    if (curr >= total - 2) return [1, "...", total - 2, total - 1, total];
+    return [1, "...", curr, "...", total];
   };
 
   const windowPages = getPageWindow(currentFleetPage, totalPages);
@@ -295,14 +290,14 @@ function renderPagination(totalItems) {
       Page <strong>${currentFleetPage}</strong> of <strong>${totalPages}</strong> · <strong>${totalItems}</strong> vehicles
     </span>
     <div class="data-pagination__actions">
-      <button type="button" data-fleet-page="prev" ${currentFleetPage === 1 ? "disabled" : ""} aria-label="Previous Page">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:2px;"><path d="m15 18-6-6 6-6"/></svg>
-        <span>Prev</span>
+      <button type="button" data-fleet-page="prev" ${currentFleetPage === 1 ? "disabled" : ""} aria-label="Previous Page" class="data-pagination__nav-btn">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+        <span class="data-pagination__btn-text">Prev</span>
       </button>
       ${pageButtonsHtml}
-      <button type="button" data-fleet-page="next" ${currentFleetPage === totalPages ? "disabled" : ""} aria-label="Next Page">
-        <span>Next</span>
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-left:2px;"><path d="m9 18 6-6-6-6"/></svg>
+      <button type="button" data-fleet-page="next" ${currentFleetPage === totalPages ? "disabled" : ""} aria-label="Next Page" class="data-pagination__nav-btn">
+        <span class="data-pagination__btn-text">Next</span>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
       </button>
     </div>
   `;

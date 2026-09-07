@@ -11,6 +11,7 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  overflow-wrap: break-word;
 }
 
 [hidden],
@@ -25,6 +26,7 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   overflow-x: hidden;
+  max-width: 100%;
   background-color: var(--kr-bg);
 }
 
@@ -38,6 +40,8 @@ body {
   line-height: 1.6;
   overflow-x: hidden;
   position: relative;
+  max-width: 100%;
+  width: 100%;
 }
 
 img, picture, video, canvas, svg {
@@ -85,7 +89,8 @@ p {
 .bg-video {
   position: fixed !important;
   inset: 0 !important;
-  width: 100vw !important;
+  width: 100% !important;
+  max-width: 100% !important;
   height: 100vh !important;
   height: 100dvh !important;
   z-index: var(--kr-z-video, -2) !important;
@@ -151,6 +156,12 @@ main {
 @media (max-width: 768px) {
   .container {
     padding-inline: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding-inline: 12px;
   }
 }
 

@@ -108,15 +108,10 @@ function renderPaginationHtml(currentPage, totalPages, totalItems, itemLabel = "
   if (totalPages <= 1) return "";
 
   const getPageWindow = (curr, total) => {
-    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-    const pages = [1];
-    const start = Math.max(2, curr - 1);
-    const end = Math.min(total - 1, curr + 1);
-    if (start > 2) pages.push("...");
-    for (let i = start; i <= end; i++) pages.push(i);
-    if (end < total - 1) pages.push("...");
-    pages.push(total);
-    return pages;
+    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
+    if (curr <= 3) return [1, 2, 3, "...", total];
+    if (curr >= total - 2) return [1, "...", total - 2, total - 1, total];
+    return [1, "...", curr, "...", total];
   };
 
   const windowPages = getPageWindow(currentPage, totalPages);
@@ -124,22 +119,26 @@ function renderPaginationHtml(currentPage, totalPages, totalItems, itemLabel = "
   const buttonsHtml = windowPages
     .map((p) => {
       if (p === "...") {
-        return `<span class="data-pagination__ellipsis" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:36px;color:var(--sub);font-weight:700;">...</span>`;
+        return `<span class="data-pagination__ellipsis" aria-hidden="true">...</span>`;
       }
       const isActive = p === currentPage;
-      return `<button type="button" class="btn-pagination ${isActive ? "active" : ""}" data-page="${p}" style="min-width:36px;height:36px;padding:0 10px;border-radius:8px;font-weight:700;${isActive ? "background:#4fd7ff;color:#000;border-color:#4fd7ff;" : "background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.12);"}">${p}</button>`;
+      return `<button type="button" class="btn-pagination ${isActive ? "active" : ""}" data-page="${p}">${p}</button>`;
     })
     .join("");
 
   return `
-    <div class="data-pagination" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;border-top:1px solid rgba(255,255,255,0.08);background:rgba(6,10,16,0.45);flex-wrap:wrap;margin-top:12px;border-radius:0 0 12px 12px;">
-      <span class="data-pagination__summary" style="font-size:13px;color:var(--sub);">
+    <div class="data-pagination">
+      <span class="data-pagination__summary">
         Page <strong>${currentPage}</strong> of <strong>${totalPages}</strong> · <strong>${totalItems}</strong> ${itemLabel}
       </span>
-      <div class="data-pagination__actions" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-        <button type="button" class="btn-pagination" data-page="prev" ${currentPage === 1 ? "disabled" : ""} style="height:36px;padding:0 14px;border-radius:8px;font-size:12.5px;font-weight:700;background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.12);${currentPage === 1 ? "opacity:0.35;cursor:not-allowed;" : "cursor:pointer;"}">Previous</button>
+      <div class="data-pagination__actions">
+        <button type="button" class="btn-pagination" data-page="prev" ${currentPage === 1 ? "disabled" : ""}>
+          <span class="data-pagination__btn-text">Prev</span>
+        </button>
         ${buttonsHtml}
-        <button type="button" class="btn-pagination" data-page="next" ${currentPage === totalPages ? "disabled" : ""} style="height:36px;padding:0 14px;border-radius:8px;font-size:12.5px;font-weight:700;background:rgba(255,255,255,0.06);color:#fff;border:1px solid rgba(255,255,255,0.12);${currentPage === totalPages ? "opacity:0.35;cursor:not-allowed;" : "cursor:pointer;"}">Next</button>
+        <button type="button" class="btn-pagination" data-page="next" ${currentPage === totalPages ? "disabled" : ""}>
+          <span class="data-pagination__btn-text">Next</span>
+        </button>
       </div>
     </div>
   `;

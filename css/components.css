@@ -1080,6 +1080,8 @@ input[type="file"]::file-selector-button:hover {
   border-radius: 14px;
   margin-top: 24px;
   flex-wrap: wrap;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .data-pagination__summary {
@@ -1098,10 +1100,13 @@ input[type="file"]::file-selector-button:hover {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .data-pagination button,
-.data-pagination__actions button {
+.data-pagination__actions button,
+.btn-pagination {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1115,10 +1120,12 @@ input[type="file"]::file-selector-button:hover {
   font-weight: 700;
   cursor: pointer;
   transition: all 180ms ease;
+  box-sizing: border-box;
 }
 
 .data-pagination button:hover:not(:disabled),
-.data-pagination__actions button:hover:not(:disabled) {
+.data-pagination__actions button:hover:not(:disabled),
+.btn-pagination:hover:not(:disabled) {
   background: rgba(0, 212, 255, 0.15);
   border-color: var(--kr-cyan);
   color: var(--kr-cyan);
@@ -1126,7 +1133,8 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .data-pagination button.active,
-.data-pagination__actions button.active {
+.data-pagination__actions button.active,
+.btn-pagination.active {
   background: rgba(72, 215, 255, 0.2) !important;
   border-color: var(--kr-cyan) !important;
   color: var(--kr-cyan) !important;
@@ -1134,12 +1142,44 @@ input[type="file"]::file-selector-button:hover {
 }
 
 .data-pagination button:disabled,
-.data-pagination__actions button:disabled {
+.data-pagination__actions button:disabled,
+.btn-pagination:disabled {
   opacity: 0.35;
   cursor: not-allowed;
   background: rgba(255, 255, 255, 0.02);
   border-color: rgba(255, 255, 255, 0.05);
   color: var(--kr-text-muted);
+}
+
+@media (max-width: 680px) {
+  .data-pagination {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 12px 10px;
+  }
+
+  .data-pagination__summary {
+    text-align: center;
+    font-size: 12.5px;
+    width: 100%;
+  }
+
+  .data-pagination__actions {
+    justify-content: center;
+    width: 100%;
+    gap: 4px;
+  }
+
+  .data-pagination button,
+  .data-pagination__actions button,
+  .btn-pagination {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
 }
 
 /* =========================================================
