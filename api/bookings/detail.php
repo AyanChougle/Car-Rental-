@@ -275,6 +275,53 @@ if ($method === 'PUT' || $method === 'POST') {
         $existingInspection['inspectedBy'] = (string)($input['returnedBy'] ?? $input['inspectedBy']);
     }
 
+    // Date & Timeline updates
+    if (isset($input['pickupDate']) || isset($input['pickup_date'])) {
+        $updates[] = "pickup_date = ?";
+        $params[] = (string)($input['pickupDate'] ?? $input['pickup_date']);
+    }
+    if (isset($input['dropDate']) || isset($input['drop_date']) || isset($input['returnDate'])) {
+        $updates[] = "drop_date = ?";
+        $params[] = (string)($input['dropDate'] ?? $input['drop_date'] ?? $input['returnDate']);
+    }
+    if (isset($input['days'])) {
+        $updates[] = "days = ?";
+        $params[] = (int)$input['days'];
+    }
+    if (isset($input['hours'])) {
+        $updates[] = "hours = ?";
+        $params[] = (int)$input['hours'];
+    }
+    if (isset($input['duration'])) {
+        $updates[] = "duration = ?";
+        $params[] = (string)$input['duration'];
+    }
+    if (isset($input['location'])) {
+        $updates[] = "location = ?";
+        $params[] = (string)$input['location'];
+    }
+
+    // Customer info updates
+    if (isset($input['userName']) || isset($input['user_name'])) {
+        $updates[] = "user_name = ?";
+        $params[] = (string)($input['userName'] ?? $input['user_name']);
+    }
+    if (isset($input['userEmail']) || isset($input['user_email'])) {
+        $updates[] = "user_email = ?";
+        $params[] = (string)($input['userEmail'] ?? $input['user_email']);
+    }
+    if (isset($input['userPhone']) || isset($input['user_phone'])) {
+        $updates[] = "user_phone = ?";
+        $params[] = (string)($input['userPhone'] ?? $input['user_phone']);
+    }
+    if (isset($input['totalAmount']) || isset($input['total_amount'])) {
+        $tot = (float)($input['totalAmount'] ?? $input['total_amount']);
+        $updates[] = "total_amount = ?";
+        $updates[] = "final_amount = ?";
+        $params[] = $tot;
+        $params[] = $tot;
+    }
+
     $updates[] = "return_inspection = ?";
     $params[] = json_encode($existingInspection);
 
@@ -288,6 +335,17 @@ if ($method === 'PUT' || $method === 'POST') {
     }
 
     sendJsonResponse(['success' => true, 'message' => 'Booking updated successfully.']);
+}
+
+if ($method === 'DELETE') {
+    if (!$isStaff) {
+        sendErrorResponse('Access denied. Staff only.', 403);
+    }
+    Database::execute(
+        "DELETE FROM bookings WHERE booking_id = ? OR booking_number = ?",
+        [$bookingId, $bookingId]
+    );
+    sendJsonResponse(['success' => true, 'message' => "Booking '$bookingId' removed successfully."]);
 }
 
 sendErrorResponse('Method not allowed.', 405);

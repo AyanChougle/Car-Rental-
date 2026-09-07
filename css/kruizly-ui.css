@@ -2379,9 +2379,10 @@ select option {
 
 .admin-inspect-modal-card {
   max-width: 860px !important;
-  width: 95vw !important;
+  width: calc(100vw - 28px) !important;
   max-height: 90vh !important;
   overflow-y: auto !important;
+  overflow-x: hidden !important;
   position: relative !important;
   padding: 32px !important;
   background: var(--kz-glass-strong) !important;
@@ -2389,6 +2390,7 @@ select option {
   -webkit-backdrop-filter: var(--kz-blur) !important;
   border: 1px solid var(--kz-border) !important;
   border-radius: 24px !important;
+  box-sizing: border-box !important;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8), 0 0 40px rgba(72, 215, 255, 0.12) !important;
 }
 
@@ -2409,6 +2411,7 @@ select option {
   justify-content: center !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
+  z-index: 5 !important;
 }
 
 .admin-inspect-close:hover {
@@ -2420,7 +2423,9 @@ select option {
 .admin-inspect-header {
   margin-bottom: 20px !important;
   padding-bottom: 16px !important;
+  padding-right: 40px !important;
   border-bottom: 1px solid var(--kz-border) !important;
+  box-sizing: border-box !important;
 }
 
 .admin-inspect-eyebrow {
@@ -2438,6 +2443,7 @@ select option {
   font-weight: 800 !important;
   color: var(--kz-text) !important;
   margin: 0 !important;
+  word-break: break-word !important;
 }
 
 .admin-doc-preview-grid {
@@ -2505,8 +2511,11 @@ select option {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  gap: 16px !important;
+  gap: 12px !important;
   flex-wrap: wrap !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
   padding-top: 16px !important;
   border-top: 1px solid var(--kz-border) !important;
 }
@@ -2515,8 +2524,14 @@ select option {
 .admin-inspect-actions__right {
   display: flex !important;
   align-items: center !important;
-  gap: 12px !important;
+  gap: 10px !important;
   flex-wrap: wrap !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.admin-inspect-actions__right {
+  margin-left: auto !important;
 }
 
 .admin-upload-replacement-btn {
@@ -2528,6 +2543,43 @@ select option {
   padding: 10px 16px !important;
   border-radius: 10px !important;
   transition: all 0.2s ease !important;
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+}
+
+@media (max-width: 680px) {
+  .admin-inspect-modal-card {
+    padding: 20px 14px !important;
+    border-radius: 16px !important;
+    width: calc(100vw - 16px) !important;
+    max-width: 100% !important;
+  }
+
+  .admin-inspect-actions {
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .admin-inspect-actions__left,
+  .admin-inspect-actions__right {
+    flex-direction: column-reverse !important;
+    width: 100% !important;
+    gap: 10px !important;
+    margin-left: 0 !important;
+  }
+
+  .admin-btn-approve,
+  .admin-btn-reject,
+  .admin-upload-replacement-btn,
+  .admin-inspect-actions button {
+    width: 100% !important;
+    text-align: center !important;
+    justify-content: center !important;
+    min-height: 44px !important;
+    font-size: 13.5px !important;
+    padding: 12px 14px !important;
+  }
 }
 
 .admin-upload-replacement-btn:hover {

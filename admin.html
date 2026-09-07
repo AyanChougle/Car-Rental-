@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en-GB">
   <head>
     <meta charset="UTF-8" />
@@ -9,10 +9,10 @@
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-    <link rel="stylesheet" href="css/components.css?v=20260831-white-icons" />
-    <link rel="stylesheet" href="css/kruizly-ui.css?v=20260831-white-icons" />
-    <link rel="stylesheet" href="css/admin.css?v=20260831-white-icons" />
-      <link rel="stylesheet" href="css/kruizly-motion.css" />
+    <link rel="stylesheet" href="css/components.css?v=20260907-v4" />
+    <link rel="stylesheet" href="css/kruizly-ui.css?v=20260907-v4" />
+    <link rel="stylesheet" href="css/admin.css?v=20260907-v4" />
+    <link rel="stylesheet" href="css/kruizly-motion.css?v=20260907-v4" />
   </head>
   <body>
 
@@ -137,6 +137,10 @@
             <button class="btn btn-dark tab-btn active" data-tab="tab-bookings">
               All Bookings
             </button>
+            <button class="btn btn-outline tab-btn" data-tab="tab-calendar">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              Booking Calendar
+            </button>
             <button class="btn btn-outline tab-btn" data-tab="tab-payments">
               Payments
               <span id="paymentsTabBadge" class="tab-badge" hidden>0</span>
@@ -154,6 +158,82 @@
               Coupons
             </button>
           </div>
+
+          <!-- TAB: BOOKING CALENDAR -->
+          <section id="tab-calendar" class="tab-panel" hidden>
+            <div class="card admin-panel-card">
+              <!-- Calendar Header & Navigation Controls -->
+              <div class="admin-cal-topbar">
+                <div class="admin-cal-heading">
+                  <div class="admin-cal-nav">
+                    <button type="button" id="adminCalPrevMonthBtn" class="btn btn-outline btn-sm admin-cal-nav-btn" aria-label="Previous Month">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+                    </button>
+                    <h3 id="adminCalMonthTitle" class="admin-cal-title">September 2026</h3>
+                    <button type="button" id="adminCalNextMonthBtn" class="btn btn-outline btn-sm admin-cal-nav-btn" aria-label="Next Month">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+                    </button>
+                    <button type="button" id="adminCalTodayBtn" class="btn btn-outline btn-sm admin-cal-today-btn">Today</button>
+                  </div>
+                  <p class="admin-cal-subline">Interactive timeline showing start &amp; return dates for each rental reservation.</p>
+                </div>
+
+                <div class="admin-cal-actions">
+                  <!-- Search Filter -->
+                  <div class="admin-cal-search">
+                    <input type="text" id="adminCalSearchInput" class="kr-clean-input" placeholder="Search customer, vehicle, or ID..." />
+                  </div>
+
+                  <!-- Status Filter -->
+                  <div class="admin-cal-filter">
+                    <select id="adminCalStatusFilter" class="kr-clean-input">
+                      <option value="all">All Bookings</option>
+                      <option value="active">Active (In Trip)</option>
+                      <option value="upcoming">Upcoming</option>
+                      <option value="completed">Completed (History)</option>
+                      <option value="pending_payment">Pending Payment</option>
+                      <option value="cancelled">Cancelled</option>
+                    </select>
+                  </div>
+
+                  <!-- View Mode Toggle (Grid vs Agenda) -->
+                  <div class="admin-cal-view-toggle">
+                    <button type="button" id="adminCalViewGridBtn" class="cal-toggle-btn active" title="Month Grid View">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                      <span>Grid</span>
+                    </button>
+                    <button type="button" id="adminCalViewAgendaBtn" class="cal-toggle-btn" title="Agenda List View">
+                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                      <span>Agenda</span>
+                    </button>
+                  </div>
+
+                  <!-- Add Booking Button -->
+                  <button type="button" id="adminCalAddBookingBtn" class="btn btn-primary admin-cal-add-btn">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <span>Add Booking</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Month Grid View Container -->
+              <div id="adminCalGridContainer" class="admin-cal-view-wrap">
+                <div class="admin-cal-weekdays">
+                  <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                </div>
+                <div id="adminCalGrid" class="admin-cal-grid">
+                  <!-- Generated by JS -->
+                </div>
+              </div>
+
+              <!-- Agenda List View Container -->
+              <div id="adminCalAgendaContainer" class="admin-cal-view-wrap hidden" hidden>
+                <div id="adminCalAgendaList" class="admin-cal-agenda-list">
+                  <!-- Generated by JS -->
+                </div>
+              </div>
+            </div>
+          </section>
 
           <!-- TAB 1: USERS & DOCUMENT VERIFICATION -->
           <section id="tab-users" class="tab-panel" hidden>
@@ -442,7 +522,7 @@
             </div>
           </figure>
         </div>
-        <div class="admin-inspect-actions" style="justify-content: flex-end;">
+        <div class="admin-inspect-actions">
           <div class="admin-inspect-actions__right">
             <button id="rejectDocBtn" type="button" class="btn admin-btn-reject">
               Reject Document
@@ -464,7 +544,7 @@
           <h2 id="paymentModalTitle" class="admin-inspect-title">Payment Review</h2>
         </div>
         <div id="paymentModalBody" class="admin-payment-modal-body"></div>
-        <div class="admin-inspect-actions" style="justify-content: flex-end;">
+        <div class="admin-inspect-actions">
           <div class="admin-inspect-actions__right">
             <button id="rejectPaymentBtn" type="button" class="btn admin-btn-reject">
               Reject Payment
@@ -834,6 +914,155 @@
       </div>
     </div>
 
+    <!-- MODAL: ADD / CREATE BOOKING (CALENDAR & ADMIN) -->
+    <div id="adminAddBookingModal" class="modal admin-modal" hidden>
+      <div class="card admin-inspect-modal-card" style="max-width: 600px;">
+        <button id="closeAdminAddBookingModal" class="admin-inspect-close" aria-label="Close modal">&times;</button>
+        <div class="admin-inspect-header">
+          <span class="admin-inspect-eyebrow">ADMIN OPERATIONS</span>
+          <h2 class="admin-inspect-title">Add / Schedule New Booking</h2>
+        </div>
+        <form id="adminAddBookingForm" style="display: grid; gap: 14px; margin-top: 14px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="addBkCustomerName">Customer Full Name *</label>
+              <input type="text" id="addBkCustomerName" class="kr-clean-input" placeholder="e.g. Rahul Sharma" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="addBkCustomerPhone">Phone Number *</label>
+              <input type="tel" id="addBkCustomerPhone" class="kr-clean-input" placeholder="e.g. 9876543210" required />
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="addBkCustomerEmail">Customer Email</label>
+              <input type="email" id="addBkCustomerEmail" class="kr-clean-input" placeholder="customer@gmail.com" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="addBkVehicleSelect">Select Vehicle *</label>
+              <select id="addBkVehicleSelect" class="kr-clean-input" required>
+                <option value="">Loading fleet vehicles...</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="addBkPickupDate">Pickup Date &amp; Time *</label>
+              <input type="datetime-local" id="addBkPickupDate" class="kr-clean-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="addBkReturnDate">Return Date &amp; Time *</label>
+              <input type="datetime-local" id="addBkReturnDate" class="kr-clean-input" required />
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="addBkStatus">Booking Status</label>
+              <select id="addBkStatus" class="kr-clean-input">
+                <option value="confirmed">Confirmed</option>
+                <option value="active">Active (In Trip)</option>
+                <option value="pending_payment">Payment Pending</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="addBkTotalAmount">Total Amount (₹) *</label>
+              <input type="number" id="addBkTotalAmount" class="kr-clean-input" placeholder="e.g. 8500" required />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="addBkNotes">Notes / Location / Pickup Details</label>
+            <input type="text" id="addBkNotes" class="kr-clean-input" placeholder="e.g. Airport delivery / Self pickup Ghansoli" />
+          </div>
+
+          <div class="admin-inspect-actions" style="margin-top: 10px;">
+            <div class="admin-inspect-actions__right" style="width: 100%; justify-content: flex-end;">
+              <button type="button" id="cancelAddBookingBtn" class="btn btn-outline">Cancel</button>
+              <button type="submit" id="saveAddBookingBtn" class="btn admin-btn-approve">Create Booking</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MODAL: EDIT / MANAGE BOOKING (CALENDAR & ADMIN) -->
+    <div id="adminEditBookingModal" class="modal admin-modal" hidden>
+      <div class="card admin-inspect-modal-card" style="max-width: 620px;">
+        <button id="closeAdminEditBookingModal" class="admin-inspect-close" aria-label="Close modal">&times;</button>
+        <div class="admin-inspect-header">
+          <span class="admin-inspect-eyebrow">BOOKING DETAILS &amp; MANAGEMENT</span>
+          <h2 id="adminEditBookingTitle" class="admin-inspect-title">Edit Booking</h2>
+        </div>
+        <form id="adminEditBookingForm" style="display: grid; gap: 14px; margin-top: 14px;">
+          <input type="hidden" id="editBkId" />
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="editBkCustomerName">Customer Name</label>
+              <input type="text" id="editBkCustomerName" class="kr-clean-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="editBkCustomerPhone">Phone</label>
+              <input type="tel" id="editBkCustomerPhone" class="kr-clean-input" />
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="editBkCustomerEmail">Email</label>
+              <input type="email" id="editBkCustomerEmail" class="kr-clean-input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="editBkVehicleSelect">Assigned Vehicle</label>
+              <select id="editBkVehicleSelect" class="kr-clean-input">
+                <!-- Populated dynamically -->
+              </select>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="editBkPickupDate">Pickup Date &amp; Time</label>
+              <input type="datetime-local" id="editBkPickupDate" class="kr-clean-input" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="editBkReturnDate">Return Date &amp; Time</label>
+              <input type="datetime-local" id="editBkReturnDate" class="kr-clean-input" required />
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+            <div class="form-group">
+              <label class="form-label" for="editBkStatus">Booking Status</label>
+              <select id="editBkStatus" class="kr-clean-input">
+                <option value="confirmed">Confirmed</option>
+                <option value="active">Active (In Trip)</option>
+                <option value="pending_payment">Payment Pending</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="editBkTotalAmount">Total Amount (₹)</label>
+              <input type="number" id="editBkTotalAmount" class="kr-clean-input" />
+            </div>
+          </div>
+
+          <div class="admin-inspect-actions" style="margin-top: 14px;">
+            <button type="button" id="adminCancelBookingBtn" class="btn admin-btn-reject">Cancel Booking</button>
+            <div class="admin-inspect-actions__right">
+              <button type="button" id="adminDeleteBookingBtn" class="btn btn-outline" style="border-color: rgba(239,71,111,0.4); color: #ef476f;">Delete Permanently</button>
+              <button type="submit" id="saveEditBookingBtn" class="btn admin-btn-approve">Save Changes</button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <footer class="site-footer">
       <div class="container">
         <div class="footer-grid">
@@ -972,9 +1201,9 @@
     </footer>
 
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <script src="js/vehicles.js?v=20260907-v2"></script>
+    <script src="js/vehicles.js?v=20260907-v4"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script type="module" src="js/admin.js?v=20260907-v2"></script>
-    <script src="js/glass-ui.js?v=20260907-v2"></script>
+    <script type="module" src="js/admin.js?v=20260907-v4"></script>
+    <script src="js/glass-ui.js?v=20260907-v4"></script>
   </body>
 </html>

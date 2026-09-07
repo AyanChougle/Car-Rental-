@@ -263,9 +263,14 @@ function renderPagination(totalItems) {
   currentFleetPage = Math.max(1, Math.min(currentFleetPage, totalPages));
 
   const getPageWindow = (curr, total) => {
-    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
-    if (curr <= 3) return [1, 2, 3, "...", total];
-    if (curr >= total - 2) return [1, "...", total - 2, total - 1, total];
+    if (total <= 4) return Array.from({ length: total }, (_, i) => i + 1);
+    if (typeof window !== "undefined" && window.innerWidth <= 520) {
+      if (curr === 1) return [1, 2, "...", total];
+      if (curr === total) return [1, "...", total - 1, total];
+      return [curr - 1, curr, curr + 1];
+    }
+    if (curr <= 2) return [1, 2, 3, "...", total];
+    if (curr >= total - 1) return [1, "...", total - 2, total - 1, total];
     return [1, "...", curr, "...", total];
   };
 

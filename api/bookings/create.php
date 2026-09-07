@@ -55,6 +55,7 @@ if (!$dbUserId && !empty($user['firebase_uid'])) {
 
 $userName = trim((string)($input['userName'] ?? $input['name'] ?? $input['customerName'] ?? $user['name'] ?? ''));
 $userPhone = trim((string)($input['userPhone'] ?? $input['phone'] ?? $input['customerPhone'] ?? $user['phone'] ?? ''));
+$userEmail = trim((string)($input['userEmail'] ?? $input['email'] ?? $input['customerEmail'] ?? $user['email'] ?? ''));
 $userAge = isset($input['age']) ? (int)$input['age'] : (isset($input['userAge']) ? (int)$input['userAge'] : (isset($input['customerAge']) ? (int)$input['customerAge'] : (isset($user['age']) ? (int)$user['age'] : null)));
 
 Database::autoHealTable('bookings');
@@ -66,7 +67,7 @@ try {
         $nextId, $bookingId, $bookingNumber, $user, $dbUserId, $vehicleId, $vehicleReg, $vehicleName, $vehicleCategory,
         $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $baseAmount, $couponCode,
         $couponDiscount, $totalAmount, $advanceAmount, $remainingBalance, $paymentPlan, $paymentStatus,
-        $status, $location, $securityDeposit, $userName, $userPhone, $userAge, $input
+        $status, $location, $securityDeposit, $userName, $userEmail, $userPhone, $userAge, $input
     ) {
         // 1. Insert or update booking
         $stmt = $pdo->prepare(
@@ -102,6 +103,7 @@ try {
                 location = VALUES(location),
                 security_deposit = VALUES(security_deposit),
                 user_name = COALESCE(NULLIF(VALUES(user_name), ''), user_name),
+                user_email = COALESCE(NULLIF(VALUES(user_email), ''), user_email),
                 user_phone = COALESCE(NULLIF(VALUES(user_phone), ''), user_phone),
                 payment_status = VALUES(payment_status),
                 status = VALUES(status),
@@ -112,7 +114,7 @@ try {
 
         $stmt->execute([
             $nextId, $bookingId, $bookingNumber, $dbUserId, $user['firebase_uid'], $userName ?: ($user['name'] ?: $user['email']),
-            $user['email'], $userPhone ?: ($user['phone'] ?: null), $vehicleId, $vehicleReg ?: 'TBD', $vehicleName, $vehicleCategory,
+            $userEmail ?: ($user['email'] ?: 'customer@kruizly.com'), $userPhone ?: ($user['phone'] ?: null), $vehicleId, $vehicleReg ?: 'TBD', $vehicleName, $vehicleCategory,
             $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $baseAmount, $couponCode ?: null,
             $couponDiscount, $totalAmount, $totalAmount, $advanceAmount, $remainingBalance, $remainingBalance,
             $paymentPlan, $paymentStatus, $status, $status, $location, $securityDeposit,
