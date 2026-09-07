@@ -92,12 +92,16 @@ class FileStorageService {
         $user = Database::fetchOne("SELECT id FROM users WHERE firebase_uid = ? LIMIT 1", [$firebaseUid]);
         $userId = $user['id'] ?? null;
 
+        // Auto-calculate next ID so insert never fails with duplicate key 0
+        $maxRow = Database::fetchOne("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM media");
+        $nextId = (int)($maxRow['next_id'] ?? 1);
+
         // Record in media table
         Database::execute(
-            "INSERT INTO media (media_id, user_id, firebase_uid, category, related_id, original_name, stored_name, stored_path, mime_type, file_size, file_hash)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO media (id, media_id, user_id, firebase_uid, category, related_id, original_name, stored_name, stored_path, mime_type, file_size, file_hash)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
-                $mediaId, $userId, $firebaseUid, $dbCategory, $relatedId,
+                $nextId, $mediaId, $userId, $firebaseUid, $dbCategory, $relatedId,
                 $origName, $storedName, $targetPath, $mimeType, $file['size'], $fileHash
             ]
         );

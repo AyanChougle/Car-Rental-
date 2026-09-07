@@ -79,19 +79,22 @@ try {
 
             $pdo->prepare("UPDATE verification SET " . implode(', ', $updateFields) . " WHERE firebase_uid = ?")->execute($params);
         } else {
+            $maxRow = Database::fetchOne("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM verification");
+            $nextId = (int)($maxRow['next_id'] ?? 1);
+
             $stmt = $pdo->prepare(
                 "INSERT INTO verification (
-                    verification_id, user_id, firebase_uid, full_name, phone,
+                    id, verification_id, user_id, firebase_uid, full_name, phone,
                     license_number, license_front_media_id, license_back_media_id, license_status,
                     aadhar_number, aadhar_front_media_id, aadhar_back_media_id, aadhar_status,
                     pan_number, pan_front_media_id, pan_back_media_id, pan_status,
                     overall_status
                 ) VALUES (
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending'
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending'
                 )"
             );
             $stmt->execute([
-                $verificationId, $user['id'], $user['firebase_uid'], $fullName, $phone,
+                $nextId, $verificationId, $user['id'], $user['firebase_uid'], $fullName, $phone,
                 $licenseNumber ?: null, $licenseFrontMediaId ?: null, $licenseBackMediaId ?: null, $licenseStatus ?: 'not_submitted',
                 $aadharNumber ?: null, $aadharFrontMediaId ?: null, $aadharBackMediaId ?: null, $aadharStatus ?: 'not_submitted',
                 $panNumber ?: null, $panFrontMediaId ?: null, $panBackMediaId ?: null, $panStatus ?: 'not_submitted'

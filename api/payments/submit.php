@@ -54,13 +54,16 @@ $paymentId = 'PAY-' . strtoupper(bin2hex(random_bytes(6)));
 
 try {
     Database::transaction(function($pdo) use ($paymentId, $bookingId, $user, $amount, $method, $utr, $screenshotUrl, $screenshotMediaId) {
+        $maxRow = Database::fetchOne("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM payments");
+        $nextId = (int)($maxRow['next_id'] ?? 1);
+
         // 1. Insert into payments table
         $stmt = $pdo->prepare(
-            "INSERT INTO payments (payment_id, booking_id, firebase_uid, amount, method, utr, payment_ref, screenshot_url, screenshot_media_id, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')"
+            "INSERT INTO payments (id, payment_id, booking_id, firebase_uid, amount, method, utr, payment_ref, screenshot_url, screenshot_media_id, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')"
         );
         $stmt->execute([
-            $paymentId, $bookingId, $user['firebase_uid'], $amount, $method, $utr, $utr,
+            $nextId, $paymentId, $bookingId, $user['firebase_uid'], $amount, $method, $utr, $utr,
             $screenshotUrl ?: null, $screenshotMediaId ?: null
         ]);
 
