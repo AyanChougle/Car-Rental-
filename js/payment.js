@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // KRUIZLY - PAYMENT / CHECKOUT
 // Direct PHP + MySQL Backend
 // ============================================================
@@ -16,8 +16,8 @@
 // 9. Booking payment status updated to pending_verification
 // ============================================================
 
-import { checkAuth, getCurrentUser } from "./auth.js?v=20260907-v1";
-import { api } from "./kruizly-api.js?v=20260907-v1";
+import { checkAuth, getCurrentUser } from "./auth.js?v=20260907-v2";
+import { api } from "./kruizly-api.js?v=20260907-v2";
 
 import { PAYMENT_CONFIG } from "./payment-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
