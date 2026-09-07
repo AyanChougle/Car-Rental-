@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // KRUIZLY — BOOKING PAGE
 // ============================================================
 
@@ -508,14 +508,8 @@ async function initBooking(vehicle) {
     currentUser = getCurrentUser();
   }
 
-  if (!currentUser) {
-    if (statusEl)
-      statusEl.textContent = "Please log in to continue with your booking.";
-    return;
-  }
-
-  if (statusEl) statusEl.textContent = "";
-
+  if (currentUser) {
+    if (statusEl) statusEl.textContent = "";
     try {
       const vRes = await api.get(`/vehicles/${vehicle.regNo}`).catch(() => null);
       if (vRes?.vehicle && (vRes.vehicle.available === 0 || vRes.vehicle.available === false)) {
@@ -535,15 +529,23 @@ async function initBooking(vehicle) {
     } catch (error) {
       console.warn("Could not load user profile.", error);
     }
+  }
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     if (!currentUser) {
+      const isAuthed = await checkAuth();
+      if (isAuthed) {
+        currentUser = getCurrentUser();
+      }
+    }
+
+    if (!currentUser) {
       const nextParams = new URLSearchParams();
-      nextParams.set("reg", vehicle.regNo);
-      if (pickupInput.value) nextParams.set("pickup", pickupInput.value);
-      if (dropInput.value) nextParams.set("drop", dropInput.value);
+      if (vehicle?.regNo) nextParams.set("reg", vehicle.regNo);
+      if (pickupInput?.value) nextParams.set("pickup", pickupInput.value);
+      if (dropInput?.value) nextParams.set("drop", dropInput.value);
       const next = "booking.html?" + nextParams.toString();
       window.location.href = "index.html?next=" + encodeURIComponent(next);
       return;

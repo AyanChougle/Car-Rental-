@@ -1,4 +1,4 @@
-﻿// ============================================================
+// ============================================================
 // KRUIZLY - PAYMENT / CHECKOUT
 // Direct PHP + MySQL Backend
 // ============================================================
@@ -1679,8 +1679,24 @@ async function startPaymentPage() {
 
     console.log("BOOKING LOADED:", booking);
 
-    const userId = user.id || user.uid;
-    if (booking.userId && booking.userId !== userId && booking.firebaseUid && booking.firebaseUid !== userId) {
+    const userUids = [
+      String(user.uid || "").trim(),
+      String(user.id || "").trim(),
+      String(user.firebaseUid || "").trim()
+    ].filter(Boolean);
+
+    const bookingUids = [
+      String(booking.userId || "").trim(),
+      String(booking.firebaseUid || "").trim(),
+      String(booking.user_id || "").trim()
+    ].filter(Boolean);
+
+    const isOwner = !bookingUids.length ||
+                    userUids.some(u => bookingUids.includes(u)) ||
+                    (user.email && booking.userEmail && String(user.email).trim().toLowerCase() === String(booking.userEmail).trim().toLowerCase()) ||
+                    (user.role === "admin" || user.role === "manager");
+
+    if (!isOwner) {
       showError("This booking does not belong to your account.");
       return;
     }
