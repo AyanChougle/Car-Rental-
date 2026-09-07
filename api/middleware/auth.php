@@ -99,14 +99,6 @@ class Auth {
                 $name = trim($payload['name'] ?? ($payload['email'] ? explode('@', $payload['email'])[0] : 'User'));
                 $phone = trim($payload['phone_number'] ?? '');
 
-                // Ensure users table schema columns exist
-                try { Database::execute("ALTER TABLE users ADD COLUMN phone VARCHAR(32) NULL"); } catch (Throwable $_) {}
-                try { Database::execute("ALTER TABLE users ADD COLUMN age INT NULL"); } catch (Throwable $_) {}
-                try { Database::execute("ALTER TABLE users ADD COLUMN metadata TEXT NULL"); } catch (Throwable $_) {}
-                try { Database::execute("ALTER TABLE users ADD COLUMN license_status VARCHAR(32) DEFAULT 'not_submitted'"); } catch (Throwable $_) {}
-                try { Database::execute("ALTER TABLE users ADD COLUMN aadhar_status VARCHAR(32) DEFAULT 'not_submitted'"); } catch (Throwable $_) {}
-                try { Database::execute("ALTER TABLE users ADD COLUMN pan_status VARCHAR(32) DEFAULT 'not_submitted'"); } catch (Throwable $_) {}
-
                 // 1. Find by firebase_uid
                 $user = Database::fetchOne(
                     "SELECT * FROM users WHERE firebase_uid = ? LIMIT 1",
