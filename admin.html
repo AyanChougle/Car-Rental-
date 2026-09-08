@@ -59,32 +59,28 @@
           class="admin-wrapper"
           style="margin-top: 20px"
         >
-          <!-- Metrics Overview Header with Edit Controls -->
+          <!-- Metrics Overview Header -->
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 10px;">
               <span style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sub);">Performance &amp; Business KPIs</span>
-              <span id="kpiOverrideBadge" class="badge" style="display:none; background: #ffb703; color: #000; font-weight: 700; font-size: 11px; padding: 2px 8px; border-radius: 10px;">Custom Values Active</span>
             </div>
-            <button id="editKpisBtn" type="button" class="btn btn-outline btn-sm" style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 6px 14px; border-radius: 8px; border-color: rgba(255,255,255,0.2);">
-              <span>✏️</span> <span>Edit KPI Metrics</span>
-            </button>
           </div>
 
           <!-- Metrics Overview (Row 1: Operations & System Queue) -->
           <div class="admin-stats-grid" style="margin-bottom: 16px;">
-            <div class="card stat-card" id="cardTotalUsers" style="cursor: pointer;" title="Click to edit metrics">
+            <div class="card stat-card" id="cardTotalUsers">
               <span class="stat-label">Total Users</span>
               <div id="statTotalUsers" class="stat-value" style="color: var(--accent);">0</div>
             </div>
-            <div class="card stat-card" id="cardTotalBookings" style="cursor: pointer;" title="Click to edit metrics">
+            <div class="card stat-card" id="cardTotalBookings">
               <span class="stat-label">Total Bookings</span>
               <div id="statTotalBookings" class="stat-value" style="color: var(--accent);">0</div>
             </div>
-            <div class="card stat-card" id="cardPendingDocs" style="cursor: pointer;" title="Click to edit metrics">
+            <div class="card stat-card" id="cardPendingDocs">
               <span class="stat-label">Pending Document Reviews</span>
               <div id="statPendingDocs" class="stat-value" style="color: #ffd166;">0</div>
             </div>
-            <div class="card stat-card" id="cardPendingPayments" style="cursor: pointer;" title="Click to edit metrics">
+            <div class="card stat-card" id="cardPendingPayments">
               <span class="stat-label">Awaiting Payment Verification</span>
               <div id="statPendingPayments" class="stat-value" style="color: #ffd166;">0</div>
             </div>
@@ -92,19 +88,19 @@
 
           <!-- Revenue & Sales KPIs (Row 2: Financial Performance) -->
           <div class="admin-stats-grid" style="margin-bottom: 24px;">
-            <div class="card stat-card" id="cardTotalRevenue" style="cursor: pointer;" title="Click to edit metrics">
+            <div class="card stat-card" id="cardTotalRevenue">
               <span class="stat-label">Total Revenue (Verified)</span>
               <div id="statTotalRevenue" class="stat-value" style="color: var(--accent);">₹0</div>
             </div>
-            <div class="card stat-card" id="cardMonthRevenue" style="cursor: pointer;" title="Click to edit metrics">
+            <div class="card stat-card" id="cardMonthRevenue">
               <span class="stat-label">Revenue This Month</span>
               <div id="statMonthRevenue" class="stat-value" style="color: var(--accent);">₹0</div>
             </div>
-            <div class="card stat-card" id="cardPaidBookings" style="cursor: pointer;" title="Click to edit metrics">
+            <div class="card stat-card" id="cardPaidBookings">
               <span class="stat-label">Paid Bookings</span>
               <div id="statPaidBookings" class="stat-value" style="color: #06d6a0;">0</div>
             </div>
-            <div class="card stat-card" id="cardAvgBooking" style="cursor: pointer;" title="Click to edit metrics">
+            <div class="card stat-card" id="cardAvgBooking">
               <span class="stat-label">Avg. Verified Booking Value</span>
               <div id="statAvgBooking" class="stat-value" style="color: var(--accent);">₹0</div>
             </div>
@@ -142,7 +138,10 @@
               Booking Calendar
             </button>
             <button class="btn btn-outline tab-btn" data-tab="tab-users">
-              User Accounts & Verification
+              User Accounts &amp; Verification
+            </button>
+            <button class="btn btn-outline tab-btn" data-tab="tab-customers">
+              Users &amp; Customers Analytics
             </button>
             <button class="btn btn-outline tab-btn" data-tab="tab-hosts">
               Vehicle Acquisition
@@ -257,6 +256,99 @@
               <div id="usersTableWrap">
                 <p style="color: var(--kr-text-muted);">Loading users...</p>
               </div>
+            </div>
+          </section>
+
+          <!-- TAB: USERS & CUSTOMER ANALYTICS -->
+          <section id="tab-customers" class="tab-panel" hidden>
+            <div class="card admin-panel-card">
+              <div style="margin-bottom: 20px;">
+                <span class="admin-inspect-eyebrow" style="font-size: 11px; font-weight: 800; color: #4fd7ff; text-transform: uppercase; letter-spacing: 1px;">CUSTOMER INSIGHTS</span>
+                <h3 style="margin: 2px 0 0; font-size: 1.25rem;">Users &amp; Customer Analytics</h3>
+                <p style="margin: 4px 0 0; color: var(--kr-text-secondary); font-size: 0.85rem;">Track registered user accounts vs actual booking customers, new acquisitions, and repeat reservations.</p>
+              </div>
+
+              <!-- Filter Bar -->
+              <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+                <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
+                  <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px;">
+                    <label for="custDateFrom" style="font-size: 12px; font-weight: 700; color: var(--sub);">From Date (DD/MM/YYYY)</label>
+                    <input type="date" id="custDateFrom" lang="en-GB" class="kr-clean-input" style="height: 38px; font-size: 13px;" />
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px;">
+                    <label for="custDateTo" style="font-size: 12px; font-weight: 700; color: var(--sub);">To Date (DD/MM/YYYY)</label>
+                    <input type="date" id="custDateTo" lang="en-GB" class="kr-clean-input" style="height: 38px; font-size: 13px;" />
+                  </div>
+                  <button id="custApplyFilterBtn" type="button" class="btn btn-primary" style="height: 38px; padding: 0 18px; font-size: 13px;">Apply Filter</button>
+                  <button id="custResetFilterBtn" type="button" class="btn btn-outline" style="height: 38px; padding: 0 16px; font-size: 13px;">Reset</button>
+                </div>
+                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                  <span style="font-size: 12px; font-weight: 700; color: var(--sub); margin-right: 4px;">Quick Range:</span>
+                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm" data-range="today" style="font-size: 11px; padding: 3px 10px;">Today</button>
+                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm" data-range="yesterday" style="font-size: 11px; padding: 3px 10px;">Yesterday</button>
+                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm" data-range="this_week" style="font-size: 11px; padding: 3px 10px;">This Week</button>
+                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm" data-range="this_month" style="font-size: 11px; padding: 3px 10px;">This Month</button>
+                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm" data-range="last_month" style="font-size: 11px; padding: 3px 10px;">Last Month</button>
+                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm" data-range="this_year" style="font-size: 11px; padding: 3px 10px;">This Year</button>
+                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm active" data-range="all_time" style="font-size: 11px; padding: 3px 10px;">All Time</button>
+                </div>
+              </div>
+
+              <!-- Customer Analytics Cards Grid -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px;">
+                <div class="card stat-card" style="border-color: rgba(79, 215, 255, 0.3);">
+                  <span class="stat-label">Total Registered Users</span>
+                  <div id="custTotalUsers" class="stat-value" style="color: #4fd7ff;">0</div>
+                  <small style="color: var(--sub); font-size: 11px;">System user accounts</small>
+                </div>
+
+                <div class="card stat-card" style="border-color: rgba(6, 214, 160, 0.3);">
+                  <span class="stat-label">Total Active Customers</span>
+                  <div id="custTotalCustomers" class="stat-value" style="color: #06d6a0;">0</div>
+                  <small style="color: var(--sub); font-size: 11px;">Unique users who booked</small>
+                </div>
+
+                <div class="card stat-card">
+                  <span class="stat-label">This Month's Customers</span>
+                  <div id="custMonthCustomers" class="stat-value" style="color: #ffffff;">0</div>
+                  <small style="color: var(--sub); font-size: 11px;">Unique bookers in month</small>
+                </div>
+
+                <div class="card stat-card">
+                  <span class="stat-label">New Customers This Month</span>
+                  <div id="custNewCustomersMonth" class="stat-value" style="color: #ffd166;">0</div>
+                  <small style="color: var(--sub); font-size: 11px;">First booking this month</small>
+                </div>
+
+                <div class="card stat-card">
+                  <span class="stat-label">Repeat Customers</span>
+                  <div id="custRepeatCustomers" class="stat-value" style="color: #ffb703;">0</div>
+                  <small style="color: var(--sub); font-size: 11px;">Customers with &gt;1 booking</small>
+                </div>
+              </div>
+
+              <!-- Monthly User Analytics Table -->
+              <div style="margin-top: 20px;">
+                <h4 style="margin: 0 0 12px; font-size: 1.05rem; color: #ffffff;">Monthly User &amp; Customer Acquisition Breakdown</h4>
+                <div style="width: 100%; overflow-x: auto;">
+                  <table class="manager-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                      <tr style="border-bottom: 1px solid rgba(255,255,255,0.15); font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--sub);">
+                        <th style="padding: 12px 14px;">Month</th>
+                        <th style="padding: 12px 14px;">New Users</th>
+                        <th style="padding: 12px 14px;">Customers (Booked)</th>
+                        <th style="padding: 12px 14px;">Total Bookings</th>
+                      </tr>
+                    </thead>
+                    <tbody id="custMonthlyTableBody">
+                      <tr>
+                        <td colspan="4" style="padding: 20px; text-align: center; color: var(--sub);">Loading customer analytics...</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
             </div>
           </section>
 

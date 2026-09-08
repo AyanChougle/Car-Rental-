@@ -691,6 +691,9 @@ function initialiseTabs() {
         loadHostCars();
       } else if (targetId === "tab-users") {
         loadUsers();
+      } else if (targetId === "tab-customers") {
+        initCustomerAnalyticsEvents();
+        renderCustomerAnalytics();
       } else if (targetId === "tab-bookings") {
         loadBookings();
       } else if (targetId === "tab-calendar") {
@@ -8595,3 +8598,192 @@ window.addEventListener(
 console.log(
   "KRUIZLY Admin JS loaded successfully."
 );
+// Add Customer Analytics calculation and render functions in js/admin.js
+
+let custFilterFromDate = null;
+let custFilterToDate = null;
+let custQuickFilter = "all_time";
+
+function initCustomerAnalyticsEvents() {
+  const dateFrom = document.getElementById("custDateFrom");
+  const dateTo = document.getElementById("custDateTo");
+  const applyBtn = document.getElementById("custApplyFilterBtn");
+  const resetBtn = document.getElementById("custResetFilterBtn");
+  const quickPills = document.querySelectorAll(".cust-quick-pill");
+
+  quickPills.forEach(pill => {
+    pill.addEventListener("click", () => {
+      custQuickFilter = pill.dataset.range;
+      quickPills.forEach(p => p.classList.toggle("active", p === pill));
+
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+      if (custQuickFilter === "today") {
+        custFilterFromDate = todayStart;
+        custFilterToDate = todayEnd;
+      } else if (custQuickFilter === "yesterday") {
+        const yestStart = new Date(todayStart); yestStart.setDate(yestStart.getDate() - 1);
+        const yestEnd = new Date(todayEnd); yestEnd.setDate(yestEnd.getDate() - 1);
+        custFilterFromDate = yestStart;
+        custFilterToDate = yestEnd;
+      } else if (custQuickFilter === "this_week") {
+        const dayOfWeek = now.getDay();
+        const startOfWeek = new Date(todayStart);
+        startOfWeek.setDate(startOfWeek.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        custFilterFromDate = startOfWeek;
+        custFilterToDate = todayEnd;
+      } else if (custQuickFilter === "this_month") {
+        custFilterFromDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+        custFilterToDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+      } else if (custQuickFilter === "last_month") {
+        custFilterFromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
+        custFilterToDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+      } else if (custQuickFilter === "this_year") {
+        custFilterFromDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+        custFilterToDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+      } else {
+        custFilterFromDate = null;
+        custFilterToDate = null;
+      }
+
+      if (dateFrom) dateFrom.value = custFilterFromDate ? custFilterFromDate.toISOString().slice(0, 10) : "";
+      if (dateTo) dateTo.value = custFilterToDate ? custFilterToDate.toISOString().slice(0, 10) : "";
+
+      renderCustomerAnalytics();
+    });
+  });
+
+  applyBtn?.addEventListener("click", () => {
+    custFilterFromDate = dateFrom?.value ? new Date(`${dateFrom.value}T00:00:00`) : null;
+    custFilterToDate = dateTo?.value ? new Date(`${dateTo.value}T23:59:59`) : null;
+    custQuickFilter = "custom";
+    quickPills.forEach(p => p.classList.remove("active"));
+    renderCustomerAnalytics();
+  });
+
+  resetBtn?.addEventListener("click", () => {
+    if (dateFrom) dateFrom.value = "";
+    if (dateTo) dateTo.value = "";
+    custFilterFromDate = null;
+    custFilterToDate = null;
+    custQuickFilter = "all_time";
+    quickPills.forEach(p => p.classList.toggle("active", p.dataset.range === "all_time"));
+    renderCustomerAnalytics();
+  });
+}
+
+function renderCustomerAnalytics() {
+  const custTotalUsersEl = document.getElementById("custTotalUsers");
+  const custTotalCustomersEl = document.getElementById("custTotalCustomers");
+  const custMonthCustomersEl = document.getElementById("custMonthCustomers");
+  const custNewCustomersMonthEl = document.getElementById("custNewCustomersMonth");
+  const custRepeatCustomersEl = document.getElementById("custRepeatCustomers");
+  const tbody = document.getElementById("custMonthlyTableBody");
+
+  if (!custTotalUsersEl && !tbody) return;
+
+  // Filter Bookings by Period
+  const validBookings = bookingsData.filter(b => {
+    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+    return bStat !== "cancelled" && bStat !== "rejected";
+  });
+
+  const periodBookings = validBookings.filter(b => {
+    if (!custFilterFromDate && !custFilterToDate) return true;
+    const pDate = parseDateOnly(b.pickupDate || b.createdAt);
+    if (!pDate) return true;
+    const pMs = pDate.getTime();
+    const startMs = custFilterFromDate ? custFilterFromDate.getTime() : 0;
+    const endMs = custFilterToDate ? custFilterToDate.getTime() : Infinity;
+    return pMs >= startMs && pMs <= endMs;
+  });
+
+  // 1. Total Registered Users
+  const totalUsersCount = usersData.length;
+  if (custTotalUsersEl) custTotalUsersEl.textContent = String(totalUsersCount);
+
+  // 2. Total Customers (Unique Users with at least 1 valid booking in period)
+  const uniqueCustomerIds = new Set(periodBookings.map(b => (b.firebaseUid || b.userId || b.userEmail || b.userName).trim()).filter(Boolean));
+  if (custTotalCustomersEl) custTotalCustomersEl.textContent = String(uniqueCustomerIds.size);
+
+  // 3. This Month's Customers
+  const now = new Date();
+  const targetMonthDate = custFilterFromDate || now;
+  const targetMonth = targetMonthDate.getMonth();
+  const targetYear = targetMonthDate.getFullYear();
+
+  const monthBookings = validBookings.filter(b => {
+    const d = parseDateOnly(b.pickupDate || b.createdAt);
+    return d && d.getMonth() === targetMonth && d.getFullYear() === targetYear;
+  });
+  const monthCustomerIds = new Set(monthBookings.map(b => (b.firebaseUid || b.userId || b.userEmail || b.userName).trim()).filter(Boolean));
+  if (custMonthCustomersEl) custMonthCustomersEl.textContent = String(monthCustomerIds.size);
+
+  // 4. New Customers This Month (First valid booking ever occurred in target month)
+  const customerFirstBookingMap = new Map();
+  validBookings.forEach(b => {
+    const custId = (b.firebaseUid || b.userId || b.userEmail || b.userName).trim();
+    if (!custId) return;
+    const d = parseDateOnly(b.pickupDate || b.createdAt);
+    if (!d) return;
+
+    if (!customerFirstBookingMap.has(custId) || d < customerFirstBookingMap.get(custId)) {
+      customerFirstBookingMap.set(custId, d);
+    }
+  });
+
+  let newCustomersThisMonthCount = 0;
+  customerFirstBookingMap.forEach((firstDate) => {
+    if (firstDate.getMonth() === targetMonth && firstDate.getFullYear() === targetYear) {
+      newCustomersThisMonthCount++;
+    }
+  });
+  if (custNewCustomersMonthEl) custNewCustomersMonthEl.textContent = String(newCustomersThisMonthCount);
+
+  // 5. Repeat Customers (Customers with > 1 valid booking)
+  const customerBookingCountMap = new Map();
+  periodBookings.forEach(b => {
+    const custId = (b.firebaseUid || b.userId || b.userEmail || b.userName).trim();
+    if (!custId) return;
+    customerBookingCountMap.set(custId, (customerBookingCountMap.get(custId) || 0) + 1);
+  });
+
+  let repeatCount = 0;
+  customerBookingCountMap.forEach((count) => {
+    if (count > 1) repeatCount++;
+  });
+  if (custRepeatCustomersEl) custRepeatCustomersEl.textContent = String(repeatCount);
+
+  // 6. Monthly Breakdown Table (Jan - Dec)
+  if (tbody) {
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const rows = monthNames.map((mName, mIdx) => {
+      // New Registered Users in month
+      const newUsersCount = usersData.filter(u => {
+        const uDate = parseDateOnly(u.createdAt);
+        return uDate && uDate.getMonth() === mIdx && uDate.getFullYear() === targetYear;
+      }).length;
+
+      // Bookings in month
+      const mBookings = validBookings.filter(b => {
+        const bDate = parseDateOnly(b.pickupDate || b.createdAt);
+        return bDate && bDate.getMonth() === mIdx && bDate.getFullYear() === targetYear;
+      });
+
+      // Customers in month
+      const mCusts = new Set(mBookings.map(b => (b.firebaseUid || b.userId || b.userEmail || b.userName).trim()).filter(Boolean));
+
+      return `
+        <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px;">
+          <td style="padding: 12px 14px;"><strong style="color:#ffffff;">${mName} ${targetYear}</strong></td>
+          <td style="padding: 12px 14px; color:#4fd7ff;">${newUsersCount}</td>
+          <td style="padding: 12px 14px; color:#06d6a0;"><strong>${mCusts.size}</strong></td>
+          <td style="padding: 12px 14px; color:#ffffff;"><strong>${mBookings.length}</strong></td>
+        </tr>`;
+    });
+
+    tbody.innerHTML = rows.join("");
+  }
+}
