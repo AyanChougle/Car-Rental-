@@ -9,7 +9,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../services/InvoicePdfService.php';
 
-$admin = Auth::requireRole('admin', 'manager', 'executive');
+$admin = Auth::requireRole('admin', 'manager', 'executive', 'accountant');
 $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 
 $id = trim((string)($_GET['id'] ?? $input['id'] ?? $input['paymentId'] ?? $input['bookingId'] ?? ''));

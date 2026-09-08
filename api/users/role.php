@@ -19,7 +19,7 @@ if (!$targetUid) {
     sendErrorResponse('User UID is required.', 400);
 }
 
-$validRoles = ['customer', 'admin', 'manager', 'executive', 'host'];
+$validRoles = ['customer', 'admin', 'manager', 'executive', 'host', 'accountant'];
 if ($role && !in_array($role, $validRoles, true)) {
     sendErrorResponse("Invalid role '$role'.", 400);
 }

@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `name` VARCHAR(255) DEFAULT NULL,
   `phone` VARCHAR(32) DEFAULT NULL,
   `age` INT DEFAULT NULL,
-  `role` ENUM('customer', 'admin', 'manager', 'executive', 'host') NOT NULL DEFAULT 'customer',
+  `role` ENUM('customer', 'admin', 'manager', 'executive', 'accountant', 'host') NOT NULL DEFAULT 'customer',
   `status` ENUM('active', 'disabled', 'suspended', 'pending') NOT NULL DEFAULT 'active',
   `license_status` ENUM('not_submitted', 'pending', 'verified', 'rejected') NOT NULL DEFAULT 'not_submitted',
   `aadhar_status` ENUM('not_submitted', 'pending', 'verified', 'rejected') NOT NULL DEFAULT 'not_submitted',
@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS `bookings` (
   `applied_coupons` JSON DEFAULT NULL,
   `total_amount` DECIMAL(10,2) NOT NULL,
   `final_amount` DECIMAL(10,2) NOT NULL,
+  `token_amount` DECIMAL(10,2) DEFAULT 0.00,
   `advance_amount` DECIMAL(10,2) DEFAULT 0.00,
   `remaining_balance` DECIMAL(10,2) DEFAULT 0.00,
   `remaining_amount` DECIMAL(10,2) DEFAULT 0.00,
@@ -136,6 +137,7 @@ CREATE TABLE IF NOT EXISTS `payments` (
   `booking_id` VARCHAR(64) NOT NULL,
   `firebase_uid` VARCHAR(128) NOT NULL,
   `amount` DECIMAL(10,2) NOT NULL,
+  `token_amount` DECIMAL(10,2) DEFAULT 0.00,
   `currency` VARCHAR(8) NOT NULL DEFAULT 'INR',
   `method` VARCHAR(32) NOT NULL DEFAULT 'upi',
   `utr` VARCHAR(128) DEFAULT NULL,
@@ -358,7 +360,7 @@ CREATE TABLE IF NOT EXISTS `admin_users` (
   `firebase_uid` VARCHAR(128) NOT NULL UNIQUE,
   `email` VARCHAR(255) NOT NULL,
   `name` VARCHAR(255) DEFAULT NULL,
-  `role` ENUM('super_admin', 'admin', 'manager', 'executive') NOT NULL DEFAULT 'admin',
+  `role` ENUM('super_admin', 'admin', 'manager', 'executive', 'accountant') NOT NULL DEFAULT 'admin',
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_admin_users_uid` (`firebase_uid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -384,5 +386,31 @@ CREATE TABLE IF NOT EXISTS `settings` (
   `value` TEXT NOT NULL,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 15. INITIAL SEED: 7 ACTIVE FLEET VEHICLES
+-- ------------------------------------------------------------
+INSERT INTO `vehicles` (`id`, `reg_no`, `brand`, `model`, `year`, `category`, `transmission`, `fuel`, `seats`, `bags`, `price_day`, `price_hour`, `driver_price`, `security_deposit`, `free_km`, `extra_km`, `location`, `available`, `status`, `is_custom_fleet`, `gallery`) VALUES
+(1, 'ZIP008', 'Kia', 'Carens', 2025, 'mpv', 'Manual', 'Diesel', 6, 3, 4500.00, 188.00, 1500.00, 4000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Kia Carens.png"]'),
+(2, 'MH03DA3808', 'Mahindra', 'XUV500', 2018, 'suv', 'Manual', 'Diesel', 7, 3, 4500.00, 188.00, 1500.00, 4000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Mahindra XUV500.png"]'),
+(3, 'ZIP007', 'Jeep', 'Compass', 2020, 'suv', 'Manual', 'Diesel', 5, 3, 5500.00, 229.00, 1500.00, 5000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Jeep Compass.png"]'),
+(4, 'ZIP010', 'Mahindra', 'Scorpio N', 2025, 'suv', 'Manual', 'Diesel', 7, 3, 5500.00, 229.00, 1500.00, 5000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Mahindra Scorpio N.png"]'),
+(5, 'ZIP011', 'Mahindra', 'Thar', 2025, 'suv', 'Manual', 'Diesel', 4, 3, 5500.00, 229.00, 1500.00, 5000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Mahindra Thar.png"]'),
+(6, 'ZIP033', 'Toyota', 'Innova Crysta', 2021, 'mpv', 'Manual', 'Diesel', 7, 3, 5500.00, 229.00, 1500.00, 5000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Toyota Innova Crysta.png"]'),
+(7, 'ZIP012', 'Mahindra', 'Thar Roxx', 2025, 'suv', 'Automatic', 'Diesel', 5, 3, 8000.00, 333.00, 1500.00, 6000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Mahindra Thar.png"]')
+ON DUPLICATE KEY UPDATE 
+  `brand` = VALUES(`brand`),
+  `model` = VALUES(`model`),
+  `year` = VALUES(`year`),
+  `category` = VALUES(`category`),
+  `transmission` = VALUES(`transmission`),
+  `fuel` = VALUES(`fuel`),
+  `seats` = VALUES(`seats`),
+  `bags` = VALUES(`bags`),
+  `price_day` = VALUES(`price_day`),
+  `price_hour` = VALUES(`price_hour`),
+  `security_deposit` = VALUES(`security_deposit`),
+  `status` = VALUES(`status`),
+  `gallery` = VALUES(`gallery`);
 
 SET FOREIGN_KEY_CHECKS = 1;

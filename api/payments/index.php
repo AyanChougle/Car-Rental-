@@ -9,7 +9,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../middleware/auth.php';
 
 $user = Auth::requireAuth();
-$isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive'], true);
+$isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive', 'accountant'], true);
 
 // Auto-heal any payments that do not yet have a corresponding booking row
 try {

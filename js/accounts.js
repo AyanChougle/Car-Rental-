@@ -9,9 +9,9 @@
  */
 
 import { auth } from "./firebase-init.js";
-import { checkAuth, getCurrentUser, setStoredUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260907-v10";
-import { api } from "./kruizly-api.js?v=20260907-v10";
-import "./nav-helper.js";
+import { checkAuth, getCurrentUser, setStoredUser, isAccountantUser, isAdminUser } from "./auth.js?v=20260908-v5";
+import { api } from "./kruizly-api.js?v=20260908-v5";
+import "./nav-helper.js?v=20260908-v5";
 
 function $(id) {
   return document.getElementById(id);
@@ -80,7 +80,7 @@ async function initAccounts() {
 
   currentUser = getCurrentUser();
 
-  if (!isExecutiveUser(currentUser) && !isManagerUser(currentUser) && !isAdminUser(currentUser)) {
+  if (!isAccountantUser(currentUser) && !isAdminUser(currentUser)) {
     try {
       const meRes = await api.get("/users/me");
       if (meRes && meRes.user) {
@@ -90,8 +90,8 @@ async function initAccounts() {
     } catch (_) {}
   }
 
-  const hasStaffRole = isExecutiveUser(currentUser) || isManagerUser(currentUser) || isAdminUser(currentUser);
-  if (!hasStaffRole) {
+  const hasAccess = isAccountantUser(currentUser) || isAdminUser(currentUser);
+  if (!hasAccess) {
     showEl(accessDeniedEl);
     return;
   }

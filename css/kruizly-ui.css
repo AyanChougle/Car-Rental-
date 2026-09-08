@@ -1567,6 +1567,11 @@ textarea::placeholder {
   overflow: hidden !important;
 }
 
+.manager-modal[hidden],
+.admin-modal[hidden] {
+  display: none !important;
+}
+
 .manager-modal-card,
 .admin-modal__card,
 #returnModal .card,
@@ -4378,6 +4383,15 @@ body button.mobile-nav-toggle {
     background: rgba(0, 0, 0, 0.88) !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
+  }
+
+  .admin-modal[hidden],
+  .manager-modal[hidden],
+  .modal[hidden],
+  #returnModal[hidden],
+  #docModal[hidden],
+  #paymentModal[hidden] {
+    display: none !important;
   }
 
   .admin-modal__card,

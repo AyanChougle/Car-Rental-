@@ -10,7 +10,7 @@ require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../services/InvoicePdfService.php';
 require_once __DIR__ . '/../services/MailService.php';
 
-Auth::requireRole('admin', 'manager', 'executive');
+Auth::requireRole('admin', 'manager', 'executive', 'accountant');
 
 $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 $bookingId = trim((string)($_GET['bookingId'] ?? $input['bookingId'] ?? ''));

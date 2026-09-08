@@ -17,7 +17,7 @@ if ($method === 'POST') {
 }
 
 if ($method === 'GET') {
-    Auth::requireRole('admin', 'manager', 'executive');
+    Auth::requireRole('admin', 'manager', 'executive', 'accountant');
 
     // Auto-heal any payments that do not yet have a corresponding booking row
     try {

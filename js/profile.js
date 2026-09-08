@@ -10,6 +10,8 @@ import { api } from "./kruizly-api.js?v=20260907-v5";
 import "./nav-helper.js";
 import { formatBookingNumber } from "./booking-reference.js";
 
+let currentUser = null;
+
 async function getAuthToken(user = null) {
   try {
     if (user && typeof user.getIdToken === "function") {
@@ -517,15 +519,35 @@ async function loadMyListings(userParam) {
 
   try {
     const res = await api.get("/users/partner-cars");
-    const listings = Array.isArray(res?.partnerCars) ? res.partnerCars : [];
+    let listings = Array.isArray(res?.partnerCars) ? res.partnerCars : [];
+
+    // Filter strictly to current user's listings
+    if (currentUid || currentEmail) {
+      const userFiltered = listings.filter((car) => {
+        const cUid = String(car.userId || car.firebaseUid || "").trim();
+        const cEmail = String(car.userEmail || car.email || "").trim().toLowerCase();
+        const cDbId = String(car.dbUserId || car.user_id || "").trim();
+        if (currentEmail && cEmail && cEmail === currentEmail) return true;
+        if (currentUid && cUid && cUid === currentUid) return true;
+        if (currentU.id && cDbId && cDbId === String(currentU.id)) return true;
+        return false;
+      });
+      if (userFiltered.length > 0 || listings.length === 0) {
+        listings = userFiltered;
+      }
+    }
+
+    const totalMonthRevenue = listings.reduce((sum, item) => sum + Number(item.monthRevenue || 0), 0);
+    const totalLifetimeRevenue = listings.reduce((sum, item) => sum + Number(item.totalRevenue || 0), 0);
     const approvedCount = listings.filter(
       listing => listing.status === "approved"
     ).length;
 
     summary.innerHTML = `
-      <div><strong>${listings.length}</strong><span>Total listings</span></div>
+      <div><strong>${listings.length}</strong><span>Hosted Cars</span></div>
       <div><strong>${approvedCount}</strong><span>Approved</span></div>
-      <div><strong>${listings.length - approvedCount}</strong><span>In review / action</span></div>
+      <div><strong style="color: #06d6a0;">${formatINR(totalMonthRevenue)}</strong><span>This Month Earnings</span></div>
+      <div><strong style="color: var(--kr-cyan); font-weight: 700;">${formatINR(totalLifetimeRevenue)}</strong><span>Lifetime Revenue</span></div>
     `;
 
     if (!listings.length) {
@@ -533,7 +555,7 @@ async function loadMyListings(userParam) {
         <div class="profile-listing-state empty">
           <span class="profile-listing-state__icon" aria-hidden="true">+</span>
           <h3>No vehicle listings yet</h3>
-          <p>List your car to start the verification and onboarding process.</p>
+          <p>List your car to start earning with Kruizly.</p>
           <a class="profile-action primary" href="partner.html">List Your Car</a>
         </div>`;
       return;
@@ -562,7 +584,7 @@ async function loadMyListings(userParam) {
         <article class="profile-listing-card">
           <div class="profile-listing-card__media">
             ${firstPhoto
-              ? `<img src="${escapeHtml(firstPhoto)}" alt="${escapeHtml(vehicleName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'profile-listing-card__placeholder\\'>CAR</div>';" />`
+              ? `<img src="${escapeHtml(firstPhoto)}" alt="${escapeHtml(vehicleName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\\'profile-listing-card__placeholder\\\'>CAR</div>';" />`
               : `<div class="profile-listing-card__placeholder" aria-hidden="true">${escapeHtml(listing.brand || "CAR")}</div>`}
           </div>
           <div class="profile-listing-card__body">
@@ -580,12 +602,33 @@ async function loadMyListings(userParam) {
               <div><dt>Year</dt><dd>${listing.year || "—"}</dd></div>
               <div><dt>Submitted</dt><dd>${escapeHtml(formatDate(listing.createdAt))}</dd></div>
             </dl>
+
+            <!-- Revenue and Trip Performance -->
+            <div class="profile-listing-revenue" style="margin: 14px 0 10px; padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center;">
+              <div>
+                <span style="font-size: 11px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">This Month</span>
+                <strong style="font-size: 15px; color: #06d6a0; font-weight: 700;">${formatINR(listing.monthRevenue || 0)}</strong>
+              </div>
+              <div>
+                <span style="font-size: 11px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Total Revenue</span>
+                <strong style="font-size: 15px; color: var(--kr-cyan, #4fd7ff); font-weight: 700;">${formatINR(listing.totalRevenue || 0)}</strong>
+              </div>
+              <div>
+                <span style="font-size: 11px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Trips Done</span>
+                <strong style="font-size: 15px; color: #fff; font-weight: 700;">${listing.completedTrips || 0}</strong>
+              </div>
+            </div>
+
             ${rejectionNote
               ? `<p class="profile-listing-note"><strong>Review note:</strong> ${escapeHtml(rejectionNote)}</p>`
               : ""}
-            <div class="profile-listing-card__footer">
+
+            <div class="profile-listing-card__footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
               <span>Listing ID #${escapeHtml(String(listing.id || "").slice(0, 8).toUpperCase())}</span>
               <div style="display: flex; gap: 8px; align-items: center;">
+                <button type="button" class="btn-withdraw-listing" data-listing-id="${escapeHtml(listing.id)}" data-vehicle-name="${escapeHtml(vehicleName)}" data-reg-no="${escapeHtml(listing.regNo || listing.regNumber || "Not provided")}" style="background: rgba(255, 183, 3, 0.12); color: #ffb703; border: 1px solid rgba(255, 183, 3, 0.35); border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Request withdrawal of vehicle from fleet">
+                  <span>✉️ Withdraw Fleet</span>
+                </button>
                 <button type="button" class="btn-delete-listing" data-listing-id="${escapeHtml(listing.id)}" style="background: rgba(239, 71, 111, 0.12); color: #ef476f; border: 1px solid rgba(239, 71, 111, 0.3); border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer;">Delete</button>
                 <a href="partner.html" style="color: var(--kr-cyan); text-decoration: none; font-weight: 700; font-size: 12.5px;">Manage</a>
               </div>
@@ -594,6 +637,45 @@ async function loadMyListings(userParam) {
         </article>`;
     }).join("");
 
+    // Withdraw Fleet mailto handler
+    grid.querySelectorAll(".btn-withdraw-listing").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        const vName = btn.dataset.vehicleName || "Vehicle";
+        const vReg = btn.dataset.regNo || "N/A";
+        const vId = btn.dataset.listingId || "";
+        const uName = currentU.name || currentU.displayName || "Host Partner";
+        const uEmail = currentU.email || "";
+        const uPhone = currentU.phone || "";
+
+        const subject = encodeURIComponent(`Fleet Withdrawal Request: ${vName} (${vReg})`);
+        const body = encodeURIComponent(
+`Hello Kruizly Fleet Operations,
+
+I am writing to formally request the withdrawal of my vehicle from the Kruizly hosting fleet.
+
+Vehicle Details:
+• Vehicle Name: ${vName}
+• Registration Number: ${vReg}
+• Listing ID: ${vId}
+
+Host Details:
+• Host Name: ${uName}
+• Registered Email: ${uEmail}
+• Contact Phone: ${uPhone}
+
+Reason for Withdrawal:
+[Please enter your reason or effective date here]
+
+Thank you,
+${uName}`
+        );
+
+        window.location.href = `mailto:support@kruizly.com?subject=${subject}&body=${body}`;
+      });
+    });
+
+    // Delete listing handler
     grid.querySelectorAll(".btn-delete-listing").forEach((btn) => {
       btn.addEventListener("click", async (e) => {
         e.preventDefault();
@@ -623,7 +705,6 @@ async function loadMyListings(userParam) {
       </div>`;
   }
 }
-
 
 /* ============================================================
    PROFILE
@@ -1255,7 +1336,8 @@ function openUserCancelModal(bookingId) {
 
   if (modalIdInput) modalIdInput.value = bookingId;
   modal.hidden = false;
-  modal.style.display = "flex";
+  modal.removeAttribute("hidden");
+  modal.style.setProperty("display", "flex", "important");
 }
 
 function initUserCancellationModal() {
@@ -1270,7 +1352,8 @@ function initUserCancellationModal() {
 
   const closeModal = () => {
     modal.hidden = true;
-    modal.style.display = "none";
+    modal.setAttribute("hidden", "");
+    modal.style.setProperty("display", "none", "important");
     if (modalIdInput) modalIdInput.value = "";
   };
 
@@ -1303,6 +1386,7 @@ function initUserCancellationModal() {
       closeModal();
 
       const user = getCurrentUser();
+  currentUser = user;
       if (user) {
         loadBookings(user.id || user.uid);
       }
@@ -2280,3 +2364,15 @@ async function loadUserMedia(user) {
     if (emptyEl) emptyEl.hidden = false;
   }
 }
+
+// Ensure cancel modal is strictly hidden on load
+document.addEventListener("DOMContentLoaded", () => {
+  const cancelModal = $("cancelBookingModal");
+  if (cancelModal) {
+    cancelModal.hidden = true;
+    cancelModal.setAttribute("hidden", "");
+    cancelModal.style.setProperty("display", "none", "important");
+  }
+  initUserCancellationModal();
+});
+initUserCancellationModal();

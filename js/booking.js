@@ -383,7 +383,7 @@ async function initBooking(vehicle) {
     html +=
       '<div class="booking-total-row booking-total-row--payment"><span>' +
       (paymentPlan === "advance"
-        ? "Advance Payable Now"
+        ? "Token Amount Payable Now"
         : "Full Amount Payable Now") +
       '<small style="display:block; font-size:0.75rem; color:var(--text-sub)">' +
       (paymentPlan === "advance"

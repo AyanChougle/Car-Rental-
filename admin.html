@@ -4,7 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Dashboard | KRUIZLY</title>
-    <meta name="description" content="KRUIZLY admin dashboard for managing bookings, payments, users, and fleet inventory." />
+    <meta
+      name="description"
+      content="KRUIZLY admin dashboard for managing bookings, payments, users, and fleet inventory."
+    />
     <link rel="icon" type="image/svg+xml" href="favicon.svg" />
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
@@ -15,7 +18,6 @@
     <link rel="stylesheet" href="css/kruizly-motion.css?v=20260907-v4" />
   </head>
   <body>
-
     <div class="background-video-wrap" aria-hidden="true">
       <video autoplay muted loop playsinline preload="auto">
         <source src="assets/background-video.mp4" type="video/mp4" />
@@ -23,7 +25,9 @@
     </div>
     <header class="site-header">
       <div class="container header-inner">
-        <a href="index.html" class="logo"><img src="images/logo.png" alt="KRUIZLY" class="logo-img" /></a>
+        <a href="index.html" class="logo"
+          ><img src="images/logo.png" alt="KRUIZLY" class="logo-img"
+        /></a>
         <button
           type="button"
           class="mobile-nav-toggle"
@@ -54,66 +58,178 @@
           <h1 class="section-title">Admin Control Center</h1>
         </div>
 
-        <div
-          id="adminContent"
-          class="admin-wrapper"
-          style="margin-top: 20px"
-        >
-          <!-- Metrics Overview Header -->
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <span style="font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sub);">Performance &amp; Business KPIs</span>
-            </div>
+        <div id="adminContent" class="admin-wrapper" style="margin-top: 20px">
+          <!-- Combined Business & Operations KPIs Grid -->
+          <div
+            style="
+              display: flex;
+              align-items: center;
+              justify-content: space-between;
+              margin-bottom: 14px;
+            "
+          >
+            <span
+              style="
+                font-size: 0.85rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                color: var(--sub);
+              "
+              >Performance &amp; Business KPIs</span
+            >
           </div>
 
-          <!-- Metrics Overview (Row 1: Operations & System Queue) -->
-          <div class="admin-stats-grid" style="margin-bottom: 16px;">
-            <div class="card stat-card" id="cardTotalUsers">
-              <span class="stat-label">Total Users</span>
-              <div id="statTotalUsers" class="stat-value" style="color: var(--accent);">0</div>
-            </div>
-            <div class="card stat-card" id="cardTotalBookings">
-              <span class="stat-label">Total Bookings</span>
-              <div id="statTotalBookings" class="stat-value" style="color: var(--accent);">0</div>
-            </div>
-            <div class="card stat-card" id="cardPendingDocs">
-              <span class="stat-label">Pending Document Reviews</span>
-              <div id="statPendingDocs" class="stat-value" style="color: #ffd166;">0</div>
-            </div>
-            <div class="card stat-card" id="cardPendingPayments">
-              <span class="stat-label">Awaiting Payment Verification</span>
-              <div id="statPendingPayments" class="stat-value" style="color: #ffd166;">0</div>
-            </div>
-          </div>
-
-          <!-- Revenue & Sales KPIs (Row 2: Financial Performance) -->
-          <div class="admin-stats-grid" style="margin-bottom: 24px;">
+          <div
+            class="admin-stats-grid"
+            style="
+              margin-bottom: 24px;
+              display: grid;
+              grid-template-columns: repeat(4, 1fr);
+              gap: 16px;
+            "
+          >
+            <!-- Row 1: Core Financial & Bookings Metrics -->
             <div class="card stat-card" id="cardTotalRevenue">
               <span class="stat-label">Total Revenue (Verified)</span>
-              <div id="statTotalRevenue" class="stat-value" style="color: var(--accent);">₹0</div>
+              <div
+                id="statTotalRevenue"
+                class="stat-value"
+                style="color: #06d6a0"
+              >
+                ₹0
+              </div>
             </div>
             <div class="card stat-card" id="cardMonthRevenue">
               <span class="stat-label">Revenue This Month</span>
-              <div id="statMonthRevenue" class="stat-value" style="color: var(--accent);">₹0</div>
+              <div
+                id="statMonthRevenue"
+                class="stat-value"
+                style="color: #4fd7ff"
+              >
+                ₹0
+              </div>
+            </div>
+            <div class="card stat-card" id="cardTotalBookings">
+              <span class="stat-label">Total Bookings</span>
+              <div
+                id="statTotalBookings"
+                class="stat-value"
+                style="color: #ffffff"
+              >
+                0
+              </div>
             </div>
             <div class="card stat-card" id="cardPaidBookings">
               <span class="stat-label">Paid Bookings</span>
-              <div id="statPaidBookings" class="stat-value" style="color: #06d6a0;">0</div>
+              <div
+                id="statPaidBookings"
+                class="stat-value"
+                style="color: #06d6a0"
+              >
+                0
+              </div>
+            </div>
+
+            <!-- Row 2: Operational Queue & Values -->
+            <div class="card stat-card" id="cardPendingDocs">
+              <span class="stat-label">Pending Document Reviews</span>
+              <div
+                id="statPendingDocs"
+                class="stat-value"
+                style="color: #ffd166"
+              >
+                0
+              </div>
+            </div>
+            <div class="card stat-card" id="cardPendingPayments">
+              <span class="stat-label">Awaiting Payment Verification</span>
+              <div
+                id="statPendingPayments"
+                class="stat-value"
+                style="color: #ff5c77"
+              >
+                0
+              </div>
             </div>
             <div class="card stat-card" id="cardAvgBooking">
               <span class="stat-label">Avg. Verified Booking Value</span>
-              <div id="statAvgBooking" class="stat-value" style="color: var(--accent);">₹0</div>
+              <div
+                id="statAvgBooking"
+                class="stat-value"
+                style="color: #ffd166"
+              >
+                ₹0
+              </div>
+            </div>
+            <div class="card stat-card" id="cardActiveRentals">
+              <span class="stat-label">Active On-Road Rentals</span>
+              <div
+                id="statActiveRentals"
+                class="stat-value"
+                style="color: #06d6a0"
+              >
+                0
+              </div>
+            </div>
+
+            <!-- Row 3: Users & Fleet Operations -->
+            <div class="card stat-card" id="cardTotalUsers">
+              <span class="stat-label">Total Registered Users</span>
+              <div
+                id="statTotalUsers"
+                class="stat-value"
+                style="color: #4fd7ff"
+              >
+                0
+              </div>
+            </div>
+            <div class="card stat-card" id="cardTotalFleet">
+              <span class="stat-label">Total Fleet Vehicles</span>
+              <div
+                id="statTotalFleet"
+                class="stat-value"
+                style="color: #4fd7ff"
+              >
+                0
+              </div>
+            </div>
+            <div class="card stat-card" id="cardAvailableFleet">
+              <span class="stat-label">Available In Yard</span>
+              <div
+                id="statAvailableFleet"
+                class="stat-value"
+                style="color: #ffffff"
+              >
+                0
+              </div>
+            </div>
+            <div class="card stat-card" id="cardUtilizationRate">
+              <span class="stat-label">Fleet Utilization Rate</span>
+              <div
+                id="statUtilizationRate"
+                class="stat-value"
+                style="color: #ffd166"
+              >
+                0%
+              </div>
             </div>
           </div>
 
           <div class="card admin-export-card">
             <div class="admin-export-copy">
-              <strong class="admin-export-title">Production Database Export</strong>
+              <strong class="admin-export-title"
+                >Production Database Export</strong
+              >
               <span id="firebaseExportStatus" class="admin-export-description">
                 Download all MySQL database tables as an Excel workbook.
               </span>
             </div>
-            <button id="exportFirebaseExcelBtn" type="button" class="btn btn-dark">
+            <button
+              id="exportFirebaseExcelBtn"
+              type="button"
+              class="btn btn-dark"
+            >
               Export to Excel
             </button>
           </div>
@@ -134,7 +250,20 @@
               All Bookings
             </button>
             <button class="btn btn-outline tab-btn" data-tab="tab-calendar">
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:6px;vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              <svg
+                viewBox="0 0 24 24"
+                width="15"
+                height="15"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                style="margin-right: 6px; vertical-align: -2px"
+              >
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
               Booking Calendar
             </button>
             <button class="btn btn-outline tab-btn" data-tab="tab-users">
@@ -142,6 +271,12 @@
             </button>
             <button class="btn btn-outline tab-btn" data-tab="tab-customers">
               Users &amp; Customers Analytics
+            </button>
+            <button
+              class="btn btn-outline tab-btn"
+              data-tab="tab-bookings-analytics"
+            >
+              Bookings &amp; Reservations Analytics
             </button>
             <button class="btn btn-outline tab-btn" data-tab="tab-hosts">
               Vehicle Acquisition
@@ -161,22 +296,66 @@
               <div class="admin-cal-topbar">
                 <div class="admin-cal-heading">
                   <div class="admin-cal-nav">
-                    <button type="button" id="adminCalPrevMonthBtn" class="btn btn-outline btn-sm admin-cal-nav-btn" aria-label="Previous Month">
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m15 18-6-6 6-6"/></svg>
+                    <button
+                      type="button"
+                      id="adminCalPrevMonthBtn"
+                      class="btn btn-outline btn-sm admin-cal-nav-btn"
+                      aria-label="Previous Month"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                      >
+                        <path d="m15 18-6-6 6-6" />
+                      </svg>
                     </button>
-                    <h3 id="adminCalMonthTitle" class="admin-cal-title">September 2026</h3>
-                    <button type="button" id="adminCalNextMonthBtn" class="btn btn-outline btn-sm admin-cal-nav-btn" aria-label="Next Month">
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m9 18 6-6-6-6"/></svg>
+                    <h3 id="adminCalMonthTitle" class="admin-cal-title">
+                      September 2026
+                    </h3>
+                    <button
+                      type="button"
+                      id="adminCalNextMonthBtn"
+                      class="btn btn-outline btn-sm admin-cal-nav-btn"
+                      aria-label="Next Month"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="16"
+                        height="16"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2.5"
+                      >
+                        <path d="m9 18 6-6-6-6" />
+                      </svg>
                     </button>
-                    <button type="button" id="adminCalTodayBtn" class="btn btn-outline btn-sm admin-cal-today-btn">Today</button>
+                    <button
+                      type="button"
+                      id="adminCalTodayBtn"
+                      class="btn btn-outline btn-sm admin-cal-today-btn"
+                    >
+                      Today
+                    </button>
                   </div>
-                  <p class="admin-cal-subline">Interactive timeline showing start &amp; return dates for each rental reservation.</p>
+                  <p class="admin-cal-subline">
+                    Interactive timeline showing start &amp; return dates for
+                    each rental reservation.
+                  </p>
                 </div>
 
                 <div class="admin-cal-actions">
                   <!-- Search Filter -->
                   <div class="admin-cal-search">
-                    <input type="text" id="adminCalSearchInput" class="kr-clean-input" placeholder="Search customer, vehicle, or ID..." />
+                    <input
+                      type="text"
+                      id="adminCalSearchInput"
+                      class="kr-clean-input"
+                      placeholder="Search customer, vehicle, or ID..."
+                    />
                   </div>
 
                   <!-- Vehicle Filter (Per Car) -->
@@ -200,19 +379,69 @@
 
                   <!-- View Mode Toggle (Grid vs Agenda) -->
                   <div class="admin-cal-view-toggle">
-                    <button type="button" id="adminCalViewGridBtn" class="cal-toggle-btn active" title="Month Grid View">
-                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    <button
+                      type="button"
+                      id="adminCalViewGridBtn"
+                      class="cal-toggle-btn active"
+                      title="Month Grid View"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="15"
+                        height="15"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                      </svg>
                       <span>Grid</span>
                     </button>
-                    <button type="button" id="adminCalViewAgendaBtn" class="cal-toggle-btn" title="Agenda List View">
-                      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                    <button
+                      type="button"
+                      id="adminCalViewAgendaBtn"
+                      class="cal-toggle-btn"
+                      title="Agenda List View"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        width="15"
+                        height="15"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                      >
+                        <line x1="8" y1="6" x2="21" y2="6"></line>
+                        <line x1="8" y1="12" x2="21" y2="12"></line>
+                        <line x1="8" y1="18" x2="21" y2="18"></line>
+                        <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                        <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                        <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                      </svg>
                       <span>Agenda</span>
                     </button>
                   </div>
 
                   <!-- Add Booking Button -->
-                  <button type="button" id="adminCalAddBookingBtn" class="btn btn-primary admin-cal-add-btn">
-                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  <button
+                    type="button"
+                    id="adminCalAddBookingBtn"
+                    class="btn btn-primary admin-cal-add-btn"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="15"
+                      height="15"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2.5"
+                    >
+                      <line x1="12" y1="5" x2="12" y2="19"></line>
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
                     <span>Add Booking</span>
                   </button>
                 </div>
@@ -221,7 +450,13 @@
               <!-- Month Grid View Container -->
               <div id="adminCalGridContainer" class="admin-cal-view-wrap">
                 <div class="admin-cal-weekdays">
-                  <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                  <div>Sun</div>
+                  <div>Mon</div>
+                  <div>Tue</div>
+                  <div>Wed</div>
+                  <div>Thu</div>
+                  <div>Fri</div>
+                  <div>Sat</div>
                 </div>
                 <div id="adminCalGrid" class="admin-cal-grid">
                   <!-- Generated by JS -->
@@ -229,7 +464,11 @@
               </div>
 
               <!-- Agenda List View Container -->
-              <div id="adminCalAgendaContainer" class="admin-cal-view-wrap hidden" hidden>
+              <div
+                id="adminCalAgendaContainer"
+                class="admin-cal-view-wrap hidden"
+                hidden
+              >
                 <div id="adminCalAgendaList" class="admin-cal-agenda-list">
                   <!-- Generated by JS -->
                 </div>
@@ -240,21 +479,40 @@
           <!-- TAB 1: USERS & DOCUMENT VERIFICATION -->
           <section id="tab-users" class="tab-panel" hidden>
             <div class="card admin-panel-card">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  margin-bottom: 20px;
+                  flex-wrap: wrap;
+                  gap: 12px;
+                "
+              >
                 <div>
-                  <h3 style="margin: 0; font-size: 1.25rem;">Registered Users &amp; Identity Verification</h3>
-                  <p style="margin: 4px 0 0; color: var(--kr-text-secondary); font-size: 0.85rem;">Review uploaded driving licenses, Aadhaar, and PAN cards.</p>
+                  <h3 style="margin: 0; font-size: 1.25rem">
+                    Registered Users &amp; Identity Verification
+                  </h3>
+                  <p
+                    style="
+                      margin: 4px 0 0;
+                      color: var(--kr-text-secondary);
+                      font-size: 0.85rem;
+                    "
+                  >
+                    Review uploaded driving licenses, Aadhaar, and PAN cards.
+                  </p>
                 </div>
                 <input
                   type="text"
                   id="userSearchInput"
                   class="kr-clean-input"
                   placeholder="Search name, phone, or email..."
-                  style="width: 280px; height: 38px;"
+                  style="width: 280px; height: 38px"
                 />
               </div>
               <div id="usersTableWrap">
-                <p style="color: var(--kr-text-muted);">Loading users...</p>
+                <p style="color: var(--kr-text-muted)">Loading users...</p>
               </div>
             </div>
           </section>
@@ -262,105 +520,688 @@
           <!-- TAB: USERS & CUSTOMER ANALYTICS -->
           <section id="tab-customers" class="tab-panel" hidden>
             <div class="card admin-panel-card">
-              <div style="margin-bottom: 20px;">
-                <span class="admin-inspect-eyebrow" style="font-size: 11px; font-weight: 800; color: #4fd7ff; text-transform: uppercase; letter-spacing: 1px;">CUSTOMER INSIGHTS</span>
-                <h3 style="margin: 2px 0 0; font-size: 1.25rem;">Users &amp; Customer Analytics</h3>
-                <p style="margin: 4px 0 0; color: var(--kr-text-secondary); font-size: 0.85rem;">Track registered user accounts vs actual booking customers, new acquisitions, and repeat reservations.</p>
+              <div style="margin-bottom: 20px">
+                <span
+                  class="admin-inspect-eyebrow"
+                  style="
+                    font-size: 11px;
+                    font-weight: 800;
+                    color: #4fd7ff;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                  "
+                  >CUSTOMER INSIGHTS</span
+                >
+                <h3 style="margin: 2px 0 0; font-size: 1.25rem">
+                  Users &amp; Customer Analytics
+                </h3>
+                <p
+                  style="
+                    margin: 4px 0 0;
+                    color: var(--kr-text-secondary);
+                    font-size: 0.85rem;
+                  "
+                >
+                  Track registered user accounts vs actual booking customers,
+                  new acquisitions, and repeat reservations.
+                </p>
               </div>
 
               <!-- Filter Bar -->
-              <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; padding: 16px; margin-bottom: 24px;">
-                <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
-                  <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px;">
-                    <label for="custDateFrom" style="font-size: 12px; font-weight: 700; color: var(--sub);">From Date (DD/MM/YYYY)</label>
-                    <input type="date" id="custDateFrom" lang="en-GB" class="kr-clean-input" style="height: 38px; font-size: 13px;" />
+              <div
+                style="
+                  background: rgba(255, 255, 255, 0.03);
+                  border: 1px solid rgba(255, 255, 255, 0.1);
+                  border-radius: 12px;
+                  padding: 16px;
+                  margin-bottom: 24px;
+                "
+              >
+                <div
+                  style="
+                    display: flex;
+                    align-items: flex-end;
+                    gap: 12px;
+                    flex-wrap: wrap;
+                    margin-bottom: 12px;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      flex-direction: column;
+                      gap: 4px;
+                      flex: 1;
+                      min-width: 140px;
+                    "
+                  >
+                    <label
+                      for="custDateFrom"
+                      style="
+                        font-size: 12px;
+                        font-weight: 700;
+                        color: var(--sub);
+                      "
+                      >From Date (DD/MM/YYYY)</label
+                    >
+                    <input
+                      type="date"
+                      id="custDateFrom"
+                      lang="en-GB"
+                      class="kr-clean-input"
+                      style="height: 38px; font-size: 13px"
+                    />
                   </div>
-                  <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px;">
-                    <label for="custDateTo" style="font-size: 12px; font-weight: 700; color: var(--sub);">To Date (DD/MM/YYYY)</label>
-                    <input type="date" id="custDateTo" lang="en-GB" class="kr-clean-input" style="height: 38px; font-size: 13px;" />
+                  <div
+                    style="
+                      display: flex;
+                      flex-direction: column;
+                      gap: 4px;
+                      flex: 1;
+                      min-width: 140px;
+                    "
+                  >
+                    <label
+                      for="custDateTo"
+                      style="
+                        font-size: 12px;
+                        font-weight: 700;
+                        color: var(--sub);
+                      "
+                      >To Date (DD/MM/YYYY)</label
+                    >
+                    <input
+                      type="date"
+                      id="custDateTo"
+                      lang="en-GB"
+                      class="kr-clean-input"
+                      style="height: 38px; font-size: 13px"
+                    />
                   </div>
-                  <button id="custApplyFilterBtn" type="button" class="btn btn-primary" style="height: 38px; padding: 0 18px; font-size: 13px;">Apply Filter</button>
-                  <button id="custResetFilterBtn" type="button" class="btn btn-outline" style="height: 38px; padding: 0 16px; font-size: 13px;">Reset</button>
+                  <button
+                    id="custApplyFilterBtn"
+                    type="button"
+                    class="btn btn-primary"
+                    style="height: 38px; padding: 0 18px; font-size: 13px"
+                  >
+                    Apply Filter
+                  </button>
+                  <button
+                    id="custResetFilterBtn"
+                    type="button"
+                    class="btn btn-outline"
+                    style="height: 38px; padding: 0 16px; font-size: 13px"
+                  >
+                    Reset
+                  </button>
                 </div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-                  <span style="font-size: 12px; font-weight: 700; color: var(--sub); margin-right: 4px;">Quick Range:</span>
-                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm" data-range="today" style="font-size: 11px; padding: 3px 10px;">Today</button>
-                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm" data-range="yesterday" style="font-size: 11px; padding: 3px 10px;">Yesterday</button>
-                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm" data-range="this_week" style="font-size: 11px; padding: 3px 10px;">This Week</button>
-                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm" data-range="this_month" style="font-size: 11px; padding: 3px 10px;">This Month</button>
-                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm" data-range="last_month" style="font-size: 11px; padding: 3px 10px;">Last Month</button>
-                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm" data-range="this_year" style="font-size: 11px; padding: 3px 10px;">This Year</button>
-                  <button type="button" class="cust-quick-pill btn btn-outline btn-sm active" data-range="all_time" style="font-size: 11px; padding: 3px 10px;">All Time</button>
+                <div
+                  style="
+                    display: flex;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                    align-items: center;
+                  "
+                >
+                  <span
+                    style="
+                      font-size: 12px;
+                      font-weight: 700;
+                      color: var(--sub);
+                      margin-right: 4px;
+                    "
+                    >Quick Range:</span
+                  >
+                  <button
+                    type="button"
+                    class="cust-quick-pill btn btn-outline btn-sm"
+                    data-range="today"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    class="cust-quick-pill btn btn-outline btn-sm"
+                    data-range="yesterday"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    Yesterday
+                  </button>
+                  <button
+                    type="button"
+                    class="cust-quick-pill btn btn-outline btn-sm"
+                    data-range="this_week"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    This Week
+                  </button>
+                  <button
+                    type="button"
+                    class="cust-quick-pill btn btn-outline btn-sm"
+                    data-range="this_month"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    This Month
+                  </button>
+                  <button
+                    type="button"
+                    class="cust-quick-pill btn btn-outline btn-sm"
+                    data-range="last_month"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    Last Month
+                  </button>
+                  <button
+                    type="button"
+                    class="cust-quick-pill btn btn-outline btn-sm"
+                    data-range="this_year"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    This Year
+                  </button>
+                  <button
+                    type="button"
+                    class="cust-quick-pill btn btn-outline btn-sm active"
+                    data-range="all_time"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    All Time
+                  </button>
                 </div>
               </div>
 
               <!-- Customer Analytics Cards Grid -->
-              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px;">
-                <div class="card stat-card" style="border-color: rgba(79, 215, 255, 0.3);">
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                  gap: 16px;
+                  margin-bottom: 28px;
+                "
+              >
+                <div
+                  class="card stat-card"
+                  style="border-color: rgba(79, 215, 255, 0.3)"
+                >
                   <span class="stat-label">Total Registered Users</span>
-                  <div id="custTotalUsers" class="stat-value" style="color: #4fd7ff;">0</div>
-                  <small style="color: var(--sub); font-size: 11px;">System user accounts</small>
+                  <div
+                    id="custTotalUsers"
+                    class="stat-value"
+                    style="color: #4fd7ff"
+                  >
+                    0
+                  </div>
+                  <small style="color: var(--sub); font-size: 11px"
+                    >System user accounts</small
+                  >
                 </div>
 
-                <div class="card stat-card" style="border-color: rgba(6, 214, 160, 0.3);">
+                <div
+                  class="card stat-card"
+                  style="border-color: rgba(6, 214, 160, 0.3)"
+                >
                   <span class="stat-label">Total Active Customers</span>
-                  <div id="custTotalCustomers" class="stat-value" style="color: #06d6a0;">0</div>
-                  <small style="color: var(--sub); font-size: 11px;">Unique users who booked</small>
+                  <div
+                    id="custTotalCustomers"
+                    class="stat-value"
+                    style="color: #06d6a0"
+                  >
+                    0
+                  </div>
+                  <small style="color: var(--sub); font-size: 11px"
+                    >Unique users who booked</small
+                  >
                 </div>
 
                 <div class="card stat-card">
                   <span class="stat-label">This Month's Customers</span>
-                  <div id="custMonthCustomers" class="stat-value" style="color: #ffffff;">0</div>
-                  <small style="color: var(--sub); font-size: 11px;">Unique bookers in month</small>
+                  <div
+                    id="custMonthCustomers"
+                    class="stat-value"
+                    style="color: #ffffff"
+                  >
+                    0
+                  </div>
+                  <small style="color: var(--sub); font-size: 11px"
+                    >Unique bookers in month</small
+                  >
                 </div>
 
                 <div class="card stat-card">
                   <span class="stat-label">New Customers This Month</span>
-                  <div id="custNewCustomersMonth" class="stat-value" style="color: #ffd166;">0</div>
-                  <small style="color: var(--sub); font-size: 11px;">First booking this month</small>
+                  <div
+                    id="custNewCustomersMonth"
+                    class="stat-value"
+                    style="color: #ffd166"
+                  >
+                    0
+                  </div>
+                  <small style="color: var(--sub); font-size: 11px"
+                    >First booking this month</small
+                  >
                 </div>
 
                 <div class="card stat-card">
                   <span class="stat-label">Repeat Customers</span>
-                  <div id="custRepeatCustomers" class="stat-value" style="color: #ffb703;">0</div>
-                  <small style="color: var(--sub); font-size: 11px;">Customers with &gt;1 booking</small>
+                  <div
+                    id="custRepeatCustomers"
+                    class="stat-value"
+                    style="color: #ffb703"
+                  >
+                    0
+                  </div>
+                  <small style="color: var(--sub); font-size: 11px"
+                    >Customers with &gt;1 booking</small
+                  >
                 </div>
               </div>
 
               <!-- Monthly User Analytics Table -->
-              <div style="margin-top: 20px;">
-                <h4 style="margin: 0 0 12px; font-size: 1.05rem; color: #ffffff;">Monthly User &amp; Customer Acquisition Breakdown</h4>
-                <div style="width: 100%; overflow-x: auto;">
-                  <table class="manager-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+              <div style="margin-top: 20px">
+                <h4
+                  style="margin: 0 0 12px; font-size: 1.05rem; color: #ffffff"
+                >
+                  Monthly User &amp; Customer Acquisition Breakdown
+                </h4>
+                <div style="width: 100%; overflow-x: auto">
+                  <table
+                    class="manager-table"
+                    style="
+                      width: 100%;
+                      border-collapse: collapse;
+                      text-align: left;
+                    "
+                  >
                     <thead>
-                      <tr style="border-bottom: 1px solid rgba(255,255,255,0.15); font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--sub);">
-                        <th style="padding: 12px 14px;">Month</th>
-                        <th style="padding: 12px 14px;">New Users</th>
-                        <th style="padding: 12px 14px;">Customers (Booked)</th>
-                        <th style="padding: 12px 14px;">Total Bookings</th>
+                      <tr
+                        style="
+                          border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+                          font-size: 12px;
+                          font-weight: 700;
+                          text-transform: uppercase;
+                          color: var(--sub);
+                        "
+                      >
+                        <th style="padding: 12px 14px">Month</th>
+                        <th style="padding: 12px 14px">New Users</th>
+                        <th style="padding: 12px 14px">Customers (Booked)</th>
+                        <th style="padding: 12px 14px">Total Bookings</th>
                       </tr>
                     </thead>
                     <tbody id="custMonthlyTableBody">
                       <tr>
-                        <td colspan="4" style="padding: 20px; text-align: center; color: var(--sub);">Loading customer analytics...</td>
+                        <td
+                          colspan="4"
+                          style="
+                            padding: 20px;
+                            text-align: center;
+                            color: var(--sub);
+                          "
+                        >
+                          Loading customer analytics...
+                        </td>
                       </tr>
                     </tbody>
                   </table>
                 </div>
               </div>
+            </div>
+          </section>
 
+          <!-- TAB: BOOKINGS & RESERVATIONS ANALYTICS -->
+          <section id="tab-bookings-analytics" class="tab-panel" hidden>
+            <div class="card admin-panel-card">
+              <div style="margin-bottom: 20px">
+                <span
+                  class="admin-inspect-eyebrow"
+                  style="
+                    font-size: 11px;
+                    font-weight: 800;
+                    color: #4fd7ff;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                  "
+                  >RESERVATION INSIGHTS</span
+                >
+                <h3 style="margin: 2px 0 0; font-size: 1.25rem">
+                  Bookings &amp; Reservations Analytics
+                </h3>
+                <p
+                  style="
+                    margin: 4px 0 0;
+                    color: var(--kr-text-secondary);
+                    font-size: 0.85rem;
+                  "
+                >
+                  Track rental reservations, verified paid bookings,
+                  cancellations, and monthly booking growth.
+                </p>
+              </div>
+
+              <!-- Filter Bar -->
+              <div
+                style="
+                  background: rgba(255, 255, 255, 0.03);
+                  border: 1px solid rgba(255, 255, 255, 0.1);
+                  border-radius: 12px;
+                  padding: 16px;
+                  margin-bottom: 24px;
+                "
+              >
+                <div
+                  style="
+                    display: flex;
+                    align-items: flex-end;
+                    gap: 12px;
+                    flex-wrap: wrap;
+                    margin-bottom: 12px;
+                  "
+                >
+                  <div
+                    style="
+                      display: flex;
+                      flex-direction: column;
+                      gap: 4px;
+                      flex: 1;
+                      min-width: 140px;
+                    "
+                  >
+                    <label
+                      for="bookAnDateFrom"
+                      style="
+                        font-size: 12px;
+                        font-weight: 700;
+                        color: var(--sub);
+                      "
+                      >From Date (DD/MM/YYYY)</label
+                    >
+                    <input
+                      type="date"
+                      id="bookAnDateFrom"
+                      lang="en-GB"
+                      class="kr-clean-input"
+                      style="height: 38px; font-size: 13px"
+                    />
+                  </div>
+                  <div
+                    style="
+                      display: flex;
+                      flex-direction: column;
+                      gap: 4px;
+                      flex: 1;
+                      min-width: 140px;
+                    "
+                  >
+                    <label
+                      for="bookAnDateTo"
+                      style="
+                        font-size: 12px;
+                        font-weight: 700;
+                        color: var(--sub);
+                      "
+                      >To Date (DD/MM/YYYY)</label
+                    >
+                    <input
+                      type="date"
+                      id="bookAnDateTo"
+                      lang="en-GB"
+                      class="kr-clean-input"
+                      style="height: 38px; font-size: 13px"
+                    />
+                  </div>
+                  <button
+                    id="bookAnApplyFilterBtn"
+                    type="button"
+                    class="btn btn-primary"
+                    style="height: 38px; padding: 0 18px; font-size: 13px"
+                  >
+                    Apply Filter
+                  </button>
+                  <button
+                    id="bookAnResetFilterBtn"
+                    type="button"
+                    class="btn btn-outline"
+                    style="height: 38px; padding: 0 16px; font-size: 13px"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <div
+                  style="
+                    display: flex;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                    align-items: center;
+                  "
+                >
+                  <span
+                    style="
+                      font-size: 12px;
+                      font-weight: 700;
+                      color: var(--sub);
+                      margin-right: 4px;
+                    "
+                    >Quick Range:</span
+                  >
+                  <button
+                    type="button"
+                    class="bookan-quick-pill btn btn-outline btn-sm"
+                    data-range="today"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    class="bookan-quick-pill btn btn-outline btn-sm"
+                    data-range="yesterday"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    Yesterday
+                  </button>
+                  <button
+                    type="button"
+                    class="bookan-quick-pill btn btn-outline btn-sm"
+                    data-range="this_week"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    This Week
+                  </button>
+                  <button
+                    type="button"
+                    class="bookan-quick-pill btn btn-outline btn-sm"
+                    data-range="this_month"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    This Month
+                  </button>
+                  <button
+                    type="button"
+                    class="bookan-quick-pill btn btn-outline btn-sm"
+                    data-range="last_month"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    Last Month
+                  </button>
+                  <button
+                    type="button"
+                    class="bookan-quick-pill btn btn-outline btn-sm"
+                    data-range="this_year"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    This Year
+                  </button>
+                  <button
+                    type="button"
+                    class="bookan-quick-pill btn btn-outline btn-sm active"
+                    data-range="all_time"
+                    style="font-size: 11px; padding: 3px 10px"
+                  >
+                    All Time
+                  </button>
+                </div>
+              </div>
+
+              <!-- Bookings Analytics Cards Grid -->
+              <div
+                style="
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                  gap: 16px;
+                  margin-bottom: 28px;
+                "
+              >
+                <div
+                  class="card stat-card"
+                  style="border-color: rgba(79, 215, 255, 0.3)"
+                >
+                  <span class="stat-label">Total Bookings</span>
+                  <div
+                    id="bookAnTotalBookings"
+                    class="stat-value"
+                    style="color: #4fd7ff"
+                  >
+                    0
+                  </div>
+                  <small style="color: var(--sub); font-size: 11px"
+                    >All reservations recorded</small
+                  >
+                </div>
+
+                <div
+                  class="card stat-card"
+                  style="border-color: rgba(6, 214, 160, 0.3)"
+                >
+                  <span class="stat-label">Paid &amp; Confirmed</span>
+                  <div
+                    id="bookAnPaidBookings"
+                    class="stat-value"
+                    style="color: #06d6a0"
+                  >
+                    0
+                  </div>
+                  <small style="color: var(--sub); font-size: 11px"
+                    >Verified payment received</small
+                  >
+                </div>
+
+                <div class="card stat-card">
+                  <span class="stat-label">Pending Verification</span>
+                  <div
+                    id="bookAnPendingVerification"
+                    class="stat-value"
+                    style="color: #ffd166"
+                  >
+                    0
+                  </div>
+                  <small style="color: var(--sub); font-size: 11px"
+                    >Awaiting payment audit</small
+                  >
+                </div>
+
+                <div class="card stat-card">
+                  <span class="stat-label">Active / On-Road</span>
+                  <div
+                    id="bookAnActiveRentals"
+                    class="stat-value"
+                    style="color: #ffffff"
+                  >
+                    0
+                  </div>
+                  <small style="color: var(--sub); font-size: 11px"
+                    >Currently on rental trip</small
+                  >
+                </div>
+
+                <div class="card stat-card">
+                  <span class="stat-label">Cancelled / Rejected</span>
+                  <div
+                    id="bookAnCancelledBookings"
+                    class="stat-value"
+                    style="color: #ff5c77"
+                  >
+                    0
+                  </div>
+                  <small style="color: var(--sub); font-size: 11px"
+                    >Cancelled or rejected</small
+                  >
+                </div>
+              </div>
+
+              <!-- Monthly Bookings Breakdown Table -->
+              <div style="margin-top: 20px">
+                <h4
+                  style="margin: 0 0 12px; font-size: 1.05rem; color: #ffffff"
+                >
+                  Monthly Bookings &amp; Reservation Performance Breakdown
+                </h4>
+                <div style="width: 100%; overflow-x: auto">
+                  <table
+                    class="manager-table"
+                    style="
+                      width: 100%;
+                      border-collapse: collapse;
+                      text-align: left;
+                    "
+                  >
+                    <thead>
+                      <tr
+                        style="
+                          border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+                          font-size: 12px;
+                          font-weight: 700;
+                          text-transform: uppercase;
+                          color: var(--sub);
+                        "
+                      >
+                        <th style="padding: 12px 14px">Month</th>
+                        <th style="padding: 12px 14px">Total Bookings</th>
+                        <th style="padding: 12px 14px">Paid / Confirmed</th>
+                        <th style="padding: 12px 14px">Cancelled</th>
+                        <th style="padding: 12px 14px">Gross Value</th>
+                      </tr>
+                    </thead>
+                    <tbody id="bookAnMonthlyTableBody">
+                      <tr>
+                        <td
+                          colspan="5"
+                          style="
+                            padding: 20px;
+                            text-align: center;
+                            color: var(--sub);
+                          "
+                        >
+                          Loading bookings analytics...
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           </section>
 
           <!-- TAB 2: PAYMENT VERIFICATION -->
           <section id="tab-payments" class="tab-panel" hidden>
             <div class="card admin-panel-card">
-              <div style="margin-bottom: 20px;">
-                <h3 style="margin: 0; font-size: 1.25rem;">UPI / Bank Transfer Verification Queue</h3>
-                <p style="margin: 4px 0 0; color: var(--kr-text-secondary); font-size: 0.85rem;">Review manual payment receipts and dispatch booking confirmation invoices.</p>
+              <div style="margin-bottom: 20px">
+                <h3 style="margin: 0; font-size: 1.25rem">
+                  UPI / Bank Transfer Verification Queue
+                </h3>
+                <p
+                  style="
+                    margin: 4px 0 0;
+                    color: var(--kr-text-secondary);
+                    font-size: 0.85rem;
+                  "
+                >
+                  Review manual payment receipts and dispatch booking
+                  confirmation invoices.
+                </p>
               </div>
               <div id="paymentsTableWrap">
-                <p style="color: var(--kr-text-muted);">Loading payments...</p>
+                <p style="color: var(--kr-text-muted)">Loading payments...</p>
               </div>
             </div>
           </section>
@@ -368,15 +1209,49 @@
           <!-- TAB 3: ALL BOOKINGS -->
           <section id="tab-bookings" class="tab-panel">
             <div class="card admin-panel-card">
-              <div class="admin-toolbar" style="display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;">
+              <div
+                class="admin-toolbar"
+                style="
+                  display: flex;
+                  align-items: flex-end;
+                  justify-content: space-between;
+                  gap: 16px;
+                  margin-bottom: 24px;
+                  flex-wrap: wrap;
+                "
+              >
                 <div>
-                  <h3 style="margin: 0; font-size: 1.25rem;">System Bookings &amp; Fleet Operations</h3>
-                  <p style="margin: 4px 0 0; color: var(--kr-text-secondary); font-size: 0.85rem;">Filter and audit trip status, odometer readings, and FASTag logs.</p>
+                  <h3 style="margin: 0; font-size: 1.25rem">
+                    System Bookings &amp; Fleet Operations
+                  </h3>
+                  <p
+                    style="
+                      margin: 4px 0 0;
+                      color: var(--kr-text-secondary);
+                      font-size: 0.85rem;
+                    "
+                  >
+                    Filter and audit trip status, odometer readings, and FASTag
+                    logs.
+                  </p>
                 </div>
-                <div style="display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap;">
+                <div
+                  style="
+                    display: flex;
+                    align-items: flex-end;
+                    gap: 10px;
+                    flex-wrap: wrap;
+                  "
+                >
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="bookingStatusFilter">Status</label>
-                    <select id="bookingStatusFilter" class="kr-clean-input" style="height: 38px; min-width: 150px;">
+                    <label class="admin-control-label" for="bookingStatusFilter"
+                      >Status</label
+                    >
+                    <select
+                      id="bookingStatusFilter"
+                      class="kr-clean-input"
+                      style="height: 38px; min-width: 150px"
+                    >
                       <option value="all">All Statuses</option>
                       <option value="pending_payment">Payment Pending</option>
                       <option value="confirmed">Confirmed</option>
@@ -385,32 +1260,59 @@
                     </select>
                   </div>
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="bookingSortOrder">Sort by date</label>
-                    <select id="bookingSortOrder" class="kr-clean-input" style="height: 38px; min-width: 140px;">
+                    <label class="admin-control-label" for="bookingSortOrder"
+                      >Sort by date</label
+                    >
+                    <select
+                      id="bookingSortOrder"
+                      class="kr-clean-input"
+                      style="height: 38px; min-width: 140px"
+                    >
                       <option value="desc">Newest first</option>
                       <option value="asc">Oldest first</option>
                     </select>
                   </div>
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="bookingDateFrom">From</label>
-                    <input type="date" id="bookingDateFrom" lang="en-GB" class="kr-clean-input" style="height: 38px;" />
+                    <label class="admin-control-label" for="bookingDateFrom"
+                      >From</label
+                    >
+                    <input
+                      type="date"
+                      id="bookingDateFrom"
+                      lang="en-GB"
+                      class="kr-clean-input"
+                      style="height: 38px"
+                    />
                   </div>
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="bookingDateTo">To</label>
-                    <input type="date" id="bookingDateTo" lang="en-GB" class="kr-clean-input" style="height: 38px;" />
+                    <label class="admin-control-label" for="bookingDateTo"
+                      >To</label
+                    >
+                    <input
+                      type="date"
+                      id="bookingDateTo"
+                      lang="en-GB"
+                      class="kr-clean-input"
+                      style="height: 38px"
+                    />
                   </div>
                   <button
                     type="button"
                     id="bookingDateClear"
                     class="btn btn-outline"
-                    style="height: 38px; padding: 0 16px; margin: 0; font-size: 13px;"
+                    style="
+                      height: 38px;
+                      padding: 0 16px;
+                      margin: 0;
+                      font-size: 13px;
+                    "
                   >
                     Clear dates
                   </button>
                 </div>
               </div>
               <div id="bookingsTableWrap">
-                <p style="color: var(--kr-text-muted);">Loading bookings...</p>
+                <p style="color: var(--kr-text-muted)">Loading bookings...</p>
               </div>
             </div>
           </section>
@@ -418,12 +1320,25 @@
           <!-- TAB 4: HOST CAR LISTINGS -->
           <section id="tab-hosts" class="tab-panel" hidden>
             <div class="card admin-panel-card">
-              <div style="margin-bottom: 20px;">
-                <h3 style="margin: 0; font-size: 1.25rem;">Vehicle Acquisition &amp; Partner Approvals</h3>
-                <p style="margin: 4px 0 0; color: var(--kr-text-secondary); font-size: 0.85rem;">Review specs, insurance, PUC, and photos submitted by vehicle partners.</p>
+              <div style="margin-bottom: 20px">
+                <h3 style="margin: 0; font-size: 1.25rem">
+                  Vehicle Acquisition &amp; Partner Approvals
+                </h3>
+                <p
+                  style="
+                    margin: 4px 0 0;
+                    color: var(--kr-text-secondary);
+                    font-size: 0.85rem;
+                  "
+                >
+                  Review specs, insurance, PUC, and photos submitted by vehicle
+                  partners.
+                </p>
               </div>
               <div id="hostCarsTableWrap">
-                <p style="color: var(--kr-text-muted);">Loading host listings...</p>
+                <p style="color: var(--kr-text-muted)">
+                  Loading host listings...
+                </p>
               </div>
             </div>
           </section>
@@ -431,38 +1346,127 @@
           <!-- TAB 5: FLEET MANAGEMENT -->
           <section id="tab-fleet" class="tab-panel" hidden>
             <div class="card admin-panel-card">
-              <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+              <div
+                style="
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+                  gap: 12px;
+                  flex-wrap: wrap;
+                  margin-bottom: 20px;
+                "
+              >
                 <div>
-                  <h3 style="margin: 0; font-size: 1.25rem;">Fleet Availability Management</h3>
-                  <p style="margin: 4px 0 0; color: var(--kr-text-secondary); font-size: 0.85rem;">Control catalog inventory, rates, availability, and vehicle images.</p>
+                  <h3 style="margin: 0; font-size: 1.25rem">
+                    Fleet Availability Management
+                  </h3>
+                  <p
+                    style="
+                      margin: 4px 0 0;
+                      color: var(--kr-text-secondary);
+                      font-size: 0.85rem;
+                    "
+                  >
+                    Control catalog inventory, rates, availability, and vehicle
+                    images.
+                  </p>
                 </div>
-                <a class="btn btn-outline" href="fleet.html" target="_blank" style="height: 38px; padding: 0 18px; display: inline-flex; align-items: center; font-size: 13px;">Open Public Fleet ↗</a>
+                <a
+                  class="btn btn-outline"
+                  href="fleet.html"
+                  target="_blank"
+                  style="
+                    height: 38px;
+                    padding: 0 18px;
+                    display: inline-flex;
+                    align-items: center;
+                    font-size: 13px;
+                  "
+                  >Open Public Fleet ↗</a
+                >
               </div>
 
               <!-- Structured Add / Edit Vehicle Form -->
-              <form id="fleetUploadForm" class="admin-fleet-form" style="margin-bottom: 24px; padding: 20px; border: 1px solid var(--kr-border); border-radius: 16px; background-color: var(--kr-surface-control);">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 14px;">
+              <form
+                id="fleetUploadForm"
+                class="admin-fleet-form"
+                style="
+                  margin-bottom: 24px;
+                  padding: 20px;
+                  border: 1px solid var(--kr-border);
+                  border-radius: 16px;
+                  background-color: var(--kr-surface-control);
+                "
+              >
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                    gap: 14px;
+                    margin-bottom: 14px;
+                  "
+                >
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="fleetBrand">Brand</label>
-                    <input id="fleetBrand" class="kr-clean-input" required placeholder="e.g. Hyundai" />
+                    <label class="admin-control-label" for="fleetBrand"
+                      >Brand</label
+                    >
+                    <input
+                      id="fleetBrand"
+                      class="kr-clean-input"
+                      required
+                      placeholder="e.g. Hyundai"
+                    />
                   </div>
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="fleetModel">Model</label>
-                    <input id="fleetModel" class="kr-clean-input" required placeholder="e.g. Creta" />
+                    <label class="admin-control-label" for="fleetModel"
+                      >Model</label
+                    >
+                    <input
+                      id="fleetModel"
+                      class="kr-clean-input"
+                      required
+                      placeholder="e.g. Creta"
+                    />
                   </div>
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="fleetRegNo">Registration</label>
-                    <input id="fleetRegNo" class="kr-clean-input uppercase" required placeholder="MH 01 AB 1234" />
+                    <label class="admin-control-label" for="fleetRegNo"
+                      >Registration</label
+                    >
+                    <input
+                      id="fleetRegNo"
+                      class="kr-clean-input uppercase"
+                      required
+                      placeholder="MH 01 AB 1234"
+                    />
                   </div>
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="fleetYear">Year</label>
-                    <input id="fleetYear" class="kr-clean-input" type="number" min="2000" max="2100" value="2024" required />
+                    <label class="admin-control-label" for="fleetYear"
+                      >Year</label
+                    >
+                    <input
+                      id="fleetYear"
+                      class="kr-clean-input"
+                      type="number"
+                      min="2000"
+                      max="2100"
+                      value="2024"
+                      required
+                    />
                   </div>
                 </div>
 
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 14px;">
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                    gap: 14px;
+                    margin-bottom: 14px;
+                  "
+                >
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="fleetCategory">Category</label>
+                    <label class="admin-control-label" for="fleetCategory"
+                      >Category</label
+                    >
                     <select id="fleetCategory" class="kr-clean-input" required>
                       <option value="economy">Economy</option>
                       <option value="sedan">Sedan</option>
@@ -472,41 +1476,113 @@
                     </select>
                   </div>
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="fleetTransmission">Transmission</label>
-                    <select id="fleetTransmission" class="kr-clean-input" required>
+                    <label class="admin-control-label" for="fleetTransmission"
+                      >Transmission</label
+                    >
+                    <select
+                      id="fleetTransmission"
+                      class="kr-clean-input"
+                      required
+                    >
                       <option value="Automatic">Automatic</option>
                       <option value="Manual">Manual</option>
                     </select>
                   </div>
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="fleetFuel">Fuel</label>
-                    <input id="fleetFuel" class="kr-clean-input" required placeholder="Petrol, Diesel, EV..." />
+                    <label class="admin-control-label" for="fleetFuel"
+                      >Fuel</label
+                    >
+                    <input
+                      id="fleetFuel"
+                      class="kr-clean-input"
+                      required
+                      placeholder="Petrol, Diesel, EV..."
+                    />
                   </div>
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="fleetSeats">Seats</label>
-                    <input id="fleetSeats" class="kr-clean-input" type="number" min="1" max="12" value="5" required />
+                    <label class="admin-control-label" for="fleetSeats"
+                      >Seats</label
+                    >
+                    <input
+                      id="fleetSeats"
+                      class="kr-clean-input"
+                      type="number"
+                      min="1"
+                      max="12"
+                      value="5"
+                      required
+                    />
                   </div>
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="fleetPriceDay">Daily Rate (₹)</label>
-                    <input id="fleetPriceDay" class="kr-clean-input" type="number" min="1" required placeholder="e.g. 3500" />
+                    <label class="admin-control-label" for="fleetPriceDay"
+                      >Daily Rate (₹)</label
+                    >
+                    <input
+                      id="fleetPriceDay"
+                      class="kr-clean-input"
+                      type="number"
+                      min="1"
+                      required
+                      placeholder="e.g. 3500"
+                    />
                   </div>
                 </div>
 
-                <div style="display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap;">
-                  <div class="admin-control-group" style="flex: 1; min-width: 220px;">
-                    <label class="admin-control-label" for="fleetImage">Vehicle Image (Optional)</label>
-                    <input id="fleetImage" class="kr-clean-input" type="file" accept="image/jpeg,image/png,image/webp" style="padding-top: 7px;" />
+                <div
+                  style="
+                    display: flex;
+                    gap: 14px;
+                    align-items: flex-end;
+                    flex-wrap: wrap;
+                  "
+                >
+                  <div
+                    class="admin-control-group"
+                    style="flex: 1; min-width: 220px"
+                  >
+                    <label class="admin-control-label" for="fleetImage"
+                      >Vehicle Image (Optional)</label
+                    >
+                    <input
+                      id="fleetImage"
+                      class="kr-clean-input"
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      style="padding-top: 7px"
+                    />
                   </div>
-                  <div class="fleet-form-actions" style="display: flex; gap: 10px;">
-                    <button id="fleetUploadSubmit" type="submit" class="btn btn-dark" style="height: 42px; padding: 0 24px;">Add to Fleet</button>
-                    <button id="fleetCancelEdit" type="button" class="btn btn-outline" style="display: none; height: 42px; padding: 0 24px;">Cancel</button>
+                  <div
+                    class="fleet-form-actions"
+                    style="display: flex; gap: 10px"
+                  >
+                    <button
+                      id="fleetUploadSubmit"
+                      type="submit"
+                      class="btn btn-dark"
+                      style="height: 42px; padding: 0 24px"
+                    >
+                      Add to Fleet
+                    </button>
+                    <button
+                      id="fleetCancelEdit"
+                      type="button"
+                      class="btn btn-outline"
+                      style="display: none; height: 42px; padding: 0 24px"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </div>
               </form>
 
-              <p id="fleetUploadStatus" role="status" style="margin:-8px 0 18px;color:var(--kr-text-muted);" aria-live="polite"></p>
+              <p
+                id="fleetUploadStatus"
+                role="status"
+                style="margin: -8px 0 18px; color: var(--kr-text-muted)"
+                aria-live="polite"
+              ></p>
               <div id="fleetManagementWrap">
-                <p style="color: var(--kr-text-muted);">Loading fleet...</p>
+                <p style="color: var(--kr-text-muted)">Loading fleet...</p>
               </div>
             </div>
           </section>
@@ -514,36 +1590,51 @@
           <!-- TAB 6: COUPON MANAGEMENT -->
           <section id="tab-coupons" class="tab-panel" hidden>
             <div class="card admin-panel-card coupon-management-card">
-              
               <div class="coupon-header">
                 <div>
-                  <span class="admin-inspect-eyebrow">DISCOUNT &amp; PROMO MANAGEMENT</span>
+                  <span class="admin-inspect-eyebrow"
+                    >DISCOUNT &amp; PROMO MANAGEMENT</span
+                  >
                   <h3 class="coupon-title">Promo &amp; Coupon Codes</h3>
                   <p class="coupon-subtitle">
-                    Create, edit, activate, or deactivate discount codes for customer checkout.
+                    Create, edit, activate, or deactivate discount codes for
+                    customer checkout.
                   </p>
                 </div>
                 <div class="coupon-header-stats">
                   <div class="coupon-stat-pill">
                     <span class="coupon-stat-label">ACTIVE PROMOS</span>
-                    <strong id="activeCouponsCount" class="coupon-stat-val">—</strong>
+                    <strong id="activeCouponsCount" class="coupon-stat-val"
+                      >—</strong
+                    >
                   </div>
                 </div>
               </div>
 
               <!-- Coupon Creation/Editing Box -->
               <div class="coupon-form-box">
-                <h4 class="coupon-box-title" id="couponBoxHeading">Add New Coupon Code</h4>
-                
+                <h4 class="coupon-box-title" id="couponBoxHeading">
+                  Add New Coupon Code
+                </h4>
+
                 <form id="couponForm" class="coupon-form-grid">
                   <div class="coupon-input-group">
                     <label for="couponCodeInput">Coupon Code</label>
-                    <input id="couponCodeInput" required placeholder="e.g. WELCOME500" class="coupon-field-input uppercase" />
+                    <input
+                      id="couponCodeInput"
+                      required
+                      placeholder="e.g. WELCOME500"
+                      class="coupon-field-input uppercase"
+                    />
                   </div>
 
                   <div class="coupon-input-group">
                     <label for="couponTypeSelect">Discount Type</label>
-                    <select id="couponTypeSelect" required class="coupon-field-select">
+                    <select
+                      id="couponTypeSelect"
+                      required
+                      class="coupon-field-select"
+                    >
                       <option value="flat">Flat Amount (₹)</option>
                       <option value="percent">Percentage (%)</option>
                     </select>
@@ -551,44 +1642,82 @@
 
                   <div class="coupon-input-group">
                     <label for="couponValueInput">Discount Value</label>
-                    <input id="couponValueInput" type="number" min="1" required placeholder="e.g. 500 or 15" class="coupon-field-input" />
+                    <input
+                      id="couponValueInput"
+                      type="number"
+                      min="1"
+                      required
+                      placeholder="e.g. 500 or 15"
+                      class="coupon-field-input"
+                    />
                   </div>
 
                   <div class="coupon-input-group">
                     <label for="couponLabelInput">Label / Description</label>
-                    <input id="couponLabelInput" placeholder="e.g. ₹500 Flat Off" class="coupon-field-input" />
+                    <input
+                      id="couponLabelInput"
+                      placeholder="e.g. ₹500 Flat Off"
+                      class="coupon-field-input"
+                    />
                   </div>
 
                   <div class="coupon-input-group">
                     <label for="couponMinOrderInput">Min Order Total (₹)</label>
-                    <input id="couponMinOrderInput" type="number" min="0" value="0" class="coupon-field-input" />
+                    <input
+                      id="couponMinOrderInput"
+                      type="number"
+                      min="0"
+                      value="0"
+                      class="coupon-field-input"
+                    />
                   </div>
 
                   <div class="coupon-input-group">
                     <label for="couponStatusSelect">Status</label>
-                    <select id="couponStatusSelect" required class="coupon-field-select">
+                    <select
+                      id="couponStatusSelect"
+                      required
+                      class="coupon-field-select"
+                    >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
                     </select>
                   </div>
 
                   <div class="coupon-form-actions">
-                    <button id="couponFormSubmit" type="submit" class="admin-btn-approve">Save Coupon</button>
-                    <button id="couponCancelBtn" type="button" class="admin-upload-replacement-btn" style="display:none;">Cancel</button>
+                    <button
+                      id="couponFormSubmit"
+                      type="submit"
+                      class="admin-btn-approve"
+                    >
+                      Save Coupon
+                    </button>
+                    <button
+                      id="couponCancelBtn"
+                      type="button"
+                      class="admin-upload-replacement-btn"
+                      style="display: none"
+                    >
+                      Cancel
+                    </button>
                   </div>
                 </form>
 
-                <p id="couponFormStatus" role="status" class="coupon-form-status" aria-live="polite"></p>
+                <p
+                  id="couponFormStatus"
+                  role="status"
+                  class="coupon-form-status"
+                  aria-live="polite"
+                ></p>
               </div>
 
               <!-- Table Container -->
               <div class="coupon-table-container">
                 <h4 class="coupon-box-title">Configured Coupon Codes</h4>
                 <div id="couponsTableWrap">
-                  <p style="color:var(--kz-sub);">Loading coupons...</p>
+                  <p style="color: var(--kz-sub)">Loading coupons...</p>
                 </div>
               </div>
-
             </div>
           </section>
         </div>
@@ -598,7 +1727,13 @@
     <!-- Document Modal Preview -->
     <div id="docModal" class="modal admin-modal" hidden>
       <div class="card admin-inspect-modal-card">
-        <button id="closeDocModal" class="admin-inspect-close" aria-label="Close modal">&times;</button>
+        <button
+          id="closeDocModal"
+          class="admin-inspect-close"
+          aria-label="Close modal"
+        >
+          &times;
+        </button>
         <div class="admin-inspect-header">
           <span class="admin-inspect-eyebrow">IDENTITY VERIFICATION AUDIT</span>
           <h2 id="modalTitle" class="admin-inspect-title">Document Preview</h2>
@@ -619,10 +1754,18 @@
         </div>
         <div class="admin-inspect-actions">
           <div class="admin-inspect-actions__right">
-            <button id="rejectDocBtn" type="button" class="btn admin-btn-reject">
+            <button
+              id="rejectDocBtn"
+              type="button"
+              class="btn admin-btn-reject"
+            >
               Reject Document
             </button>
-            <button id="approveDocBtn" type="button" class="btn admin-btn-approve">
+            <button
+              id="approveDocBtn"
+              type="button"
+              class="btn admin-btn-approve"
+            >
               Approve Verification
             </button>
           </div>
@@ -633,26 +1776,60 @@
     <!-- Payment Review Modal -->
     <div id="paymentModal" class="modal admin-modal" hidden>
       <div class="card admin-inspect-modal-card">
-        <button id="closePaymentModal" class="admin-inspect-close" aria-label="Close modal">&times;</button>
+        <button
+          id="closePaymentModal"
+          class="admin-inspect-close"
+          aria-label="Close modal"
+        >
+          &times;
+        </button>
         <div class="admin-inspect-header">
           <span class="admin-inspect-eyebrow">PAYMENT VERIFICATION</span>
-          <h2 id="paymentModalTitle" class="admin-inspect-title">Payment Review</h2>
+          <h2 id="paymentModalTitle" class="admin-inspect-title">
+            Payment Review
+          </h2>
         </div>
         <div id="paymentModalBody" class="admin-payment-modal-body"></div>
         <div class="admin-inspect-actions">
-          <div class="admin-inspect-actions__left" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-            <button id="paymentModalInvoiceBtn" type="button" class="btn btn-outline" style="font-size:0.85rem;padding:7px 14px;display:none;">
+          <div
+            class="admin-inspect-actions__left"
+            style="
+              display: flex;
+              gap: 8px;
+              align-items: center;
+              flex-wrap: wrap;
+            "
+          >
+            <button
+              id="paymentModalInvoiceBtn"
+              type="button"
+              class="btn btn-outline"
+              style="font-size: 0.85rem; padding: 7px 14px; display: none"
+            >
               <i class="ri-file-text-line"></i> Manage Invoice
             </button>
-            <button id="paymentModalEditBtn" type="button" class="btn btn-outline" style="font-size:0.85rem;padding:7px 14px;display:none;">
+            <button
+              id="paymentModalEditBtn"
+              type="button"
+              class="btn btn-outline"
+              style="font-size: 0.85rem; padding: 7px 14px; display: none"
+            >
               <i class="ri-edit-line"></i> Edit Booking
             </button>
           </div>
           <div class="admin-inspect-actions__right">
-            <button id="rejectPaymentBtn" type="button" class="btn admin-btn-reject">
+            <button
+              id="rejectPaymentBtn"
+              type="button"
+              class="btn admin-btn-reject"
+            >
               Reject Payment
             </button>
-            <button id="approvePaymentBtn" type="button" class="btn admin-btn-approve">
+            <button
+              id="approvePaymentBtn"
+              type="button"
+              class="btn admin-btn-approve"
+            >
               Approve &amp; Confirm Booking
             </button>
           </div>
@@ -714,10 +1891,13 @@
 
         <div id="returnItemsList"></div>
 
-        <div class="return-upload" style="margin-top:16px;">
+        <div class="return-upload" style="margin-top: 16px">
           <div class="return-upload__head">
             <span>Return photos</span>
-            <p>Upload clear photos of the vehicle condition after the return inspection.</p>
+            <p>
+              Upload clear photos of the vehicle condition after the return
+              inspection.
+            </p>
           </div>
           <input
             id="returnInspectionPhotos"
@@ -725,7 +1905,10 @@
             accept="image/jpeg,image/png,image/webp"
             multiple
           />
-          <div id="returnInspectionPreview" class="return-upload__preview"></div>
+          <div
+            id="returnInspectionPreview"
+            class="return-upload__preview"
+          ></div>
           <p id="returnInspectionStatus" class="return-upload__status"></p>
         </div>
 
@@ -786,107 +1969,617 @@
 
     <!-- INVOICE EDIT & SEND MODAL -->
     <div id="adminInvoiceModal" class="modal admin-modal" hidden>
-      <div class="card admin-inspect-modal-card" style="max-width: 820px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 28px 32px; background: #0b111a; border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; box-shadow: 0 24px 80px rgba(0,0,0,0.8);">
-        <button id="closeAdminInvoiceModal" class="admin-inspect-close" aria-label="Close modal">&times;</button>
-        
+      <div
+        class="card admin-inspect-modal-card"
+        style="
+          max-width: 820px;
+          width: 95%;
+          max-height: 90vh;
+          overflow-y: auto;
+          padding: 28px 32px;
+          background: #0b111a;
+          border: 1px solid rgba(255, 255, 255, 0.12);
+          border-radius: 20px;
+          box-shadow: 0 24px 80px rgba(0, 0, 0, 0.8);
+        "
+      >
+        <button
+          id="closeAdminInvoiceModal"
+          class="admin-inspect-close"
+          aria-label="Close modal"
+        >
+          &times;
+        </button>
+
         <!-- Header with safe right padding for close button -->
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 14px; margin-bottom: 18px; padding-right: 48px;">
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+            padding-right: 48px;
+          "
+        >
           <div>
-            <h2 id="adminInvoiceModalTitle" class="admin-inspect-title" style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #fff;">Edit Invoice</h2>
-            <div id="adminInvoiceModalNumber" style="color: var(--kz-accent, #4fd7ff); font-weight: 700; font-size: 0.95rem; margin-top: 2px;"></div>
+            <h2
+              id="adminInvoiceModalTitle"
+              class="admin-inspect-title"
+              style="
+                margin: 0;
+                font-size: 1.4rem;
+                font-weight: 800;
+                color: #fff;
+              "
+            >
+              Edit Invoice
+            </h2>
+            <div
+              id="adminInvoiceModalNumber"
+              style="
+                color: var(--kz-accent, #4fd7ff);
+                font-weight: 700;
+                font-size: 0.95rem;
+                margin-top: 2px;
+              "
+            ></div>
           </div>
-          <span id="adminInvoiceStatusBadge" class="status-badge status-badge--verified" style="font-size: 0.78rem; padding: 4px 12px; font-weight: 800; letter-spacing: 0.05em;">ISSUED</span>
+          <span
+            id="adminInvoiceStatusBadge"
+            class="status-badge status-badge--verified"
+            style="
+              font-size: 0.78rem;
+              padding: 4px 12px;
+              font-weight: 800;
+              letter-spacing: 0.05em;
+            "
+            >ISSUED</span
+          >
         </div>
 
-        <div id="adminInvoiceModalStatus" class="form-status" style="margin-bottom: 16px;"></div>
+        <div
+          id="adminInvoiceModalStatus"
+          class="form-status"
+          style="margin-bottom: 16px"
+        ></div>
 
-        <form id="adminInvoiceForm" style="display: flex; flex-direction: column; gap: 16px;">
+        <form
+          id="adminInvoiceForm"
+          style="display: flex; flex-direction: column; gap: 16px"
+        >
           <!-- Customer & Vehicle Info Section -->
-          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px;">
-            <h4 style="margin: 0 0 12px; font-size: 0.82rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em;">Customer &amp; Vehicle Information</h4>
-            
-            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 12px;">
-              <div class="form-group" style="margin: 0;">
-                <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Customer Name</label>
-                <input type="text" id="adminInvCustomerName" class="form-input" required style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+          <div
+            style="
+              background: rgba(255, 255, 255, 0.02);
+              border: 1px solid rgba(255, 255, 255, 0.06);
+              border-radius: 12px;
+              padding: 16px;
+            "
+          >
+            <h4
+              style="
+                margin: 0 0 12px;
+                font-size: 0.82rem;
+                font-weight: 800;
+                color: #94a3b8;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+              "
+            >
+              Customer &amp; Vehicle Information
+            </h4>
+
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 14px;
+                margin-bottom: 12px;
+              "
+            >
+              <div class="form-group" style="margin: 0">
+                <label
+                  style="
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    display: block;
+                    margin-bottom: 6px;
+                  "
+                  >Customer Name</label
+                >
+                <input
+                  type="text"
+                  id="adminInvCustomerName"
+                  class="form-input"
+                  required
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 10px 12px;
+                    font-size: 0.88rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
-              <div class="form-group" style="margin: 0;">
-                <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Customer Email (Recipient)</label>
-                <input type="email" id="adminInvCustomerEmail" class="form-input" required style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              <div class="form-group" style="margin: 0">
+                <label
+                  style="
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    display: block;
+                    margin-bottom: 6px;
+                  "
+                  >Customer Email (Recipient)</label
+                >
+                <input
+                  type="email"
+                  id="adminInvCustomerEmail"
+                  class="form-input"
+                  required
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 10px 12px;
+                    font-size: 0.88rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px;">
-              <div class="form-group" style="margin: 0;">
-                <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Vehicle Name</label>
-                <input type="text" id="adminInvVehicleName" class="form-input" required style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 14px;
+              "
+            >
+              <div class="form-group" style="margin: 0">
+                <label
+                  style="
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    display: block;
+                    margin-bottom: 6px;
+                  "
+                  >Vehicle Name</label
+                >
+                <input
+                  type="text"
+                  id="adminInvVehicleName"
+                  class="form-input"
+                  required
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 10px 12px;
+                    font-size: 0.88rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
-              <div class="form-group" style="margin: 0;">
-                <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Registration No.</label>
-                <input type="text" id="adminInvVehicleReg" class="form-input" placeholder="e.g. MH04AB1234" style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              <div class="form-group" style="margin: 0">
+                <label
+                  style="
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                    display: block;
+                    margin-bottom: 6px;
+                  "
+                  >Registration No.</label
+                >
+                <input
+                  type="text"
+                  id="adminInvVehicleReg"
+                  class="form-input"
+                  placeholder="e.g. MH04AB1234"
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 10px 12px;
+                    font-size: 0.88rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
             </div>
           </div>
 
           <!-- Charges Grid Section -->
-          <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; padding: 16px;">
-            <h4 style="margin: 0 0 12px; font-size: 0.82rem; font-weight: 800; color: var(--kz-accent, #4fd7ff); text-transform: uppercase; letter-spacing: 0.06em;">Charges &amp; Line Items (₹)</h4>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(135px, 1fr)); gap: 12px;">
-              <div class="form-group" style="margin: 0; min-width: 0;">
-                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Base Rental (₹)</label>
-                <input type="number" id="adminInvRental" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+          <div
+            style="
+              background: rgba(255, 255, 255, 0.02);
+              border: 1px solid rgba(255, 255, 255, 0.06);
+              border-radius: 12px;
+              padding: 16px;
+            "
+          >
+            <h4
+              style="
+                margin: 0 0 12px;
+                font-size: 0.82rem;
+                font-weight: 800;
+                color: var(--kz-accent, #4fd7ff);
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+              "
+            >
+              Charges &amp; Line Items (₹)
+            </h4>
+
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+                gap: 12px;
+              "
+            >
+              <div class="form-group" style="margin: 0; min-width: 0">
+                <label
+                  style="
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    display: block;
+                    margin-bottom: 5px;
+                    white-space: nowrap;
+                  "
+                  >Base Rental (₹)</label
+                >
+                <input
+                  type="number"
+                  id="adminInvRental"
+                  class="form-input inv-calc-field"
+                  min="0"
+                  step="1"
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 9px 12px;
+                    font-size: 0.88rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
-              <div class="form-group" style="margin: 0; min-width: 0;">
-                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Driver Fee (₹)</label>
-                <input type="number" id="adminInvDriver" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              <div class="form-group" style="margin: 0; min-width: 0">
+                <label
+                  style="
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    display: block;
+                    margin-bottom: 5px;
+                    white-space: nowrap;
+                  "
+                  >Driver Fee (₹)</label
+                >
+                <input
+                  type="number"
+                  id="adminInvDriver"
+                  class="form-input inv-calc-field"
+                  min="0"
+                  step="1"
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 9px 12px;
+                    font-size: 0.88rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
-              <div class="form-group" style="margin: 0; min-width: 0;">
-                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Extra KM (₹)</label>
-                <input type="number" id="adminInvExtraKm" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              <div class="form-group" style="margin: 0; min-width: 0">
+                <label
+                  style="
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    display: block;
+                    margin-bottom: 5px;
+                    white-space: nowrap;
+                  "
+                  >Extra KM (₹)</label
+                >
+                <input
+                  type="number"
+                  id="adminInvExtraKm"
+                  class="form-input inv-calc-field"
+                  min="0"
+                  step="1"
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 9px 12px;
+                    font-size: 0.88rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
-              <div class="form-group" style="margin: 0; min-width: 0;">
-                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Late Fee (₹)</label>
-                <input type="number" id="adminInvLateFee" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              <div class="form-group" style="margin: 0; min-width: 0">
+                <label
+                  style="
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    display: block;
+                    margin-bottom: 5px;
+                    white-space: nowrap;
+                  "
+                  >Late Fee (₹)</label
+                >
+                <input
+                  type="number"
+                  id="adminInvLateFee"
+                  class="form-input inv-calc-field"
+                  min="0"
+                  step="1"
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 9px 12px;
+                    font-size: 0.88rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
-              <div class="form-group" style="margin: 0; min-width: 0;">
-                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Fuel / Toll (₹)</label>
-                <input type="number" id="adminInvFuel" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              <div class="form-group" style="margin: 0; min-width: 0">
+                <label
+                  style="
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    display: block;
+                    margin-bottom: 5px;
+                    white-space: nowrap;
+                  "
+                  >Fuel / Toll (₹)</label
+                >
+                <input
+                  type="number"
+                  id="adminInvFuel"
+                  class="form-input inv-calc-field"
+                  min="0"
+                  step="1"
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 9px 12px;
+                    font-size: 0.88rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
-              <div class="form-group" style="margin: 0; min-width: 0;">
-                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Damage / Clean (₹)</label>
-                <input type="number" id="adminInvDamage" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              <div class="form-group" style="margin: 0; min-width: 0">
+                <label
+                  style="
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    display: block;
+                    margin-bottom: 5px;
+                    white-space: nowrap;
+                  "
+                  >Damage / Clean (₹)</label
+                >
+                <input
+                  type="number"
+                  id="adminInvDamage"
+                  class="form-input inv-calc-field"
+                  min="0"
+                  step="1"
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 9px 12px;
+                    font-size: 0.88rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
-              <div class="form-group" style="margin: 0; min-width: 0;">
-                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Discount (-₹)</label>
-                <input type="number" id="adminInvDiscount" class="form-input inv-calc-field" min="0" step="1" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              <div class="form-group" style="margin: 0; min-width: 0">
+                <label
+                  style="
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    display: block;
+                    margin-bottom: 5px;
+                    white-space: nowrap;
+                  "
+                  >Discount (-₹)</label
+                >
+                <input
+                  type="number"
+                  id="adminInvDiscount"
+                  class="form-input inv-calc-field"
+                  min="0"
+                  step="1"
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 9px 12px;
+                    font-size: 0.88rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
-              <div class="form-group" style="margin: 0; min-width: 0;">
-                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; display: block; margin-bottom: 5px; white-space: nowrap;">Tax Rate (%)</label>
-                <input type="number" id="adminInvTaxRate" class="form-input inv-calc-field" min="0" max="100" step="0.5" style="width: 100%; box-sizing: border-box; padding: 9px 12px; font-size: 0.88rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              <div class="form-group" style="margin: 0; min-width: 0">
+                <label
+                  style="
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    display: block;
+                    margin-bottom: 5px;
+                    white-space: nowrap;
+                  "
+                  >Tax Rate (%)</label
+                >
+                <input
+                  type="number"
+                  id="adminInvTaxRate"
+                  class="form-input inv-calc-field"
+                  min="0"
+                  max="100"
+                  step="0.5"
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 9px 12px;
+                    font-size: 0.88rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
             </div>
           </div>
 
           <!-- Payment Collection & Full Settlement Section -->
-          <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 16px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
-              <h4 style="margin: 0; font-size: 0.82rem; font-weight: 800; color: var(--kz-accent, #4fd7ff); text-transform: uppercase; letter-spacing: 0.06em;">Payment Collection &amp; Settlement</h4>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                <input type="checkbox" id="adminInvFullPaidCheck" style="width: 17px; height: 17px; cursor: pointer; accent-color: #06d6a0;" />
-                <label for="adminInvFullPaidCheck" style="cursor: pointer; font-size: 0.85rem; font-weight: 700; color: #34d399; margin: 0;">
+          <div
+            style="
+              background: rgba(255, 255, 255, 0.02);
+              border: 1px solid rgba(255, 255, 255, 0.06);
+              border-radius: 12px;
+              padding: 16px;
+            "
+          >
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 12px;
+                flex-wrap: wrap;
+                gap: 8px;
+              "
+            >
+              <h4
+                style="
+                  margin: 0;
+                  font-size: 0.82rem;
+                  font-weight: 800;
+                  color: var(--kz-accent, #4fd7ff);
+                  text-transform: uppercase;
+                  letter-spacing: 0.06em;
+                "
+              >
+                Payment Collection &amp; Settlement
+              </h4>
+              <div style="display: flex; align-items: center; gap: 8px">
+                <input
+                  type="checkbox"
+                  id="adminInvFullPaidCheck"
+                  style="
+                    width: 17px;
+                    height: 17px;
+                    cursor: pointer;
+                    accent-color: #06d6a0;
+                  "
+                />
+                <label
+                  for="adminInvFullPaidCheck"
+                  style="
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                    font-weight: 700;
+                    color: #34d399;
+                    margin: 0;
+                  "
+                >
                   Mark 100% Full Paid (Balance ₹0)
                 </label>
               </div>
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
-              <div class="form-group" style="margin: 0; min-width: 0;">
-                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 5px;">Payment Mode</label>
-                <select id="adminInvPaymentMode" class="form-input" style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.85rem; background: #0d1520; color: #fff; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; cursor: pointer;">
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 12px;
+              "
+            >
+              <div class="form-group" style="margin: 0; min-width: 0">
+                <label
+                  style="
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    text-transform: uppercase;
+                    display: block;
+                    margin-bottom: 5px;
+                  "
+                  >Payment Mode</label
+                >
+                <select
+                  id="adminInvPaymentMode"
+                  class="form-input"
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 10px 12px;
+                    font-size: 0.85rem;
+                    background: #0d1520;
+                    color: #fff;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    cursor: pointer;
+                  "
+                >
                   <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
                   <option value="Cash">Cash at Pickup / Executive</option>
-                  <option value="Bank Transfer">Bank Transfer / IMPS / NEFT</option>
+                  <option value="Bank Transfer">
+                    Bank Transfer / IMPS / NEFT
+                  </option>
                   <option value="Card/POS">Credit / Debit Card / POS</option>
                   <option value="QR Scan">QR Code Scan</option>
                   <option value="Net Banking">Net Banking</option>
@@ -894,57 +2587,310 @@
                 </select>
               </div>
 
-              <div class="form-group" style="margin: 0; min-width: 0;">
-                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 5px;">Transaction / Reference ID</label>
-                <input type="text" id="adminInvPaymentRef" class="form-input" placeholder="e.g. UPI UTR / Cash Slip #" style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.85rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              <div class="form-group" style="margin: 0; min-width: 0">
+                <label
+                  style="
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    text-transform: uppercase;
+                    display: block;
+                    margin-bottom: 5px;
+                  "
+                  >Transaction / Reference ID</label
+                >
+                <input
+                  type="text"
+                  id="adminInvPaymentRef"
+                  class="form-input"
+                  placeholder="e.g. UPI UTR / Cash Slip #"
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 10px 12px;
+                    font-size: 0.85rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
 
-              <div class="form-group" style="margin: 0; min-width: 0;">
-                <label style="font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; display: block; margin-bottom: 5px;">Amount Paid (₹)</label>
-                <input type="number" id="adminInvAmountPaid" class="form-input inv-calc-field" min="0" step="1" placeholder="₹ Paid" style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.85rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff;" />
+              <div class="form-group" style="margin: 0; min-width: 0">
+                <label
+                  style="
+                    font-size: 0.72rem;
+                    font-weight: 700;
+                    color: #94a3b8;
+                    text-transform: uppercase;
+                    display: block;
+                    margin-bottom: 5px;
+                  "
+                  >Amount Paid (₹)</label
+                >
+                <input
+                  type="number"
+                  id="adminInvAmountPaid"
+                  class="form-input inv-calc-field"
+                  min="0"
+                  step="1"
+                  placeholder="₹ Paid"
+                  style="
+                    width: 100%;
+                    box-sizing: border-box;
+                    padding: 10px 12px;
+                    font-size: 0.85rem;
+                    background: #0d1520;
+                    border: 1px solid rgba(255, 255, 255, 0.12);
+                    border-radius: 8px;
+                    color: #fff;
+                  "
+                />
               </div>
             </div>
           </div>
 
           <!-- Notes -->
-          <div class="form-group" style="margin: 0;">
-            <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 5px;">Invoice Notes (Shown to Customer on PDF)</label>
-            <textarea id="adminInvNotes" class="form-input" rows="2" placeholder="e.g. Verified by Kruizly Admin. Security deposit refundable." style="width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 0.85rem; background: #0d1520; border: 1px solid rgba(255,255,255,0.12); border-radius: 8px; color: #fff; resize: vertical;"></textarea>
+          <div class="form-group" style="margin: 0">
+            <label
+              style="
+                font-size: 0.75rem;
+                font-weight: 700;
+                color: #94a3b8;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+                display: block;
+                margin-bottom: 5px;
+              "
+              >Invoice Notes (Shown to Customer on PDF)</label
+            >
+            <textarea
+              id="adminInvNotes"
+              class="form-input"
+              rows="2"
+              placeholder="e.g. Verified by Kruizly Admin. Security deposit refundable."
+              style="
+                width: 100%;
+                box-sizing: border-box;
+                padding: 10px 12px;
+                font-size: 0.85rem;
+                background: #0d1520;
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 8px;
+                color: #fff;
+                resize: vertical;
+              "
+            ></textarea>
           </div>
 
           <!-- Totals Summary Card (Self-wrapping grid with min-width to avoid number collisions) -->
-          <div style="background: rgba(79, 215, 255, 0.04); border: 1px solid rgba(79, 215, 255, 0.18); border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; text-align: center;">
-            <div style="min-width: 0; padding: 6px;">
-              <div style="font-size: 0.72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase;">Subtotal</div>
-              <strong id="adminInvSubtotal" style="font-size: 0.95rem; color: #fff; display: block; margin-top: 4px; white-space: nowrap;">₹0</strong>
+          <div
+            style="
+              background: rgba(79, 215, 255, 0.04);
+              border: 1px solid rgba(79, 215, 255, 0.18);
+              border-radius: 12px;
+              padding: 14px 16px;
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+              gap: 10px;
+              text-align: center;
+            "
+          >
+            <div style="min-width: 0; padding: 6px">
+              <div
+                style="
+                  font-size: 0.72rem;
+                  font-weight: 600;
+                  color: #94a3b8;
+                  text-transform: uppercase;
+                "
+              >
+                Subtotal
+              </div>
+              <strong
+                id="adminInvSubtotal"
+                style="
+                  font-size: 0.95rem;
+                  color: #fff;
+                  display: block;
+                  margin-top: 4px;
+                  white-space: nowrap;
+                "
+                >₹0</strong
+              >
             </div>
-            <div style="min-width: 0; padding: 6px;">
-              <div style="font-size: 0.72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase;">Tax</div>
-              <strong id="adminInvTax" style="font-size: 0.95rem; color: #fff; display: block; margin-top: 4px; white-space: nowrap;">₹0</strong>
+            <div style="min-width: 0; padding: 6px">
+              <div
+                style="
+                  font-size: 0.72rem;
+                  font-weight: 600;
+                  color: #94a3b8;
+                  text-transform: uppercase;
+                "
+              >
+                Tax
+              </div>
+              <strong
+                id="adminInvTax"
+                style="
+                  font-size: 0.95rem;
+                  color: #fff;
+                  display: block;
+                  margin-top: 4px;
+                  white-space: nowrap;
+                "
+                >₹0</strong
+              >
             </div>
-            <div style="min-width: 0; padding: 6px; background: rgba(79, 215, 255, 0.08); border-radius: 8px;">
-              <div style="font-size: 0.72rem; font-weight: 700; color: var(--kz-accent, #4fd7ff); text-transform: uppercase;">Grand Total</div>
-              <strong id="adminInvTotal" style="font-size: 1.05rem; font-weight: 800; color: var(--kz-accent, #4fd7ff); display: block; margin-top: 4px; white-space: nowrap;">₹0</strong>
+            <div
+              style="
+                min-width: 0;
+                padding: 6px;
+                background: rgba(79, 215, 255, 0.08);
+                border-radius: 8px;
+              "
+            >
+              <div
+                style="
+                  font-size: 0.72rem;
+                  font-weight: 700;
+                  color: var(--kz-accent, #4fd7ff);
+                  text-transform: uppercase;
+                "
+              >
+                Grand Total
+              </div>
+              <strong
+                id="adminInvTotal"
+                style="
+                  font-size: 1.05rem;
+                  font-weight: 800;
+                  color: var(--kz-accent, #4fd7ff);
+                  display: block;
+                  margin-top: 4px;
+                  white-space: nowrap;
+                "
+                >₹0</strong
+              >
             </div>
-            <div style="min-width: 0; padding: 6px; background: rgba(52, 211, 153, 0.08); border-radius: 8px;">
-              <div style="font-size: 0.72rem; font-weight: 700; color: #34d399; text-transform: uppercase;">Amount Paid</div>
-              <strong id="adminInvPaid" style="font-size: 1.05rem; font-weight: 700; color: #34d399; display: block; margin-top: 4px; white-space: nowrap;">₹0</strong>
+            <div
+              style="
+                min-width: 0;
+                padding: 6px;
+                background: rgba(52, 211, 153, 0.08);
+                border-radius: 8px;
+              "
+            >
+              <div
+                style="
+                  font-size: 0.72rem;
+                  font-weight: 700;
+                  color: #34d399;
+                  text-transform: uppercase;
+                "
+              >
+                Amount Paid
+              </div>
+              <strong
+                id="adminInvPaid"
+                style="
+                  font-size: 1.05rem;
+                  font-weight: 700;
+                  color: #34d399;
+                  display: block;
+                  margin-top: 4px;
+                  white-space: nowrap;
+                "
+                >₹0</strong
+              >
             </div>
-            <div style="min-width: 0; padding: 6px;">
-              <div style="font-size: 0.72rem; font-weight: 600; color: #94a3b8; text-transform: uppercase;">Balance Due</div>
-              <strong id="adminInvBalance" style="font-size: 0.95rem; font-weight: 700; color: #f87171; display: block; margin-top: 4px; white-space: nowrap;">₹0</strong>
+            <div style="min-width: 0; padding: 6px">
+              <div
+                style="
+                  font-size: 0.72rem;
+                  font-weight: 600;
+                  color: #94a3b8;
+                  text-transform: uppercase;
+                "
+              >
+                Balance Due
+              </div>
+              <strong
+                id="adminInvBalance"
+                style="
+                  font-size: 0.95rem;
+                  font-weight: 700;
+                  color: #f87171;
+                  display: block;
+                  margin-top: 4px;
+                  white-space: nowrap;
+                "
+                >₹0</strong
+              >
             </div>
           </div>
 
           <!-- Modal Action Buttons Toolbar -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-top: 6px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.08); width: 100%;">
-            <button type="button" id="adminInvPreviewBtn" class="btn btn-secondary" style="width: 100%; justify-content: center; padding: 11px 16px; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
+          <div
+            style="
+              display: grid;
+              grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+              gap: 10px;
+              margin-top: 6px;
+              padding-top: 12px;
+              border-top: 1px solid rgba(255, 255, 255, 0.08);
+              width: 100%;
+            "
+          >
+            <button
+              type="button"
+              id="adminInvPreviewBtn"
+              class="btn btn-secondary"
+              style="
+                width: 100%;
+                justify-content: center;
+                padding: 11px 16px;
+                font-size: 0.88rem;
+                font-weight: 600;
+                border-radius: 8px;
+              "
+            >
               📄 Preview PDF
             </button>
-            <button type="button" id="adminInvSaveBtn" class="btn btn-secondary" style="width: 100%; justify-content: center; padding: 11px 16px; font-size: 0.88rem; font-weight: 600; border-radius: 8px;">
+            <button
+              type="button"
+              id="adminInvSaveBtn"
+              class="btn btn-secondary"
+              style="
+                width: 100%;
+                justify-content: center;
+                padding: 11px 16px;
+                font-size: 0.88rem;
+                font-weight: 600;
+                border-radius: 8px;
+              "
+            >
               💾 Save Changes
             </button>
-            <button type="button" id="adminInvSendBtn" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 11px 20px; font-size: 0.88rem; font-weight: 700; border-radius: 8px; background: linear-gradient(135deg, #0b6cff, #4fd7ff); color: #fff; border: none; cursor: pointer; box-shadow: 0 4px 14px rgba(11, 108, 255, 0.4);">
+            <button
+              type="button"
+              id="adminInvSendBtn"
+              class="btn btn-primary"
+              style="
+                width: 100%;
+                justify-content: center;
+                padding: 11px 20px;
+                font-size: 0.88rem;
+                font-weight: 700;
+                border-radius: 8px;
+                background: linear-gradient(135deg, #0b6cff, #4fd7ff);
+                color: #fff;
+                border: none;
+                cursor: pointer;
+                box-shadow: 0 4px 14px rgba(11, 108, 255, 0.4);
+              "
+            >
               ✉️ Send to Customer Email
             </button>
           </div>
@@ -952,85 +2898,55 @@
       </div>
     </div>
 
-    <!-- Edit KPI Metrics Modal -->
-    <div id="editKpiModal" class="modal admin-modal" hidden>
-      <div class="card admin-inspect-modal-card" style="max-width: 620px; width: 95%; max-height: 90vh; overflow-y: auto; padding: 28px 32px; background: #0b111a; border: 1px solid rgba(255,255,255,0.12); border-radius: 20px; box-shadow: 0 24px 80px rgba(0,0,0,0.8);">
-        <button id="closeEditKpiModal" class="admin-inspect-close" aria-label="Close modal">&times;</button>
-        <div style="margin-bottom: 20px;">
-          <h2 class="admin-inspect-title" style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #fff;">Edit KPI Metrics &amp; Values</h2>
-          <p style="color: var(--kr-text-secondary, #8b949e); font-size: 0.88rem; margin-top: 4px; line-height: 1.4;">
-            Customized numbers saved here reflect across <strong>Admin Control Center</strong>, <strong>Manager Summary</strong>, and <strong>Executive Operations</strong>.
-          </p>
-        </div>
-
-        <form id="editKpiForm" style="display: flex; flex-direction: column; gap: 16px;">
-          <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(255,255,255,0.04); border-radius: 10px; border: 1px solid rgba(255,255,255,0.08);">
-            <div>
-              <strong style="color: #fff; display: block; font-size: 14px;">Enable Custom KPI Override</strong>
-              <span style="color: #8b949e; font-size: 12px;">Toggle on to use your custom values instead of live database counts.</span>
-            </div>
-            <input type="checkbox" id="kpiOverrideToggle" style="width: 20px; height: 20px; accent-color: var(--accent, #ffd166); cursor: pointer;">
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-            <div class="form-group">
-              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Total Users</label>
-              <input type="number" id="kpiInputTotalUsers" class="form-input" placeholder="e.g. 117" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
-            </div>
-            <div class="form-group">
-              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Total Bookings</label>
-              <input type="number" id="kpiInputTotalBookings" class="form-input" placeholder="e.g. 125" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
-            </div>
-            <div class="form-group">
-              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Pending Document Reviews</label>
-              <input type="number" id="kpiInputPendingDocs" class="form-input" placeholder="e.g. 11" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
-            </div>
-            <div class="form-group">
-              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Awaiting Payment Verification</label>
-              <input type="number" id="kpiInputPendingPayments" class="form-input" placeholder="e.g. 0" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
-            </div>
-            <div class="form-group">
-              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Total Revenue (Verified) (₹)</label>
-              <input type="number" id="kpiInputTotalRevenue" class="form-input" placeholder="e.g. 450000" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
-            </div>
-            <div class="form-group">
-              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Revenue This Month (₹)</label>
-              <input type="number" id="kpiInputMonthRevenue" class="form-input" placeholder="e.g. 120000" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
-            </div>
-            <div class="form-group">
-              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Paid Bookings</label>
-              <input type="number" id="kpiInputPaidBookings" class="form-input" placeholder="e.g. 88" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
-            </div>
-            <div class="form-group">
-              <label class="form-label" style="font-size: 12px; color: #ccc; display: block; margin-bottom: 4px;">Avg. Verified Booking Value (₹)</label>
-              <input type="number" id="kpiInputAvgBooking" class="form-input" placeholder="e.g. 5113" style="background:#131d2a; border:1px solid #2d3b4e; color:#fff; border-radius:8px; padding:10px; width:100%; box-sizing:border-box;">
-            </div>
-          </div>
-
-          <div id="kpiStatusMsg" style="display:none; padding:10px; border-radius:8px; font-size:13px;"></div>
-
-          <div style="display: flex; gap: 12px; justify-content: flex-end; margin-top: 10px; flex-wrap: wrap;">
-            <button type="button" id="kpiResetLiveBtn" class="btn btn-outline" style="border-color: rgba(255,255,255,0.2); padding: 8px 16px;">Reset to Live Calculation</button>
-            <button type="submit" id="kpiSaveBtn" class="btn btn-primary" style="background: var(--accent, #ffd166); color: #000; font-weight: 700; padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer;">Save &amp; Sync Panels</button>
-          </div>
-        </form>
-      </div>
-    </div>
-
     <!-- MODAL: DAY BOOKINGS SCHEDULE / SHOW MORE (CALENDAR) -->
     <div id="adminDayBookingsModal" class="modal admin-modal" hidden>
-      <div class="card admin-inspect-modal-card" style="max-width: 760px;">
-        <button id="closeAdminDayBookingsModal" class="admin-inspect-close" aria-label="Close modal">&times;</button>
+      <div class="card admin-inspect-modal-card" style="max-width: 760px">
+        <button
+          id="closeAdminDayBookingsModal"
+          class="admin-inspect-close"
+          aria-label="Close modal"
+        >
+          &times;
+        </button>
         <div class="admin-inspect-header">
           <span class="admin-inspect-eyebrow">DAILY TIMELINE SCHEDULE</span>
-          <h2 id="adminDayBookingsTitle" class="admin-inspect-title">Bookings on Date</h2>
+          <h2 id="adminDayBookingsTitle" class="admin-inspect-title">
+            Bookings on Date
+          </h2>
         </div>
-        <div id="adminDayBookingsList" style="display: flex; flex-direction: column; gap: 12px; margin: 16px 0; max-height: 65vh; overflow-y: auto; padding-right: 4px;">
+        <div
+          id="adminDayBookingsList"
+          style="
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 16px 0;
+            max-height: 65vh;
+            overflow-y: auto;
+            padding-right: 4px;
+          "
+        >
           <!-- Generated by JS -->
         </div>
-        <div class="admin-inspect-actions" style="padding-top: 14px;">
-          <button type="button" id="adminDayAddBookingBtn" class="btn btn-primary" style="width: 100%; justify-content: center;">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" style="margin-right:6px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <div class="admin-inspect-actions" style="padding-top: 14px">
+          <button
+            type="button"
+            id="adminDayAddBookingBtn"
+            class="btn btn-primary"
+            style="width: 100%; justify-content: center"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="16"
+              height="16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              style="margin-right: 6px"
+            >
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
             + Add New Booking for this Day
           </button>
         </div>
@@ -1039,49 +2955,109 @@
 
     <!-- MODAL: ADD / CREATE BOOKING (CALENDAR & ADMIN) -->
     <div id="adminAddBookingModal" class="modal admin-modal" hidden>
-      <div class="card admin-inspect-modal-card" style="max-width: 600px;">
-        <button id="closeAdminAddBookingModal" class="admin-inspect-close" aria-label="Close modal">&times;</button>
+      <div class="card admin-inspect-modal-card" style="max-width: 600px">
+        <button
+          id="closeAdminAddBookingModal"
+          class="admin-inspect-close"
+          aria-label="Close modal"
+        >
+          &times;
+        </button>
         <div class="admin-inspect-header">
           <span class="admin-inspect-eyebrow">ADMIN OPERATIONS</span>
           <h2 class="admin-inspect-title">Add / Schedule New Booking</h2>
         </div>
-        <form id="adminAddBookingForm" style="display: grid; gap: 14px; margin-top: 14px;">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+        <form
+          id="adminAddBookingForm"
+          style="display: grid; gap: 14px; margin-top: 14px"
+        >
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            class="cal-form-row-2"
+          >
             <div class="form-group">
-              <label class="form-label" for="addBkCustomerName">Customer Full Name *</label>
-              <input type="text" id="addBkCustomerName" class="kr-clean-input" placeholder="e.g. Rahul Sharma" required />
+              <label class="form-label" for="addBkCustomerName"
+                >Customer Full Name *</label
+              >
+              <input
+                type="text"
+                id="addBkCustomerName"
+                class="kr-clean-input"
+                placeholder="e.g. Rahul Sharma"
+                required
+              />
             </div>
             <div class="form-group">
-              <label class="form-label" for="addBkCustomerPhone">Phone Number *</label>
-              <input type="tel" id="addBkCustomerPhone" class="kr-clean-input" placeholder="e.g. 9876543210" required />
+              <label class="form-label" for="addBkCustomerPhone"
+                >Phone Number *</label
+              >
+              <input
+                type="tel"
+                id="addBkCustomerPhone"
+                class="kr-clean-input"
+                placeholder="e.g. 9876543210"
+                required
+              />
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            class="cal-form-row-2"
+          >
             <div class="form-group">
-              <label class="form-label" for="addBkCustomerEmail">Customer Email</label>
-              <input type="email" id="addBkCustomerEmail" class="kr-clean-input" placeholder="customer@gmail.com" />
+              <label class="form-label" for="addBkCustomerEmail"
+                >Customer Email</label
+              >
+              <input
+                type="email"
+                id="addBkCustomerEmail"
+                class="kr-clean-input"
+                placeholder="customer@gmail.com"
+              />
             </div>
             <div class="form-group">
-              <label class="form-label" for="addBkVehicleSelect">Select Vehicle *</label>
+              <label class="form-label" for="addBkVehicleSelect"
+                >Select Vehicle *</label
+              >
               <select id="addBkVehicleSelect" class="kr-clean-input" required>
                 <option value="">Loading fleet vehicles...</option>
               </select>
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            class="cal-form-row-2"
+          >
             <div class="form-group">
-              <label class="form-label" for="addBkPickupDate">Pickup Date &amp; Time *</label>
-              <input type="datetime-local" id="addBkPickupDate" class="kr-clean-input" required />
+              <label class="form-label" for="addBkPickupDate"
+                >Pickup Date &amp; Time *</label
+              >
+              <input
+                type="datetime-local"
+                id="addBkPickupDate"
+                class="kr-clean-input"
+                required
+              />
             </div>
             <div class="form-group">
-              <label class="form-label" for="addBkReturnDate">Return Date &amp; Time *</label>
-              <input type="datetime-local" id="addBkReturnDate" class="kr-clean-input" required />
+              <label class="form-label" for="addBkReturnDate"
+                >Return Date &amp; Time *</label
+              >
+              <input
+                type="datetime-local"
+                id="addBkReturnDate"
+                class="kr-clean-input"
+                required
+              />
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            class="cal-form-row-2"
+          >
             <div class="form-group">
               <label class="form-label" for="addBkStatus">Booking Status</label>
               <select id="addBkStatus" class="kr-clean-input">
@@ -1092,20 +3068,50 @@
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label" for="addBkTotalAmount">Total Amount (₹) *</label>
-              <input type="number" id="addBkTotalAmount" class="kr-clean-input" placeholder="e.g. 8500" required />
+              <label class="form-label" for="addBkTotalAmount"
+                >Total Amount (₹) *</label
+              >
+              <input
+                type="number"
+                id="addBkTotalAmount"
+                class="kr-clean-input"
+                placeholder="e.g. 8500"
+                required
+              />
             </div>
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="addBkNotes">Notes / Location / Pickup Details</label>
-            <input type="text" id="addBkNotes" class="kr-clean-input" placeholder="e.g. Airport delivery / Self pickup Ghansoli" />
+            <label class="form-label" for="addBkNotes"
+              >Notes / Location / Pickup Details</label
+            >
+            <input
+              type="text"
+              id="addBkNotes"
+              class="kr-clean-input"
+              placeholder="e.g. Airport delivery / Self pickup Ghansoli"
+            />
           </div>
 
-          <div class="admin-inspect-actions" style="margin-top: 10px;">
-            <div class="admin-inspect-actions__right" style="width: 100%; justify-content: flex-end;">
-              <button type="button" id="cancelAddBookingBtn" class="btn btn-outline">Cancel</button>
-              <button type="submit" id="saveAddBookingBtn" class="btn admin-btn-approve">Create Booking</button>
+          <div class="admin-inspect-actions" style="margin-top: 10px">
+            <div
+              class="admin-inspect-actions__right"
+              style="width: 100%; justify-content: flex-end"
+            >
+              <button
+                type="button"
+                id="cancelAddBookingBtn"
+                class="btn btn-outline"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                id="saveAddBookingBtn"
+                class="btn admin-btn-approve"
+              >
+                Create Booking
+              </button>
             </div>
           </div>
         </form>
@@ -1114,53 +3120,111 @@
 
     <!-- MODAL: EDIT / MANAGE BOOKING (CALENDAR & ADMIN) -->
     <div id="adminEditBookingModal" class="modal admin-modal" hidden>
-      <div class="card admin-inspect-modal-card" style="max-width: 620px;">
-        <button id="closeAdminEditBookingModal" class="admin-inspect-close" aria-label="Close modal">&times;</button>
+      <div class="card admin-inspect-modal-card" style="max-width: 620px">
+        <button
+          id="closeAdminEditBookingModal"
+          class="admin-inspect-close"
+          aria-label="Close modal"
+        >
+          &times;
+        </button>
         <div class="admin-inspect-header">
-          <span class="admin-inspect-eyebrow">BOOKING DETAILS &amp; MANAGEMENT</span>
-          <h2 id="adminEditBookingTitle" class="admin-inspect-title">Edit Booking</h2>
+          <span class="admin-inspect-eyebrow"
+            >BOOKING DETAILS &amp; MANAGEMENT</span
+          >
+          <h2 id="adminEditBookingTitle" class="admin-inspect-title">
+            Edit Booking
+          </h2>
         </div>
-        <form id="adminEditBookingForm" style="display: grid; gap: 14px; margin-top: 14px;">
+        <form
+          id="adminEditBookingForm"
+          style="display: grid; gap: 14px; margin-top: 14px"
+        >
           <input type="hidden" id="editBkId" />
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            class="cal-form-row-2"
+          >
             <div class="form-group">
-              <label class="form-label" for="editBkCustomerName">Customer Name</label>
-              <input type="text" id="editBkCustomerName" class="kr-clean-input" required />
+              <label class="form-label" for="editBkCustomerName"
+                >Customer Name</label
+              >
+              <input
+                type="text"
+                id="editBkCustomerName"
+                class="kr-clean-input"
+                required
+              />
             </div>
             <div class="form-group">
               <label class="form-label" for="editBkCustomerPhone">Phone</label>
-              <input type="tel" id="editBkCustomerPhone" class="kr-clean-input" />
+              <input
+                type="tel"
+                id="editBkCustomerPhone"
+                class="kr-clean-input"
+              />
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            class="cal-form-row-2"
+          >
             <div class="form-group">
               <label class="form-label" for="editBkCustomerEmail">Email</label>
-              <input type="email" id="editBkCustomerEmail" class="kr-clean-input" />
+              <input
+                type="email"
+                id="editBkCustomerEmail"
+                class="kr-clean-input"
+              />
             </div>
             <div class="form-group">
-              <label class="form-label" for="editBkVehicleSelect">Assigned Vehicle</label>
+              <label class="form-label" for="editBkVehicleSelect"
+                >Assigned Vehicle</label
+              >
               <select id="editBkVehicleSelect" class="kr-clean-input">
                 <!-- Populated dynamically -->
               </select>
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            class="cal-form-row-2"
+          >
             <div class="form-group">
-              <label class="form-label" for="editBkPickupDate">Pickup Date &amp; Time</label>
-              <input type="datetime-local" id="editBkPickupDate" class="kr-clean-input" required />
+              <label class="form-label" for="editBkPickupDate"
+                >Pickup Date &amp; Time</label
+              >
+              <input
+                type="datetime-local"
+                id="editBkPickupDate"
+                class="kr-clean-input"
+                required
+              />
             </div>
             <div class="form-group">
-              <label class="form-label" for="editBkReturnDate">Return Date &amp; Time</label>
-              <input type="datetime-local" id="editBkReturnDate" class="kr-clean-input" required />
+              <label class="form-label" for="editBkReturnDate"
+                >Return Date &amp; Time</label
+              >
+              <input
+                type="datetime-local"
+                id="editBkReturnDate"
+                class="kr-clean-input"
+                required
+              />
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="cal-form-row-2">
+          <div
+            style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px"
+            class="cal-form-row-2"
+          >
             <div class="form-group">
-              <label class="form-label" for="editBkStatus">Booking Status</label>
+              <label class="form-label" for="editBkStatus"
+                >Booking Status</label
+              >
               <select id="editBkStatus" class="kr-clean-input">
                 <option value="confirmed">Confirmed</option>
                 <option value="active">Active (In Trip)</option>
@@ -1170,16 +3234,33 @@
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label" for="editBkTotalAmount">Total Amount (₹)</label>
-              <input type="number" id="editBkTotalAmount" class="kr-clean-input" />
+              <label class="form-label" for="editBkTotalAmount"
+                >Total Amount (₹)</label
+              >
+              <input
+                type="number"
+                id="editBkTotalAmount"
+                class="kr-clean-input"
+              />
             </div>
           </div>
 
-          <div class="admin-inspect-actions" style="margin-top: 14px;">
-            <button type="button" id="adminCancelBookingBtn" class="btn admin-btn-reject">Cancel Booking</button>
+          <div class="admin-inspect-actions" style="margin-top: 14px">
+            <button
+              type="button"
+              id="adminCancelBookingBtn"
+              class="btn admin-btn-reject"
+            >
+              Cancel Booking
+            </button>
             <div class="admin-inspect-actions__right">
-              <button type="button" id="adminDeleteBookingBtn" class="btn btn-outline" style="border-color: rgba(239,71,111,0.4); color: #ef476f;">Delete Permanently</button>
-              <button type="submit" id="saveEditBookingBtn" class="btn admin-btn-approve">Save Changes</button>
+              <button
+                type="submit"
+                id="saveEditBookingBtn"
+                class="btn admin-btn-approve"
+              >
+                Save Changes
+              </button>
             </div>
           </div>
         </form>
@@ -1190,7 +3271,9 @@
       <div class="container">
         <div class="footer-grid">
           <div class="footer-brand footer-section">
-            <a href="index.html" class="logo"><img src="images/logo.png" alt="KRUIZLY" class="logo-img" /></a>
+            <a href="index.html" class="logo"
+              ><img src="images/logo.png" alt="KRUIZLY" class="logo-img"
+            /></a>
             <p>
               Premium self-drive rentals across India with trusted, hassle-free
               booking and 24/7 support.
@@ -1221,27 +3304,63 @@
             <h4>Office &amp; Support</h4>
             <div class="footer-contact-items">
               <div class="footer-contact-item">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#4fd7ff"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"
+                  ></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
                 <span>Gavson Business Park, Ghansoli, Navi Mumbai, India</span>
               </div>
               <div class="footer-contact-item">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#4fd7ff"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"
+                  ></path>
                   <polyline points="22,6 12,13 2,6"></polyline>
                 </svg>
                 <a href="mailto:support@kruizly.com">support@kruizly.com</a>
               </div>
               <div class="footer-contact-item">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#4fd7ff"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"
+                  ></path>
                 </svg>
                 <a href="tel:+919167164547">+91 91671 64547</a>
               </div>
             </div>
-                       <div class="contact-social-row">
+            <div class="contact-social-row">
               <a
                 href="https://www.instagram.com/go.kruizly"
                 target="_blank"
@@ -1326,7 +3445,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="js/vehicles.js?v=20260907-v5"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script type="module" src="js/admin.js?v=20260907-v5"></script>
+    <script type="module" src="js/admin.js?v=20260908-v5"></script>
     <script src="js/glass-ui.js?v=20260907-v4"></script>
   </body>
 </html>

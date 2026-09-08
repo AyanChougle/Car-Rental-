@@ -922,7 +922,7 @@ function displayBooking(
 
   if ($("paymentPlanNote")) {
     $("paymentPlanNote").textContent = paymentPlan === "advance"
-      ? `Advance booking fee to lock reservation. Balance of ₹${formatCurrency(remainingBalance)} due at vehicle handover.`
+      ? `Token booking fee to lock reservation. Balance of ₹${formatCurrency(remainingBalance)} due at vehicle handover.`
       : "100% full rental payment.";
   }
 }

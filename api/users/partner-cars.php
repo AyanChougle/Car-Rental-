@@ -56,16 +56,19 @@ if ($method === 'GET') {
         }
     } catch (Throwable $_) {}
 
-    if ($isStaff) {
+    $scope = trim((string)($_GET['scope'] ?? $_GET['all'] ?? ''));
+    $isAdminScope = $isStaff && ($scope === 'all' || $scope === '1' || $scope === 'true');
+
+    if ($isAdminScope) {
         $rows = Database::fetchAll("SELECT * FROM partner_cars ORDER BY created_at DESC");
     } else {
         $uid = trim((string)($user['firebase_uid'] ?? ''));
-        $email = trim((string)($user['email'] ?? ''));
+        $email = strtolower(trim((string)($user['email'] ?? '')));
         $dbId = (int)($user['id'] ?? 0);
         $rows = Database::fetchAll(
             "SELECT * FROM partner_cars 
              WHERE (firebase_uid IS NOT NULL AND firebase_uid != '' AND firebase_uid = ?) 
-                OR (user_email IS NOT NULL AND user_email != '' AND user_email = ?) 
+                OR (user_email IS NOT NULL AND user_email != '' AND LOWER(TRIM(user_email)) = ?) 
                 OR (user_id IS NOT NULL AND user_id > 0 AND user_id = ?) 
              ORDER BY created_at DESC", 
             [$uid, $email, $dbId]
@@ -79,6 +82,33 @@ if ($method === 'GET') {
             if (!is_array($photos)) $photos = [];
         }
         $identifier = !empty($c['car_id']) ? (string)$c['car_id'] : (!empty($c['id']) ? (string)$c['id'] : 'HC-' . ($c['reg_no'] ?? 'TEMP'));
+        $cleanReg = strtoupper(str_replace([' ', '-'], '', (string)$c['reg_no']));
+        $carNamePattern = '%' . trim(($c['brand'] ?? '') . ' ' . ($c['model'] ?? '')) . '%';
+        $totalRevenue = 0.0;
+        $monthRevenue = 0.0;
+        $completedTrips = 0;
+        $totalTrips = 0;
+
+        try {
+            $revData = Database::fetchOne(
+                "SELECT 
+                    COALESCE(SUM(CASE WHEN (status IN ('completed', 'active', 'confirmed', 'in_trip') OR payment_status IN ('paid', 'advance_paid', 'verified')) THEN COALESCE(final_amount, total_amount, base_amount, 0) ELSE 0 END), 0) AS total_revenue,
+                    COALESCE(SUM(CASE WHEN (status IN ('completed', 'active', 'confirmed', 'in_trip') OR payment_status IN ('paid', 'advance_paid', 'verified')) AND created_at >= DATE_FORMAT(NOW(), '%Y-%m-01 00:00:00') THEN COALESCE(final_amount, total_amount, base_amount, 0) ELSE 0 END), 0) AS month_revenue,
+                    COUNT(CASE WHEN status = 'completed' THEN 1 ELSE NULL END) AS completed_trips,
+                    COUNT(CASE WHEN status IN ('completed', 'active', 'confirmed', 'in_trip') THEN 1 ELSE NULL END) AS total_trips
+                 FROM bookings 
+                 WHERE (REPLACE(REPLACE(UPPER(vehicle_reg), ' ', ''), '-', '') = ? AND vehicle_reg != '')
+                    OR (vehicle_name LIKE ? AND vehicle_name != '')",
+                [$cleanReg, $carNamePattern]
+            );
+            if ($revData) {
+                $totalRevenue = (float)($revData['total_revenue'] ?? 0);
+                $monthRevenue = (float)($revData['month_revenue'] ?? 0);
+                $completedTrips = (int)($revData['completed_trips'] ?? 0);
+                $totalTrips = (int)($revData['total_trips'] ?? 0);
+            }
+        } catch (Throwable $_) {}
+
         return [
             'id' => $identifier,
             'carId' => $identifier,
@@ -103,6 +133,10 @@ if ($method === 'GET') {
             'status' => $c['status'],
             'photos' => $photos,
             'rejectionReason' => $c['rejection_reason'],
+            'totalRevenue' => $totalRevenue,
+            'monthRevenue' => $monthRevenue,
+            'completedTrips' => $completedTrips,
+            'totalTrips' => $totalTrips,
             'createdAt' => $c['created_at'],
             'updatedAt' => $c['updated_at']
         ];

@@ -18,7 +18,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 
 import { api } from "./kruizly-api.js?v=20260907-v5";
-import { initDynamicNav } from "./nav-helper.js?v=20260907-v2";
+import { initDynamicNav } from "./nav-helper.js?v=20260908-v5";
 
 // ============================================================
 // STATE & STORAGE
@@ -67,6 +67,13 @@ export function isExecutiveUser(user) {
   if (isAdminUser(user) || isManagerUser(user)) return true;
   const role = String(user.role || "").trim().toLowerCase();
   return role === "executive";
+}
+
+export function isAccountantUser(user) {
+  if (!user) return false;
+  if (isAdminUser(user)) return true;
+  const role = String(user.role || "").trim().toLowerCase();
+  return role === "accountant";
 }
 
 export function getCurrentUser() {

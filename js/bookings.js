@@ -33,17 +33,17 @@ const STATUS_COPY = {
 function paymentStatusLabel(booking) {
   switch (booking.paymentStatus) {
     case "paid":
-      return `Paid • ${booking.paymentRef || ""}`;
+      return `Paid ï¿½ ${booking.paymentRef || ""}`;
     case "advance_paid":
-      return `?${formatCurrency(booking.paymentAmountPaid || booking.paymentAmount || 500)} advance paid — ?${formatCurrency(booking.remainingBalance || 0)} due at pickup`;
+      return `?${formatCurrency(booking.paymentAmountPaid || booking.paymentAmount || 500)} token paid ï¿½ ?${formatCurrency(booking.remainingBalance || 0)} due at pickup`;
     case "pay_at_pickup":
       return "Pay at pickup";
     case "pending_verification":
-      return `Verifying payment • ${booking.paymentRef || ""}`;
+      return `Verifying payment ï¿½ ${booking.paymentRef || ""}`;
     case "refunded":
-      return `Refunded • Booking cancelled`;
+      return `Refunded ï¿½ Booking cancelled`;
     case "rejected":
-      return `Payment rejected${booking.paymentRejectionReason ? ` — ${booking.paymentRejectionReason}` : ""}. Please resubmit.`;
+      return `Payment rejected${booking.paymentRejectionReason ? ` ï¿½ ${booking.paymentRejectionReason}` : ""}. Please resubmit.`;
     default:
       return "Unpaid";
   }

@@ -12,11 +12,11 @@
  */
 
 import { auth } from "./firebase-init.js";
-import { checkAuth, getCurrentUser, setStoredUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260907-v10";
-import { api } from "./kruizly-api.js?v=20260907-v10";
-import "./nav-helper.js";
+import { checkAuth, getCurrentUser, setStoredUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260908-v5";
+import { api } from "./kruizly-api.js?v=20260908-v5";
+import "./nav-helper.js?v=20260908-v5";
 import { formatBookingNumber } from "./booking-reference.js";
-import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260907-v10";
+import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260908-v5";
 
 
 function $(id) {

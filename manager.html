@@ -1,354 +1,746 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en-GB">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Manager Summary | KRUIZLY Business Analytics</title>
-  <meta name="description" content="KRUIZLY manager summary dashboard for read-only business analytics, revenue tracking, and fleet utilization." />
-  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
-  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
-  
-  <link rel="stylesheet" href="css/admin.css?v=20260908-v1" />
-  <link rel="stylesheet" href="css/executive.css?v=20260908-v1" />
-  <link rel="stylesheet" href="css/kruizly-motion.css?v=20260908-v1" />
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Manager Summary | KRUIZLY Business Analytics</title>
+    <meta
+      name="description"
+      content="KRUIZLY manager summary dashboard for read-only business analytics, revenue tracking, and fleet utilization."
+    />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 
-  <!-- Background -->
-  <div class="background-video-wrap" aria-hidden="true">
-    <video autoplay muted loop playsinline preload="auto">
-      <source src="assets/background-video.mp4" type="video/mp4" />
-    </video>
-  </div>
+    <link rel="stylesheet" href="css/components.css?v=20260908-v2" />
+    <link rel="stylesheet" href="css/kruizly-ui.css?v=20260908-v2" />
+    <link rel="stylesheet" href="css/admin.css?v=20260908-v2" />
+    <link rel="stylesheet" href="css/kruizly-motion.css?v=20260908-v2" />
 
-  <!-- Header -->
-  <header class="site-header">
-    <div class="container header-inner">
-      <a href="index.html" class="logo"><img src="images/logo.png" alt="KRUIZLY" class="logo-img" /></a>
-      <button
-        type="button"
-        class="mobile-nav-toggle"
-        id="mobileNavToggle"
-        aria-label="Open navigation menu"
-        aria-controls="mainNav"
-        aria-expanded="false"
-      >
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-      <nav class="nav" id="mainNav" aria-label="Main navigation">
-        <a href="fleet.html">Fleet</a>
-        <a href="about.html">About</a>
-        <a href="contact.html">Contact</a>
-        <a href="partner.html">Host Car</a>
-        <a href="profile.html">Profile</a>
-      </nav>
+    <style>
+      .mgr-subpage-nav {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 24px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      .mgr-tab-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        color: var(--sub, #94a3b8);
+        font-size: 13.5px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        white-space: nowrap;
+      }
+      .mgr-tab-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.22);
+        color: #ffffff;
+      }
+      .mgr-tab-btn.active {
+        background: #06d6a0;
+        border-color: #06d6a0;
+        color: #0b1120;
+        box-shadow: 0 4px 16px rgba(6, 214, 160, 0.35);
+      }
+      .mgr-subpage-section {
+        animation: mgrFadeIn 0.25s ease-out;
+      }
+      @keyframes mgrFadeIn {
+        from { opacity: 0; transform: translateY(6px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Background Video -->
+    <div class="background-video-wrap" aria-hidden="true">
+      <video autoplay muted loop playsinline preload="auto">
+        <source src="assets/background-video.mp4" type="video/mp4" />
+      </video>
     </div>
-  </header>
 
-  <!-- Main Content -->
-  <main class="section staff-page manager-page">
-    <div class="manager-container" style="max-width: 1240px; margin: 0 auto; padding: 0 16px;">
-
-      <!-- Page Heading -->
-      <div class="manager-hero" style="margin-bottom: 24px;">
-        <span class="section-label">Business Overview</span>
-        <h1 class="section-title">Manager Summary</h1>
-        <p class="manager-hero-text">
-          Monitor revenue, fleet utilization, booking performance, and sales from one read-only executive analytics dashboard.
-        </p>
+    <!-- Header Navigation -->
+    <header class="site-header">
+      <div class="container header-inner">
+        <a href="index.html" class="logo">
+          <img src="images/logo.png" alt="KRUIZLY" class="logo-img" />
+        </a>
+        <button
+          type="button"
+          class="mobile-nav-toggle"
+          id="mobileNavToggle"
+          aria-label="Open navigation menu"
+          aria-controls="mainNav"
+          aria-expanded="false"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <nav class="nav" id="mainNav" aria-label="Main navigation">
+          <a href="fleet.html">Fleet</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="partner.html">Host Car</a>
+          <a href="profile.html">Profile</a>
+        </nav>
       </div>
+    </header>
 
-      <!-- Access Denied Card -->
-      <div id="managerAccessDenied" class="card manager-access-denied" hidden style="display:none; margin: 40px auto; max-width: 500px; text-align: center; padding: 32px;">
-        <div class="manager-access-icon" aria-hidden="true" style="font-size: 40px; margin-bottom: 12px;">??</div>
-        <h3 style="font-size: 1.4rem; color: #fff; margin-bottom: 8px;">Manager Access Required</h3>
-        <p style="color: var(--sub); font-size: 14px; line-height: 1.5; margin-bottom: 20px;">
-          This summary dashboard is restricted to authorized managers and administrators. Please sign in with an executive or manager account.
-        </p>
-        <div class="manager-access-actions">
-          <a href="profile.html" class="btn btn-light">Go to Profile</a>
-        </div>
-      </div>
-
-      <!-- Main Dashboard Content -->
-      <div id="managerContent" class="manager-dashboard" hidden>
-
-        <!-- 1. REPORT PERIOD / DATE FILTER BAR -->
-        <section class="card mgr-filter-card" style="background: rgba(12, 18, 29, 0.75); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 16px;">
-            <div>
-              <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #4fd7ff;">Reporting Analytics Period</span>
-              <h3 style="margin: 2px 0 0; font-size: 1.15rem; color: #ffffff; font-weight: 700;">Filter Business Metrics</h3>
-            </div>
-            <span id="mgrPeriodLabel" style="font-size: 13px; font-weight: 600; color: #06d6a0; background: rgba(6, 214, 160, 0.12); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(6, 214, 160, 0.25);">
-              All Time
-            </span>
-          </div>
-
-          <!-- Date Form Controls -->
-          <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
-            <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px;">
-              <label for="mgrDateFrom" style="font-size: 12px; font-weight: 700; color: var(--sub);">From Date (DD/MM/YYYY)</label>
-              <input type="date" id="mgrDateFrom" lang="en-GB" class="kr-clean-input" style="height: 40px; font-size: 13px; background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 0 12px;" />
-            </div>
-            <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px;">
-              <label for="mgrDateTo" style="font-size: 12px; font-weight: 700; color: var(--sub);">To Date (DD/MM/YYYY)</label>
-              <input type="date" id="mgrDateTo" lang="en-GB" class="kr-clean-input" style="height: 40px; font-size: 13px; background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 0 12px;" />
-            </div>
-            <button id="mgrApplyFilterBtn" type="button" class="btn btn-primary" style="height: 40px; padding: 0 20px; font-weight: 700; font-size: 13px; border-radius: 10px; background: #4fd7ff; color: #080d16; border: none; cursor: pointer;">
-              Apply Filter
-            </button>
-            <button id="mgrResetFilterBtn" type="button" class="btn btn-outline" style="height: 40px; padding: 0 18px; font-weight: 600; font-size: 13px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); color: #fff; background: transparent; cursor: pointer;">
-              Reset
-            </button>
-          </div>
-
-          <!-- Quick Filter Pills -->
-          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-            <span style="font-size: 12px; font-weight: 700; color: var(--sub); margin-right: 4px;">Quick Range:</span>
-            <button type="button" class="mgr-quick-pill" data-range="today">Today</button>
-            <button type="button" class="mgr-quick-pill" data-range="yesterday">Yesterday</button>
-            <button type="button" class="mgr-quick-pill" data-range="this_week">This Week</button>
-            <button type="button" class="mgr-quick-pill" data-range="this_month">This Month</button>
-            <button type="button" class="mgr-quick-pill" data-range="last_month">Last Month</button>
-            <button type="button" class="mgr-quick-pill" data-range="this_year">This Year</button>
-            <button type="button" class="mgr-quick-pill active" data-range="all_time">All Time</button>
-          </div>
-        </section>
-
-        <!-- 2. CORE PERFORMANCE - 8 KPI CARDS GRID -->
-        <div style="margin-bottom: 12px;">
-          <h2 style="font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--sub); margin-bottom: 12px;">Core Business KPIs</h2>
-        </div>
-        <section class="mgr-kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 28px;">
-          
-          <!-- KPI 1: TOTAL REVENUE -->
-          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(79, 215, 255, 0.25); border-radius: 14px; padding: 18px; position: relative; overflow: hidden;">
-            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #4fd7ff; margin-bottom: 6px;">Total Revenue</div>
-            <div id="kpiTotalRevenue" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">?0</div>
-            <div style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Verified realized bookings</div>
-          </div>
-
-          <!-- KPI 2: ACTIVE TRIPS -->
-          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(6, 214, 160, 0.25); border-radius: 14px; padding: 18px;">
-            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #06d6a0; margin-bottom: 6px;">Active Trips</div>
-            <div id="kpiActiveTrips" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">0</div>
-            <div style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Overlapping current period</div>
-          </div>
-
-          <!-- KPI 3: COMPLETED TRIPS -->
-          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 18px;">
-            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #ffd166; margin-bottom: 6px;">Completed Trips</div>
-            <div id="kpiCompletedTrips" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">0</div>
-            <div style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Finished trip reservations</div>
-          </div>
-
-          <!-- KPI 4: REVENUE THIS MONTH -->
-          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(79, 215, 255, 0.25); border-radius: 14px; padding: 18px;">
-            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #4fd7ff; margin-bottom: 6px;">Revenue This Month</div>
-            <div id="kpiRevenueThisMonth" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">?0</div>
-            <div id="kpiRevenueMonthSub" style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Selected month period</div>
-          </div>
-
-          <!-- KPI 5: TOTAL BOOKINGS -->
-          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 18px;">
-            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--sub); margin-bottom: 6px;">Total Bookings</div>
-            <div id="kpiTotalBookings" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">0</div>
-            <div style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Valid period reservations</div>
-          </div>
-
-          <!-- KPI 6: AVERAGE OCCUPANCY -->
-          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(6, 214, 160, 0.25); border-radius: 14px; padding: 18px;">
-            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #06d6a0; margin-bottom: 6px;">Average Occupancy</div>
-            <div id="kpiAvgOccupancy" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">0%</div>
-            <div style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Booked / Available Vehicle-Days</div>
-          </div>
-
-          <!-- KPI 7: PER FLEET AMOUNT -->
-          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 18px;">
-            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--sub); margin-bottom: 6px;">Per Fleet Amount</div>
-            <div id="kpiPerFleetAmount" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">?0 <span style="font-size: 13px; font-weight:600; color: var(--sub);">/ vehicle</span></div>
-            <div style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Average revenue per vehicle</div>
-          </div>
-
-          <!-- KPI 8: PER FLEET REVENUE % -->
-          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 183, 3, 0.25); border-radius: 14px; padding: 18px;">
-            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #ffb703; margin-bottom: 6px;">Top Fleet Contribution</div>
-            <div id="kpiFleetRevShare" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">0%</div>
-            <div id="kpiFleetRevShareSub" style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Share of total revenue</div>
-          </div>
-
-        </section>
-
-        <!-- 3. SALES PERFORMANCE SECTION -->
-        <div style="margin-bottom: 12px;">
-          <h2 style="font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--sub); margin-bottom: 12px;">Sales Performance</h2>
-        </div>
-        <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px;">
-          
-          <div class="card" style="background: rgba(12, 18, 29, 0.65); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 16px;">
-            <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--sub);">Day Sales</span>
-            <div id="salesDay" style="font-size: 1.5rem; font-weight: 800; color: #ffffff; margin-top: 4px;">?0</div>
-            <span style="font-size: 11px; color: var(--sub);">Revenue for selected/current day</span>
-          </div>
-
-          <div class="card" style="background: rgba(12, 18, 29, 0.65); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 16px;">
-            <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--sub);">Week Sales</span>
-            <div id="salesWeek" style="font-size: 1.5rem; font-weight: 800; color: #ffffff; margin-top: 4px;">?0</div>
-            <span style="font-size: 11px; color: var(--sub);">Revenue for selected week</span>
-          </div>
-
-          <div class="card" style="background: rgba(12, 18, 29, 0.65); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 16px;">
-            <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--sub);">Month Sales</span>
-            <div id="salesMonth" style="font-size: 1.5rem; font-weight: 800; color: #ffffff; margin-top: 4px;">?0</div>
-            <span style="font-size: 11px; color: var(--sub);">Revenue for selected month</span>
-          </div>
-
-          <div class="card" style="background: rgba(12, 18, 29, 0.65); border: 1px solid rgba(79,215,255,0.3); border-radius: 14px; padding: 16px;">
-            <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #4fd7ff;">Overall Sales</span>
-            <div id="salesOverall" style="font-size: 1.5rem; font-weight: 800; color: #ffffff; margin-top: 4px;">?0</div>
-            <span style="font-size: 11px; color: var(--sub);">Historical total verified revenue</span>
-          </div>
-
-        </section>
-
-        <!-- 4. TOP PERFORMING VEHICLE INDICATOR & FLEET PERFORMANCE -->
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
-          <div>
-            <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #06d6a0;">Fleet Revenue Analytics</span>
-            <h2 style="margin: 2px 0 0; font-size: 1.25rem; color: #ffffff; font-weight: 800;">Current Fleet Performance</h2>
-          </div>
-
-          <!-- Top Performer Pill/Badge -->
-          <div id="topPerformerCard" class="card" style="background: rgba(6, 214, 160, 0.08); border: 1px solid rgba(6, 214, 160, 0.3); border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 24px;">??</span>
-            <div>
-              <div style="font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #06d6a0;">TOP PERFORMING VEHICLE</div>
-              <strong id="topCarName" style="font-size: 14px; color: #ffffff;">—</strong>
-              <span id="topCarStats" style="font-size: 12px; color: var(--sub); margin-left: 6px;">?0 · 0 Bookings</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 5. FLEET PERFORMANCE TABLE CARD -->
-        <section class="card manager-panel" style="background: rgba(12, 18, 29, 0.75); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
-          
-          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-            <div style="display: flex; align-items: center; gap: 10px;">
-              <span style="font-size: 13px; font-weight: 700; color: var(--sub);">Sort Fleet By:</span>
-              <select id="mgrFleetSortSelect" class="kr-clean-input" style="height: 36px; font-size: 13px; background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 0 12px;">
-                <option value="revenue" selected>Revenue Generated (High to Low)</option>
-                <option value="bookings">Bookings Count</option>
-                <option value="days">Booked Days</option>
-                <option value="avg">Average Revenue / Booking</option>
-                <option value="car">Car Name</option>
-              </select>
-            </div>
-            
-            <div id="reconciliationNotice" style="display:none; font-size: 12px; color: #ffd166; background: rgba(255, 209, 102, 0.1); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255, 209, 102, 0.25);">
-              ?? Unmapped Revenue Logged
-            </div>
-          </div>
-
-          <div style="width: 100%; overflow-x: auto;">
-            <table class="manager-table" style="width: 100%; border-collapse: collapse; text-align: left;">
-              <thead>
-                <tr style="border-bottom: 1px solid rgba(255,255,255,0.15); font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--sub);">
-                  <th style="padding: 12px 14px;">Bookings</th>
-                  <th style="padding: 12px 14px;">Car</th>
-                  <th style="padding: 12px 14px;">Reg. No.</th>
-                  <th style="padding: 12px 14px;">Dates Booked</th>
-                  <th style="padding: 12px 14px;">Revenue Generated</th>
-                  <th style="padding: 12px 14px;">Average Revenue</th>
-                  <th style="padding: 12px 14px;">Total</th>
-                </tr>
-              </thead>
-              <tbody id="mgrFleetTableBody">
-                <tr>
-                  <td colspan="7" style="padding: 24px; text-align: center; color: var(--sub);">Loading fleet performance analytics...</td>
-                </tr>
-              </tbody>
-              <tfoot id="mgrFleetTableFoot" style="border-top: 2px solid rgba(255,255,255,0.2); font-weight: 800; background: rgba(255,255,255,0.02);">
-                <!-- Dynamic Totals Row -->
-              </tfoot>
-            </table>
-          </div>
-
-        </section>
-
-      </div>
-
-    </div>
-  </main>
-
-  <!-- Footer -->
-  <footer class="site-footer">
-    <div class="container">
-      <div class="footer-grid">
-        <div class="footer-brand footer-section">
-          <a href="index.html" class="logo"><img src="images/logo.png" alt="KRUIZLY" class="logo-img" /></a>
-          <p>
-            Premium self-drive rentals across India with trusted, hassle-free booking and 24/7 support.
+    <!-- Main Content -->
+    <main class="section staff-page admin-page manager-page">
+      <div class="container manager-container">
+        <!-- Section Header Centered matching admin.html & profile.html -->
+        <div class="section-header centered">
+          <span class="section-label">Business Overview</span>
+          <h1 class="section-title">Manager Summary</h1>
+          <p class="section-subtitle" style="max-width: 680px; margin: 8px auto 0; color: var(--sub); font-size: 15px; text-align: center;">
+            Monitor revenue, fleet utilization, booking performance, and sales from one read-only executive analytics dashboard.
           </p>
         </div>
 
-        <div class="footer-links footer-section">
-          <h4>Quick Links</h4>
-          <ul class="footer-list">
-            <li><a href="fleet.html">Fleet</a></li>
-            <li><a href="about.html">About</a></li>
-            <li><a href="contact.html">Contact</a></li>
-            <li><a href="partner.html">Host Car</a></li>
-            <li><a href="profile.html">Profile</a></li>
-          </ul>
+        <!-- Access Denied Card -->
+        <div
+          id="managerAccessDenied"
+          class="card admin-panel-card manager-access-denied"
+          hidden
+          style="display: none; margin: 40px auto; max-width: 520px; text-align: center; padding: 40px 28px;"
+        >
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: rgba(255, 92, 108, 0.12); border: 1px solid rgba(255, 92, 108, 0.3); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: #ff5c6c;">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h3 style="font-size: 1.35rem; color: #ffffff; margin-bottom: 8px; font-weight: 800;">
+            Manager Access Required
+          </h3>
+          <p style="color: var(--sub); font-size: 14px; line-height: 1.6; margin-bottom: 24px;">
+            This summary dashboard is restricted to authorized managers and administrators. Please sign in with an executive or manager account.
+          </p>
+          <div class="manager-access-actions">
+            <a href="profile.html" class="btn btn-primary" style="height: 40px; padding: 0 24px; font-size: 13.5px;">Go to Profile</a>
+          </div>
         </div>
 
-        <div class="footer-legal footer-section">
-          <h4>Legal</h4>
-          <ul class="footer-list">
-            <li><a href="privacy.html">Privacy Policy</a></li>
-            <li><a href="terms.html">Terms &amp; Conditions</a></li>
-            <li><a href="refund.html">Refund Policy</a></li>
-          </ul>
-        </div>
+        <!-- Main Dashboard Content -->
+        <div id="managerContent" class="manager-dashboard" hidden>
+          <!-- Sub-Page Navigation Tabs -->
+          <nav class="mgr-subpage-nav" role="tablist" aria-label="Manager Dashboard Sections">
+            <button type="button" class="mgr-tab-btn active" data-mgr-tab="revenue" role="tab" aria-selected="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><path d="M12 6v12M17 10H9.5a2.5 2.5 0 0 0 0 5H15a2.5 2.5 0 0 1 0 5H7"/></svg>
+              <span>Revenue &amp; Sales</span>
+            </button>
+            <button type="button" class="mgr-tab-btn" data-mgr-tab="fleet" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 10.9 2 11.2 2 11.5V16c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+              <span>Fleet Performance (7 Fleets)</span>
+            </button>
+            <button type="button" class="mgr-tab-btn" data-mgr-tab="bookings" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span>Bookings Analytics</span>
+            </button>
+            <button type="button" class="mgr-tab-btn" data-mgr-tab="operations" role="tab" aria-selected="false">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              <span>Operations &amp; Reconciliation</span>
+            </button>
+          </nav>
 
-        <div class="footer-office footer-section">
-          <h4>Office &amp; Support</h4>
-          <div class="footer-contact-items">
-            <div class="footer-contact-item">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-              <span>Gavson Business Park, Ghansoli, Navi Mumbai, India</span>
+          <!-- 1. REPORT PERIOD / DATE FILTER BAR (Shared Across Tabs) -->
+          <section class="card admin-panel-card mgr-filter-card" style="margin-bottom: 28px; padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 18px;">
+              <div>
+                <span class="admin-inspect-eyebrow" style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--kr-cyan, #4fd7ff);">
+                  Reporting Analytics Period
+                </span>
+                <h3 style="margin: 3px 0 0; font-size: 1.2rem; color: #ffffff; font-weight: 800;">
+                  Filter Business Metrics
+                </h3>
+              </div>
+              <span
+                id="mgrPeriodLabel"
+                style="font-size: 12.5px; font-weight: 700; color: #06d6a0; background: rgba(6, 214, 160, 0.12); padding: 5px 14px; border-radius: var(--kr-radius-pill, 9999px); border: 1px solid rgba(6, 214, 160, 0.28); letter-spacing: 0.02em;"
+              >
+                All Time
+              </span>
             </div>
-            <div class="footer-contact-item">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                <polyline points="22,6 12,13 2,6"></polyline>
-              </svg>
-              <a href="mailto:support@kruizly.com">support@kruizly.com</a>
+
+            <!-- Date Form Controls -->
+            <div class="mgr-filter-grid">
+              <div class="mgr-filter-group">
+                <label for="mgrDateFrom">From Date</label>
+                <input
+                  type="date"
+                  id="mgrDateFrom"
+                  lang="en-GB"
+                  class="kr-clean-input"
+                  style="height: 42px; font-size: 13.5px; padding: 0 14px; border-radius: 10px;"
+                />
+              </div>
+              <div class="mgr-filter-group">
+                <label for="mgrDateTo">To Date</label>
+                <input
+                  type="date"
+                  id="mgrDateTo"
+                  lang="en-GB"
+                  class="kr-clean-input"
+                  style="height: 42px; font-size: 13.5px; padding: 0 14px; border-radius: 10px;"
+                />
+              </div>
+              <button
+                id="mgrApplyFilterBtn"
+                type="button"
+                class="btn btn-dark"
+                style="height: 42px; padding: 0 22px; font-size: 13.5px;"
+              >
+                Apply Filter
+              </button>
+              <button
+                id="mgrResetFilterBtn"
+                type="button"
+                class="btn btn-outline"
+                style="height: 42px; padding: 0 20px; font-size: 13.5px;"
+              >
+                Reset
+              </button>
             </div>
-            <div class="footer-contact-item">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-              </svg>
-              <a href="tel:+919167164547">+91 91671 64547</a>
+
+            <!-- Quick Filter Pills -->
+            <div class="mgr-quick-pills-wrap">
+              <span class="mgr-quick-label">Quick Range:</span>
+              <button type="button" class="mgr-quick-pill" data-range="today">
+                Today
+              </button>
+              <button type="button" class="mgr-quick-pill" data-range="yesterday">
+                Yesterday
+              </button>
+              <button type="button" class="mgr-quick-pill" data-range="this_week">
+                This Week
+              </button>
+              <button type="button" class="mgr-quick-pill" data-range="this_month">
+                This Month
+              </button>
+              <button type="button" class="mgr-quick-pill" data-range="last_month">
+                Last Month
+              </button>
+              <button type="button" class="mgr-quick-pill" data-range="this_year">
+                This Year
+              </button>
+              <button type="button" class="mgr-quick-pill active" data-range="all_time">
+                All Time
+              </button>
             </div>
+          </section>
+
+          <!-- ============================================================
+               TAB 1: REVENUE & SALES PAGE
+               ============================================================ -->
+          <div id="mgrSectionRevenue" class="mgr-subpage-section">
+            <!-- 2. CORE BUSINESS KPIS (4-Column Grid) -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+              <span style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--sub);">
+                Core Business KPIs
+              </span>
+            </div>
+
+            <section
+              class="admin-stats-grid"
+              style="margin-bottom: 32px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;"
+            >
+              <!-- KPI 1: TOTAL REVENUE -->
+              <div class="card stat-card" id="cardTotalRevenue">
+                <span class="stat-label">Total Revenue</span>
+                <div id="kpiTotalRevenue" class="stat-value" style="color: #06d6a0;">
+                  ₹0
+                </div>
+                <span style="font-size: 12px; color: var(--sub);">Verified realized bookings</span>
+              </div>
+
+              <!-- KPI 2: ACTIVE TRIPS -->
+              <div class="card stat-card" id="cardActiveTrips">
+                <span class="stat-label">Active Trips</span>
+                <div id="kpiActiveTrips" class="stat-value" style="color: #4fd7ff;">
+                  0
+                </div>
+                <span style="font-size: 12px; color: var(--sub);">Overlapping current period</span>
+              </div>
+
+              <!-- KPI 3: COMPLETED TRIPS -->
+              <div class="card stat-card" id="cardCompletedTrips">
+                <span class="stat-label">Completed Trips</span>
+                <div id="kpiCompletedTrips" class="stat-value" style="color: #ffd166;">
+                  0
+                </div>
+                <span style="font-size: 12px; color: var(--sub);">Finished trip reservations</span>
+              </div>
+
+              <!-- KPI 4: REVENUE THIS MONTH -->
+              <div class="card stat-card" id="cardRevenueThisMonth">
+                <span class="stat-label">Revenue This Month</span>
+                <div id="kpiRevenueThisMonth" class="stat-value" style="color: #4fd7ff;">
+                  ₹0
+                </div>
+                <span id="kpiRevenueMonthSub" style="font-size: 12px; color: var(--sub);">Selected month period</span>
+              </div>
+
+              <!-- KPI 5: TOTAL BOOKINGS -->
+              <div class="card stat-card" id="cardTotalBookings">
+                <span class="stat-label">Total Bookings</span>
+                <div id="kpiTotalBookings" class="stat-value" style="color: #ffffff;">
+                  0
+                </div>
+                <span style="font-size: 12px; color: var(--sub);">Valid period reservations</span>
+              </div>
+
+              <!-- KPI 6: AVERAGE OCCUPANCY -->
+              <div class="card stat-card" id="cardAvgOccupancy">
+                <span class="stat-label">Average Occupancy</span>
+                <div id="kpiAvgOccupancy" class="stat-value" style="color: #06d6a0;">
+                  0%
+                </div>
+                <span style="font-size: 12px; color: var(--sub);">Booked / Available Vehicle-Days</span>
+              </div>
+
+              <!-- KPI 7: PER FLEET AMOUNT -->
+              <div class="card stat-card" id="cardPerFleetAmount">
+                <span class="stat-label">Per Fleet Amount</span>
+                <div id="kpiPerFleetAmount" class="stat-value" style="color: #ffffff; font-size: 1.65rem;">
+                  ₹0 <span style="font-size: 12px; font-weight: 600; color: var(--sub);">/ vehicle</span>
+                </div>
+                <span style="font-size: 12px; color: var(--sub);">Average revenue per vehicle</span>
+              </div>
+
+              <!-- KPI 8: TOP FLEET CONTRIBUTION -->
+              <div class="card stat-card" id="cardFleetRevShare">
+                <span class="stat-label">Top Fleet Share</span>
+                <div id="kpiFleetRevShare" class="stat-value" style="color: #ffd166;">
+                  0%
+                </div>
+                <span id="kpiFleetRevShareSub" style="font-size: 12px; color: var(--sub);">Share of total revenue</span>
+              </div>
+            </section>
+
+            <!-- 3. SALES PERFORMANCE SECTION -->
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+              <span style="font-size: 0.85rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: var(--sub);">
+                Sales Performance
+              </span>
+            </div>
+
+            <section
+              class="admin-stats-grid"
+              style="margin-bottom: 32px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;"
+            >
+              <div class="card stat-card">
+                <span class="stat-label">Day Sales</span>
+                <div id="salesDay" class="stat-value" style="color: #ffffff;">
+                  ₹0
+                </div>
+                <span style="font-size: 12px; color: var(--sub);">Revenue for selected/current day</span>
+              </div>
+
+              <div class="card stat-card">
+                <span class="stat-label">Week Sales</span>
+                <div id="salesWeek" class="stat-value" style="color: #ffffff;">
+                  ₹0
+                </div>
+                <span style="font-size: 12px; color: var(--sub);">Revenue for selected week</span>
+              </div>
+
+              <div class="card stat-card">
+                <span class="stat-label">Month Sales</span>
+                <div id="salesMonth" class="stat-value" style="color: #ffffff;">
+                  ₹0
+                </div>
+                <span style="font-size: 12px; color: var(--sub);">Revenue for selected month</span>
+              </div>
+
+              <div class="card stat-card">
+                <span class="stat-label">Overall Sales</span>
+                <div id="salesOverall" class="stat-value" style="color: #4fd7ff;">
+                  ₹0
+                </div>
+                <span style="font-size: 12px; color: var(--sub);">Historical total verified revenue</span>
+              </div>
+            </section>
+          </div>
+
+          <!-- ============================================================
+               TAB 2: FLEET PERFORMANCE (7 FLEETS) PAGE
+               ============================================================ -->
+          <div id="mgrSectionFleet" class="mgr-subpage-section" style="display: none;">
+            <!-- TOP VEHICLE BANNER & HEADER -->
+            <div
+              style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 16px;"
+            >
+              <div>
+                <span
+                  class="admin-inspect-eyebrow"
+                  style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #06d6a0;"
+                >
+                  Fleet Revenue Analytics
+                </span>
+                <h2 style="margin: 2px 0 0; font-size: 1.35rem; color: #ffffff; font-weight: 800;">
+                  Active Fleet Performance (7 Fleets)
+                </h2>
+              </div>
+
+              <!-- Top Performer Badge -->
+              <div
+                id="topPerformerCard"
+                class="card"
+                style="background: rgba(6, 214, 160, 0.08); border: 1px solid rgba(6, 214, 160, 0.28); border-radius: 12px; padding: 10px 18px; display: flex; align-items: center; gap: 12px;"
+              >
+                <div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(6, 214, 160, 0.15); display: flex; align-items: center; justify-content: center; color: #06d6a0; flex-shrink: 0;">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2">
+                    <circle cx="12" cy="8" r="7"></circle>
+                    <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+                  </svg>
+                </div>
+                <div>
+                  <div
+                    style="font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #06d6a0;"
+                  >
+                    TOP PERFORMING VEHICLE
+                  </div>
+                  <div style="display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;">
+                    <strong id="topCarName" style="font-size: 14px; color: #ffffff;">—</strong>
+                    <span id="topCarStats" style="font-size: 12.5px; color: var(--sub);">₹0 · 0 Bookings</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- PROMINENT TOP TOTAL RECONCILIATION SUMMARY BAR (AT TOP) -->
+            <div
+              id="topFleetTotalBar"
+              class="card"
+              style="background: linear-gradient(135deg, rgba(6, 214, 160, 0.12), rgba(79, 215, 255, 0.07)); border: 1px solid rgba(6, 214, 160, 0.3); border-radius: 14px; padding: 18px 22px; margin-bottom: 22px; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;"
+            >
+              <div>
+                <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: #06d6a0;">TOTAL FLEET REVENUE</span>
+                <div id="topFleetTotalRevenue" style="font-size: 1.8rem; font-weight: 900; color: #06d6a0; margin-top: 4px;">₹0</div>
+                <span style="font-size: 11.5px; color: var(--sub);">Reconciled across all 7 fleets</span>
+              </div>
+              <div>
+                <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: #4fd7ff;">TOTAL BOOKINGS</span>
+                <div id="topFleetTotalBookings" style="font-size: 1.8rem; font-weight: 900; color: #4fd7ff; margin-top: 4px;">0</div>
+                <span style="font-size: 11.5px; color: var(--sub);">Verified reservations</span>
+              </div>
+              <div>
+                <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: #ffd166;">TOTAL BOOKED DAYS</span>
+                <div id="topFleetTotalDays" style="font-size: 1.8rem; font-weight: 900; color: #ffd166; margin-top: 4px;">0 Days</div>
+                <span style="font-size: 11.5px; color: var(--sub);">Cumulative rental duration</span>
+              </div>
+              <div>
+                <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.07em; color: #ffffff;">AVERAGE / BOOKING</span>
+                <div id="topFleetAvgRevenue" style="font-size: 1.8rem; font-weight: 900; color: #ffffff; margin-top: 4px;">₹0</div>
+                <span style="font-size: 11.5px; color: var(--sub);">Avg revenue per reservation</span>
+              </div>
+            </div>
+
+            <!-- FLEET PERFORMANCE TABLE CARD -->
+            <section class="card admin-panel-card" style="margin-bottom: 36px; padding: 24px;">
+              <div
+                style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px;"
+              >
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <label for="mgrFleetSortSelect" style="font-size: 13px; font-weight: 700; color: var(--sub);">
+                    Sort Fleet By:
+                  </label>
+                  <select
+                    id="mgrFleetSortSelect"
+                    class="kr-clean-input"
+                    style="height: 38px; font-size: 13px; min-width: 220px; border-radius: 8px; padding: 0 12px;"
+                  >
+                    <option value="revenue" selected>Revenue Generated (High to Low)</option>
+                    <option value="bookings">Bookings Count</option>
+                    <option value="days">Booked Days</option>
+                    <option value="avg">Average Revenue / Booking</option>
+                    <option value="car">Car Name</option>
+                  </select>
+                </div>
+
+                <div
+                  id="reconciliationNotice"
+                  style="display: none; font-size: 12px; color: #ffd166; background: rgba(255, 209, 102, 0.1); padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(255, 209, 102, 0.25);"
+                >
+                  Unmapped Revenue Logged
+                </div>
+              </div>
+
+              <div class="admin-table-wrap manager-table-wrap">
+                <table class="admin-table manager-table">
+                  <thead id="mgrFleetTableHead">
+                    <tr>
+                      <th>Bookings</th>
+                      <th>Car</th>
+                      <th>Reg. No.</th>
+                      <th>Dates Booked</th>
+                      <th>Revenue Generated</th>
+                      <th>Average Revenue</th>
+                      <th>Total</th>
+                    </tr>
+                    <!-- STICKY TOP TOTAL SUMMARY ROW RIGHT IN THE HEADER -->
+                    <tr id="mgrFleetTopTotalRow" style="background: rgba(6, 214, 160, 0.12); border-bottom: 2px solid rgba(6, 214, 160, 0.35); font-weight: 800; color: #ffffff;">
+                      <td style="padding: 12px 14px;"><strong id="thFleetTotalBookings" style="color:#4fd7ff; font-size:1.05rem;">0 Bookings</strong></td>
+                      <td style="padding: 12px 14px;" colspan="2"><span style="color:#06d6a0; font-weight:800; letter-spacing:0.04em;">★ ALL 7 FLEETS TOTAL</span></td>
+                      <td style="padding: 12px 14px;"><strong id="thFleetTotalDays" style="color:#06d6a0;">0 days</strong></td>
+                      <td style="padding: 12px 14px;"><strong id="thFleetTotalRevenue" style="color:#ffffff; font-size:1.05rem;">₹0</strong></td>
+                      <td style="padding: 12px 14px;"><span id="thFleetAvgRevenue" style="color:var(--sub);">₹0 / booking</span></td>
+                      <td style="padding: 12px 14px;"><strong id="thFleetGrandTotal" style="color:#06d6a0; font-size:1.15rem;">₹0</strong></td>
+                    </tr>
+                  </thead>
+                  <tbody id="mgrFleetTableBody">
+                    <tr>
+                      <td colspan="7" style="padding: 28px; text-align: center; color: var(--sub);">
+                        Loading fleet performance analytics...
+                      </td>
+                    </tr>
+                  </tbody>
+                  <tfoot id="mgrFleetTableFoot">
+                    <!-- Dynamic Totals Row at Bottom -->
+                  </tfoot>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <!-- ============================================================
+               TAB 3: BOOKINGS ANALYTICS PAGE
+               ============================================================ -->
+          <div id="mgrSectionBookings" class="mgr-subpage-section" style="display: none;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+              <div>
+                <span class="admin-inspect-eyebrow" style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #4fd7ff;">
+                  Reservation Intelligence
+                </span>
+                <h2 style="margin: 2px 0 0; font-size: 1.35rem; color: #ffffff; font-weight: 800;">
+                  Bookings Analytics
+                </h2>
+              </div>
+            </div>
+
+            <!-- Bookings Overview Grid -->
+            <section
+              class="admin-stats-grid"
+              style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;"
+            >
+              <div class="card stat-card">
+                <span class="stat-label">Total Bookings</span>
+                <div id="tabBookingsCount" class="stat-value" style="color: #ffffff;">0</div>
+                <span style="font-size: 12px; color: var(--sub);">Valid period bookings</span>
+              </div>
+              <div class="card stat-card">
+                <span class="stat-label">Active / Ongoing</span>
+                <div id="tabBookingsActive" class="stat-value" style="color: #4fd7ff;">0</div>
+                <span style="font-size: 12px; color: var(--sub);">Currently on the road</span>
+              </div>
+              <div class="card stat-card">
+                <span class="stat-label">Completed Trips</span>
+                <div id="tabBookingsCompleted" class="stat-value" style="color: #ffd166;">0</div>
+                <span style="font-size: 12px; color: var(--sub);">Safely returned &amp; verified</span>
+              </div>
+              <div class="card stat-card">
+                <span class="stat-label">Total Booked Days</span>
+                <div id="tabBookingsTotalDays" class="stat-value" style="color: #06d6a0;">0 Days</div>
+                <span style="font-size: 12px; color: var(--sub);">Cumulative rental volume</span>
+              </div>
+            </section>
+
+            <!-- Bookings Details Table -->
+            <section class="card admin-panel-card" style="margin-bottom: 36px; padding: 24px;">
+              <h3 style="margin: 0 0 16px; font-size: 1.15rem; color: #ffffff; font-weight: 800;">
+                Verified Bookings Activity Log
+              </h3>
+              <div class="admin-table-wrap">
+                <table class="admin-table">
+                  <thead>
+                    <tr>
+                      <th>Booking #</th>
+                      <th>Customer</th>
+                      <th>Assigned Fleet</th>
+                      <th>Rental Dates</th>
+                      <th>Duration</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="mgrBookingsTableBody">
+                    <tr>
+                      <td colspan="7" style="padding: 24px; text-align: center; color: var(--sub);">
+                        No bookings found for the selected period.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+
+          <!-- ============================================================
+               TAB 4: OPERATIONS & RECONCILIATION PAGE
+               ============================================================ -->
+          <div id="mgrSectionOperations" class="mgr-subpage-section" style="display: none;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+              <div>
+                <span class="admin-inspect-eyebrow" style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #ffd166;">
+                  Fleet Operational Audit
+                </span>
+                <h2 style="margin: 2px 0 0; font-size: 1.35rem; color: #ffffff; font-weight: 800;">
+                  Operations &amp; 7 Fleets Reconciliation
+                </h2>
+              </div>
+            </div>
+
+            <!-- Operations Metrics -->
+            <section
+              class="admin-stats-grid"
+              style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;"
+            >
+              <div class="card stat-card">
+                <span class="stat-label">Active Fleets</span>
+                <div class="stat-value" style="color: #06d6a0;">7</div>
+                <span style="font-size: 12px; color: var(--sub);">Standardized Kruizly fleet</span>
+              </div>
+              <div class="card stat-card">
+                <span class="stat-label">Average Occupancy</span>
+                <div id="tabOpsOccupancy" class="stat-value" style="color: #4fd7ff;">0%</div>
+                <span style="font-size: 12px; color: var(--sub);">Booked vs Available Days</span>
+              </div>
+              <div class="card stat-card">
+                <span class="stat-label">Average / Vehicle</span>
+                <div id="tabOpsPerVehicle" class="stat-value" style="color: #ffffff;">₹0</div>
+                <span style="font-size: 12px; color: var(--sub);">Fleet earning average</span>
+              </div>
+              <div class="card stat-card">
+                <span class="stat-label">Reconciliation Audit</span>
+                <div id="tabOpsReconciledStatus" class="stat-value" style="color: #06d6a0; font-size: 1.35rem;">100% Balanced</div>
+                <span style="font-size: 12px; color: var(--sub);">Zero discrepancy logged</span>
+              </div>
+            </section>
+
+            <!-- 7 Fleet Roster Card Grid -->
+            <section class="card admin-panel-card" style="margin-bottom: 36px; padding: 24px;">
+              <h3 style="margin: 0 0 16px; font-size: 1.15rem; color: #ffffff; font-weight: 800;">
+                Kruizly 7 Fleets Roster &amp; Utilization
+              </h3>
+              <div id="mgrOpsFleetGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;">
+                <!-- Filled dynamically by manager-summary.js -->
+              </div>
+            </section>
           </div>
         </div>
       </div>
-      <div class="footer-copy">© 2026 KRUIZLY. All rights reserved.</div>
-    </div>
-  </footer>
+    </main>
 
-  <script type="module" src="js/manager-summary.js?v=20260908-v3"></script>
-  <script src="js/glass-ui.js"></script>
-  <script src="js/kruizly-motion.js"></script>
-</body>
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div class="footer-brand footer-section">
+            <a href="index.html" class="logo">
+              <img src="images/logo.png" alt="KRUIZLY" class="logo-img" />
+            </a>
+            <p>
+              Premium self-drive rentals across India with trusted, hassle-free
+              booking and 24/7 support.
+            </p>
+          </div>
+
+          <div class="footer-links footer-section">
+            <h4>Quick Links</h4>
+            <ul class="footer-list">
+              <li><a href="fleet.html">Fleet</a></li>
+              <li><a href="about.html">About</a></li>
+              <li><a href="contact.html">Contact</a></li>
+              <li><a href="partner.html">Host Car</a></li>
+              <li><a href="profile.html">Profile</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-legal footer-section">
+            <h4>Legal</h4>
+            <ul class="footer-list">
+              <li><a href="privacy.html">Privacy Policy</a></li>
+              <li><a href="terms.html">Terms &amp; Conditions</a></li>
+              <li><a href="refund.html">Refund Policy</a></li>
+            </ul>
+          </div>
+
+          <div class="footer-office footer-section">
+            <h4>Office &amp; Support</h4>
+            <div class="footer-contact-items">
+              <div class="footer-contact-item">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#4fd7ff"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span>Gavson Business Park, Ghansoli, Navi Mumbai, India</span>
+              </div>
+              <div class="footer-contact-item">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#4fd7ff"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                <a href="mailto:support@kruizly.com">support@kruizly.com</a>
+              </div>
+              <div class="footer-contact-item">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#4fd7ff"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+                <a href="tel:+919167164547">+91 91671 64547</a>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="footer-copy">© 2026 KRUIZLY. All rights reserved.</div>
+      </div>
+    </footer>
+
+    <script type="module" src="js/manager-summary.js?v=20260908-v5"></script>
+    <script src="js/glass-ui.js"></script>
+    <script src="js/kruizly-motion.js"></script>
+  </body>
 </html>
-

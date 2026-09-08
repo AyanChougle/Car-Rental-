@@ -131,7 +131,7 @@ class InvoicePdfService {
             // Summary Totals
             "0.95 g 300 290 250 85 re f 0 g",
             "BT /F1 11 Tf 315 355 Td (Total Amount:) Tj 450 355 Td (Rs. $total) Tj ET",
-            "BT /F2 10 Tf 315 335 Td (Advance Paid:) Tj 450 335 Td (Rs. $paid) Tj ET",
+            "BT /F2 10 Tf 315 335 Td (Token Paid:) Tj 450 335 Td (Rs. $paid) Tj ET",
             "BT /F1 11 Tf 315 310 Td (Balance Due:) Tj 450 310 Td (Rs. $balance) Tj ET",
 
             // Footer

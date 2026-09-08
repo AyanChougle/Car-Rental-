@@ -2,6 +2,7 @@
 import { auth } from "./firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 import { api } from "./kruizly-api.js?v=20260907-v5";
+import { isAdminUser, getStoredUser } from "./auth.js?v=20260908-v5";
 
 export function initDynamicNav() {
   const currentPath = window.location.pathname.split("/").pop() || "index.html";
@@ -16,17 +17,27 @@ export function initDynamicNav() {
     }
   });
 
-  const renderNavLinks = (role) => {
-    const normalizedRole = String(role || "customer")
+  const renderNavLinks = (role, userObj = null) => {
+    let normalizedRole = String(role || "customer")
       .trim()
       .toLowerCase();
+
+    // If user is admin (by role or email in userObj or localStorage), treat as admin
+    const stored = userObj || getStoredUser();
+    if (
+      normalizedRole === "admin" ||
+      normalizedRole === "super_admin" ||
+      (stored && isAdminUser(stored))
+    ) {
+      normalizedRole = "admin";
+    }
 
     const navs = document.querySelectorAll("header .nav");
     navs.forEach((nav) => {
       // Rebuild privileged links only after the account role has been
       // verified. This also removes legacy links hard-coded in a page.
       nav.querySelectorAll(
-        'a[href="executive.html"], a[href="accounts.html"], a[href="manager.html"], a[href="admin.html"]'
+        'a[href="executive.html"], a[href="manager.html"], a[href="accounts.html"], a[href="admin.html"]'
       ).forEach((link) => link.remove());
 
       // Ensure Host Car link
@@ -49,19 +60,9 @@ export function initDynamicNav() {
           const prof = nav.querySelector('a[href="profile.html"]');
           prof ? nav.insertBefore(link, prof) : nav.appendChild(link);
         }
-
-        // Accounts / Payment Verification
-        if (!nav.querySelector('a[href="accounts.html"]')) {
-          const link = document.createElement("a");
-          link.href = "accounts.html";
-          link.textContent = "Accounts";
-          if (currentPath === "accounts.html") link.classList.add("active");
-          const prof = nav.querySelector('a[href="profile.html"]');
-          prof ? nav.insertBefore(link, prof) : nav.appendChild(link);
-        }
       }
 
-      // Manager summary
+      // Manager summary (available to manager and admin)
       if (normalizedRole === "manager" || normalizedRole === "admin") {
         if (!nav.querySelector('a[href="manager.html"]')) {
           const link = document.createElement("a");
@@ -73,7 +74,19 @@ export function initDynamicNav() {
         }
       }
 
-      // Admin link
+      // Accounts / Financial Verification (available to accountant and admin)
+      if (normalizedRole === "accountant" || normalizedRole === "admin") {
+        if (!nav.querySelector('a[href="accounts.html"]')) {
+          const link = document.createElement("a");
+          link.href = "accounts.html";
+          link.textContent = "Accounts";
+          if (currentPath === "accounts.html") link.classList.add("active");
+          const prof = nav.querySelector('a[href="profile.html"]');
+          prof ? nav.insertBefore(link, prof) : nav.appendChild(link);
+        }
+      }
+
+      // Admin link (available to admin - full access to every page)
       if (normalizedRole === "admin") {
         if (!nav.querySelector('a[href="admin.html"]')) {
           const link = document.createElement("a");
@@ -90,21 +103,21 @@ export function initDynamicNav() {
   // 1. Initial quick render from localStorage
   const storedUser = localStorage.getItem("kruizly_user");
   let userRole = "customer";
+  let parsedUser = null;
   if (storedUser) {
     try {
-      const parsed = JSON.parse(storedUser);
-      userRole = parsed.role || "customer";
+      parsedUser = JSON.parse(storedUser);
+      userRole = parsedUser.role || "customer";
+      if (isAdminUser(parsedUser)) userRole = "admin";
     } catch (_) {}
   }
-  renderNavLinks(userRole);
+  renderNavLinks(userRole, parsedUser);
 
   // 2. Live Auth State Listener
   onAuthStateChanged(auth, async (user) => {
     if (user) {
-      // Check admin emails by default
-      const email = (user.email || "").toLowerCase();
-      if (email === "ayan@kruizly.com" || email === "admin@kruizly.com" || email === "carrentpedatabase@gmail.com") {
-        renderNavLinks("admin");
+      if (isAdminUser(user)) {
+        renderNavLinks("admin", user);
       }
 
       // Fetch authoritative role from MySQL
@@ -112,7 +125,8 @@ export function initDynamicNav() {
         const res = await api.get("/users/me");
         if (res && res.user && res.user.role) {
           localStorage.setItem("kruizly_user", JSON.stringify(res.user));
-          renderNavLinks(res.user.role);
+          const effectiveRole = isAdminUser(res.user) ? "admin" : res.user.role;
+          renderNavLinks(effectiveRole, res.user);
         }
       } catch (_) {}
     } else {

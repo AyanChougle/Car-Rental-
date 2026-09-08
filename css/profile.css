@@ -1017,6 +1017,12 @@ body header.site-header {
   border-color: #ef476f !important;
 }
 
+/* Modals strictly hidden when hidden attribute is set */
+.manager-modal[hidden],
+#cancelBookingModal[hidden] {
+  display: none !important;
+}
+
 @media (max-width: 600px) {
   .profile-page {
     padding: 20px 0 60px;
