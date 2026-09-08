@@ -2,595 +2,351 @@
 <html lang="en-GB">
 <head>
   <meta charset="UTF-8" />
-  <meta
-    name="viewport"
-    content="width=device-width, initial-scale=1.0"
-  />
-
-  <title>Manager Summary | KRUIZLY</title>
-
-    <meta name="description" content="KRUIZLY manager summary dashboard for read-only booking and payment performance tracking." />
-    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
-    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manager Summary | KRUIZLY Business Analytics</title>
+  <meta name="description" content="KRUIZLY manager summary dashboard for read-only business analytics, revenue tracking, and fleet utilization." />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
   
-  
-    <link rel="stylesheet" href="css/admin.css" />
-    <link rel="stylesheet" href="css/executive.css" />
-    <link rel="stylesheet" href="css/kruizly-motion.css" />
-  </head>
-
+  <link rel="stylesheet" href="css/admin.css?v=20260908-v1" />
+  <link rel="stylesheet" href="css/executive.css?v=20260908-v1" />
+  <link rel="stylesheet" href="css/kruizly-motion.css?v=20260908-v1" />
+</head>
 <body>
-
 
   <!-- Background -->
   <div class="background-video-wrap" aria-hidden="true">
     <video autoplay muted loop playsinline preload="auto">
-      <source
-        src="assets/background-video.mp4"
-        type="video/mp4"
-      />
+      <source src="assets/background-video.mp4" type="video/mp4" />
     </video>
   </div>
 
   <!-- Header -->
   <header class="site-header">
     <div class="container header-inner">
-
       <a href="index.html" class="logo"><img src="images/logo.png" alt="KRUIZLY" class="logo-img" /></a>
-
       <button
-  type="button"
-  class="mobile-nav-toggle"
-  id="mobileNavToggle"
-  aria-label="Open navigation menu"
-  aria-controls="mainNav"
-  aria-expanded="false"
->
-  <span></span>
-  <span></span>
-  <span></span>
-</button>
-
-<nav class="nav" id="mainNav" aria-label="Main navigation">
+        type="button"
+        class="mobile-nav-toggle"
+        id="mobileNavToggle"
+        aria-label="Open navigation menu"
+        aria-controls="mainNav"
+        aria-expanded="false"
+      >
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <nav class="nav" id="mainNav" aria-label="Main navigation">
         <a href="fleet.html">Fleet</a>
         <a href="about.html">About</a>
         <a href="contact.html">Contact</a>
         <a href="partner.html">Host Car</a>
         <a href="profile.html">Profile</a>
       </nav>
-
     </div>
   </header>
 
-  <!-- Main -->
+  <!-- Main Content -->
   <main class="section staff-page manager-page">
+    <div class="manager-container" style="max-width: 1240px; margin: 0 auto; padding: 0 16px;">
 
-    <div class="manager-container">
-
-      <!-- Page heading -->
-      <div class="manager-hero">
-
-        <span class="section-label">
-          Business Overview
-        </span>
-
-        <h1 class="section-title">
-          Manager Summary
-        </h1>
-
+      <!-- Page Heading -->
+      <div class="manager-hero" style="margin-bottom: 24px;">
+        <span class="section-label">Business Overview</span>
+        <h1 class="section-title">Manager Summary</h1>
         <p class="manager-hero-text">
-          Monitor revenue, booking performance, earnings, and trip activity
-          from one read-only management dashboard.
+          Monitor revenue, fleet utilization, booking performance, and sales from one read-only executive analytics dashboard.
         </p>
-
       </div>
 
-
-      <!-- Access denied -->
-      <div
-        id="managerAccessDenied"
-        class="card manager-access-denied"
-        hidden
-      >
-
-        <div class="manager-access-icon" aria-hidden="true">M</div>
-
-        <h3>
-          Manager Access Required
-        </h3>
-
-        <p>
-          This summary dashboard is restricted to managers
-          and administrators. If you believe your account
-          should have manager access, ask an administrator
-          to grant it from the Admin panel's Users tab.
+      <!-- Access Denied Card -->
+      <div id="managerAccessDenied" class="card manager-access-denied" hidden style="display:none; margin: 40px auto; max-width: 500px; text-align: center; padding: 32px;">
+        <div class="manager-access-icon" aria-hidden="true" style="font-size: 40px; margin-bottom: 12px;">??</div>
+        <h3 style="font-size: 1.4rem; color: #fff; margin-bottom: 8px;">Manager Access Required</h3>
+        <p style="color: var(--sub); font-size: 14px; line-height: 1.5; margin-bottom: 20px;">
+          This summary dashboard is restricted to authorized managers and administrators. Please sign in with an executive or manager account.
         </p>
-
         <div class="manager-access-actions">
+          <a href="profile.html" class="btn btn-light">Go to Profile</a>
+        </div>
+      </div>
 
-          <a
-            href="profile.html"
-            class="btn btn-light"
-          >
-            Go to Profile
-          </a>
+      <!-- Main Dashboard Content -->
+      <div id="managerContent" class="manager-dashboard" hidden style="display:none;">
 
+        <!-- 1. REPORT PERIOD / DATE FILTER BAR -->
+        <section class="card mgr-filter-card" style="background: rgba(12, 18, 29, 0.75); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 16px;">
+            <div>
+              <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #4fd7ff;">Reporting Analytics Period</span>
+              <h3 style="margin: 2px 0 0; font-size: 1.15rem; color: #ffffff; font-weight: 700;">Filter Business Metrics</h3>
+            </div>
+            <span id="mgrPeriodLabel" style="font-size: 13px; font-weight: 600; color: #06d6a0; background: rgba(6, 214, 160, 0.12); padding: 4px 12px; border-radius: 20px; border: 1px solid rgba(6, 214, 160, 0.25);">
+              All Time
+            </span>
+          </div>
+
+          <!-- Date Form Controls -->
+          <div style="display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+            <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px;">
+              <label for="mgrDateFrom" style="font-size: 12px; font-weight: 700; color: var(--sub);">From Date (DD/MM/YYYY)</label>
+              <input type="date" id="mgrDateFrom" lang="en-GB" class="kr-clean-input" style="height: 40px; font-size: 13px; background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 0 12px;" />
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 140px;">
+              <label for="mgrDateTo" style="font-size: 12px; font-weight: 700; color: var(--sub);">To Date (DD/MM/YYYY)</label>
+              <input type="date" id="mgrDateTo" lang="en-GB" class="kr-clean-input" style="height: 40px; font-size: 13px; background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 0 12px;" />
+            </div>
+            <button id="mgrApplyFilterBtn" type="button" class="btn btn-primary" style="height: 40px; padding: 0 20px; font-weight: 700; font-size: 13px; border-radius: 10px; background: #4fd7ff; color: #080d16; border: none; cursor: pointer;">
+              Apply Filter
+            </button>
+            <button id="mgrResetFilterBtn" type="button" class="btn btn-outline" style="height: 40px; padding: 0 18px; font-weight: 600; font-size: 13px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.2); color: #fff; background: transparent; cursor: pointer;">
+              Reset
+            </button>
+          </div>
+
+          <!-- Quick Filter Pills -->
+          <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <span style="font-size: 12px; font-weight: 700; color: var(--sub); margin-right: 4px;">Quick Range:</span>
+            <button type="button" class="mgr-quick-pill" data-range="today">Today</button>
+            <button type="button" class="mgr-quick-pill" data-range="yesterday">Yesterday</button>
+            <button type="button" class="mgr-quick-pill" data-range="this_week">This Week</button>
+            <button type="button" class="mgr-quick-pill" data-range="this_month">This Month</button>
+            <button type="button" class="mgr-quick-pill" data-range="last_month">Last Month</button>
+            <button type="button" class="mgr-quick-pill" data-range="this_year">This Year</button>
+            <button type="button" class="mgr-quick-pill active" data-range="all_time">All Time</button>
+          </div>
+        </section>
+
+        <!-- 2. CORE PERFORMANCE - 8 KPI CARDS GRID -->
+        <div style="margin-bottom: 12px;">
+          <h2 style="font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--sub); margin-bottom: 12px;">Core Business KPIs</h2>
+        </div>
+        <section class="mgr-kpi-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 28px;">
+          
+          <!-- KPI 1: TOTAL REVENUE -->
+          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(79, 215, 255, 0.25); border-radius: 14px; padding: 18px; position: relative; overflow: hidden;">
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #4fd7ff; margin-bottom: 6px;">Total Revenue</div>
+            <div id="kpiTotalRevenue" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">?0</div>
+            <div style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Verified realized bookings</div>
+          </div>
+
+          <!-- KPI 2: ACTIVE TRIPS -->
+          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(6, 214, 160, 0.25); border-radius: 14px; padding: 18px;">
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #06d6a0; margin-bottom: 6px;">Active Trips</div>
+            <div id="kpiActiveTrips" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">0</div>
+            <div style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Overlapping current period</div>
+          </div>
+
+          <!-- KPI 3: COMPLETED TRIPS -->
+          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 18px;">
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #ffd166; margin-bottom: 6px;">Completed Trips</div>
+            <div id="kpiCompletedTrips" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">0</div>
+            <div style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Finished trip reservations</div>
+          </div>
+
+          <!-- KPI 4: REVENUE THIS MONTH -->
+          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(79, 215, 255, 0.25); border-radius: 14px; padding: 18px;">
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #4fd7ff; margin-bottom: 6px;">Revenue This Month</div>
+            <div id="kpiRevenueThisMonth" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">?0</div>
+            <div id="kpiRevenueMonthSub" style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Selected month period</div>
+          </div>
+
+          <!-- KPI 5: TOTAL BOOKINGS -->
+          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 18px;">
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--sub); margin-bottom: 6px;">Total Bookings</div>
+            <div id="kpiTotalBookings" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">0</div>
+            <div style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Valid period reservations</div>
+          </div>
+
+          <!-- KPI 6: AVERAGE OCCUPANCY -->
+          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(6, 214, 160, 0.25); border-radius: 14px; padding: 18px;">
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #06d6a0; margin-bottom: 6px;">Average Occupancy</div>
+            <div id="kpiAvgOccupancy" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">0%</div>
+            <div style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Booked / Available Vehicle-Days</div>
+          </div>
+
+          <!-- KPI 7: PER FLEET AMOUNT -->
+          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 18px;">
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--sub); margin-bottom: 6px;">Per Fleet Amount</div>
+            <div id="kpiPerFleetAmount" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">?0 <span style="font-size: 13px; font-weight:600; color: var(--sub);">/ vehicle</span></div>
+            <div style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Average revenue per vehicle</div>
+          </div>
+
+          <!-- KPI 8: PER FLEET REVENUE % -->
+          <div class="card mgr-kpi-card" style="background: rgba(12, 18, 29, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 183, 3, 0.25); border-radius: 14px; padding: 18px;">
+            <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #ffb703; margin-bottom: 6px;">Top Fleet Contribution</div>
+            <div id="kpiFleetRevShare" style="font-size: 1.8rem; font-weight: 800; color: #ffffff;">0%</div>
+            <div id="kpiFleetRevShareSub" style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Share of total revenue</div>
+          </div>
+
+        </section>
+
+        <!-- 3. SALES PERFORMANCE SECTION -->
+        <div style="margin-bottom: 12px;">
+          <h2 style="font-size: 1rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--sub); margin-bottom: 12px;">Sales Performance</h2>
+        </div>
+        <section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 28px;">
+          
+          <div class="card" style="background: rgba(12, 18, 29, 0.65); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 16px;">
+            <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--sub);">Day Sales</span>
+            <div id="salesDay" style="font-size: 1.5rem; font-weight: 800; color: #ffffff; margin-top: 4px;">?0</div>
+            <span style="font-size: 11px; color: var(--sub);">Revenue for selected/current day</span>
+          </div>
+
+          <div class="card" style="background: rgba(12, 18, 29, 0.65); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 16px;">
+            <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--sub);">Week Sales</span>
+            <div id="salesWeek" style="font-size: 1.5rem; font-weight: 800; color: #ffffff; margin-top: 4px;">?0</div>
+            <span style="font-size: 11px; color: var(--sub);">Revenue for selected week</span>
+          </div>
+
+          <div class="card" style="background: rgba(12, 18, 29, 0.65); border: 1px solid rgba(255,255,255,0.1); border-radius: 14px; padding: 16px;">
+            <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: var(--sub);">Month Sales</span>
+            <div id="salesMonth" style="font-size: 1.5rem; font-weight: 800; color: #ffffff; margin-top: 4px;">?0</div>
+            <span style="font-size: 11px; color: var(--sub);">Revenue for selected month</span>
+          </div>
+
+          <div class="card" style="background: rgba(12, 18, 29, 0.65); border: 1px solid rgba(79,215,255,0.3); border-radius: 14px; padding: 16px;">
+            <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #4fd7ff;">Overall Sales</span>
+            <div id="salesOverall" style="font-size: 1.5rem; font-weight: 800; color: #ffffff; margin-top: 4px;">?0</div>
+            <span style="font-size: 11px; color: var(--sub);">Historical total verified revenue</span>
+          </div>
+
+        </section>
+
+        <!-- 4. TOP PERFORMING VEHICLE INDICATOR & FLEET PERFORMANCE -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;">
+          <div>
+            <span style="font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #06d6a0;">Fleet Revenue Analytics</span>
+            <h2 style="margin: 2px 0 0; font-size: 1.25rem; color: #ffffff; font-weight: 800;">Current Fleet Performance</h2>
+          </div>
+
+          <!-- Top Performer Pill/Badge -->
+          <div id="topPerformerCard" class="card" style="background: rgba(6, 214, 160, 0.08); border: 1px solid rgba(6, 214, 160, 0.3); border-radius: 12px; padding: 10px 16px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 24px;">??</span>
+            <div>
+              <div style="font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.8px; color: #06d6a0;">TOP PERFORMING VEHICLE</div>
+              <strong id="topCarName" style="font-size: 14px; color: #ffffff;">—</strong>
+              <span id="topCarStats" style="font-size: 12px; color: var(--sub); margin-left: 6px;">?0 · 0 Bookings</span>
+            </div>
+          </div>
         </div>
 
-      </div>
-
-
-      <!-- Dashboard -->
-      <div
-        id="managerContent"
-        class="manager-dashboard"
-        hidden
-      >
-
-        <!-- Statistics -->
-        <section class="manager-stats">
-
-          <div class="card manager-stat-card">
-
-            <span class="manager-stat-label">
-              Active Ongoing Trips
-            </span>
-
-            <div
-              id="mgrActiveCount"
-              class="manager-stat-value"
-            >
-              —
-            </div>
-
-          </div>
-
-
-          <div class="card manager-stat-card pickups">
-
-            <span class="manager-stat-label">
-              Pending Pickups Today
-            </span>
-
-            <div
-              id="mgrPickupCount"
-              class="manager-stat-value"
-            >
-              —
-            </div>
-
-          </div>
-
-
-          <div class="card manager-stat-card documents">
-
-            <span class="manager-stat-label">
-              Returns Due Today
-            </span>
-
-            <div
-              id="mgrReturnCount"
-              class="manager-stat-value"
-            >
-              —
-            </div>
-
-          </div>
-
-        </section>
-
-
-        <!-- Booking queue -->
-        <section class="card manager-panel">
-
-          <div class="manager-panel-header">
-
-            <div>
-              <h2 class="manager-panel-title">
-                Booking, Pickup &amp; Drop Queue
-              </h2>
-
-              <p class="manager-panel-subtitle">
-                Review customer details, record pickup photos, and process vehicle returns.
-              </p>
-            </div>
-
-            <label class="manager-date-sort" for="mgrBookingSortOrder">
-              Sort by pickup date
-              <select id="mgrBookingSortOrder">
-                <option value="desc">Newest first</option>
-                <option value="asc">Oldest first</option>
+        <!-- 5. FLEET PERFORMANCE TABLE CARD -->
+        <section class="card manager-panel" style="background: rgba(12, 18, 29, 0.75); backdrop-filter: blur(14px); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 20px; margin-bottom: 24px;">
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 13px; font-weight: 700; color: var(--sub);">Sort Fleet By:</span>
+              <select id="mgrFleetSortSelect" class="kr-clean-input" style="height: 36px; font-size: 13px; background: rgba(255,255,255,0.06); color: #fff; border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; padding: 0 12px;">
+                <option value="revenue" selected>Revenue Generated (High to Low)</option>
+                <option value="bookings">Bookings Count</option>
+                <option value="days">Booked Days</option>
+                <option value="avg">Average Revenue / Booking</option>
+                <option value="car">Car Name</option>
               </select>
-            </label>
-
+            </div>
+            
+            <div id="reconciliationNotice" style="display:none; font-size: 12px; color: #ffd166; background: rgba(255, 209, 102, 0.1); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(255, 209, 102, 0.25);">
+              ?? Unmapped Revenue Logged
+            </div>
           </div>
 
-          <div
-            id="mgrBookingsWrap"
-            class="manager-table-wrap"
-          >
-
-            <div class="manager-state">
-              Loading bookings...
-            </div>
-
+          <div style="width: 100%; overflow-x: auto;">
+            <table class="manager-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+              <thead>
+                <tr style="border-bottom: 1px solid rgba(255,255,255,0.15); font-size: 12px; font-weight: 700; text-transform: uppercase; color: var(--sub);">
+                  <th style="padding: 12px 14px;">Bookings</th>
+                  <th style="padding: 12px 14px;">Car</th>
+                  <th style="padding: 12px 14px;">Reg. No.</th>
+                  <th style="padding: 12px 14px;">Dates Booked</th>
+                  <th style="padding: 12px 14px;">Revenue Generated</th>
+                  <th style="padding: 12px 14px;">Average Revenue</th>
+                  <th style="padding: 12px 14px;">Total</th>
+                </tr>
+              </thead>
+              <tbody id="mgrFleetTableBody">
+                <tr>
+                  <td colspan="7" style="padding: 24px; text-align: center; color: var(--sub);">Loading fleet performance analytics...</td>
+                </tr>
+              </tbody>
+              <tfoot id="mgrFleetTableFoot" style="border-top: 2px solid rgba(255,255,255,0.2); font-weight: 800; background: rgba(255,255,255,0.02);">
+                <!-- Dynamic Totals Row -->
+              </tfoot>
+            </table>
           </div>
 
         </section>
-
 
       </div>
 
     </div>
-
   </main>
 
-
   <!-- Footer -->
-      <footer class="site-footer">
-      <div class="container">
-        <div class="footer-grid">
-          <div class="footer-brand footer-section">
-            <a href="index.html" class="logo"><img src="images/logo.png" alt="KRUIZLY" class="logo-img" /></a>
-            <p>
-              Premium self-drive rentals across India with trusted, hassle-free
-              booking and 24/7 support.
-            </p>
-          </div>
+  <footer class="site-footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div class="footer-brand footer-section">
+          <a href="index.html" class="logo"><img src="images/logo.png" alt="KRUIZLY" class="logo-img" /></a>
+          <p>
+            Premium self-drive rentals across India with trusted, hassle-free booking and 24/7 support.
+          </p>
+        </div>
 
-          <div class="footer-links footer-section">
-            <h4>Quick Links</h4>
-            <ul class="footer-list">
-              <li><a href="fleet.html">Fleet</a></li>
-              <li><a href="about.html">About</a></li>
-              <li><a href="contact.html">Contact</a></li>
-              <li><a href="partner.html">Host Car</a></li>
-              <li><a href="profile.html">Profile</a></li>
-            </ul>
-          </div>
+        <div class="footer-links footer-section">
+          <h4>Quick Links</h4>
+          <ul class="footer-list">
+            <li><a href="fleet.html">Fleet</a></li>
+            <li><a href="about.html">About</a></li>
+            <li><a href="contact.html">Contact</a></li>
+            <li><a href="partner.html">Host Car</a></li>
+            <li><a href="profile.html">Profile</a></li>
+          </ul>
+        </div>
 
-          <div class="footer-legal footer-section">
-            <h4>Legal</h4>
-            <ul class="footer-list">
-              <li><a href="privacy.html">Privacy Policy</a></li>
-              <li><a href="terms.html">Terms &amp; Conditions</a></li>
-              <li><a href="refund.html">Refund Policy</a></li>
-            </ul>
-          </div>
+        <div class="footer-legal footer-section">
+          <h4>Legal</h4>
+          <ul class="footer-list">
+            <li><a href="privacy.html">Privacy Policy</a></li>
+            <li><a href="terms.html">Terms &amp; Conditions</a></li>
+            <li><a href="refund.html">Refund Policy</a></li>
+          </ul>
+        </div>
 
-          <div class="footer-office footer-section">
-            <h4>Office &amp; Support</h4>
-            <div class="footer-contact-items">
-              <div class="footer-contact-item">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-                <span>Gavson Business Park, Ghansoli, Navi Mumbai, India</span>
-              </div>
-              <div class="footer-contact-item">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-                <a href="mailto:support@kruizly.com">support@kruizly.com</a>
-              </div>
-              <div class="footer-contact-item">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                </svg>
-                <a href="tel:+919167164547">+91 91671 64547</a>
-              </div>
+        <div class="footer-office footer-section">
+          <h4>Office &amp; Support</h4>
+          <div class="footer-contact-items">
+            <div class="footer-contact-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+              <span>Gavson Business Park, Ghansoli, Navi Mumbai, India</span>
             </div>
-                       <div class="contact-social-row">
-              <a
-                href="https://www.instagram.com/go.kruizly"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="social-pill instagram-pill"
-                aria-label="Follow us on Instagram"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#ff5388"
-                  stroke-width="2.2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-                  <path
-                    d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"
-                  ></path>
-                  <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-                </svg>
-                <span>Instagram</span>
-              </a>
-              <a
-                href="https://www.facebook.com/kruizly"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="social-pill facebook-pill"
-                aria-label="Visit our Facebook page"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#4b90ff"
-                  stroke-width="2.2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"
-                  ></path>
-                </svg>
-                <span>Facebook</span>
-              </a>
-              <a
-                href="https://wa.me/919167164547"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="social-pill whatsapp-pill"
-                aria-label="Chat with us on WhatsApp"
-              >
-                <svg
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="#25d366"
-                  stroke-width="2.2"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"
-                  ></path>
-                </svg>
-                <span>WhatsApp</span>
-              </a>
+            <div class="footer-contact-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              <a href="mailto:support@kruizly.com">support@kruizly.com</a>
+            </div>
+            <div class="footer-contact-item">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4fd7ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+              </svg>
+              <a href="tel:+919167164547">+91 91671 64547</a>
             </div>
           </div>
         </div>
-        <div class="footer-copy">© 2026 KRUIZLY. All rights reserved.</div>
       </div>
-    </footer>
-
-
-  <!-- Pickup Handover Modal -->
-  <div
-    id="executivePickupModal"
-    class="manager-modal"
-    hidden
-  >
-
-    <div class="card manager-modal-card">
-      <button
-        id="closeExecutivePickupModal"
-        class="manager-modal-close"
-        type="button"
-        aria-label="Close pickup handover"
-      >
-        &times;
-      </button>
-
-      <h3 id="executivePickupModalTitle" class="manager-modal-title">
-        Record Vehicle Pickup
-      </h3>
-
-      <p class="manager-modal-subtitle">
-        Upload at least one condition photo before confirming the vehicle handover.
-      </p>
-
-      <div class="field full">
-        <label for="executivePickupPhotos">Pickup condition photos</label>
-        <input
-          id="executivePickupPhotos"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-        />
-      </div>
-
-      <div class="field full" style="margin-top:16px;">
-        <label for="executivePickupNotes">Pickup notes</label>
-        <textarea
-          id="executivePickupNotes"
-          rows="4"
-          placeholder="Fuel level, visible marks, customer handover notes..."
-        ></textarea>
-      </div>
-
-      <div
-        id="executivePickupPreview"
-        style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:16px;"
-      ></div>
-
-      <p id="executivePickupStatus" style="color:var(--sub);margin:14px 0 0;"></p>
-
-      <div class="manager-modal-actions">
-        <button id="saveExecutivePickupBtn" class="btn btn-dark" type="button">
-          Upload Photos &amp; Confirm Pickup
-        </button>
-      </div>
+      <div class="footer-copy">© 2026 KRUIZLY. All rights reserved.</div>
     </div>
-  </div>
+  </footer>
 
-
-  <!-- Return Inspection Modal -->
-  <div
-    id="returnModal"
-    class="manager-modal"
-    hidden
-  >
-
-    <div class="card manager-modal-card">
-
-      <button
-        id="closeReturnModal"
-        class="manager-modal-close"
-        type="button"
-        aria-label="Close"
-      >
-        &times;
-      </button>
-
-
-      <h3
-        id="returnModalTitle"
-        class="manager-modal-title"
-      >
-        Process Return
-      </h3>
-
-
-      <p
-        id="returnModalSubtitle"
-        class="manager-modal-subtitle"
-      >
-        Check anything found on inspection, adjust the
-        deduction amount if needed, then save.
-      </p>
-
-
-      <div id="returnItemsList"></div>
-
-      <!-- Return Odometer + FASTag -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:16px;margin-bottom:12px;">
-        <div>
-          <label class="pickup-field-label" for="returnOdometer">Return Odometer</label>
-          <input id="returnOdometer" type="number" min="0" step="1" placeholder="km at return" class="kr-clean-input" />
-        </div>
-        <div>
-          <label class="pickup-field-label" for="returnFastag">FASTag ?</label>
-          <input id="returnFastag" type="number" min="0" step="1" placeholder="Balance ?" class="kr-clean-input" />
-        </div>
-      </div>
-
-      <div class="return-upload">
-        <div class="return-upload__head">
-          <span>Return photos</span>
-          <p>Upload clear photos of the vehicle condition after the return inspection.</p>
-        </div>
-        <input
-          id="returnInspectionPhotos"
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-        />
-        <div id="returnInspectionPreview" class="return-upload__preview"></div>
-        <p id="returnInspectionStatus" class="return-upload__status"></p>
-      </div>
-
-
-      <div class="manager-summary">
-
-        <div class="manager-summary-row">
-
-          <span>
-            Original Security Deposit
-          </span>
-
-          <strong id="returnDepositOriginal">
-            ?0
-          </strong>
-
-        </div>
-
-
-        <div class="manager-summary-row">
-
-          <span>
-            Total Deductions
-          </span>
-
-          <strong
-            id="returnDeductionTotal"
-            style="color: #ef476f;"
-          >
-            ?0
-          </strong>
-
-        </div>
-
-
-        <div
-          class="manager-summary-row"
-          style="border-top: 1px solid var(--line); padding-top: 14px;"
-        >
-
-          <span>
-            Refundable to Customer
-          </span>
-
-          <strong
-            id="returnDepositRefund"
-            style="
-              color: var(--accent);
-              font-size: 1.15rem;
-            "
-          >
-            ?0
-          </strong>
-
-        </div>
-
-      </div>
-
-
-      <div class="manager-notes">
-
-        <div class="field full">
-
-          <label for="returnInvoiceNotes">
-            Invoice notes
-            <span style="color: var(--sub);">
-              (editable, shown to customer)
-            </span>
-          </label>
-
-          <textarea
-            id="returnInvoiceNotes"
-            rows="4"
-            placeholder="e.g. Scratch on rear bumper, photographed at return. Deposit refund processed via original payment method."
-          ></textarea>
-
-        </div>
-
-      </div>
-
-
-      <div class="manager-modal-actions">
-
-        <button
-          id="saveReturnBtn"
-          class="btn btn-dark"
-          type="button"
-        >
-          Save &amp; Mark Completed
-        </button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-
-  <script
-    type="module"
-    src="js/manager-summary.js?v=20260907-v2"
-  ></script>
+  <script type="module" src="js/manager-summary.js?v=20260908-v3"></script>
   <script src="js/glass-ui.js"></script>
   <script src="js/kruizly-motion.js"></script>
 </body>
