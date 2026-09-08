@@ -834,27 +834,7 @@ function renderDashboard() {
   if (topFleetAvgRevenueEl)
     topFleetAvgRevenueEl.textContent = formatINR(fleetAvgRevenue);
 
-  // 2. POPULATE STICKY TOP TOTAL ROW IN THE TABLE HEADER
-  const thFleetTotalBookingsEl = document.getElementById(
-    "thFleetTotalBookings",
-  );
-  const thFleetTotalDaysEl = document.getElementById("thFleetTotalDays");
-  const thFleetTotalRevenueEl = document.getElementById("thFleetTotalRevenue");
-  const thFleetAvgRevenueEl = document.getElementById("thFleetAvgRevenue");
-  const thFleetGrandTotalEl = document.getElementById("thFleetGrandTotal");
-
-  if (thFleetTotalBookingsEl)
-    thFleetTotalBookingsEl.textContent = `${fleetTotalBookings} Bookings`;
-  if (thFleetTotalDaysEl)
-    thFleetTotalDaysEl.textContent = `${fleetTotalDays} days`;
-  if (thFleetTotalRevenueEl)
-    thFleetTotalRevenueEl.textContent = formatINR(fleetTotalRevenue);
-  if (thFleetAvgRevenueEl)
-    thFleetAvgRevenueEl.textContent = `${formatINR(fleetAvgRevenue)} / booking`;
-  if (thFleetGrandTotalEl)
-    thFleetGrandTotalEl.textContent = formatINR(fleetTotalRevenue);
-
-  // 3. RENDER FLEET TABLE BODY
+  // 2. RENDER FLEET TABLE BODY
   const tbody = document.getElementById("mgrFleetTableBody");
   const tfoot = document.getElementById("mgrFleetTableFoot");
 
