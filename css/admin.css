@@ -48,6 +48,11 @@
   gap: 32px;
 }
 
+.manager-dashboard[hidden],
+.manager-access-denied[hidden] {
+  display: none !important;
+}
+
 /* 3-Column Responsive Stats Grid */
 .manager-stats,
 .admin-stats-grid {
