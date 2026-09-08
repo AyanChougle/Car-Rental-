@@ -58,10 +58,10 @@
         color: #ffffff;
       }
       .mgr-tab-btn.active {
-        background: #06d6a0;
+        background: rgba(6, 214, 160, 0.16);
         border-color: #06d6a0;
-        color: #0b1120;
-        box-shadow: 0 4px 16px rgba(6, 214, 160, 0.35);
+        color: #06d6a0;
+        box-shadow: 0 0 20px rgba(6, 214, 160, 0.22);
       }
       @media (max-width: 900px) {
         .mgr-subpage-nav {
@@ -71,6 +71,84 @@
         }
         .mgr-tab-btn {
           flex: 0 0 auto;
+        }
+      }
+      .manager-page-header {
+        margin-bottom: 26px;
+        text-align: left;
+      }
+      .manager-page-header .section-label {
+        display: inline-block;
+        margin: 0 0 8px 0;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--kr-cyan, #4fd7ff);
+        background: rgba(79, 215, 255, 0.1);
+        padding: 4px 12px;
+        border-radius: 9999px;
+        border: 1px solid rgba(79, 215, 255, 0.25);
+      }
+      .manager-page-header .section-title {
+        margin: 0 0 8px 0;
+        font-size: 2.35rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: #ffffff;
+        text-align: left;
+      }
+      .manager-page-header .section-subtitle {
+        max-width: 760px;
+        margin: 0;
+        color: var(--sub, #94a3b8);
+        font-size: 15px;
+        line-height: 1.5;
+        text-align: left;
+      }
+      .stat-card {
+        padding: 20px 22px !important;
+        background: rgba(15, 23, 42, 0.65) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 14px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        min-height: 96px !important;
+        text-align: left !important;
+      }
+      .stat-label {
+        font-size: 11.5px !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.07em !important;
+        text-transform: uppercase !important;
+        color: var(--sub, #94a3b8) !important;
+        margin: 0 !important;
+        line-height: 1.2 !important;
+        text-align: left !important;
+      }
+      .stat-value {
+        font-size: 2rem !important;
+        font-weight: 900 !important;
+        color: #ffffff !important;
+        line-height: 1.1 !important;
+        letter-spacing: -0.02em !important;
+        margin: 0 !important;
+        text-align: left !important;
+      }
+      .mgr-filter-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr auto auto;
+        gap: 12px;
+        align-items: end;
+        margin-bottom: 16px;
+      }
+      @media (max-width: 768px) {
+        .mgr-filter-grid {
+          grid-template-columns: 1fr 1fr;
         }
       }
       .mgr-subpage-section {
@@ -127,22 +205,12 @@
     <!-- Main Content -->
     <main class="section staff-page admin-page manager-page">
       <div class="container manager-container">
-        <!-- Section Header Centered matching admin.html & profile.html -->
-        <div class="section-header centered">
+        <!-- Section Header Left-Aligned -->
+        <div class="manager-page-header">
           <span class="section-label">Business Overview</span>
           <h1 class="section-title">Manager Summary</h1>
-          <p
-            class="section-subtitle"
-            style="
-              max-width: 680px;
-              margin: 8px auto 0;
-              color: var(--sub);
-              font-size: 15px;
-              text-align: center;
-            "
-          >
-            Monitor revenue, fleet utilization, booking performance, and sales
-            from one read-only executive analytics dashboard.
+          <p class="section-subtitle">
+            Monitor revenue, fleet utilization, booking performance, and sales from one read-only executive analytics dashboard.
           </p>
         </div>
 
@@ -508,115 +576,49 @@
               <!-- KPI 1: TOTAL REVENUE -->
               <div class="card stat-card" id="cardTotalRevenue">
                 <span class="stat-label">Total Revenue</span>
-                <div
-                  id="kpiTotalRevenue"
-                  class="stat-value"
-                  style="color: #06d6a0"
-                >
-                  ₹0
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"></span>
+                <div id="kpiTotalRevenue" class="stat-value">₹0</div>
               </div>
 
               <!-- KPI 2: ACTIVE TRIPS -->
               <div class="card stat-card" id="cardActiveTrips">
                 <span class="stat-label">Active Trips</span>
-                <div
-                  id="kpiActiveTrips"
-                  class="stat-value"
-                  style="color: #4fd7ff"
-                >
-                  0
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"></span>
+                <div id="kpiActiveTrips" class="stat-value">0</div>
               </div>
 
               <!-- KPI 3: COMPLETED TRIPS -->
               <div class="card stat-card" id="cardCompletedTrips">
                 <span class="stat-label">Completed Trips</span>
-                <div
-                  id="kpiCompletedTrips"
-                  class="stat-value"
-                  style="color: #ffd166"
-                >
-                  0
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"></span>
+                <div id="kpiCompletedTrips" class="stat-value">0</div>
               </div>
 
               <!-- KPI 4: REVENUE THIS MONTH -->
               <div class="card stat-card" id="cardRevenueThisMonth">
                 <span class="stat-label">Revenue This Month</span>
-                <div
-                  id="kpiRevenueThisMonth"
-                  class="stat-value"
-                  style="color: #4fd7ff"
-                >
-                  ₹0
-                </div>
-                <span
-                  id="kpiRevenueMonthSub"
-                  style="font-size: 12px; color: var(--sub)"
-                ></span>
+                <div id="kpiRevenueThisMonth" class="stat-value">₹0</div>
               </div>
 
               <!-- KPI 5: TOTAL BOOKINGS -->
               <div class="card stat-card" id="cardTotalBookings">
                 <span class="stat-label">Total Bookings</span>
-                <div
-                  id="kpiTotalBookings"
-                  class="stat-value"
-                  style="color: #ffffff"
-                >
-                  0
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"></span>
+                <div id="kpiTotalBookings" class="stat-value">0</div>
               </div>
 
               <!-- KPI 6: AVERAGE OCCUPANCY -->
               <div class="card stat-card" id="cardAvgOccupancy">
                 <span class="stat-label">Average Occupancy</span>
-                <div
-                  id="kpiAvgOccupancy"
-                  class="stat-value"
-                  style="color: #06d6a0"
-                >
-                  0%
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"></span>
+                <div id="kpiAvgOccupancy" class="stat-value">0%</div>
               </div>
 
               <!-- KPI 7: PER FLEET AMOUNT -->
               <div class="card stat-card" id="cardPerFleetAmount">
                 <span class="stat-label">Per Fleet Amount</span>
-                <div
-                  id="kpiPerFleetAmount"
-                  class="stat-value"
-                  style="color: #ffffff; font-size: 1.65rem"
-                >
-                  ₹0
-                  <span
-                    style="font-size: 12px; font-weight: 600; color: var(--sub)"
-                    >/ vehicle</span
-                  >
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"></span>
+                <div id="kpiPerFleetAmount" class="stat-value">₹0</div>
               </div>
 
               <!-- KPI 8: TOP FLEET CONTRIBUTION -->
               <div class="card stat-card" id="cardFleetRevShare">
                 <span class="stat-label">Top Fleet Share</span>
-                <div
-                  id="kpiFleetRevShare"
-                  class="stat-value"
-                  style="color: #ffd166"
-                >
-                  0%
-                </div>
-                <span
-                  id="kpiFleetRevShareSub"
-                  style="font-size: 12px; color: var(--sub)"
-                ></span>
+                <div id="kpiFleetRevShare" class="stat-value">0%</div>
               </div>
             </section>
 
@@ -653,38 +655,22 @@
             >
               <div class="card stat-card">
                 <span class="stat-label">Day Sales</span>
-                <div id="salesDay" class="stat-value" style="color: #ffffff">
-                  ₹0
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"></span>
+                <div id="salesDay" class="stat-value">₹0</div>
               </div>
 
               <div class="card stat-card">
                 <span class="stat-label">Week Sales</span>
-                <div id="salesWeek" class="stat-value" style="color: #ffffff">
-                  ₹0
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"></span>
+                <div id="salesWeek" class="stat-value">₹0</div>
               </div>
 
               <div class="card stat-card">
                 <span class="stat-label">Month Sales</span>
-                <div id="salesMonth" class="stat-value" style="color: #ffffff">
-                  ₹0
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"></span>
+                <div id="salesMonth" class="stat-value">₹0</div>
               </div>
 
               <div class="card stat-card">
                 <span class="stat-label">Overall Sales</span>
-                <div
-                  id="salesOverall"
-                  class="stat-value"
-                  style="color: #4fd7ff"
-                >
-                  ₹0
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"></span>
+                <div id="salesOverall" class="stat-value">₹0</div>
               </div>
             </section>
           </div>
@@ -850,7 +836,6 @@
                 >
                   ₹0
                 </div>
-                <span style="font-size: 11.5px; color: var(--sub)"></span>
               </div>
               <div>
                 <span
@@ -874,7 +859,6 @@
                 >
                   0
                 </div>
-                <span style="font-size: 11.5px; color: var(--sub)"></span>
               </div>
               <div>
                 <span
@@ -898,7 +882,6 @@
                 >
                   0 Days
                 </div>
-                <span style="font-size: 11.5px; color: var(--sub)"></span>
               </div>
               <div>
                 <span
@@ -922,7 +905,6 @@
                 >
                   ₹0
                 </div>
-                <span style="font-size: 11.5px; color: var(--sub)"></span>
               </div>
             </div>
 
@@ -1127,47 +1109,19 @@
             >
               <div class="card stat-card">
                 <span class="stat-label">Total Bookings</span>
-                <div
-                  id="tabBookingsCount"
-                  class="stat-value"
-                  style="color: #ffffff"
-                >
-                  0
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"> </span>
+                <div id="tabBookingsCount" class="stat-value">0</div>
               </div>
               <div class="card stat-card">
                 <span class="stat-label">Active / Ongoing</span>
-                <div
-                  id="tabBookingsActive"
-                  class="stat-value"
-                  style="color: #4fd7ff"
-                >
-                  0
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"> </span>
+                <div id="tabBookingsActive" class="stat-value">0</div>
               </div>
               <div class="card stat-card">
                 <span class="stat-label">Completed Trips</span>
-                <div
-                  id="tabBookingsCompleted"
-                  class="stat-value"
-                  style="color: #ffd166"
-                >
-                  0
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"> </span>
+                <div id="tabBookingsCompleted" class="stat-value">0</div>
               </div>
               <div class="card stat-card">
                 <span class="stat-label">Total Booked Days</span>
-                <div
-                  id="tabBookingsTotalDays"
-                  class="stat-value"
-                  style="color: #06d6a0"
-                >
-                  0 Days
-                </div>
-                <span style="font-size: 12px; color: var(--sub)"> </span>
+                <div id="tabBookingsTotalDays" class="stat-value">0 Days</div>
               </div>
             </section>
 
@@ -1272,25 +1226,19 @@
             >
               <div class="card stat-card">
                 <span class="stat-label">Active Fleets</span>
-                <div id="tabOpsActiveFleetCount" class="stat-value" style="color: #06d6a0">7</div>
+                <div id="tabOpsActiveFleetCount" class="stat-value">7</div>
               </div>
               <div class="card stat-card">
                 <span class="stat-label">Parked in Yard</span>
-                <div id="tabOpsYardCount" class="stat-value" style="color: #4fd7ff">0</div>
+                <div id="tabOpsYardCount" class="stat-value">0</div>
               </div>
               <div class="card stat-card">
                 <span class="stat-label">Currently on Trip</span>
-                <div id="tabOpsOnTripCount" class="stat-value" style="color: #ffd166">0</div>
+                <div id="tabOpsOnTripCount" class="stat-value">0</div>
               </div>
               <div class="card stat-card">
                 <span class="stat-label">Average Occupancy</span>
-                <div
-                  id="tabOpsOccupancy"
-                  class="stat-value"
-                  style="color: #ffffff"
-                >
-                  0%
-                </div>
+                <div id="tabOpsOccupancy" class="stat-value">0%</div>
               </div>
             </section>
 
@@ -1425,7 +1373,7 @@
       </div>
     </footer>
 
-    <script type="module" src="js/manager-summary.js?v=20260908-v6"></script>
+    <script type="module" src="js/manager-summary.js?v=20260908-v7"></script>
     <script src="js/glass-ui.js"></script>
     <script src="js/kruizly-motion.js"></script>
   </body>

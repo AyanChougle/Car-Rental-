@@ -573,11 +573,8 @@ function renderDashboard() {
     "Dec",
   ];
   const kpiRevenueThisMonthEl = document.getElementById("kpiRevenueThisMonth");
-  const kpiRevenueMonthSubEl = document.getElementById("kpiRevenueMonthSub");
   if (kpiRevenueThisMonthEl)
     kpiRevenueThisMonthEl.textContent = formatINR(monthRevenue);
-  if (kpiRevenueMonthSubEl)
-    kpiRevenueMonthSubEl.textContent = `${monthNames[targetMonth]} ${targetYear} Revenue`;
 
   // KPI 5: TOTAL BOOKINGS
   const totalBookingsCount = validPeriodBookings.length;
@@ -620,10 +617,10 @@ function renderDashboard() {
   if (kpiAvgOccupancyEl) kpiAvgOccupancyEl.textContent = `${occupancyPct}%`;
 
   // KPI 7: PER FLEET AMOUNT (Average revenue per vehicle)
-  const perFleetAmount = activeFleetCount ? totalRevenue / activeFleetCount : 0;
+  const perFleetAmount = activeFleetCount ? Math.round(totalRevenue / activeFleetCount) : 0;
   const kpiPerFleetAmountEl = document.getElementById("kpiPerFleetAmount");
   if (kpiPerFleetAmountEl) {
-    kpiPerFleetAmountEl.innerHTML = `${formatINR(perFleetAmount)} <span style="font-size:12px;font-weight:600;color:var(--sub);">/ vehicle</span>`;
+    kpiPerFleetAmountEl.textContent = formatINR(perFleetAmount);
   }
 
   /* ============================================================
@@ -719,13 +716,7 @@ function renderDashboard() {
       ? Math.round((topVehicle.revenue / totalRevenue) * 100)
       : 0;
   const kpiFleetRevShareEl = document.getElementById("kpiFleetRevShare");
-  const kpiFleetRevShareSubEl = document.getElementById("kpiFleetRevShareSub");
   if (kpiFleetRevShareEl) kpiFleetRevShareEl.textContent = `${topSharePct}%`;
-  if (kpiFleetRevShareSubEl) {
-    kpiFleetRevShareSubEl.textContent =
-      topVehicle && topVehicle.revenue
-        ? `${topVehicle.carName} contribution`: "";
-  }
 
   // TOP PERFORMER CARD
   const topCarNameEl = document.getElementById("topCarName");
