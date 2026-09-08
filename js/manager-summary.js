@@ -36,21 +36,103 @@ let filterToDate = null; // Date object or null
  * Kruizly Standardized 7 Fleet Master
  */
 export const ACTIVE_7_FLEETS = [
-  { regNo: "ZIP008", brand: "Kia", model: "Carens", year: 2025, category: "MPV", transmission: "Manual", fuel: "Diesel", seats: 6, image: "assets/fleet/Kia Carens.png", priceDay: 4500 },
-  { regNo: "MH03DA3808", brand: "Mahindra", model: "XUV500", year: 2018, category: "SUV", transmission: "Manual", fuel: "Diesel", seats: 7, image: "assets/fleet/Mahindra XUV500.png", priceDay: 4500 },
-  { regNo: "ZIP007", brand: "Jeep", model: "Compass", year: 2020, category: "SUV", transmission: "Manual", fuel: "Diesel", seats: 5, image: "assets/fleet/Jeep Compass.png", priceDay: 5500 },
-  { regNo: "ZIP010", brand: "Mahindra", model: "Scorpio N", year: 2025, category: "SUV", transmission: "Manual", fuel: "Diesel", seats: 7, image: "assets/fleet/Mahindra Scorpio N.png", priceDay: 5500 },
-  { regNo: "ZIP011", brand: "Mahindra", model: "Thar", year: 2025, category: "SUV", transmission: "Manual", fuel: "Diesel", seats: 4, image: "assets/fleet/Mahindra Thar.png", priceDay: 5500 },
-  { regNo: "ZIP033", brand: "Toyota", model: "Innova Crysta", year: 2021, category: "MPV", transmission: "Manual", fuel: "Diesel", seats: 7, image: "assets/fleet/Toyota Innova Crysta.png", priceDay: 5500 },
-  { regNo: "ZIP012", brand: "Mahindra", model: "Thar Roxx", year: 2025, category: "SUV", transmission: "Automatic", fuel: "Diesel", seats: 5, image: "assets/fleet/Mahindra Thar.png", priceDay: 8000 },
+  {
+    regNo: "ZIP008",
+    brand: "Kia",
+    model: "Carens",
+    year: 2025,
+    category: "MPV",
+    transmission: "Manual",
+    fuel: "Diesel",
+    seats: 6,
+    image: "assets/fleet/Kia Carens.png",
+    priceDay: 4500,
+  },
+  {
+    regNo: "MH03DA3808",
+    brand: "Mahindra",
+    model: "XUV500",
+    year: 2018,
+    category: "SUV",
+    transmission: "Manual",
+    fuel: "Diesel",
+    seats: 7,
+    image: "assets/fleet/Mahindra XUV500.png",
+    priceDay: 4500,
+  },
+  {
+    regNo: "ZIP007",
+    brand: "Jeep",
+    model: "Compass",
+    year: 2020,
+    category: "SUV",
+    transmission: "Manual",
+    fuel: "Diesel",
+    seats: 5,
+    image: "assets/fleet/Jeep Compass.png",
+    priceDay: 5500,
+  },
+  {
+    regNo: "ZIP010",
+    brand: "Mahindra",
+    model: "Scorpio N",
+    year: 2025,
+    category: "SUV",
+    transmission: "Manual",
+    fuel: "Diesel",
+    seats: 7,
+    image: "assets/fleet/Mahindra Scorpio N.png",
+    priceDay: 5500,
+  },
+  {
+    regNo: "ZIP011",
+    brand: "Mahindra",
+    model: "Thar",
+    year: 2025,
+    category: "SUV",
+    transmission: "Manual",
+    fuel: "Diesel",
+    seats: 4,
+    image: "assets/fleet/Mahindra Thar.png",
+    priceDay: 5500,
+  },
+  {
+    regNo: "ZIP033",
+    brand: "Toyota",
+    model: "Innova Crysta",
+    year: 2021,
+    category: "MPV",
+    transmission: "Manual",
+    fuel: "Diesel",
+    seats: 7,
+    image: "assets/fleet/Toyota Innova Crysta.png",
+    priceDay: 5500,
+  },
+  {
+    regNo: "ZIP012",
+    brand: "Mahindra",
+    model: "Thar Roxx",
+    year: 2025,
+    category: "SUV",
+    transmission: "Automatic",
+    fuel: "Diesel",
+    seats: 5,
+    image: "assets/fleet/Mahindra Thar.png",
+    priceDay: 8000,
+  },
 ];
 
 /**
  * Robustly matches any booking to one of the 7 active fleet vehicles
  */
 export function matchBookingToFleet(b) {
-  const regRaw = String(b.vehicleReg || b.regNo || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
-  const nameRaw = String(b.vehicleName || b.carName || "").trim().toUpperCase();
+  const regRaw = String(b.vehicleReg || b.regNo || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[\s\-_]/g, "");
+  const nameRaw = String(b.vehicleName || b.carName || "")
+    .trim()
+    .toUpperCase();
 
   // 1. Direct registration match
   if (regRaw) {
@@ -61,7 +143,11 @@ export function matchBookingToFleet(b) {
       }
     }
     // Legacy alias check (e.g. ZIP013 or 3808 maps to XUV500)
-    if (regRaw.includes("ZIP013") || regRaw.includes("3808") || regRaw.includes("MH03DA3808")) {
+    if (
+      regRaw.includes("ZIP013") ||
+      regRaw.includes("3808") ||
+      regRaw.includes("MH03DA3808")
+    ) {
       return "MH03DA3808";
     }
   }
@@ -73,11 +159,20 @@ export function matchBookingToFleet(b) {
   if (nameRaw.includes("SCORPIO")) return "ZIP010";
   if (nameRaw.includes("COMPASS") || nameRaw.includes("JEEP")) return "ZIP007";
   if (nameRaw.includes("CARENS") || nameRaw.includes("KIA")) return "ZIP008";
-  if (nameRaw.includes("XUV") || nameRaw.includes("500") || nameRaw.includes("700")) return "MH03DA3808";
+  if (
+    nameRaw.includes("XUV") ||
+    nameRaw.includes("500") ||
+    nameRaw.includes("700")
+  )
+    return "MH03DA3808";
 
   // 3. Fallback matching by model or brand substring
   for (const f of ACTIVE_7_FLEETS) {
-    if (nameRaw && (nameRaw.includes(f.model.toUpperCase()) || nameRaw.includes(f.brand.toUpperCase()))) {
+    if (
+      nameRaw &&
+      (nameRaw.includes(f.model.toUpperCase()) ||
+        nameRaw.includes(f.brand.toUpperCase()))
+    ) {
       return f.regNo;
     }
   }
@@ -516,7 +611,9 @@ function renderDashboard() {
     }
   });
 
-  const reconciliationNoticeEl = document.getElementById("reconciliationNotice");
+  const reconciliationNoticeEl = document.getElementById(
+    "reconciliationNotice",
+  );
   if (reconciliationNoticeEl) {
     if (unmappedRevenue > 0) {
       reconciliationNoticeEl.style.display = "inline-block";
@@ -648,28 +745,43 @@ function renderDashboard() {
     : 0;
 
   // 1. POPULATE PROMINENT TOP TOTAL FLEET SUMMARY BAR (DIRECTLY ABOVE TABLE)
-  const topFleetTotalRevenueEl = document.getElementById("topFleetTotalRevenue");
-  const topFleetTotalBookingsEl = document.getElementById("topFleetTotalBookings");
+  const topFleetTotalRevenueEl = document.getElementById(
+    "topFleetTotalRevenue",
+  );
+  const topFleetTotalBookingsEl = document.getElementById(
+    "topFleetTotalBookings",
+  );
   const topFleetTotalDaysEl = document.getElementById("topFleetTotalDays");
   const topFleetAvgRevenueEl = document.getElementById("topFleetAvgRevenue");
 
-  if (topFleetTotalRevenueEl) topFleetTotalRevenueEl.textContent = formatINR(fleetTotalRevenue);
-  if (topFleetTotalBookingsEl) topFleetTotalBookingsEl.textContent = String(fleetTotalBookings);
-  if (topFleetTotalDaysEl) topFleetTotalDaysEl.textContent = `${fleetTotalDays} Days`;
-  if (topFleetAvgRevenueEl) topFleetAvgRevenueEl.textContent = formatINR(fleetAvgRevenue);
+  if (topFleetTotalRevenueEl)
+    topFleetTotalRevenueEl.textContent = formatINR(fleetTotalRevenue);
+  if (topFleetTotalBookingsEl)
+    topFleetTotalBookingsEl.textContent = String(fleetTotalBookings);
+  if (topFleetTotalDaysEl)
+    topFleetTotalDaysEl.textContent = `${fleetTotalDays} Days`;
+  if (topFleetAvgRevenueEl)
+    topFleetAvgRevenueEl.textContent = formatINR(fleetAvgRevenue);
 
   // 2. POPULATE STICKY TOP TOTAL ROW IN THE TABLE HEADER
-  const thFleetTotalBookingsEl = document.getElementById("thFleetTotalBookings");
+  const thFleetTotalBookingsEl = document.getElementById(
+    "thFleetTotalBookings",
+  );
   const thFleetTotalDaysEl = document.getElementById("thFleetTotalDays");
   const thFleetTotalRevenueEl = document.getElementById("thFleetTotalRevenue");
   const thFleetAvgRevenueEl = document.getElementById("thFleetAvgRevenue");
   const thFleetGrandTotalEl = document.getElementById("thFleetGrandTotal");
 
-  if (thFleetTotalBookingsEl) thFleetTotalBookingsEl.textContent = `${fleetTotalBookings} Bookings`;
-  if (thFleetTotalDaysEl) thFleetTotalDaysEl.textContent = `${fleetTotalDays} days`;
-  if (thFleetTotalRevenueEl) thFleetTotalRevenueEl.textContent = formatINR(fleetTotalRevenue);
-  if (thFleetAvgRevenueEl) thFleetAvgRevenueEl.textContent = `${formatINR(fleetAvgRevenue)} / booking`;
-  if (thFleetGrandTotalEl) thFleetGrandTotalEl.textContent = formatINR(fleetTotalRevenue);
+  if (thFleetTotalBookingsEl)
+    thFleetTotalBookingsEl.textContent = `${fleetTotalBookings} Bookings`;
+  if (thFleetTotalDaysEl)
+    thFleetTotalDaysEl.textContent = `${fleetTotalDays} days`;
+  if (thFleetTotalRevenueEl)
+    thFleetTotalRevenueEl.textContent = formatINR(fleetTotalRevenue);
+  if (thFleetAvgRevenueEl)
+    thFleetAvgRevenueEl.textContent = `${formatINR(fleetAvgRevenue)} / booking`;
+  if (thFleetGrandTotalEl)
+    thFleetGrandTotalEl.textContent = formatINR(fleetTotalRevenue);
 
   // 3. RENDER FLEET TABLE BODY
   const tbody = document.getElementById("mgrFleetTableBody");
@@ -725,14 +837,22 @@ function renderDashboard() {
   // ============================================================
   const tabBookingsCountEl = document.getElementById("tabBookingsCount");
   const tabBookingsActiveEl = document.getElementById("tabBookingsActive");
-  const tabBookingsCompletedEl = document.getElementById("tabBookingsCompleted");
-  const tabBookingsTotalDaysEl = document.getElementById("tabBookingsTotalDays");
+  const tabBookingsCompletedEl = document.getElementById(
+    "tabBookingsCompleted",
+  );
+  const tabBookingsTotalDaysEl = document.getElementById(
+    "tabBookingsTotalDays",
+  );
   const mgrBookingsTableBody = document.getElementById("mgrBookingsTableBody");
 
-  if (tabBookingsCountEl) tabBookingsCountEl.textContent = String(validPeriodBookings.length);
-  if (tabBookingsActiveEl) tabBookingsActiveEl.textContent = String(activeTripsCount);
-  if (tabBookingsCompletedEl) tabBookingsCompletedEl.textContent = String(completedTripsCount);
-  if (tabBookingsTotalDaysEl) tabBookingsTotalDaysEl.textContent = `${totalBookedVehicleDays} Days`;
+  if (tabBookingsCountEl)
+    tabBookingsCountEl.textContent = String(validPeriodBookings.length);
+  if (tabBookingsActiveEl)
+    tabBookingsActiveEl.textContent = String(activeTripsCount);
+  if (tabBookingsCompletedEl)
+    tabBookingsCompletedEl.textContent = String(completedTripsCount);
+  if (tabBookingsTotalDaysEl)
+    tabBookingsTotalDaysEl.textContent = `${totalBookedVehicleDays} Days`;
 
   if (mgrBookingsTableBody) {
     if (!verifiedBookings.length) {
@@ -743,13 +863,20 @@ function renderDashboard() {
           </td>
         </tr>`;
     } else {
-      mgrBookingsTableBody.innerHTML = verifiedBookings.slice(0, 30).map((b) => {
-        const pDate = parseDate(b.pickupDate);
-        const dDate = parseDate(b.dropDate);
-        const dateStr = pDate && dDate ? `${formatDateDisplay(pDate)} — ${formatDateDisplay(dDate)}` : "—";
-        const amt = bookingAmount(b);
-        const bStat = String(b.status || b.bookingStatus || "confirmed").toUpperCase();
-        return `
+      mgrBookingsTableBody.innerHTML = verifiedBookings
+        .slice(0, 30)
+        .map((b) => {
+          const pDate = parseDate(b.pickupDate);
+          const dDate = parseDate(b.dropDate);
+          const dateStr =
+            pDate && dDate
+              ? `${formatDateDisplay(pDate)} — ${formatDateDisplay(dDate)}`
+              : "—";
+          const amt = bookingAmount(b);
+          const bStat = String(
+            b.status || b.bookingStatus || "confirmed",
+          ).toUpperCase();
+          return `
           <tr>
             <td><strong style="color:#4fd7ff; font-family:monospace;">${escapeHtml(b.bookingNumber || b.bookingId || `#${b.id}`)}</strong></td>
             <td><span style="color:#ffffff; font-weight:700;">${escapeHtml(b.userName || b.resolvedUserName || "Customer")}</span></td>
@@ -759,7 +886,8 @@ function renderDashboard() {
             <td><strong style="color:#ffffff;">${formatINR(amt)}</strong></td>
             <td><span class="badge" style="background:rgba(6, 214, 160, 0.15); color:#06d6a0; border:1px solid rgba(6, 214, 160, 0.3); padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700;">${escapeHtml(bStat)}</span></td>
           </tr>`;
-      }).join("");
+        })
+        .join("");
     }
   }
 
@@ -768,11 +896,14 @@ function renderDashboard() {
   // ============================================================
   const tabOpsOccupancyEl = document.getElementById("tabOpsOccupancy");
   const tabOpsPerVehicleEl = document.getElementById("tabOpsPerVehicle");
-  const tabOpsReconciledStatusEl = document.getElementById("tabOpsReconciledStatus");
+  const tabOpsReconciledStatusEl = document.getElementById(
+    "tabOpsReconciledStatus",
+  );
   const mgrOpsFleetGrid = document.getElementById("mgrOpsFleetGrid");
 
   if (tabOpsOccupancyEl) tabOpsOccupancyEl.textContent = `${occupancyPct}%`;
-  if (tabOpsPerVehicleEl) tabOpsPerVehicleEl.textContent = formatINR(perFleetAmount);
+  if (tabOpsPerVehicleEl)
+    tabOpsPerVehicleEl.textContent = formatINR(perFleetAmount);
   if (tabOpsReconciledStatusEl) {
     if (unmappedRevenue === 0) {
       tabOpsReconciledStatusEl.textContent = "100% Balanced";
@@ -785,8 +916,14 @@ function renderDashboard() {
 
   if (mgrOpsFleetGrid) {
     mgrOpsFleetGrid.innerHTML = ACTIVE_7_FLEETS.map((f) => {
-      const stat = vehicleStatsMap.get(f.regNo) || { bookingsCount: 0, bookedDays: 0, revenue: 0 };
-      const carOccupancy = periodDays ? Math.min(100, Math.round((stat.bookedDays / periodDays) * 100)) : 0;
+      const stat = vehicleStatsMap.get(f.regNo) || {
+        bookingsCount: 0,
+        bookedDays: 0,
+        revenue: 0,
+      };
+      const carOccupancy = periodDays
+        ? Math.min(100, Math.round((stat.bookedDays / periodDays) * 100))
+        : 0;
       return `
         <div class="card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 16px;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
