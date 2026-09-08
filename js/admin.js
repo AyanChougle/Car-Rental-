@@ -910,12 +910,81 @@ async function loadAllAdminData() {
   }
 }
 
+let currentActiveFleetRegs = [];
+
+function renderAdminActiveFleetRoster(activeRegs, allVehicles) {
+  currentActiveFleetRegs = activeRegs;
+  const countBadge = $("adminActiveFleetCountBadge");
+  const chipsWrap = $("adminActiveFleetChipsWrap");
+
+  if (countBadge) {
+    countBadge.textContent = `${activeRegs.length} Active Fleets`;
+  }
+
+  if (chipsWrap) {
+    if (!activeRegs.length) {
+      chipsWrap.innerHTML = `<span style="color:var(--sub); font-size:13px;">No active fleet selected. Standard fleet will be used.</span>`;
+    } else {
+      chipsWrap.innerHTML = activeRegs.map((reg) => {
+        const v = allVehicles.find((item) => (item.regNo || "").toUpperCase() === reg.toUpperCase());
+        const name = v ? `${v.brand} ${v.model}` : reg;
+        return `
+          <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(6, 214, 160, 0.12); border:1px solid rgba(6, 214, 160, 0.35); padding:4px 10px; border-radius:8px; font-size:12px; color:#ffffff;">
+            <strong style="color:#06d6a0;">${escapeHtml(reg)}</strong>
+            <span>${escapeHtml(name)}</span>
+            <button type="button" class="admin-chip-remove-btn" data-reg="${escapeHtml(reg)}" title="Remove from active fleet" style="background:none; border:none; color:#ef476f; cursor:pointer; font-size:14px; line-height:1; padding:0 2px;">&times;</button>
+          </div>
+        `;
+      }).join("");
+
+      chipsWrap.querySelectorAll(".admin-chip-remove-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const regNo = btn.dataset.reg;
+          btn.disabled = true;
+          try {
+            await api.post("/vehicles/active-fleet.php", { action: "remove", regNo });
+            await loadFleetManagement();
+          } catch (err) {
+            console.error("Remove active fleet error:", err);
+            alert("Could not remove from active fleet: " + err.message);
+          }
+        });
+      });
+    }
+  }
+
+  const resetBtn = $("adminResetActiveFleetBtn");
+  if (resetBtn && !resetBtn.dataset.bound) {
+    resetBtn.dataset.bound = "true";
+    resetBtn.addEventListener("click", async () => {
+      if (!confirm("Reset the Manager Active Fleet roster to the default 7 Kruizly vehicles?")) return;
+      resetBtn.disabled = true;
+      resetBtn.textContent = "Resetting...";
+      try {
+        await api.post("/vehicles/active-fleet.php", { action: "reset" });
+        await loadFleetManagement();
+      } catch (err) {
+        alert("Error resetting active fleet: " + err.message);
+      } finally {
+        resetBtn.disabled = false;
+        resetBtn.textContent = "Reset to Default 7 Fleets";
+      }
+    });
+  }
+}
+
 async function loadFleetManagement() {
   if (!fleetManagementWrap) return;
 
   try {
-    const res = await api.get("/vehicles");
+    const [res, activeRes] = await Promise.all([
+      api.get("/vehicles"),
+      api.get("/vehicles/active-fleet.php").catch(() => ({ activeRegs: [] }))
+    ]);
     const vehicles = Array.isArray(res.vehicles) ? res.vehicles : [];
+    const activeRegs = Array.isArray(activeRes?.activeRegs) ? activeRes.activeRegs.map(r => r.toUpperCase()) : [];
+
+    renderAdminActiveFleetRoster(activeRegs, vehicles);
 
     if (!vehicles.length) {
       fleetManagementWrap.innerHTML =
@@ -930,42 +999,61 @@ async function loadFleetManagement() {
 
     fleetManagementWrap.innerHTML = `
       <div style="width:100%;overflow-x:auto;">
-        <table class="admin-table" style="width:100%;min-width:940px;border-collapse:collapse;text-align:left;">
+        <table class="admin-table" style="width:100%;min-width:1120px;border-collapse:collapse;text-align:left;">
           <thead>
             <tr style="border-bottom:1px solid var(--line);color:var(--sub);">
+              <th style="padding:12px;">Car ID</th>
               <th style="padding:12px;">Vehicle</th>
-              <th style="padding:12px;">Image</th>
-              <th style="padding:12px;">Registration</th>
-              <th style="padding:12px;">Category</th>
+              <th style="padding:12px;">RC Number</th>
+              <th style="padding:12px;">Partner / Owner</th>
+              <th style="padding:12px;">Fuel &amp; Gear</th>
               <th style="padding:12px;">Daily Rate</th>
               <th style="padding:12px;">Availability</th>
+              <th style="padding:12px;">Manager Roster</th>
               <th style="padding:12px;text-align:right;">Action</th>
             </tr>
           </thead>
           <tbody>
             ${pageVehicles.map((vehicle) => {
               const available = Boolean(vehicle.available);
-              let imgUrl = (typeof window.fleetImagePath === "function" && window.fleetImagePath(vehicle)) || "";
-              if (!imgUrl && Array.isArray(vehicle.gallery) && vehicle.gallery[0]) {
-                const g0 = vehicle.gallery[0];
-                imgUrl = (typeof g0 === "string" && (g0.startsWith("http") || g0.startsWith("assets/") || g0.startsWith("images/"))) ? g0 : `/api/media/file.php?id=${encodeURIComponent(g0)}`;
-              }
-              if (!imgUrl) imgUrl = vehicle.imageUrl || "assets/fleet/BMW.png";
+              const isActiveRoster = activeRegs.includes((vehicle.regNo || "").toUpperCase());
               return `
                 <tr style="border-bottom:1px solid rgba(255,255,255,.06);">
-                  <td style="padding:12px;"><strong>${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}</strong></td>
+                  <td style="padding:12px;font-family:monospace;font-weight:700;color:#4fd7ff;">${escapeHtml(vehicle.carId || "—")}</td>
                   <td style="padding:12px;">
-                    <img src="${escapeHtml(imgUrl)}" alt="${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}" onerror="this.onerror=null;this.src='assets/fleet/BMW.png';" style="display:block;width:72px;height:48px;object-fit:cover;border-radius:8px;border:1px solid var(--line);" />
+                    <strong style="color:#ffffff;">${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}</strong>
+                    <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.category || "Economy")}</small>
                   </td>
-                  <td style="padding:12px;font-family:monospace;">${escapeHtml(vehicle.regNo)}</td>
-                  <td style="padding:12px;">${escapeHtml(vehicle.category || "—")}</td>
-                  <td style="padding:12px;">${formatINR(vehicle.priceDay)}</td>
+                  <td style="padding:12px;font-family:monospace;font-weight:700;color:#ffffff;">${escapeHtml(vehicle.regNo)}</td>
+                  <td style="padding:12px;">
+                    <span style="color:#ffffff;font-weight:600;">${escapeHtml(vehicle.ownerName || "Kruizly Fleet")}</span>
+                    <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.acquisitionType || "Partner")} · ${escapeHtml(vehicle.hub || "Gavson Hub")}</small>
+                  </td>
+                  <td style="padding:12px;">
+                    <span style="color:#ffd166;font-weight:600;">${escapeHtml(vehicle.fuel || "Petrol")}</span>
+                    <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.transmission || "Manual")} · ${vehicle.seats || 5} Seats</small>
+                  </td>
+                  <td style="padding:12px;font-weight:700;color:#06d6a0;">${formatINR(vehicle.priceDay)}</td>
                   <td style="padding:12px;">
                     <span class="status-pill ${available ? "verified" : "rejected"}">
                       ${available ? "Available" : "Unavailable"}
                     </span>
                   </td>
-                  <td style="padding:12px;text-align:right;">
+                  <td style="padding:12px;">
+                    ${isActiveRoster
+                      ? `<span class="badge" style="background:rgba(6, 214, 160, 0.15); color:#06d6a0; border:1px solid rgba(6, 214, 160, 0.35); padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">★ Active (7-Fleet)</span>`
+                      : `<span style="color:var(--sub); font-size:11.5px;">Standard</span>`}
+                  </td>
+                  <td style="padding:12px;text-align:right;white-space:nowrap;">
+                    <button
+                      type="button"
+                      class="btn btn-outline admin-fleet-roster-toggle"
+                      data-reg="${escapeHtml(vehicle.regNo)}"
+                      data-active="${String(isActiveRoster)}"
+                      style="margin-right:6px; font-size:11.5px; border-color:${isActiveRoster ? "rgba(255, 209, 102, 0.4)" : "rgba(6, 214, 160, 0.4)"}; color:${isActiveRoster ? "#ffd166" : "#06d6a0"};"
+                    >
+                      ${isActiveRoster ? "Remove from Roster" : "+ Add to Roster"}
+                    </button>
                     <button
                       type="button"
                       class="btn btn-outline admin-fleet-edit"
@@ -1016,6 +1104,24 @@ async function loadFleetManagement() {
       });
 
     fleetManagementWrap
+      .querySelectorAll(".admin-fleet-roster-toggle")
+      .forEach((button) => {
+        button.addEventListener("click", async () => {
+          const regNo = button.dataset.reg;
+          button.disabled = true;
+          button.textContent = "Updating...";
+          try {
+            await api.post("/vehicles/active-fleet.php", { action: "toggle", regNo });
+            await loadFleetManagement();
+          } catch (error) {
+            console.error("FLEET ROSTER ERROR:", error);
+            alert("Could not update manager fleet roster: " + error.message);
+            button.disabled = false;
+          }
+        });
+      });
+
+    fleetManagementWrap
       .querySelectorAll(".admin-fleet-edit")
       .forEach((button) => {
         button.addEventListener("click", () => {
@@ -1024,18 +1130,24 @@ async function loadFleetManagement() {
           if (!vehicle) return;
 
           editingFleetRegNo = regNo;
+          if ($("fleetCarId")) $("fleetCarId").value = vehicle.carId || "";
           if ($("fleetBrand")) $("fleetBrand").value = vehicle.brand || "";
           if ($("fleetModel")) $("fleetModel").value = vehicle.model || "";
           if ($("fleetRegNo")) {
             $("fleetRegNo").value = vehicle.regNo || "";
             $("fleetRegNo").readOnly = true;
           }
-          if ($("fleetYear")) $("fleetYear").value = vehicle.year || 2024;
-          if ($("fleetCategory")) $("fleetCategory").value = vehicle.category || "economy";
-          if ($("fleetTransmission")) $("fleetTransmission").value = vehicle.transmission || "Automatic";
+          if ($("fleetYear")) $("fleetYear").value = vehicle.year || 2026;
+          if ($("fleetCategory")) $("fleetCategory").value = vehicle.category || "compact-suv";
+          if ($("fleetTransmission")) $("fleetTransmission").value = vehicle.transmission || "Manual";
           if ($("fleetFuel")) $("fleetFuel").value = vehicle.fuel || "Petrol";
           if ($("fleetSeats")) $("fleetSeats").value = vehicle.seats || 5;
-          if ($("fleetPriceDay")) $("fleetPriceDay").value = vehicle.priceDay || 2000;
+          if ($("fleetPriceDay")) $("fleetPriceDay").value = vehicle.priceDay || 3000;
+          if ($("fleetHub")) $("fleetHub").value = vehicle.hub || "Gavson Business Park, Ghansoli";
+          if ($("fleetAcquisitionType")) $("fleetAcquisitionType").value = vehicle.acquisitionType || "Partner";
+          if ($("fleetOwnerName")) $("fleetOwnerName").value = vehicle.ownerName || "";
+          if ($("fleetAcquisitionDate")) $("fleetAcquisitionDate").value = vehicle.acquisitionDate || "";
+          if ($("fleetIsActiveFleet")) $("fleetIsActiveFleet").checked = currentActiveFleetRegs.includes(vehicle.regNo.toUpperCase());
 
           if (fleetUploadSubmit) fleetUploadSubmit.textContent = "Update Vehicle Data";
           const cancelBtn = $("fleetCancelEdit");
@@ -1104,7 +1216,15 @@ function resetFleetForm() {
   editingFleetRegNo = null;
   fleetUploadForm?.reset();
   if ($("fleetRegNo")) $("fleetRegNo").readOnly = false;
-  if (fleetUploadSubmit) fleetUploadSubmit.textContent = "Add to Fleet";
+  if ($("fleetCarId")) $("fleetCarId").value = "";
+  if ($("fleetYear")) $("fleetYear").value = "2026";
+  if ($("fleetSeats")) $("fleetSeats").value = "5";
+  if ($("fleetHub")) $("fleetHub").value = "Gavson Business Park, Ghansoli";
+  if ($("fleetAcquisitionType")) $("fleetAcquisitionType").value = "Partner";
+  if ($("fleetFuel")) $("fleetFuel").value = "Petrol";
+  if ($("fleetTransmission")) $("fleetTransmission").value = "Manual";
+  if ($("fleetIsActiveFleet")) $("fleetIsActiveFleet").checked = true;
+  if (fleetUploadSubmit) fleetUploadSubmit.textContent = "Add Fleet Vehicle";
   const cancelBtn = $("fleetCancelEdit");
   if (cancelBtn) cancelBtn.style.display = "none";
 }
@@ -1150,16 +1270,22 @@ function initialiseFleetUpload() {
       const priceDay = Number(getValue("fleetPriceDay") || 0);
 
       const vehicleData = {
+        carId: getValue("fleetCarId") || null,
         regNo,
         brand: getValue("fleetBrand"),
         model: getValue("fleetModel"),
-        year: Number(getValue("fleetYear") || 2024),
-        category: getValue("fleetCategory") || "economy",
-        transmission: getValue("fleetTransmission") || "Automatic",
+        year: Number(getValue("fleetYear") || 2026),
+        category: getValue("fleetCategory") || "compact-suv",
+        transmission: getValue("fleetTransmission") || "Manual",
         fuel: getValue("fleetFuel") || "Petrol",
         seats: Number(getValue("fleetSeats") || 5),
         priceDay,
         priceHour: Math.max(1, Math.round(priceDay / 24)),
+        hub: getValue("fleetHub") || "Gavson Business Park, Ghansoli",
+        acquisitionType: getValue("fleetAcquisitionType") || "Partner",
+        ownerName: getValue("fleetOwnerName") || null,
+        acquisitionDate: getValue("fleetAcquisitionDate") || null,
+        isActiveFleet: $("fleetIsActiveFleet") ? $("fleetIsActiveFleet").checked : true,
         available: 1,
         status: "available"
       };
@@ -1168,10 +1294,13 @@ function initialiseFleetUpload() {
         vehicleData.gallery = [imageUrl];
       }
 
-      if (isEditing) {
-        await api.put(`/vehicles/${regNo}`, vehicleData);
-      } else {
-        await api.post("/vehicles", vehicleData);
+      await api.post("/vehicles", vehicleData);
+
+      // Sync active fleet roster if checkbox was toggled
+      const wantsActive = $("fleetIsActiveFleet") ? $("fleetIsActiveFleet").checked : true;
+      const isCurrentlyActive = currentActiveFleetRegs.includes(regNo.toUpperCase());
+      if (wantsActive !== isCurrentlyActive) {
+        await api.post("/vehicles/active-fleet.php", { action: wantsActive ? "add" : "remove", regNo });
       }
 
       resetFleetForm();

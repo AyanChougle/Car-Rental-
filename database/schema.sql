@@ -35,32 +35,41 @@ CREATE TABLE IF NOT EXISTS `users` (
 -- ------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `vehicles` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `car_id` VARCHAR(32) DEFAULT NULL,
   `reg_no` VARCHAR(64) NOT NULL UNIQUE,
   `brand` VARCHAR(128) NOT NULL,
   `model` VARCHAR(128) NOT NULL,
-  `year` INT NOT NULL DEFAULT 2024,
+  `year` INT NOT NULL DEFAULT 2026,
   `category` VARCHAR(64) NOT NULL DEFAULT 'economy',
-  `transmission` VARCHAR(32) NOT NULL DEFAULT 'Automatic',
+  `transmission` VARCHAR(32) NOT NULL DEFAULT 'Manual',
   `fuel` VARCHAR(32) NOT NULL DEFAULT 'Petrol',
   `seats` INT NOT NULL DEFAULT 5,
   `bags` INT NOT NULL DEFAULT 2,
-  `price_day` DECIMAL(10,2) NOT NULL,
-  `price_hour` DECIMAL(10,2) NOT NULL,
+  `price_day` DECIMAL(10,2) NOT NULL DEFAULT 3500.00,
+  `price_hour` DECIMAL(10,2) NOT NULL DEFAULT 145.00,
   `driver_price` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-  `security_deposit` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `security_deposit` DECIMAL(10,2) NOT NULL DEFAULT 3000.00,
   `free_km` INT NOT NULL DEFAULT 250,
-  `extra_km` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `extra_km` DECIMAL(10,2) NOT NULL DEFAULT 15.00,
+  `hub` VARCHAR(255) NOT NULL DEFAULT 'Gavson Business Park, Ghansoli',
   `location` VARCHAR(255) DEFAULT 'Gavson Business Park, Ghansoli',
+  `acquisition_type` VARCHAR(64) NOT NULL DEFAULT 'Partner',
+  `owner_name` VARCHAR(128) DEFAULT NULL,
+  `acquisition_date` DATE DEFAULT NULL,
   `available` TINYINT(1) NOT NULL DEFAULT 1,
   `status` ENUM('available', 'unavailable', 'maintenance', 'removed') NOT NULL DEFAULT 'available',
-  `is_custom_fleet` TINYINT(1) NOT NULL DEFAULT 0,
+  `is_active_fleet` TINYINT(1) NOT NULL DEFAULT 1,
+  `is_custom_fleet` TINYINT(1) NOT NULL DEFAULT 1,
   `gallery` JSON DEFAULT NULL,
   `created_by` VARCHAR(128) DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_vehicles_car_id` (`car_id`),
+  INDEX `idx_vehicles_reg_no` (`reg_no`),
   INDEX `idx_vehicles_category` (`category`),
   INDEX `idx_vehicles_available` (`available`),
-  INDEX `idx_vehicles_status` (`status`)
+  INDEX `idx_vehicles_status` (`status`),
+  INDEX `idx_vehicles_active_fleet` (`is_active_fleet`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
@@ -390,15 +399,16 @@ CREATE TABLE IF NOT EXISTS `settings` (
 -- ------------------------------------------------------------
 -- 15. INITIAL SEED: 7 ACTIVE FLEET VEHICLES
 -- ------------------------------------------------------------
-INSERT INTO `vehicles` (`id`, `reg_no`, `brand`, `model`, `year`, `category`, `transmission`, `fuel`, `seats`, `bags`, `price_day`, `price_hour`, `driver_price`, `security_deposit`, `free_km`, `extra_km`, `location`, `available`, `status`, `is_custom_fleet`, `gallery`) VALUES
-(1, 'ZIP008', 'Kia', 'Carens', 2025, 'mpv', 'Manual', 'Diesel', 6, 3, 4500.00, 188.00, 1500.00, 4000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Kia Carens.png"]'),
-(2, 'MH03DA3808', 'Mahindra', 'XUV500', 2018, 'suv', 'Manual', 'Diesel', 7, 3, 4500.00, 188.00, 1500.00, 4000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Mahindra XUV500.png"]'),
-(3, 'ZIP007', 'Jeep', 'Compass', 2020, 'suv', 'Manual', 'Diesel', 5, 3, 5500.00, 229.00, 1500.00, 5000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Jeep Compass.png"]'),
-(4, 'ZIP010', 'Mahindra', 'Scorpio N', 2025, 'suv', 'Manual', 'Diesel', 7, 3, 5500.00, 229.00, 1500.00, 5000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Mahindra Scorpio N.png"]'),
-(5, 'ZIP011', 'Mahindra', 'Thar', 2025, 'suv', 'Manual', 'Diesel', 4, 3, 5500.00, 229.00, 1500.00, 5000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Mahindra Thar.png"]'),
-(6, 'ZIP033', 'Toyota', 'Innova Crysta', 2021, 'mpv', 'Manual', 'Diesel', 7, 3, 5500.00, 229.00, 1500.00, 5000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Toyota Innova Crysta.png"]'),
-(7, 'ZIP012', 'Mahindra', 'Thar Roxx', 2025, 'suv', 'Automatic', 'Diesel', 5, 3, 8000.00, 333.00, 1500.00, 6000.00, 250, 15.00, 'Gavson Business Park, Ghansoli', 1, 'available', 0, '["assets/fleet/Mahindra Thar.png"]')
+INSERT INTO `vehicles` (`id`, `car_id`, `reg_no`, `brand`, `model`, `year`, `category`, `transmission`, `fuel`, `seats`, `bags`, `price_day`, `price_hour`, `hub`, `location`, `acquisition_type`, `owner_name`, `acquisition_date`, `available`, `status`, `is_active_fleet`, `is_custom_fleet`, `gallery`) VALUES
+(1, 'CRP-002', 'MH03EL1025', 'Suzuki', 'Fronx', 2026, 'compact-suv', 'Automatic', 'Petrol', 5, 2, 3500.00, 146.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Partner', 'Aditi Lotankar', '2026-07-20', 1, 'available', 1, 1, '["assets/fleet/Suzuki Fronx.png"]'),
+(2, 'CRP-003', 'MH05GJ4711', 'Suzuki', 'Ertiga', 2026, 'mpv', 'Manual', 'Petrol + CNG', 7, 3, 4000.00, 167.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Partner', 'Viren Gupta', '2026-07-24', 1, 'available', 1, 1, '["assets/fleet/Suzuki Ertiga.png"]'),
+(3, 'CRP-005', 'MH48CJ4153', 'Toyota', 'Glanza', 2026, 'hatchback', 'Manual', 'Petrol + CNG', 5, 2, 3000.00, 125.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Partner', 'Ajay Vishwakarma', '2026-07-29', 1, 'available', 1, 1, '["assets/fleet/Toyota Glanza.png"]'),
+(4, 'CRP-006', 'MH04MU1178', 'Toyota', 'Glanza', 2026, 'hatchback', 'Manual', 'Petrol + CNG', 5, 2, 3000.00, 125.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Partner', 'Kundan Singh', '2026-08-04', 1, 'available', 1, 1, '["assets/fleet/Toyota Glanza.png"]'),
+(5, 'CRP-007', 'MH05FV3454', 'Tata', 'Punch', 2026, 'compact-suv', 'Manual', 'Petrol + CNG', 5, 2, 3000.00, 125.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Partner', 'Tai Phad', '2026-08-13', 1, 'available', 1, 1, '["assets/fleet/Tata Punch.png"]'),
+(6, 'CRP-008', 'MH43CY1632', 'Suzuki', 'Fronx', 2026, 'compact-suv', 'Manual', 'Petrol + CNG', 5, 2, 3200.00, 133.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Partner', 'Amol Gole', '2026-08-19', 1, 'available', 1, 1, '["assets/fleet/Suzuki Fronx.png"]'),
+(7, 'CRP-009', 'MH02FU6808', 'Mahindra', 'XUV 700', 2026, 'suv', 'Automatic', 'Petrol', 5, 3, 5500.00, 229.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Partner', 'Saif Feroz Shaikh', '2026-08-01', 1, 'available', 1, 1, '["assets/fleet/Mahindra XUV 700.png"]')
 ON DUPLICATE KEY UPDATE 
+  `car_id` = VALUES(`car_id`),
   `brand` = VALUES(`brand`),
   `model` = VALUES(`model`),
   `year` = VALUES(`year`),
@@ -409,8 +419,63 @@ ON DUPLICATE KEY UPDATE
   `bags` = VALUES(`bags`),
   `price_day` = VALUES(`price_day`),
   `price_hour` = VALUES(`price_hour`),
-  `security_deposit` = VALUES(`security_deposit`),
+  `hub` = VALUES(`hub`),
+  `location` = VALUES(`location`),
+  `acquisition_type` = VALUES(`acquisition_type`),
+  `owner_name` = VALUES(`owner_name`),
+  `acquisition_date` = VALUES(`acquisition_date`),
   `status` = VALUES(`status`),
+  `is_active_fleet` = VALUES(`is_active_fleet`),
+  `is_custom_fleet` = VALUES(`is_custom_fleet`),
   `gallery` = VALUES(`gallery`);
+
+-- ------------------------------------------------------------
+-- 16. INITIAL SEED: SEPTEMBER BOOKINGS & PAYMENTS
+-- ------------------------------------------------------------
+INSERT INTO `bookings` (
+  `id`, `booking_id`, `booking_number`, `user_name`, `user_phone`, `vehicle_reg`, `vehicle_name`, 
+  `pickup_date`, `drop_date`, `days`, `total_amount`, `final_amount`, `payment_amount_paid`, 
+  `payment_status`, `status`, `booking_status`, `created_at`
+) VALUES
+(1, 'KRZ-SEP-001', 'KRZ-SEP-001', 'Roshan More', '7507323988', 'MH48CJ4153', 'Toyota Glanza', '2026-09-03 09:00:00', '2026-09-16 21:00:00', 16, 40000.00, 40000.00, 40000.00, 'paid', 'active', 'active', '2026-09-03 08:30:00'),
+(2, 'KRZ-SEP-002', 'KRZ-SEP-002', 'Vivek Anant Hatkamkar', '8355912195', 'MH04MU1178', 'Toyota Glanza', '2026-09-03 10:00:00', '2026-09-10 20:00:00', 10, 25200.00, 25200.00, 25200.00, 'paid', 'active', 'active', '2026-09-03 09:15:00'),
+(3, 'KRZ-SEP-003', 'KRZ-SEP-003', 'Arun Ahuja', '7030914115', 'MH03EL1025', 'Suzuki Fronx Auto', '2026-08-30 08:00:00', '2026-09-03 20:00:00', 3, 7020.00, 7020.00, 7020.00, 'paid', 'completed', 'completed', '2026-08-29 18:00:00'),
+(4, 'KRZ-SEP-004', 'KRZ-SEP-004', 'Akash Sarkar', '8777355520', 'MH01BALENO', 'Maruti Baleno', '2026-09-06 09:00:00', '2026-09-07 20:00:00', 1, 2500.00, 2500.00, 2500.00, 'paid', 'completed', 'completed', '2026-09-05 21:00:00'),
+(5, 'KRZ-SEP-005', 'KRZ-SEP-005', 'Kunal Vichave', '7387961727', 'MH05FV3454', 'Tata Punch', '2026-09-05 08:00:00', '2026-09-06 20:00:00', 2, 3896.00, 3896.00, 3896.00, 'paid', 'completed', 'completed', '2026-09-04 19:30:00'),
+(6, 'KRZ-SEP-006', 'KRZ-SEP-006', 'Dipesh Bhoir', '9527788995', 'MH05GJ4711', 'Suzuki Ertiga', '2026-09-07 09:00:00', '2026-09-08 21:00:00', 1, 3300.00, 3300.00, 3300.00, 'paid', 'active', 'active', '2026-09-06 17:00:00'),
+(7, 'KRZ-SEP-007', 'KRZ-SEP-007', 'Krishna Velega', '9063281666', 'MH05GJ4711', 'Suzuki Ertiga', '2026-09-05 09:00:00', '2026-09-06 20:00:00', 1, 3300.00, 3300.00, 3300.00, 'paid', 'completed', 'completed', '2026-09-04 15:00:00'),
+(8, 'KRZ-SEP-008', 'KRZ-SEP-008', 'Rushikesh Shimpi', '9324855850', 'MH05GJ4711', 'Suzuki Ertiga', '2026-09-03 09:00:00', '2026-09-04 20:00:00', 1, 3300.00, 3300.00, 3300.00, 'paid', 'completed', 'completed', '2026-09-02 20:00:00'),
+(9, 'KRZ-SEP-009', 'KRZ-SEP-009', 'Shaikh Sarfaraz', '8928073455', 'MH43CY1632', 'Suzuki Fronx', '2026-09-01 09:00:00', '2026-09-03 20:00:00', 2, 5100.00, 5100.00, 5100.00, 'paid', 'completed', 'completed', '2026-08-31 16:00:00'),
+(10, 'KRZ-SEP-010', 'KRZ-SEP-010', 'Shaikh Sarfaraz', '8928073455', 'MH43CY1632', 'Suzuki Fronx', '2026-09-04 09:00:00', '2026-09-06 20:00:00', 2, 5200.00, 5200.00, 5200.00, 'paid', 'completed', 'completed', '2026-09-03 14:00:00')
+ON DUPLICATE KEY UPDATE
+  `user_name` = VALUES(`user_name`),
+  `user_phone` = VALUES(`user_phone`),
+  `vehicle_reg` = VALUES(`vehicle_reg`),
+  `vehicle_name` = VALUES(`vehicle_name`),
+  `pickup_date` = VALUES(`pickup_date`),
+  `drop_date` = VALUES(`drop_date`),
+  `days` = VALUES(`days`),
+  `total_amount` = VALUES(`total_amount`),
+  `final_amount` = VALUES(`final_amount`),
+  `payment_amount_paid` = VALUES(`payment_amount_paid`),
+  `payment_status` = VALUES(`payment_status`),
+  `status` = VALUES(`status`),
+  `booking_status` = VALUES(`booking_status`);
+
+INSERT INTO `payments` (`id`, `booking_id`, `amount`, `method`, `status`, `verified_by`, `created_at`) VALUES
+(1, 'KRZ-SEP-001', 40000.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-03 08:45:00'),
+(2, 'KRZ-SEP-002', 25200.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-03 09:30:00'),
+(3, 'KRZ-SEP-003', 7020.00, 'UPI', 'verified', 'Ayan Chougle', '2026-08-29 18:30:00'),
+(4, 'KRZ-SEP-004', 2500.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-05 21:15:00'),
+(5, 'KRZ-SEP-005', 3896.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-04 19:45:00'),
+(6, 'KRZ-SEP-006', 3300.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-06 17:30:00'),
+(7, 'KRZ-SEP-007', 3300.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-04 15:30:00'),
+(8, 'KRZ-SEP-008', 3300.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-02 20:30:00'),
+(9, 'KRZ-SEP-009', 5100.00, 'UPI', 'verified', 'Ayan Chougle', '2026-08-31 16:30:00'),
+(10, 'KRZ-SEP-010', 5200.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-03 14:30:00')
+ON DUPLICATE KEY UPDATE
+  `amount` = VALUES(`amount`),
+  `status` = VALUES(`status`),
+  `verified_by` = VALUES(`verified_by`);
 
 SET FOREIGN_KEY_CHECKS = 1;

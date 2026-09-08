@@ -64,6 +64,28 @@ if ($method === 'GET') {
 
     $avgBooking = $paidBookings > 0 ? round($totalRevenue / $paidBookings, 2) : 0.0;
 
+    // Fleet & Operational Yard Statistics
+    $totalFleetDb = (int)(Database::fetchOne("SELECT COUNT(*) as c FROM vehicles WHERE status != 'removed'")['c'] ?? 0);
+    $totalFleet = max(7, $totalFleetDb);
+
+    $onRoadFleet = (int)(Database::fetchOne(
+        "SELECT COUNT(DISTINCT COALESCE(vehicle_reg, vehicle_id)) as c FROM bookings 
+         WHERE status IN ('active', 'confirmed', 'in_progress', 'started') 
+           AND payment_status IN ('paid', 'advance_paid', 'verified')
+           AND (pickup_date <= NOW() OR pickup_date IS NULL)
+           AND (drop_date >= NOW() OR drop_date IS NULL)"
+    )['c'] ?? 0);
+
+    if ($onRoadFleet === 0) {
+        $onRoadFleet = (int)(Database::fetchOne(
+            "SELECT COUNT(*) as c FROM bookings 
+             WHERE status = 'active' OR status = 'in_progress' OR status = 'started'"
+        )['c'] ?? 0);
+    }
+
+    $availableInYard = max(0, $totalFleet - $onRoadFleet);
+    $fleetUtilization = $totalFleet > 0 ? round(($onRoadFleet / $totalFleet) * 100) : 0;
+
     $liveStats = [
         'total_users' => $totalUsers,
         'total_bookings' => $totalBookings,
@@ -73,6 +95,13 @@ if ($method === 'GET') {
         'month_revenue' => $currentMonthRevenue,
         'paid_bookings' => $paidBookings,
         'avg_booking' => $avgBooking,
+        'total_fleet' => $totalFleet,
+        'fleet_count' => $totalFleet,
+        'on_road_fleet' => $onRoadFleet,
+        'active_rentals' => $onRoadFleet,
+        'available_fleet' => $availableInYard,
+        'available_in_yard' => $availableInYard,
+        'fleet_utilization' => $fleetUtilization,
     ];
 
     // 2. Load overrides from settings table

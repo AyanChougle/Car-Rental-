@@ -1386,6 +1386,49 @@
                 >
               </div>
 
+              <!-- Manager Summary Active Fleet Control Card -->
+              <div
+                id="adminActiveFleetCard"
+                class="card"
+                style="
+                  margin-bottom: 24px;
+                  padding: 20px;
+                  border: 1px solid rgba(6, 214, 160, 0.3);
+                  border-radius: 16px;
+                  background: rgba(6, 214, 160, 0.04);
+                "
+              >
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+                  <div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                      <h4 style="margin: 0; font-size: 1.1rem; color: #ffffff;">
+                        ★ Manager Summary Active Fleet Roster
+                      </h4>
+                      <span id="adminActiveFleetCountBadge" class="badge" style="background: rgba(6, 214, 160, 0.2); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.4); padding: 3px 10px; border-radius: 8px; font-weight: 800; font-size: 12px;">
+                        7 Active Fleets
+                      </span>
+                    </div>
+                    <p style="margin: 4px 0 0; color: var(--kr-text-secondary); font-size: 0.84rem;">
+                      Decide which vehicles are tracked in the Manager Summary analytics, occupancy calculations, and fleet performance roster.
+                    </p>
+                  </div>
+                  <div style="display: flex; gap: 8px;">
+                    <button
+                      id="adminResetActiveFleetBtn"
+                      type="button"
+                      class="btn btn-outline"
+                      style="font-size: 12px; padding: 6px 14px; border-color: rgba(255, 255, 255, 0.2);"
+                    >
+                      Reset to Default 7 Fleets
+                    </button>
+                  </div>
+                </div>
+
+                <div id="adminActiveFleetChipsWrap" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 38px;">
+                  <span style="color: var(--kr-text-muted); font-size: 13px;">Loading active roster...</span>
+                </div>
+              </div>
+
               <!-- Structured Add / Edit Vehicle Form -->
               <form
                 id="fleetUploadForm"
@@ -1401,47 +1444,57 @@
                 <div
                   style="
                     display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
                     gap: 14px;
                     margin-bottom: 14px;
                   "
                 >
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="fleetBrand"
-                      >Brand</label
+                    <label class="admin-control-label" for="fleetCarId"
+                      >Car ID</label
                     >
                     <input
-                      id="fleetBrand"
-                      class="kr-clean-input"
-                      required
-                      placeholder="e.g. Hyundai"
-                    />
-                  </div>
-                  <div class="admin-control-group">
-                    <label class="admin-control-label" for="fleetModel"
-                      >Model</label
-                    >
-                    <input
-                      id="fleetModel"
-                      class="kr-clean-input"
-                      required
-                      placeholder="e.g. Creta"
+                      id="fleetCarId"
+                      class="kr-clean-input uppercase"
+                      placeholder="e.g. CRP-002"
                     />
                   </div>
                   <div class="admin-control-group">
                     <label class="admin-control-label" for="fleetRegNo"
-                      >Registration</label
+                      >RC Number / Reg *</label
                     >
                     <input
                       id="fleetRegNo"
                       class="kr-clean-input uppercase"
                       required
-                      placeholder="MH 01 AB 1234"
+                      placeholder="MH03EL1025"
+                    />
+                  </div>
+                  <div class="admin-control-group">
+                    <label class="admin-control-label" for="fleetBrand"
+                      >Brand *</label
+                    >
+                    <input
+                      id="fleetBrand"
+                      class="kr-clean-input"
+                      required
+                      placeholder="e.g. Suzuki"
+                    />
+                  </div>
+                  <div class="admin-control-group">
+                    <label class="admin-control-label" for="fleetModel"
+                      >Model *</label
+                    >
+                    <input
+                      id="fleetModel"
+                      class="kr-clean-input"
+                      required
+                      placeholder="e.g. Fronx"
                     />
                   </div>
                   <div class="admin-control-group">
                     <label class="admin-control-label" for="fleetYear"
-                      >Year</label
+                      >Year *</label
                     >
                     <input
                       id="fleetYear"
@@ -1449,7 +1502,7 @@
                       type="number"
                       min="2000"
                       max="2100"
-                      value="2024"
+                      value="2026"
                       required
                     />
                   </div>
@@ -1468,40 +1521,42 @@
                       >Category</label
                     >
                     <select id="fleetCategory" class="kr-clean-input" required>
-                      <option value="economy">Economy</option>
-                      <option value="sedan">Sedan</option>
+                      <option value="compact-suv">Compact SUV</option>
                       <option value="suv">SUV</option>
+                      <option value="mpv">MPV</option>
+                      <option value="hatchback">Hatchback</option>
+                      <option value="sedan">Sedan</option>
                       <option value="luxury">Luxury</option>
-                      <option value="van">MPV / Van</option>
                     </select>
                   </div>
                   <div class="admin-control-group">
                     <label class="admin-control-label" for="fleetTransmission"
-                      >Transmission</label
+                      >Transmission *</label
                     >
                     <select
                       id="fleetTransmission"
                       class="kr-clean-input"
                       required
                     >
-                      <option value="Automatic">Automatic</option>
                       <option value="Manual">Manual</option>
+                      <option value="Automatic">Automatic</option>
                     </select>
                   </div>
                   <div class="admin-control-group">
                     <label class="admin-control-label" for="fleetFuel"
-                      >Fuel</label
+                      >Fuel Type *</label
                     >
                     <input
                       id="fleetFuel"
                       class="kr-clean-input"
                       required
-                      placeholder="Petrol, Diesel, EV..."
+                      placeholder="Petrol, Petrol + CNG, Diesel, EV..."
+                      value="Petrol"
                     />
                   </div>
                   <div class="admin-control-group">
                     <label class="admin-control-label" for="fleetSeats"
-                      >Seats</label
+                      >Seats *</label
                     >
                     <input
                       id="fleetSeats"
@@ -1515,7 +1570,7 @@
                   </div>
                   <div class="admin-control-group">
                     <label class="admin-control-label" for="fleetPriceDay"
-                      >Daily Rate (₹)</label
+                      >Daily Rate (₹) *</label
                     >
                     <input
                       id="fleetPriceDay"
@@ -1524,6 +1579,57 @@
                       min="1"
                       required
                       placeholder="e.g. 3500"
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style="
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                    gap: 14px;
+                    margin-bottom: 14px;
+                  "
+                >
+                  <div class="admin-control-group">
+                    <label class="admin-control-label" for="fleetHub"
+                      >Operational Hub</label
+                    >
+                    <input
+                      id="fleetHub"
+                      class="kr-clean-input"
+                      value="Gavson Business Park, Ghansoli"
+                      placeholder="Gavson Business Park, Ghansoli"
+                    />
+                  </div>
+                  <div class="admin-control-group">
+                    <label class="admin-control-label" for="fleetAcquisitionType"
+                      >Acquisition Type</label
+                    >
+                    <select id="fleetAcquisitionType" class="kr-clean-input">
+                      <option value="Partner" selected>Partner</option>
+                      <option value="Company Owned">Company Owned</option>
+                      <option value="Leased">Leased</option>
+                    </select>
+                  </div>
+                  <div class="admin-control-group">
+                    <label class="admin-control-label" for="fleetOwnerName"
+                      >Owner / Partner Name</label
+                    >
+                    <input
+                      id="fleetOwnerName"
+                      class="kr-clean-input"
+                      placeholder="e.g. Aditi Lotankar"
+                    />
+                  </div>
+                  <div class="admin-control-group">
+                    <label class="admin-control-label" for="fleetAcquisitionDate"
+                      >Acquisition Date</label
+                    >
+                    <input
+                      id="fleetAcquisitionDate"
+                      class="kr-clean-input"
+                      type="date"
                     />
                   </div>
                 </div>
@@ -1552,6 +1658,23 @@
                     />
                   </div>
                   <div
+                    class="admin-control-group"
+                    style="display: flex; align-items: center; gap: 8px; padding-bottom: 10px;"
+                  >
+                    <input
+                      id="fleetIsActiveFleet"
+                      type="checkbox"
+                      checked
+                      style="width: 18px; height: 18px; accent-color: #06d6a0;"
+                    />
+                    <label
+                      for="fleetIsActiveFleet"
+                      style="color: #ffffff; font-size: 13px; font-weight: 600; cursor: pointer;"
+                    >
+                      Include in Manager Active 7-Fleet Roster
+                    </label>
+                  </div>
+                  <div
                     class="fleet-form-actions"
                     style="display: flex; gap: 10px"
                   >
@@ -1561,7 +1684,7 @@
                       class="btn btn-dark"
                       style="height: 42px; padding: 0 24px"
                     >
-                      Add to Fleet
+                      Add Fleet Vehicle
                     </button>
                     <button
                       id="fleetCancelEdit"
@@ -3445,7 +3568,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="js/vehicles.js?v=20260907-v5"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script type="module" src="js/admin.js?v=20260908-v5"></script>
+    <script type="module" src="js/admin.js?v=20260908-v6"></script>
     <script src="js/glass-ui.js?v=20260907-v4"></script>
   </body>
 </html>

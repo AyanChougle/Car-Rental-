@@ -232,7 +232,7 @@ function renderPaymentsTable() {
           <th style="padding:12px;">Method / UTR</th>
           <th style="padding:12px;">Verified By</th>
           <th style="padding:12px;">Status</th>
-          <th style="padding:12px; text-align:right;">Action</th>
+          <th style="padding:12px; text-align:right; min-width:140px;">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -250,7 +250,7 @@ function renderPaymentsTable() {
     html += `
       <tr style="border-bottom:1px solid rgba(255,255,255,.06); font-size:13.5px;">
         <td style="padding:12px; color:var(--sub); white-space:nowrap;">${escapeHtml(formatDate(p.createdAt))}</td>
-        <td style="padding:12px; font-family:monospace; font-weight:700; color:var(--accent);">#${escapeHtml(targetBid)}</td>
+        <td style="padding:12px; font-family:monospace; font-weight:700; color:var(--accent); white-space:nowrap;">#${escapeHtml(targetBid)}</td>
         <td style="padding:12px;">
           <strong style="color:#fff;">${escapeHtml(p.userName || "Customer")}</strong><br/>
           <small style="color:#4fd7ff; font-size:12px;">${escapeHtml(p.userEmail || "")}</small>
@@ -260,17 +260,17 @@ function renderPaymentsTable() {
           <strong>${escapeHtml(p.vehicleName || "Vehicle")}</strong>
           ${p.vehicleReg ? `<br/><small style="color:var(--sub); font-family:monospace;">${escapeHtml(p.vehicleReg)}</small>` : ""}
         </td>
-        <td style="padding:12px; font-weight:700; color:#fff;">${formatMoney(p.amount)}</td>
+        <td style="padding:12px; font-weight:700; color:#fff; white-space:nowrap;">${formatMoney(p.amount)}</td>
         <td style="padding:12px; font-family:monospace;">
           <span style="font-size:11px; text-transform:uppercase; background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px;">${escapeHtml(p.method || "UPI")}</span><br/>
           ${escapeHtml(p.utr || p.paymentRef || "No UTR")}
         </td>
-        <td style="padding:12px; color:var(--kr-cyan); font-weight:600;">${escapeHtml(verifierName)}</td>
-        <td style="padding:12px;">
+        <td style="padding:12px; color:var(--kr-cyan); font-weight:600; white-space:nowrap;">${escapeHtml(verifierName)}</td>
+        <td style="padding:12px; white-space:nowrap;">
           <span class="status-pill ${statusClass}">${escapeHtml(statusLabel)}</span>
         </td>
-        <td style="padding:12px; text-align:right;">
-          <button type="button" class="btn ${isVerified ? "btn-dark" : "btn-primary"} open-payment-modal-btn" data-pid="${escapeHtml(targetBid)}" style="padding:6px 14px; font-size:12px;">
+        <td style="padding:12px; text-align:right; white-space:nowrap; min-width:140px;">
+          <button type="button" class="btn ${isVerified ? "btn-dark" : "btn-primary"} open-payment-modal-btn" data-pid="${escapeHtml(targetBid)}" style="padding:7px 16px; font-size:12px; white-space:nowrap; min-width:115px; display:inline-block;">
             ${isVerified ? "Review Receipt" : "Audit Payment"}
           </button>
         </td>

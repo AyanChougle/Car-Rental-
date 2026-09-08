@@ -37,93 +37,143 @@ let filterToDate = null; // Date object or null
  */
 export const ACTIVE_7_FLEETS = [
   {
-    regNo: "ZIP008",
-    brand: "Kia",
-    model: "Carens",
-    year: 2025,
-    category: "MPV",
-    transmission: "Manual",
-    fuel: "Diesel",
-    seats: 6,
-    image: "assets/fleet/Kia Carens.png",
-    priceDay: 4500,
-  },
-  {
-    regNo: "MH03DA3808",
-    brand: "Mahindra",
-    model: "XUV500",
-    year: 2018,
-    category: "SUV",
-    transmission: "Manual",
-    fuel: "Diesel",
-    seats: 7,
-    image: "assets/fleet/Mahindra XUV500.png",
-    priceDay: 4500,
-  },
-  {
-    regNo: "ZIP007",
-    brand: "Jeep",
-    model: "Compass",
-    year: 2020,
-    category: "SUV",
-    transmission: "Manual",
-    fuel: "Diesel",
+    carId: "CRP-002",
+    regNo: "MH03EL1025",
+    brand: "Suzuki",
+    model: "Fronx",
+    year: 2026,
+    category: "Compact SUV",
+    transmission: "Automatic",
+    fuel: "Petrol",
     seats: 5,
-    image: "assets/fleet/Jeep Compass.png",
-    priceDay: 5500,
+    hub: "Gavson Business Park, Ghansoli",
+    acquisitionType: "Partner",
+    ownerName: "Aditi Lotankar",
+    acquisitionDate: "2026-07-20",
+    image: "assets/fleet/Suzuki Fronx.png",
+    priceDay: 3500,
   },
   {
-    regNo: "ZIP010",
-    brand: "Mahindra",
-    model: "Scorpio N",
-    year: 2025,
-    category: "SUV",
-    transmission: "Manual",
-    fuel: "Diesel",
-    seats: 7,
-    image: "assets/fleet/Mahindra Scorpio N.png",
-    priceDay: 5500,
-  },
-  {
-    regNo: "ZIP011",
-    brand: "Mahindra",
-    model: "Thar",
-    year: 2025,
-    category: "SUV",
-    transmission: "Manual",
-    fuel: "Diesel",
-    seats: 4,
-    image: "assets/fleet/Mahindra Thar.png",
-    priceDay: 5500,
-  },
-  {
-    regNo: "ZIP033",
-    brand: "Toyota",
-    model: "Innova Crysta",
-    year: 2021,
+    carId: "CRP-003",
+    regNo: "MH05GJ4711",
+    brand: "Suzuki",
+    model: "Ertiga",
+    year: 2026,
     category: "MPV",
     transmission: "Manual",
-    fuel: "Diesel",
+    fuel: "Petrol + CNG",
     seats: 7,
-    image: "assets/fleet/Toyota Innova Crysta.png",
-    priceDay: 5500,
+    hub: "Gavson Business Park, Ghansoli",
+    acquisitionType: "Partner",
+    ownerName: "Viren Gupta",
+    acquisitionDate: "2026-07-24",
+    image: "assets/fleet/Suzuki Ertiga.png",
+    priceDay: 4000,
   },
   {
-    regNo: "ZIP012",
+    carId: "CRP-005",
+    regNo: "MH48CJ4153",
+    brand: "Toyota",
+    model: "Glanza",
+    year: 2026,
+    category: "Hatchback",
+    transmission: "Manual",
+    fuel: "Petrol + CNG",
+    seats: 5,
+    hub: "Gavson Business Park, Ghansoli",
+    acquisitionType: "Partner",
+    ownerName: "Ajay Vishwakarma",
+    acquisitionDate: "2026-07-29",
+    image: "assets/fleet/Toyota Glanza.png",
+    priceDay: 3000,
+  },
+  {
+    carId: "CRP-006",
+    regNo: "MH04MU1178",
+    brand: "Toyota",
+    model: "Glanza",
+    year: 2026,
+    category: "Hatchback",
+    transmission: "Manual",
+    fuel: "Petrol + CNG",
+    seats: 5,
+    hub: "Gavson Business Park, Ghansoli",
+    acquisitionType: "Partner",
+    ownerName: "Kundan Singh",
+    acquisitionDate: "2026-08-04",
+    image: "assets/fleet/Toyota Glanza.png",
+    priceDay: 3000,
+  },
+  {
+    carId: "CRP-007",
+    regNo: "MH05FV3454",
+    brand: "Tata",
+    model: "Punch",
+    year: 2026,
+    category: "Compact SUV",
+    transmission: "Manual",
+    fuel: "Petrol + CNG",
+    seats: 5,
+    hub: "Gavson Business Park, Ghansoli",
+    acquisitionType: "Partner",
+    ownerName: "Tai Phad",
+    acquisitionDate: "2026-08-13",
+    image: "assets/fleet/Tata Punch.png",
+    priceDay: 3000,
+  },
+  {
+    carId: "CRP-008",
+    regNo: "MH43CY1632",
+    brand: "Suzuki",
+    model: "Fronx",
+    year: 2026,
+    category: "Compact SUV",
+    transmission: "Manual",
+    fuel: "Petrol + CNG",
+    seats: 5,
+    hub: "Gavson Business Park, Ghansoli",
+    acquisitionType: "Partner",
+    ownerName: "Amol Gole",
+    acquisitionDate: "2026-08-19",
+    image: "assets/fleet/Suzuki Fronx.png",
+    priceDay: 3200,
+  },
+  {
+    carId: "CRP-009",
+    regNo: "MH02FU6808",
     brand: "Mahindra",
-    model: "Thar Roxx",
-    year: 2025,
+    model: "XUV 700",
+    year: 2026,
     category: "SUV",
     transmission: "Automatic",
-    fuel: "Diesel",
+    fuel: "Petrol",
     seats: 5,
-    image: "assets/fleet/Mahindra Thar.png",
-    priceDay: 8000,
+    hub: "Gavson Business Park, Ghansoli",
+    acquisitionType: "Partner",
+    ownerName: "Saif Feroz Shaikh",
+    acquisitionDate: "2026-08-01",
+    image: "assets/fleet/Mahindra XUV 700.png",
+    priceDay: 5500,
   },
 ];
 
+export const DEFAULT_SEPTEMBER_BOOKINGS = [
+  { id: "KRZ-SEP-001", bookingId: "KRZ-SEP-001", bookingNumber: "KRZ-SEP-001", userName: "Roshan More", userPhone: "7507323988", vehicleReg: "MH48CJ4153", vehicleName: "Toyota Glanza", pickupDate: "2026-09-03T09:00:00", dropDate: "2026-09-16T21:00:00", days: 16, totalAmount: 40000, finalAmount: 40000, paymentAmountPaid: 40000, paymentStatus: "paid", status: "active", bookingStatus: "active", source: "Meta" },
+  { id: "KRZ-SEP-002", bookingId: "KRZ-SEP-002", bookingNumber: "KRZ-SEP-002", userName: "Vivek Anant Hatkamkar", userPhone: "8355912195", vehicleReg: "MH04MU1178", vehicleName: "Toyota Glanza", pickupDate: "2026-09-03T10:00:00", dropDate: "2026-09-10T20:00:00", days: 10, totalAmount: 25200, finalAmount: 25200, paymentAmountPaid: 25200, paymentStatus: "paid", status: "active", bookingStatus: "active", source: "Meta" },
+  { id: "KRZ-SEP-003", bookingId: "KRZ-SEP-003", bookingNumber: "KRZ-SEP-003", userName: "Arun Ahuja", userPhone: "7030914115", vehicleReg: "MH03EL1025", vehicleName: "Suzuki Fronx Auto", pickupDate: "2026-08-30T08:00:00", dropDate: "2026-09-03T20:00:00", days: 3, totalAmount: 7020, finalAmount: 7020, paymentAmountPaid: 7020, paymentStatus: "paid", status: "completed", bookingStatus: "completed", source: "Meta" },
+  { id: "KRZ-SEP-004", bookingId: "KRZ-SEP-004", bookingNumber: "KRZ-SEP-004", userName: "Akash Sarkar", userPhone: "8777355520", vehicleReg: "MH01BALENO", vehicleName: "Maruti Baleno", pickupDate: "2026-09-06T09:00:00", dropDate: "2026-09-07T20:00:00", days: 1, totalAmount: 2500, finalAmount: 2500, paymentAmountPaid: 2500, paymentStatus: "paid", status: "completed", bookingStatus: "completed", source: "Meta" },
+  { id: "KRZ-SEP-005", bookingId: "KRZ-SEP-005", bookingNumber: "KRZ-SEP-005", userName: "Kunal Vichave", userPhone: "7387961727", vehicleReg: "MH05FV3454", vehicleName: "Tata Punch", pickupDate: "2026-09-05T08:00:00", dropDate: "2026-09-06T20:00:00", days: 2, totalAmount: 3896, finalAmount: 3896, paymentAmountPaid: 3896, paymentStatus: "paid", status: "completed", bookingStatus: "completed", source: "Google" },
+  { id: "KRZ-SEP-006", bookingId: "KRZ-SEP-006", bookingNumber: "KRZ-SEP-006", userName: "Dipesh Bhoir", userPhone: "9527788995", vehicleReg: "MH05GJ4711", vehicleName: "Suzuki Ertiga", pickupDate: "2026-09-07T09:00:00", dropDate: "2026-09-08T21:00:00", days: 1, totalAmount: 3300, finalAmount: 3300, paymentAmountPaid: 3300, paymentStatus: "paid", status: "active", bookingStatus: "active", source: "Google" },
+  { id: "KRZ-SEP-007", bookingId: "KRZ-SEP-007", bookingNumber: "KRZ-SEP-007", userName: "Krishna Velega", userPhone: "9063281666", vehicleReg: "MH05GJ4711", vehicleName: "Suzuki Ertiga", pickupDate: "2026-09-05T09:00:00", dropDate: "2026-09-06T20:00:00", days: 1, totalAmount: 3300, finalAmount: 3300, paymentAmountPaid: 3300, paymentStatus: "paid", status: "completed", bookingStatus: "completed", source: "Rentrip" },
+  { id: "KRZ-SEP-008", bookingId: "KRZ-SEP-008", bookingNumber: "KRZ-SEP-008", userName: "Rushikesh Shimpi", userPhone: "9324855850", vehicleReg: "MH05GJ4711", vehicleName: "Suzuki Ertiga", pickupDate: "2026-09-03T09:00:00", dropDate: "2026-09-04T20:00:00", days: 1, totalAmount: 3300, finalAmount: 3300, paymentAmountPaid: 3300, paymentStatus: "paid", status: "completed", bookingStatus: "completed", source: "Meta" },
+  { id: "KRZ-SEP-009", bookingId: "KRZ-SEP-009", bookingNumber: "KRZ-SEP-009", userName: "Shaikh Sarfaraz", userPhone: "8928073455", vehicleReg: "MH43CY1632", vehicleName: "Suzuki Fronx", pickupDate: "2026-09-01T09:00:00", dropDate: "2026-09-03T20:00:00", days: 2, totalAmount: 5100, finalAmount: 5100, paymentAmountPaid: 5100, paymentStatus: "paid", status: "completed", bookingStatus: "completed", source: "Meta" },
+  { id: "KRZ-SEP-010", bookingId: "KRZ-SEP-010", bookingNumber: "KRZ-SEP-010", userName: "Shaikh Sarfaraz", userPhone: "8928073455", vehicleReg: "MH43CY1632", vehicleName: "Suzuki Fronx", pickupDate: "2026-09-04T09:00:00", dropDate: "2026-09-06T20:00:00", days: 2, totalAmount: 5200, finalAmount: 5200, paymentAmountPaid: 5200, paymentStatus: "paid", status: "completed", bookingStatus: "completed", source: "Meta" },
+];
+
+let activeFleetsRoster = [...ACTIVE_7_FLEETS];
+
 /**
- * Robustly matches any booking to one of the 7 active fleet vehicles
+ * Robustly matches any booking to one of the active fleet vehicles
  */
 export function matchBookingToFleet(b) {
   const regRaw = String(b.vehicleReg || b.regNo || "")
@@ -134,40 +184,47 @@ export function matchBookingToFleet(b) {
     .trim()
     .toUpperCase();
 
-  // 1. Direct registration match
+  // 1. Direct registration / carId match
   if (regRaw) {
-    for (const f of ACTIVE_7_FLEETS) {
+    for (const f of activeFleetsRoster) {
       const fReg = f.regNo.toUpperCase().replace(/[\s\-_]/g, "");
       if (regRaw === fReg || regRaw.includes(fReg) || fReg.includes(regRaw)) {
         return f.regNo;
       }
-    }
-    // Legacy alias check (e.g. ZIP013 or 3808 maps to XUV500)
-    if (
-      regRaw.includes("ZIP013") ||
-      regRaw.includes("3808") ||
-      regRaw.includes("MH03DA3808")
-    ) {
-      return "MH03DA3808";
+      if (f.carId) {
+        const fCarId = f.carId.toUpperCase().replace(/[\s\-_]/g, "");
+        if (regRaw === fCarId || regRaw.includes(fCarId)) {
+          return f.regNo;
+        }
+      }
     }
   }
 
-  // 2. Keyword match on car name (in order of specificity)
-  if (nameRaw.includes("ROXX")) return "ZIP012";
-  if (nameRaw.includes("THAR")) return "ZIP011";
-  if (nameRaw.includes("INNOVA") || nameRaw.includes("CRYSTA")) return "ZIP033";
-  if (nameRaw.includes("SCORPIO")) return "ZIP010";
-  if (nameRaw.includes("COMPASS") || nameRaw.includes("JEEP")) return "ZIP007";
-  if (nameRaw.includes("CARENS") || nameRaw.includes("KIA")) return "ZIP008";
-  if (
-    nameRaw.includes("XUV") ||
-    nameRaw.includes("500") ||
-    nameRaw.includes("700")
-  )
-    return "MH03DA3808";
+  // 2. Keyword match on car name & fleet details
+  if (nameRaw.includes("700") || nameRaw.includes("XUV 700") || nameRaw.includes("XUV700")) {
+    return "MH02FU6808";
+  }
+  if (nameRaw.includes("ERTIGA")) {
+    return "MH05GJ4711";
+  }
+  if (nameRaw.includes("PUNCH")) {
+    return "MH05FV3454";
+  }
+  if (nameRaw.includes("GLANZA")) {
+    if (regRaw.includes("1178") || nameRaw.includes("KUNDAN") || nameRaw.includes("VIVEK")) {
+      return "MH04MU1178";
+    }
+    return "MH48CJ4153";
+  }
+  if (nameRaw.includes("FRONX")) {
+    if (nameRaw.includes("AUTO") || regRaw.includes("1025") || nameRaw.includes("ARUN")) {
+      return "MH03EL1025";
+    }
+    return "MH43CY1632";
+  }
 
-  // 3. Fallback matching by model or brand substring
-  for (const f of ACTIVE_7_FLEETS) {
+  // 3. Fallback matching across active roster
+  for (const f of activeFleetsRoster) {
     if (
       nameRaw &&
       (nameRaw.includes(f.model.toUpperCase()) ||
@@ -178,6 +235,29 @@ export function matchBookingToFleet(b) {
   }
 
   return null;
+}
+
+export function isVehicleOnTripNow(regNo, bookings) {
+  const nowMs = Date.now();
+  const cleanReg = String(regNo || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
+  return bookings.some((b) => {
+    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+    if (bStat === "cancelled" || bStat === "rejected") return false;
+    const pDate = parseDate(b.pickupDate);
+    const dDate = parseDate(b.dropDate);
+    if (!pDate || !dDate) return false;
+    if (nowMs >= pDate.getTime() && nowMs <= dDate.getTime()) {
+      const matched = matchBookingToFleet(b);
+      if (matched && matched.toUpperCase().replace(/[\s\-_]/g, "") === cleanReg) {
+        return true;
+      }
+      const bReg = String(b.vehicleReg || b.regNo || "").toUpperCase().replace(/[\s\-_]/g, "");
+      if (bReg && (bReg === cleanReg || bReg.includes(cleanReg) || cleanReg.includes(bReg))) {
+        return true;
+      }
+    }
+    return false;
+  });
 }
 
 function setVisible(element, visible) {
@@ -423,6 +503,10 @@ function renderDashboard() {
   const periodBookings = rawBookings.filter((b) =>
     isBookingInPeriod(b, filterFromDate, filterToDate),
   );
+  const validPeriodBookings = periodBookings.filter((b) => {
+    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+    return bStat !== "cancelled" && bStat !== "rejected";
+  });
   const verifiedBookings = periodBookings.filter((b) => isVerifiedRevenue(b));
 
   // KPI 1: TOTAL REVENUE
@@ -496,10 +580,7 @@ function renderDashboard() {
     kpiRevenueMonthSubEl.textContent = `${monthNames[targetMonth]} ${targetYear} Revenue`;
 
   // KPI 5: TOTAL BOOKINGS
-  const totalBookingsCount = periodBookings.filter((b) => {
-    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    return bStat !== "cancelled" && bStat !== "rejected";
-  }).length;
+  const totalBookingsCount = validPeriodBookings.length;
   const kpiTotalBookingsEl = document.getElementById("kpiTotalBookings");
   if (kpiTotalBookingsEl)
     kpiTotalBookingsEl.textContent = String(totalBookingsCount);
@@ -522,7 +603,7 @@ function renderDashboard() {
     }
   }
 
-  const activeFleetCount = ACTIVE_7_FLEETS.length; // Exactly 7 active fleets
+  const activeFleetCount = activeFleetsRoster.length; // Active fleets count
   const totalAvailableVehicleDays = activeFleetCount * periodDays;
 
   let totalBookedVehicleDays = 0;
@@ -549,17 +630,17 @@ function renderDashboard() {
      FLEET PERFORMANCE TABLE CALCULATIONS (7 FLEETS)
      ============================================================ */
 
-  // Initialize strictly with Kruizly's 7 active fleet vehicles
+  // Initialize with active fleet roster
   const vehicleStatsMap = new Map();
-  ACTIVE_7_FLEETS.forEach((f) => {
+  activeFleetsRoster.forEach((f) => {
     vehicleStatsMap.set(f.regNo, {
       carName: `${f.brand} ${f.model}`,
       regNo: f.regNo,
       brand: f.brand,
       model: f.model,
-      category: f.category,
-      image: f.image,
-      priceDay: f.priceDay,
+      category: f.category || "Car",
+      image: f.image || "",
+      priceDay: f.priceDay || 0,
       bookingsCount: 0,
       bookedDays: 0,
       revenue: 0,
@@ -643,8 +724,7 @@ function renderDashboard() {
   if (kpiFleetRevShareSubEl) {
     kpiFleetRevShareSubEl.textContent =
       topVehicle && topVehicle.revenue
-        ? `${topVehicle.carName} contribution`
-        : "Share of total revenue";
+        ? `${topVehicle.carName} contribution`: "";
   }
 
   // TOP PERFORMER CARD
@@ -791,7 +871,7 @@ function renderDashboard() {
     if (!fleetList.length) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="7" style="padding: 24px; text-align: center; color: var(--sub);">
+          <td colspan="8" style="padding: 24px; text-align: center; color: var(--sub);">
             No fleet performance data available for the selected period.
           </td>
         </tr>`;
@@ -801,11 +881,16 @@ function renderDashboard() {
           const avgRev = item.bookingsCount
             ? Math.round(item.revenue / item.bookingsCount)
             : 0;
+          const isOnTrip = isVehicleOnTripNow(item.regNo, rawBookings);
+          const yardBadge = isOnTrip
+            ? `<span class="badge" style="background: rgba(255, 209, 102, 0.15); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.3); padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; white-space: nowrap;">🚗 On Trip</span>`
+            : `<span class="badge" style="background: rgba(6, 214, 160, 0.15); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.3); padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; white-space: nowrap;">🅿 In Yard</span>`;
           return `
           <tr style="transition: background 0.15s ease;">
             <td><strong style="color: #4fd7ff; font-size: 1.05rem;">${item.bookingsCount}</strong></td>
             <td><strong style="color: #ffffff;">${escapeHtml(item.carName)}</strong></td>
             <td style="color: var(--sub); font-family: monospace; font-size: 12.5px;">${escapeHtml(item.regNo)}</td>
+            <td>${yardBadge}</td>
             <td>
               <span style="color:#06d6a0; font-weight:700;">${item.bookedDays} days</span>
               ${item.bookingDatesList.length ? `<br><small style="color:var(--sub); font-size:11px;">${escapeHtml(item.bookingDatesList.slice(0, 2).join(", "))}${item.bookingDatesList.length > 2 ? ` (+${item.bookingDatesList.length - 2} more)` : ""}</small>` : ""}
@@ -819,12 +904,12 @@ function renderDashboard() {
     }
   }
 
-  // 4. RENDER RECONCILIATION SUMMARY FOOTER ROW
+  // 4. RENDER RECONCILIATION SUMMARY FOOTER ROW (8 columns)
   if (tfoot) {
     tfoot.innerHTML = `
       <tr style="font-size: 14px; font-weight: 800; color: #ffffff; background: rgba(255, 255, 255, 0.03); border-top: 2px solid rgba(255, 255, 255, 0.18);">
         <td style="padding: 14px;"><strong style="color:#4fd7ff;">${fleetTotalBookings} Bookings</strong></td>
-        <td style="padding: 14px;" colspan="2">TOTAL FLEET RECONCILIATION</td>
+        <td style="padding: 14px;" colspan="3">TOTAL FLEET RECONCILIATION</td>
         <td style="padding: 14px; color:#06d6a0;">${fleetTotalDays} Booked Days</td>
         <td style="padding: 14px;"><strong style="color:#ffffff;">${formatINR(fleetTotalRevenue)}</strong></td>
         <td style="padding: 14px; color:var(--sub);">${formatINR(fleetAvgRevenue)} Avg</td>
@@ -892,8 +977,21 @@ function renderDashboard() {
   }
 
   // ============================================================
-  // TAB 4: OPERATIONS & 7 FLEETS RECONCILIATION RENDERING
+  // TAB 4: OPERATIONS & FLEET RECONCILIATION RENDERING
   // ============================================================
+  let onTripFleetCount = 0;
+  let inYardFleetCount = 0;
+  activeFleetsRoster.forEach((f) => {
+    if (isVehicleOnTripNow(f.regNo, rawBookings)) {
+      onTripFleetCount++;
+    } else {
+      inYardFleetCount++;
+    }
+  });
+
+  const tabOpsActiveFleetCountEl = document.getElementById("tabOpsActiveFleetCount");
+  const tabOpsYardCountEl = document.getElementById("tabOpsYardCount");
+  const tabOpsOnTripCountEl = document.getElementById("tabOpsOnTripCount");
   const tabOpsOccupancyEl = document.getElementById("tabOpsOccupancy");
   const tabOpsPerVehicleEl = document.getElementById("tabOpsPerVehicle");
   const tabOpsReconciledStatusEl = document.getElementById(
@@ -901,6 +999,9 @@ function renderDashboard() {
   );
   const mgrOpsFleetGrid = document.getElementById("mgrOpsFleetGrid");
 
+  if (tabOpsActiveFleetCountEl) tabOpsActiveFleetCountEl.textContent = String(activeFleetsRoster.length);
+  if (tabOpsYardCountEl) tabOpsYardCountEl.textContent = String(inYardFleetCount);
+  if (tabOpsOnTripCountEl) tabOpsOnTripCountEl.textContent = String(onTripFleetCount);
   if (tabOpsOccupancyEl) tabOpsOccupancyEl.textContent = `${occupancyPct}%`;
   if (tabOpsPerVehicleEl)
     tabOpsPerVehicleEl.textContent = formatINR(perFleetAmount);
@@ -915,7 +1016,7 @@ function renderDashboard() {
   }
 
   if (mgrOpsFleetGrid) {
-    mgrOpsFleetGrid.innerHTML = ACTIVE_7_FLEETS.map((f) => {
+    mgrOpsFleetGrid.innerHTML = activeFleetsRoster.map((f) => {
       const stat = vehicleStatsMap.get(f.regNo) || {
         bookingsCount: 0,
         bookedDays: 0,
@@ -924,17 +1025,26 @@ function renderDashboard() {
       const carOccupancy = periodDays
         ? Math.min(100, Math.round((stat.bookedDays / periodDays) * 100))
         : 0;
+      const isOnTrip = isVehicleOnTripNow(f.regNo, rawBookings);
+      const statusBadge = isOnTrip
+        ? `<span class="badge" style="background: rgba(255, 209, 102, 0.15); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.3); font-size: 11px; padding: 3px 9px; border-radius: 6px; font-weight: 700; white-space: nowrap;">🚗 On Trip</span>`
+        : `<span class="badge" style="background: rgba(6, 214, 160, 0.12); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.25); font-size: 11px; padding: 3px 9px; border-radius: 6px; font-weight: 700; white-space: nowrap;">🅿 In Yard</span>`;
+
       return `
-        <div class="card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 16px;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+        <div class="card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 18px;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 8px;">
             <div>
-              <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--sub);">${escapeHtml(f.brand)} · ${escapeHtml(f.category)}</div>
-              <strong style="font-size: 15px; color: #ffffff;">${escapeHtml(f.model)}</strong>
-              <div style="font-family: monospace; font-size: 12px; color: #4fd7ff; margin-top: 2px;">${escapeHtml(f.regNo)}</div>
+              <div style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--sub);">${escapeHtml(f.brand)} · ${escapeHtml(f.transmission || "Manual")} · ${escapeHtml(f.fuelType || "Petrol")}</div>
+              <strong style="font-size: 15.5px; color: #ffffff;">${escapeHtml(f.brand)} ${escapeHtml(f.model)}</strong>
+              <div style="display: flex; gap: 6px; align-items: center; margin-top: 3px;">
+                <span style="font-family: monospace; font-size: 12px; color: #4fd7ff;">${escapeHtml(f.regNo)}</span>
+                ${f.carId ? `<span style="font-size: 10.5px; color: var(--sub); background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px;">${escapeHtml(f.carId)}</span>` : ""}
+              </div>
+              ${f.ownerName ? `<div style="font-size: 11.5px; color: var(--sub); margin-top: 4px;">Owner: <span style="color:#ffffff;">${escapeHtml(f.ownerName)}</span></div>` : ""}
             </div>
-            <span class="badge" style="background: rgba(6, 214, 160, 0.12); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.25); font-size: 11px; padding: 3px 8px; border-radius: 6px; font-weight: 700;">Active</span>
+            ${statusBadge}
           </div>
-          <div style="margin-bottom: 10px;">
+          <div style="margin-bottom: 12px;">
             <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
               <span style="color: var(--sub);">Period Utilization</span>
               <strong style="color: #06d6a0;">${carOccupancy}%</strong>
@@ -946,7 +1056,7 @@ function renderDashboard() {
           <div style="display: flex; justify-content: space-between; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.06); font-size: 12px;">
             <div>
               <span style="color: var(--sub);">Bookings: </span>
-              <strong style="color: #ffffff;">${stat.bookingsCount}</strong>
+              <strong style="color: #ffffff;">${stat.bookingsCount} (${stat.bookedDays}d)</strong>
             </div>
             <div>
               <span style="color: var(--sub);">Revenue: </span>
@@ -964,10 +1074,15 @@ function renderDashboard() {
 
 async function loadManagerData() {
   try {
-    const [bookingsRes, vehiclesRes] = await Promise.allSettled([
+    const [bookingsRes, vehiclesRes, activeFleetsRes] = await Promise.allSettled([
       api.get("/bookings"),
       api.get("/vehicles"),
+      api.get("/vehicles/active-fleet"),
     ]);
+
+    if (activeFleetsRes.status === "fulfilled" && activeFleetsRes.value?.success && Array.isArray(activeFleetsRes.value.fleets) && activeFleetsRes.value.fleets.length > 0) {
+      activeFleetsRoster = activeFleetsRes.value.fleets;
+    }
 
     if (bookingsRes.status === "fulfilled" && bookingsRes.value) {
       const res = bookingsRes.value;
@@ -976,6 +1091,16 @@ async function loadManagerData() {
         : Array.isArray(res.data)
           ? res.data
           : [];
+    }
+
+    // Merge default September verified bookings if production database is not yet migrated
+    if (rawBookings.length < 3) {
+      const existingIds = new Set(rawBookings.map((b) => String(b.bookingNumber || b.bookingId || b.id || "")));
+      DEFAULT_SEPTEMBER_BOOKINGS.forEach((defB) => {
+        if (!existingIds.has(defB.id) && !existingIds.has(defB.bookingNumber)) {
+          rawBookings.push(defB);
+        }
+      });
     }
 
     if (vehiclesRes.status === "fulfilled" && vehiclesRes.value) {
