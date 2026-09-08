@@ -26,7 +26,7 @@ export function initDynamicNav() {
       // Rebuild privileged links only after the account role has been
       // verified. This also removes legacy links hard-coded in a page.
       nav.querySelectorAll(
-        'a[href="executive.html"], a[href="manager.html"], a[href="admin.html"]'
+        'a[href="executive.html"], a[href="accounts.html"], a[href="manager.html"], a[href="admin.html"]'
       ).forEach((link) => link.remove());
 
       // Ensure Host Car link
@@ -46,6 +46,16 @@ export function initDynamicNav() {
           link.href = "executive.html";
           link.textContent = "Executive";
           if (currentPath === "executive.html") link.classList.add("active");
+          const prof = nav.querySelector('a[href="profile.html"]');
+          prof ? nav.insertBefore(link, prof) : nav.appendChild(link);
+        }
+
+        // Accounts / Payment Verification
+        if (!nav.querySelector('a[href="accounts.html"]')) {
+          const link = document.createElement("a");
+          link.href = "accounts.html";
+          link.textContent = "Accounts";
+          if (currentPath === "accounts.html") link.classList.add("active");
           const prof = nav.querySelector('a[href="profile.html"]');
           prof ? nav.insertBefore(link, prof) : nav.appendChild(link);
         }

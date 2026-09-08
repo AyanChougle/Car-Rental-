@@ -1229,6 +1229,14 @@ function renderProfileBookings() {
   `;
 
   container
+    .querySelectorAll(".btn-cancel-booking")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        openUserCancelModal(button.dataset.bookingId);
+      });
+    });
+
+  container
     .querySelectorAll("[data-page-action]")
     .forEach(button => {
       button.addEventListener("click", () => {
@@ -1238,6 +1246,74 @@ function renderProfileBookings() {
         container.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     });
+}
+
+function openUserCancelModal(bookingId) {
+  const modal = $("cancelBookingModal");
+  const modalIdInput = $("cancelModalBookingId");
+  if (!modal || !bookingId) return;
+
+  if (modalIdInput) modalIdInput.value = bookingId;
+  modal.hidden = false;
+  modal.style.display = "flex";
+}
+
+function initUserCancellationModal() {
+  const modal = $("cancelBookingModal");
+  const closeBtn1 = $("closeCancelBookingModal");
+  const closeBtn2 = $("cancelModalCloseBtn");
+  const confirmBtn = $("confirmCancelBookingBtn");
+  const modalIdInput = $("cancelModalBookingId");
+  const reasonSelect = $("cancelReasonSelect");
+
+  if (!modal || !confirmBtn) return;
+
+  const closeModal = () => {
+    modal.hidden = true;
+    modal.style.display = "none";
+    if (modalIdInput) modalIdInput.value = "";
+  };
+
+  if (closeBtn1) closeBtn1.addEventListener("click", closeModal);
+  if (closeBtn2) closeBtn2.addEventListener("click", closeModal);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  confirmBtn.addEventListener("click", async () => {
+    const bookingId = modalIdInput?.value;
+    const reason = reasonSelect?.value || "Personal Issue";
+
+    if (!bookingId) {
+      alert("No booking selected for cancellation.");
+      return;
+    }
+
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "Cancelling...";
+
+    try {
+      await api.post(`/bookings/${encodeURIComponent(bookingId)}/cancel`, {
+        reason: reason,
+        cancellationReason: reason
+      });
+
+      alert("Booking cancelled successfully! Your refund has been processed automatically.");
+      closeModal();
+
+      const user = getCurrentUser();
+      if (user) {
+        loadBookings(user.id || user.uid);
+      }
+    } catch (err) {
+      console.error("Cancellation error:", err);
+      alert(`Failed to cancel booking: ${err.message || "Unknown error"}`);
+    } finally {
+      confirmBtn.disabled = false;
+      confirmBtn.textContent = "Confirm Cancellation";
+    }
+  });
 }
 
 
@@ -1602,20 +1678,25 @@ function renderBooking(
           : ""
       }
 
-
       ${
-        paymentButton
+        booking.cancellationReason || booking.cancellation_reason
           ? `
-
-            <div class="booking-actions">
-
-              ${paymentButton}
-
+            <div style="margin-top: 8px; padding: 6px 10px; background: rgba(239, 71, 111, 0.1); border: 1px solid rgba(239, 71, 111, 0.25); border-radius: 8px; font-size: 0.8rem; color: #ff6b8b;">
+              Cancellation Reason: <strong>${escapeHtml(booking.cancellationReason || booking.cancellation_reason)}</strong>
+              ${booking.refundStatus || booking.refund_status ? ` · Refund: <span style="color:#06d6a0; font-weight:700;">${escapeHtml((booking.refundStatus || booking.refund_status).toUpperCase())}</span>` : ""}
             </div>
-
           `
           : ""
       }
+
+      <div class="booking-actions" style="margin-top: 12px; display: flex; gap: 10px; align-items: center; justify-content: flex-end;">
+        ${paymentButton}
+        ${
+          status !== "cancelled" && status !== "rejected" && status !== "completed"
+            ? `<button type="button" class="btn-cancel-booking" data-booking-id="${escapeHtml(booking.id)}" style="background: rgba(239, 71, 111, 0.12); color: #ef476f; border: 1px solid rgba(239, 71, 111, 0.3); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer;">Cancel Booking</button>`
+            : ""
+        }
+      </div>
 
     </article>
 
@@ -2003,6 +2084,7 @@ async function initProfileAuth() {
 
   try {
     initTabs();
+    initUserCancellationModal();
     const profileData = await loadProfile(user);
     initEditProfile(user, profileData || {});
     loadBookings(user.id || user.uid);

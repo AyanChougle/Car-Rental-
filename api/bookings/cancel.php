@@ -37,7 +37,14 @@ if (!$isStaff && $booking['firebase_uid'] !== $user['firebase_uid']) {
 try {
     Database::transaction(function($pdo) use ($booking, $user) {
         $bid = $booking['booking_id'];
-        $refundAmount = (float)($booking['payment_amount_paid'] ?: $booking['advance_amount'] ?: $booking['total_amount'] ?: 0.00);
+        $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
+        $reason = trim((string)($input['reason'] ?? $input['cancellationReason'] ?? 'Personal Issue / Schedule Change'));
+
+        // Auto-heal table columns
+        try { $pdo->exec("ALTER TABLE bookings ADD COLUMN cancellation_reason VARCHAR(255) NULL AFTER status"); } catch (Throwable $_) {}
+        try { $pdo->exec("ALTER TABLE bookings ADD COLUMN refund_status VARCHAR(64) DEFAULT 'refunded' AFTER payment_status"); } catch (Throwable $_) {}
+        try { $pdo->exec("ALTER TABLE payments ADD COLUMN refund_amount DECIMAL(10,2) DEFAULT 0.00"); } catch (Throwable $_) {}
+        try { $pdo->exec("ALTER TABLE payments ADD COLUMN refund_reason VARCHAR(255) NULL"); } catch (Throwable $_) {}
 
         // 1. Update booking
         $pdo->prepare(
@@ -45,21 +52,23 @@ try {
                 status = 'cancelled',
                 booking_status = 'cancelled',
                 payment_status = 'refunded',
+                refund_status = 'refunded',
+                cancellation_reason = ?,
                 remaining_balance = 0.00,
                 remaining_amount = 0.00,
                 updated_at = CURRENT_TIMESTAMP
              WHERE booking_id = ?"
-        )->execute([$bid]);
+        )->execute([$reason, $bid]);
 
         // 2. Update/insert payment record
         $pdo->prepare(
             "UPDATE payments SET
                 status = 'refunded',
                 refund_amount = ?,
-                refund_reason = 'Booking cancelled by user/admin',
+                refund_reason = ?,
                 updated_at = CURRENT_TIMESTAMP
              WHERE booking_id = ?"
-        )->execute([$refundAmount, $bid]);
+        )->execute([$refundAmount, $reason, $bid]);
 
         // 3. Free up vehicle availability
         if (!empty($booking['vehicle_reg'])) {

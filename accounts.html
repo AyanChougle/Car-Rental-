@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Accounts &amp; Payment Verification | KRUIZLY</title>
+    <meta name="description" content="KRUIZLY accounts console for payment verification, UTR matching, verifier recording, and invoice generation." />
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16.png" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    
+    <link rel="stylesheet" href="css/components.css?v=20260907-v4" />
+    <link rel="stylesheet" href="css/kruizly-ui.css?v=20260907-v4" />
+    <link rel="stylesheet" href="css/admin.css?v=20260907-v4" />
+    <link rel="stylesheet" href="css/executive.css?v=20260907-v4" />
+    <link rel="stylesheet" href="css/kruizly-motion.css?v=20260907-v4" />
+  </head>
+  <body>
+
+    <div class="background-video-wrap" aria-hidden="true">
+      <video autoplay muted loop playsinline preload="auto">
+        <source src="assets/background-video.mp4" type="video/mp4" />
+      </video>
+    </div>
+
+    <header class="site-header">
+      <div class="container header-inner">
+        <a href="index.html" class="logo"><img src="images/logo.png" alt="KRUIZLY" class="logo-img" /></a>
+        <button
+          type="button"
+          class="mobile-nav-toggle"
+          id="mobileNavToggle"
+          aria-label="Open navigation menu"
+          aria-controls="mainNav"
+          aria-expanded="false"
+        >
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+
+        <nav class="nav" id="mainNav" aria-label="Main navigation">
+          <a href="fleet.html">Fleet</a>
+          <a href="about.html">About</a>
+          <a href="contact.html">Contact</a>
+          <a href="partner.html">Host Car</a>
+          <a href="accounts.html" class="active">Accounts</a>
+          <a href="profile.html">Profile</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="section staff-page accounts-page">
+      <div class="manager-container" style="max-width: 1240px; margin: 0 auto; padding: 0 16px;">
+        <div class="manager-hero">
+          <span class="section-label">Financial Control</span>
+          <h1 class="section-title">Accounts &amp; Payment Queue</h1>
+          <p class="manager-hero-text">
+            Verify customer UPI &amp; bank transfer receipts, select verifier identity, manage refunds, and issue booking invoices.
+          </p>
+        </div>
+
+        <div id="accountsAccessDenied" class="card manager-access-denied" hidden>
+          <div class="manager-access-icon" aria-hidden="true">🔒</div>
+          <h3>Accounts Access Required</h3>
+          <p>This page is restricted to Executive, Manager, and Admin staff accounts.</p>
+          <div style="margin-top: 16px;">
+            <a href="profile.html" class="btn btn-light">Go to Profile</a>
+          </div>
+        </div>
+
+        <div id="accountsContent" class="manager-dashboard" hidden>
+          <!-- Accounts Key Metrics -->
+          <section class="manager-stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div class="card manager-stat-card">
+              <span class="manager-stat-label">Pending Verification</span>
+              <div id="accountsPendingCount" class="manager-stat-value" style="color: #ef476f;">0</div>
+            </div>
+            <div class="card manager-stat-card">
+              <span class="manager-stat-label">Verified Today</span>
+              <div id="accountsVerifiedCount" class="manager-stat-value" style="color: #06d6a0;">0</div>
+            </div>
+            <div class="card manager-stat-card">
+              <span class="manager-stat-label">Total Volume (₹)</span>
+              <div id="accountsTotalVolume" class="manager-stat-value" style="color: #4fd7ff;">₹0</div>
+            </div>
+          </section>
+
+          <!-- Accounts Panel Card -->
+          <div class="card manager-panel">
+            <div class="manager-panel-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 20px;">
+              <div>
+                <h2 class="manager-panel-title">UPI &amp; Bank Transfer Payment Audit</h2>
+                <p class="manager-panel-subtitle">Review payment screenshots, verify UTR reference numbers, and record approval auditor.</p>
+              </div>
+              <div class="manager-booking-controls" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <input id="accountsSearchInput" type="text" placeholder="Search customer, booking ref, UTR..." class="kr-clean-input" style="max-width: 240px; font-size: 13px;" />
+                <select id="accountsStatusFilter" class="kr-clean-input" style="font-size: 13px; max-width: 160px;">
+                  <option value="all">All Statuses</option>
+                  <option value="pending" selected>Pending Verification</option>
+                  <option value="verified">Verified / Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+                <button id="accountsRefreshBtn" type="button" class="btn btn-outline" style="font-size: 13px;">Refresh Queue</button>
+              </div>
+            </div>
+
+            <div id="accountsTableWrap" class="manager-table-wrap">
+              <div class="manager-state" style="padding: 28px; text-align: center; color: var(--sub);">Loading payment records...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- MODAL: PAYMENT AUDIT & VERIFY MODAL -->
+    <div id="accountsReviewModal" class="manager-modal" hidden>
+      <div class="card manager-modal-card" style="max-width: 620px;">
+        <button id="closeAccountsReviewModal" class="manager-modal-close" type="button" aria-label="Close">&times;</button>
+        <h3 id="accountsReviewTitle" class="manager-modal-title">Verify Payment Receipt</h3>
+        <p class="manager-modal-subtitle">Confirm UTR match, select auditor name, and approve or reject payment.</p>
+
+        <div id="accountsReviewBody" style="margin: 16px 0; max-height: 60vh; overflow-y: auto;">
+          <!-- Generated by JS -->
+        </div>
+
+        <div class="form-group" style="margin-top: 14px; margin-bottom: 16px;">
+          <label class="pickup-field-label" for="accountsVerifierSelect" style="font-weight: 700; color: #fff; display: block; margin-bottom: 6px;">
+            Verified By (Staff Auditor) *
+          </label>
+          <select id="accountsVerifierSelect" class="kr-clean-input" style="width: 100%; height: 42px; font-size: 14px; font-weight: 600;">
+            <option value="Ayan Chougle">Ayan Chougle</option>
+            <option value="Omkar Tapshale">Omkar Tapshale</option>
+            <option value="Rahul Sharma">Rahul Sharma</option>
+          </select>
+        </div>
+
+        <div id="accountsRejectionReasonWrap" class="form-group" style="display: none; margin-bottom: 16px;">
+          <label class="pickup-field-label" for="accountsRejectionReason" style="font-weight: 700; color: #ef476f; display: block; margin-bottom: 6px;">
+            Reason for Rejection *
+          </label>
+          <input id="accountsRejectionReason" type="text" placeholder="e.g. UTR mismatch / Invalid receipt screenshot" class="kr-clean-input" style="width: 100%; height: 40px;" />
+        </div>
+
+        <div class="manager-modal-actions" style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;">
+          <button id="accountsRejectBtn" class="btn btn-outline manager-btn-reject" type="button" style="padding: 10px 18px;">Reject Payment</button>
+          <button id="accountsApproveBtn" class="btn btn-primary manager-btn-approve" type="button" style="padding: 10px 22px; font-weight: 700;">Verify &amp; Approve Payment</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="js/vehicles.js?v=20260907-v10"></script>
+    <script type="module" src="js/accounts.js?v=20260907-v10"></script>
+    <script src="js/glass-ui.js?v=20260907-v4"></script>
+    <script src="js/kruizly-motion.js?v=20260907-v4"></script>
+  </body>
+</html>

@@ -21,8 +21,11 @@ if (!$id) {
     sendErrorResponse('Payment ID or Booking ID is required.', 400);
 }
 
+$verifiedByInput = trim((string)($input['verifiedBy'] ?? $input['verified_by'] ?? ''));
+$verifiedBy = $verifiedByInput ?: ($admin['name'] ?? $admin['email'] ?? $admin['firebase_uid']);
+
 try {
-    Database::transaction(function($pdo) use ($id, $action, $reason, $admin) {
+    Database::transaction(function($pdo) use ($id, $action, $reason, $admin, $verifiedBy) {
         $now = date('Y-m-d H:i:s');
 
         if ($action === 'approve') {
@@ -40,7 +43,7 @@ try {
                     OR id = ? 
                     OR REPLACE(booking_id, '#', '') = ?
                     OR REPLACE(payment_id, '#', '') = ?"
-            )->execute([$admin['firebase_uid'], $now, $id, $id, $numId, $cleanId, $cleanId]);
+            )->execute([$verifiedBy, $now, $id, $id, $numId, $cleanId, $cleanId]);
 
             // Update booking status
             $booking = Database::fetchOne(
@@ -89,7 +92,7 @@ try {
                     OR id = ? 
                     OR REPLACE(booking_id, '#', '') = ?
                     OR REPLACE(payment_id, '#', '') = ?"
-            )->execute([$reason ?: 'Payment receipt could not be verified.', $admin['firebase_uid'], $now, $id, $id, $numId, $cleanId, $cleanId]);
+            )->execute([$reason ?: 'Payment receipt could not be verified.', $verifiedBy, $now, $id, $id, $numId, $cleanId, $cleanId]);
 
             $pdo->prepare(
                 "UPDATE bookings SET
