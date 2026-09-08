@@ -232,7 +232,7 @@ function renderPaymentsTable() {
           <th style="padding:12px;">Method / UTR</th>
           <th style="padding:12px;">Verified By</th>
           <th style="padding:12px;">Status</th>
-          <th style="padding:12px; text-align:right; min-width:140px;">Action</th>
+          <th style="padding:12px 16px; text-align:right; min-width:160px;">Action</th>
         </tr>
       </thead>
       <tbody>
@@ -269,9 +269,9 @@ function renderPaymentsTable() {
         <td style="padding:12px; white-space:nowrap;">
           <span class="status-pill ${statusClass}">${escapeHtml(statusLabel)}</span>
         </td>
-        <td style="padding:12px; text-align:right; white-space:nowrap; min-width:140px;">
-          <button type="button" class="btn ${isVerified ? "btn-dark" : "btn-primary"} open-payment-modal-btn" data-pid="${escapeHtml(targetBid)}" style="padding:7px 16px; font-size:12px; white-space:nowrap; min-width:115px; display:inline-block;">
-            ${isVerified ? "Review Receipt" : "Audit Payment"}
+        <td style="padding:12px 16px; text-align:right; white-space:nowrap; min-width:160px;">
+          <button type="button" class="accounts-audit-btn ${isVerified ? "is-verified" : isRejected ? "is-rejected" : ""} open-payment-modal-btn" data-pid="${escapeHtml(targetBid)}">
+            ${isVerified ? "Review Receipt" : isRejected ? "View Rejection" : "Audit Payment"}
           </button>
         </td>
       </tr>

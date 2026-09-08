@@ -100,25 +100,25 @@ if ($method === 'POST') {
         sendErrorResponse('Coupon code and valid discount value are required.', 400);
     }
 
+    // Explicit check: ensure we do NOT accidentally mutate an existing coupon during new creation
+    $existing = Database::fetchOne("SELECT id, code FROM coupons WHERE UPPER(code) = ? LIMIT 1", [$code]);
+    if ($existing) {
+        sendErrorResponse("A coupon with code '$code' already exists (ID: #{$existing['id']}). To modify it, please click the Edit button in the table below.", 409);
+    }
+
     Database::execute(
         "INSERT INTO coupons (code, discount_type, discount_value, min_order, max_discount, label, description, active, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE
-            discount_type = VALUES(discount_type),
-            discount_value = VALUES(discount_value),
-            min_order = VALUES(min_order),
-            max_discount = VALUES(max_discount),
-            label = VALUES(label),
-            description = VALUES(description),
-            active = VALUES(active),
-            status = VALUES(status)",
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
         [$code, $discountType, $discountValue, $minOrder, $maxDiscount, $label, $description, $active, $status]
     );
 
+    $newId = (int)Database::lastInsertId();
+
     sendJsonResponse([
         'success' => true,
-        'message' => "Coupon $code saved successfully.",
+        'message' => "Coupon $code created successfully.",
         'coupon' => [
+            'id' => $newId,
             'code' => $code,
             'type' => $discountType === 'percentage' ? 'percent' : 'flat',
             'discountValue' => $discountValue,

@@ -627,7 +627,7 @@ async function loadMyListings(userParam) {
               <span>Listing ID #${escapeHtml(String(listing.id || "").slice(0, 8).toUpperCase())}</span>
               <div style="display: flex; gap: 8px; align-items: center;">
                 <button type="button" class="btn-withdraw-listing" data-listing-id="${escapeHtml(listing.id)}" data-vehicle-name="${escapeHtml(vehicleName)}" data-reg-no="${escapeHtml(listing.regNo || listing.regNumber || "Not provided")}" style="background: rgba(255, 183, 3, 0.12); color: #ffb703; border: 1px solid rgba(255, 183, 3, 0.35); border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Request withdrawal of vehicle from fleet">
-                  <span>✉️ Withdraw Fleet</span>
+                  <span>Withdraw Fleet</span>
                 </button>
                 <button type="button" class="btn-delete-listing" data-listing-id="${escapeHtml(listing.id)}" style="background: rgba(239, 71, 111, 0.12); color: #ef476f; border: 1px solid rgba(239, 71, 111, 0.3); border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer;">Delete</button>
                 <a href="partner.html" style="color: var(--kr-cyan); text-decoration: none; font-weight: 700; font-size: 12.5px;">Manage</a>

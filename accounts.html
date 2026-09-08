@@ -15,6 +15,57 @@
     <link rel="stylesheet" href="css/admin.css?v=20260907-v4" />
     <link rel="stylesheet" href="css/executive.css?v=20260907-v4" />
     <link rel="stylesheet" href="css/kruizly-motion.css?v=20260907-v4" />
+    <style>
+      .accounts-audit-btn {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        height: 34px !important;
+        min-height: 34px !important;
+        padding: 0 16px !important;
+        font-size: 12px !important;
+        font-weight: 700 !important;
+        letter-spacing: 0.02em !important;
+        border-radius: 9999px !important;
+        background: rgba(79, 215, 255, 0.15) !important;
+        border: 1px solid rgba(79, 215, 255, 0.45) !important;
+        color: #4fd7ff !important;
+        cursor: pointer !important;
+        white-space: nowrap !important;
+        box-shadow: none !important;
+        transform: none !important;
+        transition: all 0.2s ease !important;
+        text-decoration: none !important;
+      }
+      .accounts-audit-btn:hover {
+        background: #4fd7ff !important;
+        color: #041017 !important;
+        border-color: #4fd7ff !important;
+        box-shadow: 0 0 16px rgba(79, 215, 255, 0.35) !important;
+        transform: translateY(-1px) !important;
+      }
+      .accounts-audit-btn.is-verified {
+        background: rgba(6, 214, 160, 0.12) !important;
+        border-color: rgba(6, 214, 160, 0.35) !important;
+        color: #06d6a0 !important;
+      }
+      .accounts-audit-btn.is-verified:hover {
+        background: #06d6a0 !important;
+        color: #041017 !important;
+        border-color: #06d6a0 !important;
+        box-shadow: 0 0 16px rgba(6, 214, 160, 0.35) !important;
+      }
+      .accounts-audit-btn.is-rejected {
+        background: rgba(239, 71, 111, 0.12) !important;
+        border-color: rgba(239, 71, 111, 0.35) !important;
+        color: #ef476f !important;
+      }
+      .accounts-audit-btn.is-rejected:hover {
+        background: #ef476f !important;
+        color: #ffffff !important;
+        border-color: #ef476f !important;
+      }
+    </style>
   </head>
   <body>
 
@@ -61,7 +112,12 @@
         </div>
 
         <div id="accountsAccessDenied" class="card manager-access-denied" hidden>
-          <div class="manager-access-icon" aria-hidden="true">🔒</div>
+          <div class="manager-access-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
           <h3>Accounts Access Required</h3>
           <p>This page is restricted to Accountant and Admin staff accounts.</p>
           <div style="margin-top: 16px;">
@@ -77,7 +133,7 @@
               <div id="accountsPendingCount" class="manager-stat-value" style="color: #ef476f;">0</div>
             </div>
             <div class="card manager-stat-card">
-              <span class="manager-stat-label">Verified Today</span>
+              <span class="manager-stat-label">Verified Payments</span>
               <div id="accountsVerifiedCount" class="manager-stat-value" style="color: #06d6a0;">0</div>
             </div>
             <div class="card manager-stat-card">
@@ -94,14 +150,14 @@
                 <p class="manager-panel-subtitle">Review payment screenshots, verify UTR reference numbers, and record approval auditor.</p>
               </div>
               <div class="manager-booking-controls" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <input id="accountsSearchInput" type="text" placeholder="Search customer, booking ref, UTR..." class="kr-clean-input" style="max-width: 240px; font-size: 13px;" />
-                <select id="accountsStatusFilter" class="kr-clean-input" style="font-size: 13px; max-width: 160px;">
+                <input id="accountsSearchInput" type="text" placeholder="Search customer, booking ref, UTR..." class="kr-clean-input" style="min-width: 250px; max-width: 320px; height: 38px; font-size: 13px;" />
+                <select id="accountsStatusFilter" class="kr-clean-input" style="font-size: 13px; min-width: 190px; height: 38px;">
                   <option value="all">All Statuses</option>
                   <option value="pending" selected>Pending Verification</option>
                   <option value="verified">Verified / Approved</option>
                   <option value="rejected">Rejected</option>
                 </select>
-                <button id="accountsRefreshBtn" type="button" class="btn btn-outline" style="font-size: 13px;">Refresh Queue</button>
+                <button id="accountsRefreshBtn" type="button" class="btn btn-outline" style="font-size: 13px; height: 38px; padding: 0 18px; border-radius: 9999px;">Refresh Queue</button>
               </div>
             </div>
 

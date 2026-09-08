@@ -1,15 +1,18 @@
 -- ============================================================
--- KRUIZLY PRODUCTION MYSQL DATABASE SCHEMA
--- Hostinger MySQL 8.x
+-- KRUIZLY PRODUCTION MYSQL MASTER DATABASE SCHEMA
+-- Hostinger MySQL 8.x / phpMyAdmin Compatible
+-- Full AUTO_INCREMENT Primary Keys & Strict-Mode Compliant
 -- ============================================================
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
+SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';
 
 -- ------------------------------------------------------------
--- 1. USERS
+-- 1. USERS TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `users` (
+DROP TABLE IF EXISTS `users`;
+CREATE TABLE `users` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `firebase_uid` VARCHAR(128) NOT NULL UNIQUE,
   `email` VARCHAR(255) NOT NULL,
@@ -31,9 +34,25 @@ CREATE TABLE IF NOT EXISTS `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 2. VEHICLES
+-- 2. ADMIN USERS TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `vehicles` (
+DROP TABLE IF EXISTS `admin_users`;
+CREATE TABLE `admin_users` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `firebase_uid` VARCHAR(128) NOT NULL UNIQUE,
+  `email` VARCHAR(255) NOT NULL,
+  `name` VARCHAR(255) DEFAULT NULL,
+  `role` ENUM('super_admin', 'admin', 'manager', 'executive', 'accountant') NOT NULL DEFAULT 'admin',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX `idx_admin_users_uid` (`firebase_uid`),
+  INDEX `idx_admin_users_email` (`email`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 3. VEHICLES TABLE (FLEET)
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `vehicles`;
+CREATE TABLE `vehicles` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `car_id` VARCHAR(32) DEFAULT NULL,
   `reg_no` VARCHAR(64) NOT NULL UNIQUE,
@@ -73,14 +92,15 @@ CREATE TABLE IF NOT EXISTS `vehicles` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 3. BOOKINGS
+-- 4. BOOKINGS TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `bookings` (
+DROP TABLE IF EXISTS `bookings`;
+CREATE TABLE `bookings` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `booking_id` VARCHAR(64) NOT NULL UNIQUE,
   `booking_number` VARCHAR(64) NOT NULL UNIQUE,
   `user_id` INT DEFAULT NULL,
-  `firebase_uid` VARCHAR(128) NOT NULL,
+  `firebase_uid` VARCHAR(128) NOT NULL DEFAULT 'legacy_system',
   `user_name` VARCHAR(255) DEFAULT NULL,
   `user_email` VARCHAR(255) DEFAULT NULL,
   `user_phone` VARCHAR(32) DEFAULT NULL,
@@ -99,12 +119,12 @@ CREATE TABLE IF NOT EXISTS `bookings` (
   `driver_rate` DECIMAL(10,2) DEFAULT 0.00,
   `driver_hourly_rate` DECIMAL(10,2) DEFAULT 0.00,
   `security_deposit` DECIMAL(10,2) DEFAULT 0.00,
-  `base_amount` DECIMAL(10,2) NOT NULL,
+  `base_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `coupon_code` VARCHAR(64) DEFAULT NULL,
   `coupon_discount` DECIMAL(10,2) DEFAULT 0.00,
   `applied_coupons` JSON DEFAULT NULL,
-  `total_amount` DECIMAL(10,2) NOT NULL,
-  `final_amount` DECIMAL(10,2) NOT NULL,
+  `total_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `final_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `token_amount` DECIMAL(10,2) DEFAULT 0.00,
   `advance_amount` DECIMAL(10,2) DEFAULT 0.00,
   `remaining_balance` DECIMAL(10,2) DEFAULT 0.00,
@@ -138,14 +158,15 @@ CREATE TABLE IF NOT EXISTS `bookings` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 4. PAYMENTS
+-- 5. PAYMENTS TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `payments` (
+DROP TABLE IF EXISTS `payments`;
+CREATE TABLE `payments` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `payment_id` VARCHAR(64) NOT NULL UNIQUE,
   `booking_id` VARCHAR(64) NOT NULL,
-  `firebase_uid` VARCHAR(128) NOT NULL,
-  `amount` DECIMAL(10,2) NOT NULL,
+  `firebase_uid` VARCHAR(128) NOT NULL DEFAULT 'legacy_system',
+  `amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `token_amount` DECIMAL(10,2) DEFAULT 0.00,
   `currency` VARCHAR(8) NOT NULL DEFAULT 'INR',
   `method` VARCHAR(32) NOT NULL DEFAULT 'upi',
@@ -170,13 +191,14 @@ CREATE TABLE IF NOT EXISTS `payments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 5. COUPONS
+-- 6. COUPONS TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `coupons` (
+DROP TABLE IF EXISTS `coupons`;
+CREATE TABLE `coupons` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `code` VARCHAR(64) NOT NULL UNIQUE,
   `discount_type` ENUM('flat', 'percentage') NOT NULL DEFAULT 'flat',
-  `discount_value` DECIMAL(10,2) NOT NULL,
+  `discount_value` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `min_order` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `max_discount` DECIMAL(10,2) DEFAULT NULL,
   `label` VARCHAR(128) DEFAULT NULL,
@@ -193,9 +215,10 @@ CREATE TABLE IF NOT EXISTS `coupons` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 6. COUPON USAGE
+-- 7. COUPON USAGE TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `coupon_usage` (
+DROP TABLE IF EXISTS `coupon_usage`;
+CREATE TABLE `coupon_usage` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `coupon_id` INT DEFAULT NULL,
   `coupon_code` VARCHAR(64) NOT NULL,
@@ -211,13 +234,14 @@ CREATE TABLE IF NOT EXISTS `coupon_usage` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 7. VERIFICATION (KYC)
+-- 8. VERIFICATION (KYC) TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `verification` (
+DROP TABLE IF EXISTS `verification`;
+CREATE TABLE `verification` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `verification_id` VARCHAR(64) NOT NULL UNIQUE,
   `user_id` INT DEFAULT NULL,
-  `firebase_uid` VARCHAR(128) NOT NULL,
+  `firebase_uid` VARCHAR(128) NOT NULL UNIQUE,
   `full_name` VARCHAR(255) DEFAULT NULL,
   `phone` VARCHAR(32) DEFAULT NULL,
   `license_number` VARCHAR(64) DEFAULT NULL,
@@ -239,16 +263,16 @@ CREATE TABLE IF NOT EXISTS `verification` (
   `verified_at` DATETIME DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY `uniq_verification_uid` (`firebase_uid`),
   INDEX `idx_verification_uid` (`firebase_uid`),
   INDEX `idx_verification_overall` (`overall_status`),
   CONSTRAINT `fk_verification_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 8. MEDIA
+-- 9. MEDIA TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `media` (
+DROP TABLE IF EXISTS `media`;
+CREATE TABLE `media` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `media_id` VARCHAR(64) NOT NULL UNIQUE,
   `user_id` INT DEFAULT NULL,
@@ -269,17 +293,18 @@ CREATE TABLE IF NOT EXISTS `media` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 9. INVOICES
+-- 10. INVOICES TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `invoices` (
+DROP TABLE IF EXISTS `invoices`;
+CREATE TABLE `invoices` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `invoice_id` VARCHAR(64) NOT NULL UNIQUE,
   `invoice_number` VARCHAR(64) NOT NULL UNIQUE,
   `booking_id` VARCHAR(64) NOT NULL,
   `user_id` INT DEFAULT NULL,
-  `firebase_uid` VARCHAR(128) NOT NULL,
+  `firebase_uid` VARCHAR(128) NOT NULL DEFAULT 'legacy_system',
   `customer_name` VARCHAR(255) NOT NULL,
-  `customer_email` VARCHAR(255) NOT NULL,
+  `customer_email` VARCHAR(255) DEFAULT NULL,
   `customer_phone` VARCHAR(32) DEFAULT NULL,
   `vehicle_name` VARCHAR(255) NOT NULL,
   `vehicle_reg` VARCHAR(64) NOT NULL,
@@ -290,7 +315,7 @@ CREATE TABLE IF NOT EXISTS `invoices` (
   `coupon_discount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `gst_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `security_deposit` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
-  `total_amount` DECIMAL(10,2) NOT NULL,
+  `total_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `amount_paid` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `balance_due` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `status` ENUM('draft', 'issued', 'paid', 'cancelled') NOT NULL DEFAULT 'issued',
@@ -305,9 +330,10 @@ CREATE TABLE IF NOT EXISTS `invoices` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 10. INVOICE ITEMS
+-- 11. INVOICE ITEMS TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `invoice_items` (
+DROP TABLE IF EXISTS `invoice_items`;
+CREATE TABLE `invoice_items` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `invoice_id` INT NOT NULL,
   `description` VARCHAR(255) NOT NULL,
@@ -319,9 +345,10 @@ CREATE TABLE IF NOT EXISTS `invoice_items` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 11. PARTNER CARS
+-- 12. PARTNER CARS TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `partner_cars` (
+DROP TABLE IF EXISTS `partner_cars`;
+CREATE TABLE `partner_cars` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `car_id` VARCHAR(64) NOT NULL UNIQUE,
   `user_id` INT DEFAULT NULL,
@@ -331,7 +358,7 @@ CREATE TABLE IF NOT EXISTS `partner_cars` (
   `user_email` VARCHAR(255) DEFAULT NULL,
   `brand` VARCHAR(128) NOT NULL,
   `model` VARCHAR(128) NOT NULL,
-  `year` INT NOT NULL DEFAULT 2024,
+  `year` INT NOT NULL DEFAULT 2026,
   `reg_no` VARCHAR(64) NOT NULL,
   `transmission` VARCHAR(32) DEFAULT 'Manual',
   `fuel` VARCHAR(32) DEFAULT 'Petrol',
@@ -348,9 +375,27 @@ CREATE TABLE IF NOT EXISTS `partner_cars` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 12. CONTACT MESSAGES
+-- 13. PARTNER LEADS TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `contact_messages` (
+DROP TABLE IF EXISTS `partner_leads`;
+CREATE TABLE `partner_leads` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(255) NOT NULL,
+  `phone` VARCHAR(32) NOT NULL,
+  `email` VARCHAR(255) DEFAULT NULL,
+  `city` VARCHAR(128) DEFAULT 'Navi Mumbai',
+  `car_model` VARCHAR(255) DEFAULT NULL,
+  `car_year` INT DEFAULT NULL,
+  `status` ENUM('new', 'contacted', 'inspected', 'onboarded', 'rejected') NOT NULL DEFAULT 'new',
+  `notes` TEXT DEFAULT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ------------------------------------------------------------
+-- 14. CONTACT MESSAGES TABLE
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `contact_messages`;
+CREATE TABLE `contact_messages` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(255) NOT NULL,
   `email` VARCHAR(255) NOT NULL,
@@ -362,19 +407,10 @@ CREATE TABLE IF NOT EXISTS `contact_messages` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 13. ADMIN USERS & AUDIT LOGS
+-- 15. AUDIT LOGS TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `admin_users` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `firebase_uid` VARCHAR(128) NOT NULL UNIQUE,
-  `email` VARCHAR(255) NOT NULL,
-  `name` VARCHAR(255) DEFAULT NULL,
-  `role` ENUM('super_admin', 'admin', 'manager', 'executive', 'accountant') NOT NULL DEFAULT 'admin',
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX `idx_admin_users_uid` (`firebase_uid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `audit_logs` (
+DROP TABLE IF EXISTS `audit_logs`;
+CREATE TABLE `audit_logs` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `firebase_uid` VARCHAR(128) NOT NULL,
   `action` VARCHAR(128) NOT NULL,
@@ -388,18 +424,33 @@ CREATE TABLE IF NOT EXISTS `audit_logs` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ------------------------------------------------------------
--- 14. SETTINGS
+-- 16. SETTINGS TABLE
 -- ------------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `settings` (
+DROP TABLE IF EXISTS `settings`;
+CREATE TABLE `settings` (
   `key` VARCHAR(64) PRIMARY KEY,
   `value` TEXT NOT NULL,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- ------------------------------------------------------------
--- 15. INITIAL SEED: 7 ACTIVE FLEET VEHICLES
--- ------------------------------------------------------------
-INSERT INTO `vehicles` (`id`, `car_id`, `reg_no`, `brand`, `model`, `year`, `category`, `transmission`, `fuel`, `seats`, `bags`, `price_day`, `price_hour`, `hub`, `location`, `acquisition_type`, `owner_name`, `acquisition_date`, `available`, `status`, `is_active_fleet`, `is_custom_fleet`, `gallery`) VALUES
+-- ============================================================
+-- INITIAL SEED DATA
+-- ============================================================
+
+-- 1. ADMIN & STAFF USERS
+INSERT INTO `admin_users` (`id`, `firebase_uid`, `email`, `name`, `role`) VALUES
+(1, 'super_admin_ayan', 'ayanchougle@gmail.com', 'Ayan Chougle', 'super_admin'),
+(2, 'staff_omkar_tapshale', 'omkar.tapshale@kruizly.com', 'Omkar Tapshale', 'manager'),
+(3, 'staff_rahul_sharma', 'rahul.sharma@kruizly.com', 'Rahul Sharma', 'accountant')
+ON DUPLICATE KEY UPDATE `email` = VALUES(`email`), `name` = VALUES(`name`);
+
+-- 2. 7 ACTIVE FLEET VEHICLES
+INSERT INTO `vehicles` (
+  `id`, `car_id`, `reg_no`, `brand`, `model`, `year`, `category`, 
+  `transmission`, `fuel`, `seats`, `bags`, `price_day`, `price_hour`, 
+  `hub`, `location`, `acquisition_type`, `owner_name`, `acquisition_date`, 
+  `available`, `status`, `is_active_fleet`, `is_custom_fleet`, `gallery`
+) VALUES
 (1, 'CRP-002', 'MH03EL1025', 'Suzuki', 'Fronx', 2026, 'compact-suv', 'Automatic', 'Petrol', 5, 2, 3500.00, 146.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Partner', 'Aditi Lotankar', '2026-07-20', 1, 'available', 1, 1, '["assets/fleet/Suzuki Fronx.png"]'),
 (2, 'CRP-003', 'MH05GJ4711', 'Suzuki', 'Ertiga', 2026, 'mpv', 'Manual', 'Petrol + CNG', 7, 3, 4000.00, 167.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Partner', 'Viren Gupta', '2026-07-24', 1, 'available', 1, 1, '["assets/fleet/Suzuki Ertiga.png"]'),
 (3, 'CRP-005', 'MH48CJ4153', 'Toyota', 'Glanza', 2026, 'hatchback', 'Manual', 'Petrol + CNG', 5, 2, 3000.00, 125.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Partner', 'Ajay Vishwakarma', '2026-07-29', 1, 'available', 1, 1, '["assets/fleet/Toyota Glanza.png"]'),
@@ -408,74 +459,100 @@ INSERT INTO `vehicles` (`id`, `car_id`, `reg_no`, `brand`, `model`, `year`, `cat
 (6, 'CRP-008', 'MH43CY1632', 'Suzuki', 'Fronx', 2026, 'compact-suv', 'Manual', 'Petrol + CNG', 5, 2, 3200.00, 133.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Partner', 'Amol Gole', '2026-08-19', 1, 'available', 1, 1, '["assets/fleet/Suzuki Fronx.png"]'),
 (7, 'CRP-009', 'MH02FU6808', 'Mahindra', 'XUV 700', 2026, 'suv', 'Automatic', 'Petrol', 5, 3, 5500.00, 229.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Partner', 'Saif Feroz Shaikh', '2026-08-01', 1, 'available', 1, 1, '["assets/fleet/Mahindra XUV 700.png"]')
 ON DUPLICATE KEY UPDATE 
-  `car_id` = VALUES(`car_id`),
   `brand` = VALUES(`brand`),
   `model` = VALUES(`model`),
-  `year` = VALUES(`year`),
-  `category` = VALUES(`category`),
-  `transmission` = VALUES(`transmission`),
-  `fuel` = VALUES(`fuel`),
-  `seats` = VALUES(`seats`),
-  `bags` = VALUES(`bags`),
   `price_day` = VALUES(`price_day`),
   `price_hour` = VALUES(`price_hour`),
-  `hub` = VALUES(`hub`),
-  `location` = VALUES(`location`),
-  `acquisition_type` = VALUES(`acquisition_type`),
-  `owner_name` = VALUES(`owner_name`),
-  `acquisition_date` = VALUES(`acquisition_date`),
   `status` = VALUES(`status`),
-  `is_active_fleet` = VALUES(`is_active_fleet`),
-  `is_custom_fleet` = VALUES(`is_custom_fleet`),
-  `gallery` = VALUES(`gallery`);
+  `is_active_fleet` = VALUES(`is_active_fleet`);
 
--- ------------------------------------------------------------
--- 16. INITIAL SEED: SEPTEMBER BOOKINGS & PAYMENTS
--- ------------------------------------------------------------
+-- 3. 10 SEPTEMBER MANUAL BOOKINGS
 INSERT INTO `bookings` (
-  `id`, `booking_id`, `booking_number`, `user_name`, `user_phone`, `vehicle_reg`, `vehicle_name`, 
-  `pickup_date`, `drop_date`, `days`, `total_amount`, `final_amount`, `payment_amount_paid`, 
+  `id`, `booking_id`, `booking_number`, `firebase_uid`, `user_name`, `user_phone`, 
+  `vehicle_reg`, `vehicle_name`, `pickup_date`, `drop_date`, `days`, 
+  `base_amount`, `total_amount`, `final_amount`, `payment_amount_paid`, 
   `payment_status`, `status`, `booking_status`, `created_at`
 ) VALUES
-(1, 'KRZ-SEP-001', 'KRZ-SEP-001', 'Roshan More', '7507323988', 'MH48CJ4153', 'Toyota Glanza', '2026-09-03 09:00:00', '2026-09-16 21:00:00', 16, 40000.00, 40000.00, 40000.00, 'paid', 'active', 'active', '2026-09-03 08:30:00'),
-(2, 'KRZ-SEP-002', 'KRZ-SEP-002', 'Vivek Anant Hatkamkar', '8355912195', 'MH04MU1178', 'Toyota Glanza', '2026-09-03 10:00:00', '2026-09-10 20:00:00', 10, 25200.00, 25200.00, 25200.00, 'paid', 'active', 'active', '2026-09-03 09:15:00'),
-(3, 'KRZ-SEP-003', 'KRZ-SEP-003', 'Arun Ahuja', '7030914115', 'MH03EL1025', 'Suzuki Fronx Auto', '2026-08-30 08:00:00', '2026-09-03 20:00:00', 3, 7020.00, 7020.00, 7020.00, 'paid', 'completed', 'completed', '2026-08-29 18:00:00'),
-(4, 'KRZ-SEP-004', 'KRZ-SEP-004', 'Akash Sarkar', '8777355520', 'MH01BALENO', 'Maruti Baleno', '2026-09-06 09:00:00', '2026-09-07 20:00:00', 1, 2500.00, 2500.00, 2500.00, 'paid', 'completed', 'completed', '2026-09-05 21:00:00'),
-(5, 'KRZ-SEP-005', 'KRZ-SEP-005', 'Kunal Vichave', '7387961727', 'MH05FV3454', 'Tata Punch', '2026-09-05 08:00:00', '2026-09-06 20:00:00', 2, 3896.00, 3896.00, 3896.00, 'paid', 'completed', 'completed', '2026-09-04 19:30:00'),
-(6, 'KRZ-SEP-006', 'KRZ-SEP-006', 'Dipesh Bhoir', '9527788995', 'MH05GJ4711', 'Suzuki Ertiga', '2026-09-07 09:00:00', '2026-09-08 21:00:00', 1, 3300.00, 3300.00, 3300.00, 'paid', 'active', 'active', '2026-09-06 17:00:00'),
-(7, 'KRZ-SEP-007', 'KRZ-SEP-007', 'Krishna Velega', '9063281666', 'MH05GJ4711', 'Suzuki Ertiga', '2026-09-05 09:00:00', '2026-09-06 20:00:00', 1, 3300.00, 3300.00, 3300.00, 'paid', 'completed', 'completed', '2026-09-04 15:00:00'),
-(8, 'KRZ-SEP-008', 'KRZ-SEP-008', 'Rushikesh Shimpi', '9324855850', 'MH05GJ4711', 'Suzuki Ertiga', '2026-09-03 09:00:00', '2026-09-04 20:00:00', 1, 3300.00, 3300.00, 3300.00, 'paid', 'completed', 'completed', '2026-09-02 20:00:00'),
-(9, 'KRZ-SEP-009', 'KRZ-SEP-009', 'Shaikh Sarfaraz', '8928073455', 'MH43CY1632', 'Suzuki Fronx', '2026-09-01 09:00:00', '2026-09-03 20:00:00', 2, 5100.00, 5100.00, 5100.00, 'paid', 'completed', 'completed', '2026-08-31 16:00:00'),
-(10, 'KRZ-SEP-010', 'KRZ-SEP-010', 'Shaikh Sarfaraz', '8928073455', 'MH43CY1632', 'Suzuki Fronx', '2026-09-04 09:00:00', '2026-09-06 20:00:00', 2, 5200.00, 5200.00, 5200.00, 'paid', 'completed', 'completed', '2026-09-03 14:00:00')
+(1, 'KRZ-SEP-001', 'KRZ-SEP-001', 'cust_roshan_more', 'Roshan More', '7507323988', 'MH48CJ4153', 'Toyota Glanza', '2026-09-03 09:00:00', '2026-09-16 21:00:00', 16, 40000.00, 40000.00, 40000.00, 40000.00, 'paid', 'active', 'active', '2026-09-03 08:30:00'),
+(2, 'KRZ-SEP-002', 'KRZ-SEP-002', 'cust_vivek_hatkamkar', 'Vivek Anant Hatkamkar', '8355912195', 'MH04MU1178', 'Toyota Glanza', '2026-09-03 10:00:00', '2026-09-10 20:00:00', 10, 25200.00, 25200.00, 25200.00, 25200.00, 'paid', 'active', 'active', '2026-09-03 09:15:00'),
+(3, 'KRZ-SEP-003', 'KRZ-SEP-003', 'cust_arun_ahuja', 'Arun Ahuja', '7030914115', 'MH03EL1025', 'Suzuki Fronx Auto', '2026-08-30 08:00:00', '2026-09-03 20:00:00', 3, 7020.00, 7020.00, 7020.00, 7020.00, 'paid', 'completed', 'completed', '2026-08-29 18:00:00'),
+(4, 'KRZ-SEP-004', 'KRZ-SEP-004', 'cust_akash_sarkar', 'Akash Sarkar', '8777355520', 'MH01BALENO', 'Maruti Baleno', '2026-09-06 09:00:00', '2026-09-07 20:00:00', 1, 2500.00, 2500.00, 2500.00, 2500.00, 'paid', 'completed', 'completed', '2026-09-05 21:00:00'),
+(5, 'KRZ-SEP-005', 'KRZ-SEP-005', 'cust_kunal_vichave', 'Kunal Vichave', '7387961727', 'MH05FV3454', 'Tata Punch', '2026-09-05 08:00:00', '2026-09-06 20:00:00', 2, 3896.00, 3896.00, 3896.00, 3896.00, 'paid', 'completed', 'completed', '2026-09-04 19:30:00'),
+(6, 'KRZ-SEP-006', 'KRZ-SEP-006', 'cust_dipesh_bhoir', 'Dipesh Bhoir', '9527788995', 'MH05GJ4711', 'Suzuki Ertiga', '2026-09-07 09:00:00', '2026-09-08 21:00:00', 1, 3300.00, 3300.00, 3300.00, 3300.00, 'paid', 'active', 'active', '2026-09-06 17:00:00'),
+(7, 'KRZ-SEP-007', 'KRZ-SEP-007', 'cust_krishna_velega', 'Krishna Velega', '9063281666', 'MH05GJ4711', 'Suzuki Ertiga', '2026-09-05 09:00:00', '2026-09-06 20:00:00', 1, 3300.00, 3300.00, 3300.00, 3300.00, 'paid', 'completed', 'completed', '2026-09-04 15:00:00'),
+(8, 'KRZ-SEP-008', 'KRZ-SEP-008', 'cust_rushikesh_shimpi', 'Rushikesh Shimpi', '9324855850', 'MH05GJ4711', 'Suzuki Ertiga', '2026-09-03 09:00:00', '2026-09-04 20:00:00', 1, 3300.00, 3300.00, 3300.00, 3300.00, 'paid', 'completed', 'completed', '2026-09-02 20:00:00'),
+(9, 'KRZ-SEP-009', 'KRZ-SEP-009', 'cust_shaikh_sarfaraz', 'Shaikh Sarfaraz', '8928073455', 'MH43CY1632', 'Suzuki Fronx', '2026-09-01 09:00:00', '2026-09-03 20:00:00', 2, 5100.00, 5100.00, 5100.00, 5100.00, 'paid', 'completed', 'completed', '2026-08-31 16:00:00'),
+(10, 'KRZ-SEP-010', 'KRZ-SEP-010', 'cust_shaikh_sarfaraz_2', 'Shaikh Sarfaraz', '8928073455', 'MH43CY1632', 'Suzuki Fronx', '2026-09-04 09:00:00', '2026-09-06 20:00:00', 2, 5200.00, 5200.00, 5200.00, 5200.00, 'paid', 'completed', 'completed', '2026-09-03 14:00:00')
 ON DUPLICATE KEY UPDATE
   `user_name` = VALUES(`user_name`),
-  `user_phone` = VALUES(`user_phone`),
   `vehicle_reg` = VALUES(`vehicle_reg`),
-  `vehicle_name` = VALUES(`vehicle_name`),
-  `pickup_date` = VALUES(`pickup_date`),
-  `drop_date` = VALUES(`drop_date`),
-  `days` = VALUES(`days`),
   `total_amount` = VALUES(`total_amount`),
   `final_amount` = VALUES(`final_amount`),
   `payment_amount_paid` = VALUES(`payment_amount_paid`),
   `payment_status` = VALUES(`payment_status`),
-  `status` = VALUES(`status`),
-  `booking_status` = VALUES(`booking_status`);
+  `status` = VALUES(`status`);
 
-INSERT INTO `payments` (`id`, `booking_id`, `amount`, `method`, `status`, `verified_by`, `created_at`) VALUES
-(1, 'KRZ-SEP-001', 40000.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-03 08:45:00'),
-(2, 'KRZ-SEP-002', 25200.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-03 09:30:00'),
-(3, 'KRZ-SEP-003', 7020.00, 'UPI', 'verified', 'Ayan Chougle', '2026-08-29 18:30:00'),
-(4, 'KRZ-SEP-004', 2500.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-05 21:15:00'),
-(5, 'KRZ-SEP-005', 3896.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-04 19:45:00'),
-(6, 'KRZ-SEP-006', 3300.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-06 17:30:00'),
-(7, 'KRZ-SEP-007', 3300.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-04 15:30:00'),
-(8, 'KRZ-SEP-008', 3300.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-02 20:30:00'),
-(9, 'KRZ-SEP-009', 5100.00, 'UPI', 'verified', 'Ayan Chougle', '2026-08-31 16:30:00'),
-(10, 'KRZ-SEP-010', 5200.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-03 14:30:00')
+-- 4. 10 PAYMENTS CORRESPONDING TO BOOKINGS
+INSERT INTO `payments` (
+  `id`, `payment_id`, `booking_id`, `firebase_uid`, `amount`, `method`, 
+  `status`, `verified_by`, `created_at`
+) VALUES
+(1, 'PAY-KRZ-001', 'KRZ-SEP-001', 'cust_roshan_more', 40000.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-03 08:45:00'),
+(2, 'PAY-KRZ-002', 'KRZ-SEP-002', 'cust_vivek_hatkamkar', 25200.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-03 09:30:00'),
+(3, 'PAY-KRZ-003', 'KRZ-SEP-003', 'cust_arun_ahuja', 7020.00, 'UPI', 'verified', 'Ayan Chougle', '2026-08-29 18:30:00'),
+(4, 'PAY-KRZ-004', 'KRZ-SEP-004', 'cust_akash_sarkar', 2500.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-05 21:15:00'),
+(5, 'PAY-KRZ-005', 'KRZ-SEP-005', 'cust_kunal_vichave', 3896.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-04 19:45:00'),
+(6, 'PAY-KRZ-006', 'KRZ-SEP-006', 'cust_dipesh_bhoir', 3300.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-06 17:30:00'),
+(7, 'PAY-KRZ-007', 'KRZ-SEP-007', 'cust_krishna_velega', 3300.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-04 15:30:00'),
+(8, 'PAY-KRZ-008', 'KRZ-SEP-008', 'cust_rushikesh_shimpi', 3300.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-02 20:30:00'),
+(9, 'PAY-KRZ-009', 'KRZ-SEP-009', 'cust_shaikh_sarfaraz', 5100.00, 'UPI', 'verified', 'Ayan Chougle', '2026-08-31 16:30:00'),
+(10, 'PAY-KRZ-010', 'KRZ-SEP-010', 'cust_shaikh_sarfaraz_2', 5200.00, 'UPI', 'verified', 'Ayan Chougle', '2026-09-03 14:30:00')
 ON DUPLICATE KEY UPDATE
   `amount` = VALUES(`amount`),
   `status` = VALUES(`status`),
   `verified_by` = VALUES(`verified_by`);
+
+-- 5. 10 INVOICES CORRESPONDING TO BOOKINGS
+INSERT INTO `invoices` (
+  `id`, `invoice_id`, `invoice_number`, `booking_id`, `firebase_uid`, 
+  `customer_name`, `customer_phone`, `vehicle_name`, `vehicle_reg`, 
+  `pickup_date`, `drop_date`, `duration`, `total_amount`, `amount_paid`, 
+  `balance_due`, `status`, `created_at`
+) VALUES
+(1, 'INV-KRZ-001', 'INV-2026-001', 'KRZ-SEP-001', 'cust_roshan_more', 'Roshan More', '7507323988', 'Toyota Glanza', 'MH48CJ4153', '2026-09-03 09:00:00', '2026-09-16 21:00:00', '16 Days', 40000.00, 40000.00, 0.00, 'paid', '2026-09-03 09:00:00'),
+(2, 'INV-KRZ-002', 'INV-2026-002', 'KRZ-SEP-002', 'cust_vivek_hatkamkar', 'Vivek Anant Hatkamkar', '8355912195', 'Toyota Glanza', 'MH04MU1178', '2026-09-03 10:00:00', '2026-09-10 20:00:00', '10 Days', 25200.00, 25200.00, 0.00, 'paid', '2026-09-03 09:45:00'),
+(3, 'INV-KRZ-003', 'INV-2026-003', 'KRZ-SEP-003', 'cust_arun_ahuja', 'Arun Ahuja', '7030914115', 'Suzuki Fronx Auto', 'MH03EL1025', '2026-08-30 08:00:00', '2026-09-03 20:00:00', '3 Days', 7020.00, 7020.00, 0.00, 'paid', '2026-08-29 19:00:00'),
+(4, 'INV-KRZ-004', 'INV-2026-004', 'KRZ-SEP-004', 'cust_akash_sarkar', 'Akash Sarkar', '8777355520', 'Maruti Baleno', 'MH01BALENO', '2026-09-06 09:00:00', '2026-09-07 20:00:00', '1 Day', 2500.00, 2500.00, 0.00, 'paid', '2026-09-05 21:30:00'),
+(5, 'INV-KRZ-005', 'INV-2026-005', 'KRZ-SEP-005', 'cust_kunal_vichave', 'Kunal Vichave', '7387961727', 'Tata Punch', 'MH05FV3454', '2026-09-05 08:00:00', '2026-09-06 20:00:00', '2 Days', 3896.00, 3896.00, 0.00, 'paid', '2026-09-04 20:00:00'),
+(6, 'INV-KRZ-006', 'INV-2026-006', 'KRZ-SEP-006', 'cust_dipesh_bhoir', 'Dipesh Bhoir', '9527788995', 'Suzuki Ertiga', 'MH05GJ4711', '2026-09-07 09:00:00', '2026-09-08 21:00:00', '1 Day', 3300.00, 3300.00, 0.00, 'paid', '2026-09-06 18:00:00'),
+(7, 'INV-KRZ-007', 'INV-2026-007', 'KRZ-SEP-007', 'cust_krishna_velega', 'Krishna Velega', '9063281666', 'Suzuki Ertiga', 'MH05GJ4711', '2026-09-05 09:00:00', '2026-09-06 20:00:00', '1 Day', 3300.00, 3300.00, 0.00, 'paid', '2026-09-04 16:00:00'),
+(8, 'INV-KRZ-008', 'INV-2026-008', 'KRZ-SEP-008', 'cust_rushikesh_shimpi', 'Rushikesh Shimpi', '9324855850', 'Suzuki Ertiga', 'MH05GJ4711', '2026-09-03 09:00:00', '2026-09-04 20:00:00', '1 Day', 3300.00, 3300.00, 0.00, 'paid', '2026-09-02 21:00:00'),
+(9, 'INV-KRZ-009', 'INV-2026-009', 'KRZ-SEP-009', 'cust_shaikh_sarfaraz', 'Shaikh Sarfaraz', '8928073455', 'Suzuki Fronx', 'MH43CY1632', '2026-09-01 09:00:00', '2026-09-03 20:00:00', '2 Days', 5100.00, 5100.00, 0.00, 'paid', '2026-08-31 17:00:00'),
+(10, 'INV-KRZ-010', 'INV-2026-010', 'KRZ-SEP-010', 'cust_shaikh_sarfaraz_2', 'Shaikh Sarfaraz', '8928073455', 'Suzuki Fronx', 'MH43CY1632', '2026-09-04 09:00:00', '2026-09-06 20:00:00', '2 Days', 5200.00, 5200.00, 0.00, 'paid', '2026-09-03 15:00:00')
+ON DUPLICATE KEY UPDATE
+  `total_amount` = VALUES(`total_amount`),
+  `amount_paid` = VALUES(`amount_paid`),
+  `status` = VALUES(`status`);
+
+-- 6. ACTIVE COUPONS
+INSERT INTO `coupons` (`id`, `code`, `discount_type`, `discount_value`, `min_order`, `label`, `description`, `active`, `status`) VALUES
+(1, 'FIRST500', 'flat', 500.00, 0.00, '₹500 Flat Off', 'Enjoy ₹500 off on your first booking', 1, 'active'),
+(2, 'KRUIZLY10', 'percentage', 10.00, 0.00, '10% Off Rental', 'Get 10% off on your ride', 1, 'active'),
+(3, 'KRUIZLY20', 'percentage', 20.00, 0.00, '20% Off Rental', 'Special 20% discount on long trips', 1, 'active'),
+(4, 'WELCOME100', 'flat', 100.00, 0.00, '₹100 Welcome Discount', 'Instant ₹100 discount on your booking', 1, 'active'),
+(5, 'FESTIVE15', 'percentage', 15.00, 2500.00, '15% Festive Special', 'Festive season discount on car rentals', 1, 'active')
+ON DUPLICATE KEY UPDATE
+  `discount_type` = VALUES(`discount_type`),
+  `discount_value` = VALUES(`discount_value`),
+  `active` = VALUES(`active`);
+
+-- 7. DEFAULT SETTINGS
+INSERT INTO `settings` (`key`, `value`) VALUES
+('company_name', 'KRUIZLY Car Rentals'),
+('company_email', 'support@kruizly.com'),
+('company_phone', '+91 91671 64547'),
+('company_address', 'Gavson Business Park, Ghansoli, Navi Mumbai, Maharashtra 400701'),
+('currency', 'INR')
+ON DUPLICATE KEY UPDATE `value` = VALUES(`value`);
 
 SET FOREIGN_KEY_CHECKS = 1;

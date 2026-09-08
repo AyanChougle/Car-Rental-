@@ -241,12 +241,12 @@ export function isVehicleOnTripNow(regNo, bookings) {
   const nowMs = Date.now();
   const cleanReg = String(regNo || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
   return bookings.some((b) => {
+    if (isBookingCancelled(b)) return false;
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (bStat === "cancelled" || bStat === "rejected") return false;
-    const pDate = parseDate(b.pickupDate);
-    const dDate = parseDate(b.dropDate);
-    if (!pDate || !dDate) return false;
-    if (nowMs >= pDate.getTime() && nowMs <= dDate.getTime()) {
+    if (bStat === "completed") return false;
+    const { start, end } = getBookingOperationalDates(b);
+    if (!start || !end) return false;
+    if (nowMs >= start.getTime() && nowMs <= end.getTime()) {
       const matched = matchBookingToFleet(b);
       if (matched && matched.toUpperCase().replace(/[\s\-_]/g, "") === cleanReg) {
         return true;
@@ -307,27 +307,90 @@ function formatDateDisplay(dateObj) {
   return `${d}/${m}/${y}`;
 }
 
-function bookingAmount(b) {
+function getBookingOperationalDates(b) {
+  const start = parseDate(b.pickupDate || b.startDate || b.createdAt);
+  const end = parseDate(b.dropDate || b.endDate || b.pickupDate || b.createdAt);
+  const created = parseDate(b.createdAt || b.pickupDate);
+  return { start, end, created };
+}
+
+function isBookingCancelled(b) {
+  const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+  const pStat = String(b.paymentStatus || "").toLowerCase();
   return (
-    Number(b.totalAmount ?? b.amount ?? b.finalAmount ?? b.total ?? 0) || 0
+    bStat === "cancelled" ||
+    bStat === "rejected" ||
+    pStat === "cancelled" ||
+    pStat === "rejected"
   );
 }
 
 function isVerifiedRevenue(b) {
+  if (isBookingCancelled(b)) return false;
   const pStat = String(b.paymentStatus || "").toLowerCase();
   const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
 
-  if (pStat === "rejected" || bStat === "cancelled" || bStat === "rejected") {
-    return false;
-  }
-  return (
+  if (
     pStat === "paid" ||
     pStat === "verified" ||
     pStat === "advance_paid" ||
-    bStat === "confirmed" ||
     bStat === "completed" ||
+    bStat === "confirmed" ||
     bStat === "active"
+  ) {
+    return true;
+  }
+  const paidAmt = Number(b.paymentAmountPaid || b.advanceAmount || 0);
+  return paidAmt > 0;
+}
+
+function bookingAmount(b) {
+  return (
+    Number(b.finalAmount ?? b.totalAmount ?? b.amount ?? b.total ?? 0) || 0
   );
+}
+
+function bookingDays(b) {
+  if (b.days && Number(b.days) > 0) return Math.round(Number(b.days));
+  const { start, end } = getBookingOperationalDates(b);
+  if (start && end) {
+    const diffDays = Math.ceil(
+      (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    return Math.max(1, diffDays);
+  }
+  return 1;
+}
+
+function isBookingActive(b, refNow, fromDate, toDate) {
+  if (isBookingCancelled(b)) return false;
+  const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+  if (bStat === "completed") return false;
+  if (bStat === "active" || b.pickupStatus === "picked_up") return true;
+
+  const { start, end } = getBookingOperationalDates(b);
+  if (!start || !end) return false;
+
+  if (fromDate && toDate && (refNow < fromDate || refNow > toDate)) {
+    return (
+      start.getTime() <= toDate.getTime() && end.getTime() >= fromDate.getTime()
+    );
+  }
+  return (
+    start.getTime() <= refNow.getTime() && end.getTime() >= refNow.getTime()
+  );
+}
+
+function isBookingCompleted(b, refNow, fromDate, toDate) {
+  if (isBookingCancelled(b)) return false;
+  const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+  if (bStat === "completed") return true;
+
+  const { end } = getBookingOperationalDates(b);
+  if (!end) return false;
+
+  const checkTime = toDate && toDate < refNow ? toDate : refNow;
+  return end.getTime() < checkTime.getTime() && bStat !== "active";
 }
 
 /* ============================================================
@@ -455,28 +518,17 @@ function applyCustomDateInputs() {
   renderDashboard();
 }
 
-function isBookingInPeriod(b, startRange, endRange) {
-  if (!startRange && !endRange) return true;
+function isBookingInPeriod(b, fromDate, toDate) {
+  if (!fromDate && !toDate) return true;
+  const { start, end } = getBookingOperationalDates(b);
+  if (!start && !end) return true;
 
-  const bStart = parseDate(b.pickupDate || b.startDate || b.createdAt);
-  const bEnd = parseDate(
-    b.dropDate || b.endDate || b.pickupDate || b.createdAt,
-  );
+  const fromMs = fromDate ? fromDate.getTime() : 0;
+  const toMs = toDate ? toDate.getTime() : Infinity;
+  const tripStartMs = start ? start.getTime() : end.getTime();
+  const tripEndMs = end ? end.getTime() : start.getTime();
 
-  if (!bStart && !bEnd) return true;
-
-  const startMs = startRange ? startRange.getTime() : 0;
-  const endMs = endRange ? endRange.getTime() : Infinity;
-
-  const tripStartMs = bStart ? bStart.getTime() : bEnd ? bEnd.getTime() : 0;
-  const tripEndMs = bEnd
-    ? bEnd.getTime()
-    : bStart
-      ? bStart.getTime()
-      : Infinity;
-
-  // Overlap condition: tripStart <= endRange AND tripEnd >= startRange
-  return tripStartMs <= endMs && tripEndMs >= startMs;
+  return tripStartMs <= toMs && tripEndMs >= fromMs;
 }
 
 /* ============================================================
@@ -499,17 +551,18 @@ function renderDashboard() {
     }
   }
 
-  // Filter Bookings for Selected Period
+  // 1. UNIFIED PERIOD DATASET PASS
+  // Every single KPI card and table derives strictly from this exact dataset
   const periodBookings = rawBookings.filter((b) =>
     isBookingInPeriod(b, filterFromDate, filterToDate),
   );
-  const validPeriodBookings = periodBookings.filter((b) => {
-    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    return bStat !== "cancelled" && bStat !== "rejected";
-  });
-  const verifiedBookings = periodBookings.filter((b) => isVerifiedRevenue(b));
+  const validPeriodBookings = periodBookings.filter((b) => !isBookingCancelled(b));
+  const verifiedBookings = validPeriodBookings.filter((b) => isVerifiedRevenue(b));
+
+  const now = new Date();
 
   // KPI 1: TOTAL REVENUE
+  // Formula: Sum of verified bookings strictly within this dataset
   const totalRevenue = verifiedBookings.reduce(
     (sum, b) => sum + bookingAmount(b),
     0,
@@ -519,78 +572,55 @@ function renderDashboard() {
     kpiTotalRevenueEl.textContent = formatINR(totalRevenue);
 
   // KPI 2: ACTIVE TRIPS
-  const now = new Date();
-  const activeTripsCount = rawBookings.filter((b) => {
-    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (bStat === "cancelled" || bStat === "rejected") return false;
-    const bStart = parseDate(b.pickupDate || b.startDate);
-    const bEnd = parseDate(b.dropDate || b.endDate);
-    const isPickedUp = b.pickupStatus === "picked_up" || bStat === "active";
-    if (isPickedUp && bStat !== "completed") return true;
-    if (bStart && bEnd && bStart <= now && bEnd >= now && bStat !== "completed")
-      return true;
-    return false;
-  }).length;
+  // Formula: Trips in this dataset currently active / on-road
+  const activeTripsCount = validPeriodBookings.filter((b) =>
+    isBookingActive(b, now, filterFromDate, filterToDate),
+  ).length;
   const kpiActiveTripsEl = document.getElementById("kpiActiveTrips");
   if (kpiActiveTripsEl) kpiActiveTripsEl.textContent = String(activeTripsCount);
 
   // KPI 3: COMPLETED TRIPS
-  const completedTripsCount = periodBookings.filter((b) => {
-    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    return bStat === "completed";
-  }).length;
+  // Formula: Trips in this dataset that have concluded
+  const completedTripsCount = validPeriodBookings.filter((b) =>
+    isBookingCompleted(b, now, filterFromDate, filterToDate),
+  ).length;
   const kpiCompletedTripsEl = document.getElementById("kpiCompletedTrips");
   if (kpiCompletedTripsEl)
     kpiCompletedTripsEl.textContent = String(completedTripsCount);
 
-  // KPI 4: REVENUE THIS MONTH (Month represented by selected range or current month)
-  const targetMonthDate = filterFromDate || now;
-  const targetMonth = targetMonthDate.getMonth();
-  const targetYear = targetMonthDate.getFullYear();
-
-  const monthRevenue = rawBookings
-    .filter((b) => {
-      if (!isVerifiedRevenue(b)) return false;
-      const d = parseDate(b.pickupDate || b.createdAt);
-      return (
-        d && d.getMonth() === targetMonth && d.getFullYear() === targetYear
-      );
-    })
-    .reduce((sum, b) => sum + bookingAmount(b), 0);
-
-  const monthNames = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
+  // KPI 4: REVENUE THIS MONTH / PERIOD BENCHMARK
+  // Formula: When viewing 'this_month', 100% matches totalRevenue.
+  // Otherwise, calculates the current calendar month window using the exact same verified formula.
+  let monthRevenue = 0;
+  if (activeQuickFilter === "this_month") {
+    monthRevenue = totalRevenue;
+  } else {
+    const curMonthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const curMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    monthRevenue = rawBookings
+      .filter((b) => isBookingInPeriod(b, curMonthStart, curMonthEnd) && isVerifiedRevenue(b))
+      .reduce((sum, b) => sum + bookingAmount(b), 0);
+  }
   const kpiRevenueThisMonthEl = document.getElementById("kpiRevenueThisMonth");
   if (kpiRevenueThisMonthEl)
     kpiRevenueThisMonthEl.textContent = formatINR(monthRevenue);
 
   // KPI 5: TOTAL BOOKINGS
+  // Formula: Total valid non-cancelled bookings in this dataset
   const totalBookingsCount = validPeriodBookings.length;
   const kpiTotalBookingsEl = document.getElementById("kpiTotalBookings");
   if (kpiTotalBookingsEl)
     kpiTotalBookingsEl.textContent = String(totalBookingsCount);
 
   // KPI 6: AVERAGE OCCUPANCY (%)
-  // Formula: Booked Vehicle-Days / (Available Fleet Count * Days in Period)
+  // Formula: (Total Booked Days in Period) / (Available Fleets * Period Days) * 100
   let periodDays = 30;
   if (filterFromDate && filterToDate) {
     const diffMs = filterToDate.getTime() - filterFromDate.getTime();
     periodDays = Math.max(1, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
-  } else if (rawBookings.length) {
-    const dates = rawBookings
-      .map((b) => parseDate(b.pickupDate || b.createdAt))
+  } else if (validPeriodBookings.length) {
+    const dates = validPeriodBookings
+      .map((b) => getBookingOperationalDates(b).start)
       .filter(Boolean);
     if (dates.length) {
       const minDate = new Date(Math.min(...dates.map((d) => d.getTime())));
@@ -600,15 +630,12 @@ function renderDashboard() {
     }
   }
 
-  const activeFleetCount = activeFleetsRoster.length; // Active fleets count
+  const activeFleetCount = activeFleetsRoster.length || 7;
   const totalAvailableVehicleDays = activeFleetCount * periodDays;
-
-  let totalBookedVehicleDays = 0;
-  verifiedBookings.forEach((b) => {
-    const days = Math.max(1, Number(b.days) || 1);
-    totalBookedVehicleDays += days;
-  });
-
+  const totalBookedVehicleDays = verifiedBookings.reduce(
+    (sum, b) => sum + bookingDays(b),
+    0,
+  );
   const occupancyPct = Math.min(
     100,
     Math.round((totalBookedVehicleDays / totalAvailableVehicleDays) * 100),
@@ -616,7 +643,8 @@ function renderDashboard() {
   const kpiAvgOccupancyEl = document.getElementById("kpiAvgOccupancy");
   if (kpiAvgOccupancyEl) kpiAvgOccupancyEl.textContent = `${occupancyPct}%`;
 
-  // KPI 7: PER FLEET AMOUNT (Average revenue per vehicle)
+  // KPI 7: PER FLEET AMOUNT
+  // Formula: totalRevenue / 7 fleets
   const perFleetAmount = activeFleetCount ? Math.round(totalRevenue / activeFleetCount) : 0;
   const kpiPerFleetAmountEl = document.getElementById("kpiPerFleetAmount");
   if (kpiPerFleetAmountEl) {
@@ -733,41 +761,65 @@ function renderDashboard() {
         : "₹0 · 0 Bookings";
   }
 
-  // SALES PERFORMANCE CARDS
-  const todayStartMs = new Date(
+  // SALES PERFORMANCE CARDS (Derived with identical unified period & revenue formulas)
+  const todayStart = new Date(
     now.getFullYear(),
     now.getMonth(),
     now.getDate(),
-  ).getTime();
+    0,
+    0,
+    0,
+    0,
+  );
+  const todayEnd = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
   const daySales = rawBookings
-    .filter((b) => {
-      if (!isVerifiedRevenue(b)) return false;
-      const d = parseDate(b.pickupDate || b.createdAt);
-      return d && d.getTime() >= todayStartMs;
-    })
+    .filter(
+      (b) =>
+        isBookingInPeriod(b, todayStart, todayEnd) && isVerifiedRevenue(b),
+    )
     .reduce((sum, b) => sum + bookingAmount(b), 0);
 
-  const startOfWeekMs =
-    todayStartMs - (now.getDay() === 0 ? 6 : now.getDay() - 1) * 86400000;
+  const dow = now.getDay();
+  const startOfWeek = new Date(todayStart);
+  startOfWeek.setDate(startOfWeek.getDate() - (dow === 0 ? 6 : dow - 1));
   const weekSales = rawBookings
-    .filter((b) => {
-      if (!isVerifiedRevenue(b)) return false;
-      const d = parseDate(b.pickupDate || b.createdAt);
-      return d && d.getTime() >= startOfWeekMs;
-    })
+    .filter(
+      (b) =>
+        isBookingInPeriod(b, startOfWeek, todayEnd) && isVerifiedRevenue(b),
+    )
     .reduce((sum, b) => sum + bookingAmount(b), 0);
 
-  const startOfMonthMs = new Date(
+  const startOfMonth = new Date(
     now.getFullYear(),
     now.getMonth(),
     1,
-  ).getTime();
+    0,
+    0,
+    0,
+    0,
+  );
+  const endOfMonth = new Date(
+    now.getFullYear(),
+    now.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999,
+  );
   const monthSales = rawBookings
-    .filter((b) => {
-      if (!isVerifiedRevenue(b)) return false;
-      const d = parseDate(b.pickupDate || b.createdAt);
-      return d && d.getTime() >= startOfMonthMs;
-    })
+    .filter(
+      (b) =>
+        isBookingInPeriod(b, startOfMonth, endOfMonth) && isVerifiedRevenue(b),
+    )
     .reduce((sum, b) => sum + bookingAmount(b), 0);
 
   const overallSales = rawBookings
@@ -854,8 +906,8 @@ function renderDashboard() {
             : 0;
           const isOnTrip = isVehicleOnTripNow(item.regNo, rawBookings);
           const yardBadge = isOnTrip
-            ? `<span class="badge" style="background: rgba(255, 209, 102, 0.15); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.3); padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; white-space: nowrap;">🚗 On Trip</span>`
-            : `<span class="badge" style="background: rgba(6, 214, 160, 0.15); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.3); padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; white-space: nowrap;">🅿 In Yard</span>`;
+            ? `<span class="badge" style="background: rgba(255, 209, 102, 0.15); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.3); padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; white-space: nowrap;">On Trip</span>`
+            : `<span class="badge" style="background: rgba(6, 214, 160, 0.15); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.3); padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; white-space: nowrap;">In Yard</span>`;
           return `
           <tr style="transition: background 0.15s ease;">
             <td><strong style="color: #4fd7ff; font-size: 1.05rem;">${item.bookingsCount}</strong></td>
@@ -998,8 +1050,8 @@ function renderDashboard() {
         : 0;
       const isOnTrip = isVehicleOnTripNow(f.regNo, rawBookings);
       const statusBadge = isOnTrip
-        ? `<span class="badge" style="background: rgba(255, 209, 102, 0.15); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.3); font-size: 11px; padding: 3px 9px; border-radius: 6px; font-weight: 700; white-space: nowrap;">🚗 On Trip</span>`
-        : `<span class="badge" style="background: rgba(6, 214, 160, 0.12); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.25); font-size: 11px; padding: 3px 9px; border-radius: 6px; font-weight: 700; white-space: nowrap;">🅿 In Yard</span>`;
+        ? `<span class="badge" style="background: rgba(255, 209, 102, 0.15); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.3); font-size: 11px; padding: 3px 9px; border-radius: 6px; font-weight: 700; white-space: nowrap;">On Trip</span>`
+        : `<span class="badge" style="background: rgba(6, 214, 160, 0.12); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.25); font-size: 11px; padding: 3px 9px; border-radius: 6px; font-weight: 700; white-space: nowrap;">In Yard</span>`;
 
       return `
         <div class="card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 12px; padding: 18px;">

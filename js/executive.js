@@ -297,6 +297,19 @@ async function loadAllExecutiveData() {
   }
 }
 
+function parseExecDate(val) {
+  if (!val) return null;
+  const d = new Date(val);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function isSameExecDay(d1, d2) {
+  if (!d1 || !d2) return false;
+  return d1.getFullYear() === d2.getFullYear() &&
+         d1.getMonth() === d2.getMonth() &&
+         d1.getDate() === d2.getDate();
+}
+
 function updateStats() {
   const activeCountEl = $("execActiveCount");
   const pickupCountEl = $("execPickupCount");
@@ -307,28 +320,55 @@ function updateStats() {
   const paymentsBadge = $("execPaymentsBadge");
   const kycBadge = $("execKycBadge");
 
-  const nowStr = new Date().toISOString().split("T")[0];
+  const now = new Date();
 
-  const activeCount = allBookings.filter((b) => b.status === "active" || b.pickupStatus === "picked_up").length;
-  const pickupsToday = allBookings.filter((b) => (b.pickupDate || "").startsWith(nowStr) && b.status !== "cancelled" && b.status !== "completed").length;
-  const returnsToday = allBookings.filter((b) => (b.dropDate || "").startsWith(nowStr) && (b.status === "active" || b.pickupStatus === "picked_up")).length;
+  const activeCount = allBookings.filter((b) => {
+    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+    if (bStat === "cancelled" || bStat === "rejected") return false;
+    if (bStat === "completed") return false;
+    if (bStat === "active" || b.pickupStatus === "picked_up") return true;
+    const p = parseExecDate(b.pickupDate);
+    const d = parseExecDate(b.dropDate);
+    return !!(p && d && p <= now && d >= now);
+  }).length;
 
-  const pendingPayments = allPayments.filter((p) => p.status === "pending").length;
-  const pendingKyc = allVerifications.filter((v) => v.overallStatus === "pending" || v.licenseStatus === "pending" || v.aadharStatus === "pending" || v.panStatus === "pending").length;
+  const pickupsToday = allBookings.filter((b) => {
+    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+    if (bStat === "cancelled" || bStat === "rejected") return false;
+    const p = parseExecDate(b.pickupDate);
+    return isSameExecDay(p, now);
+  }).length;
 
-  if (activeCountEl) activeCountEl.textContent = activeCount;
-  if (pickupCountEl) pickupCountEl.textContent = pickupsToday;
-  if (returnCountEl) returnCountEl.textContent = returnsToday;
-  if (pendingPaymentsCountEl) pendingPaymentsCountEl.textContent = pendingPayments;
-  if (pendingKycCountEl) pendingKycCountEl.textContent = pendingKyc;
+  const returnsToday = allBookings.filter((b) => {
+    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+    if (bStat === "cancelled" || bStat === "rejected") return false;
+    const d = parseExecDate(b.dropDate);
+    return isSameExecDay(d, now);
+  }).length;
+
+  const pendingPayments = allPayments.filter((p) => {
+    const s = String(p.status || "").toLowerCase();
+    return s === "pending" || s === "pending_verification";
+  }).length;
+
+  const pendingKyc = allVerifications.filter((v) => {
+    const s = String(v.overallStatus || v.status || "").toLowerCase();
+    return s === "pending" || v.licenseStatus === "pending" || v.aadharStatus === "pending" || v.panStatus === "pending";
+  }).length;
+
+  if (activeCountEl) activeCountEl.textContent = String(activeCount);
+  if (pickupCountEl) pickupCountEl.textContent = String(pickupsToday);
+  if (returnCountEl) returnCountEl.textContent = String(returnsToday);
+  if (pendingPaymentsCountEl) pendingPaymentsCountEl.textContent = String(pendingPayments);
+  if (pendingKycCountEl) pendingKycCountEl.textContent = String(pendingKyc);
 
   if (paymentsBadge) {
-    paymentsBadge.textContent = pendingPayments;
+    paymentsBadge.textContent = String(pendingPayments);
     paymentsBadge.style.display = pendingPayments > 0 ? "inline-block" : "none";
   }
 
   if (kycBadge) {
-    kycBadge.textContent = pendingKyc;
+    kycBadge.textContent = String(pendingKyc);
     kycBadge.style.display = pendingKyc > 0 ? "inline-block" : "none";
   }
 }

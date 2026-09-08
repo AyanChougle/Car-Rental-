@@ -243,7 +243,7 @@ async function initBooking(vehicle) {
       appliedCoupons.push(result.coupon);
       if (couponInput) couponInput.value = "";
       if (couponMsg) {
-        couponMsg.textContent = `✓ Coupon '${code}' applied! (${result.coupon.label})`;
+        couponMsg.textContent = `Coupon '${code}' applied! (${result.coupon.label})`;
         couponMsg.className = "booking-coupon-msg success";
       }
       calculateBooking();

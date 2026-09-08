@@ -1382,7 +1382,7 @@
                     align-items: center;
                     font-size: 13px;
                   "
-                  >Open Public Fleet ↗</a
+                  >Open Public Fleet</a
                 >
               </div>
 
@@ -1735,10 +1735,25 @@
               </div>
 
               <!-- Coupon Creation/Editing Box -->
-              <div class="coupon-form-box">
-                <h4 class="coupon-box-title" id="couponBoxHeading">
-                  Add New Coupon Code
-                </h4>
+              <div class="coupon-form-box" id="couponFormBox">
+                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
+                  <div style="display: flex; align-items: center;">
+                    <h4 class="coupon-box-title" id="couponBoxHeading" style="margin: 0;">
+                      Add New Coupon Code
+                    </h4>
+                    <span id="couponFormModeBadge" style="display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 9999px; background: rgba(6, 214, 160, 0.15); color: #06d6a0; font-weight: 700; border: 1px solid rgba(6, 214, 160, 0.3); margin-left: 10px;">
+                      Create Mode
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    id="couponResetNewBtn"
+                    class="btn btn-outline"
+                    style="display: none; height: 32px; padding: 0 14px; font-size: 12px; border-radius: 9999px;"
+                  >
+                    + Create New Coupon Instead
+                  </button>
+                </div>
 
                 <form id="couponForm" class="coupon-form-grid">
                   <div class="coupon-input-group">
@@ -1821,7 +1836,7 @@
                       class="admin-upload-replacement-btn"
                       style="display: none"
                     >
-                      Cancel
+                      Cancel Edit (Create New)
                     </button>
                   </div>
                 </form>
@@ -1836,7 +1851,17 @@
 
               <!-- Table Container -->
               <div class="coupon-table-container">
-                <h4 class="coupon-box-title">Configured Coupon Codes</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                  <h4 class="coupon-box-title" style="margin: 0;">Configured Coupon Codes</h4>
+                  <button
+                    type="button"
+                    id="couponNewTopBtn"
+                    class="btn btn-outline"
+                    style="height: 34px; padding: 0 16px; font-size: 12px; border-radius: 9999px;"
+                  >
+                    + Add New Coupon
+                  </button>
+                </div>
                 <div id="couponsTableWrap">
                   <p style="color: var(--kz-sub)">Loading coupons...</p>
                 </div>
@@ -2979,7 +3004,7 @@
                 border-radius: 8px;
               "
             >
-              📄 Preview PDF
+              Preview PDF
             </button>
             <button
               type="button"
@@ -2994,7 +3019,7 @@
                 border-radius: 8px;
               "
             >
-              💾 Save Changes
+              Save Changes
             </button>
             <button
               type="button"
@@ -3014,7 +3039,7 @@
                 box-shadow: 0 4px 14px rgba(11, 108, 255, 0.4);
               "
             >
-              ✉️ Send to Customer Email
+              Send to Customer Email
             </button>
           </div>
         </form>

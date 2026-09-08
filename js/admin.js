@@ -1413,9 +1413,9 @@ function renderCouponsTable() {
 
   wrap.querySelectorAll(".admin-coupon-edit").forEach(btn => {
     btn.addEventListener("click", () => {
-      const c = couponsData.find(item => item.code === btn.dataset.id || item.id === btn.dataset.id);
+      const c = couponsData.find(item => String(item.id) === String(btn.dataset.id) || String(item.code) === String(btn.dataset.id));
       if (!c) return;
-      editingCouponId = c.code || c.id;
+      editingCouponId = c.id || c.code;
       const isPercent = c.type === "percent" || c.type === "percentage" || c.discountType === "percent" || c.discountType === "percentage" || (typeof c.label === "string" && c.label.includes("%"));
       if ($("couponCodeInput")) $("couponCodeInput").value = c.code || "";
       if ($("couponTypeSelect")) $("couponTypeSelect").value = isPercent ? "percent" : "flat";
@@ -1425,15 +1425,27 @@ function renderCouponsTable() {
       if ($("couponStatusSelect")) $("couponStatusSelect").value = c.status || (c.active ? "active" : "inactive");
 
       if ($("couponBoxHeading")) $("couponBoxHeading").textContent = `Editing Coupon "${c.code}"`;
-      if ($("couponFormSubmit")) $("couponFormSubmit").textContent = "Update Coupon";
+      const badge = $("couponFormModeBadge");
+      if (badge) {
+        badge.textContent = `Editing Existing #${c.id || c.code}`;
+        badge.style.background = "rgba(255, 209, 102, 0.15)";
+        badge.style.color = "#ffd166";
+        badge.style.borderColor = "rgba(255, 209, 102, 0.35)";
+      }
+      if ($("couponFormSubmit")) $("couponFormSubmit").textContent = "Update Existing Coupon";
       if ($("couponCancelBtn")) $("couponCancelBtn").style.display = "inline-block";
-      $("couponForm")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      if ($("couponResetNewBtn")) $("couponResetNewBtn").style.display = "inline-block";
+      const formBox = $("couponFormBox");
+      if (formBox) {
+        formBox.style.border = "1px solid rgba(255, 209, 102, 0.4)";
+        formBox.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     });
   });
 
   wrap.querySelectorAll(".admin-coupon-toggle").forEach(btn => {
     btn.addEventListener("click", async () => {
-      const c = couponsData.find(item => item.code === btn.dataset.id || item.id === btn.dataset.id);
+      const c = couponsData.find(item => String(item.id) === String(btn.dataset.id) || String(item.code) === String(btn.dataset.id));
       if (!c) return;
       const isActive = c.status === "active" || c.active === true;
       const nextActive = !isActive;
@@ -1441,7 +1453,7 @@ function renderCouponsTable() {
       btn.disabled = true;
 
       try {
-        await api.put(`/coupons/${c.code || c.id}`, { active: nextActive, status: nextStatus });
+        await api.put(`/coupons/${c.id || c.code}`, { active: nextActive, status: nextStatus });
         await loadCoupons();
       } catch (err) {
         alert("Could not update coupon: " + err.message);
@@ -1452,12 +1464,12 @@ function renderCouponsTable() {
 
   wrap.querySelectorAll(".admin-coupon-delete").forEach(btn => {
     btn.addEventListener("click", async () => {
-      const c = couponsData.find(item => item.code === btn.dataset.id || item.id === btn.dataset.id);
+      const c = couponsData.find(item => String(item.id) === String(btn.dataset.id) || String(item.code) === String(btn.dataset.id));
       if (!c || !confirm(`Delete coupon "${c.code}" from server database?`)) return;
       btn.disabled = true;
 
       try {
-        await api.delete(`/coupons/${c.code || c.id}`);
+        await api.delete(`/coupons/${c.id || c.code}`);
         await loadCoupons();
       } catch (err) {
         alert("Could not delete coupon: " + err.message);
@@ -1471,9 +1483,20 @@ function resetCouponForm() {
   editingCouponId = null;
   $("couponForm")?.reset();
   if ($("couponBoxHeading")) $("couponBoxHeading").textContent = "Add New Coupon Code";
+  const badge = $("couponFormModeBadge");
+  if (badge) {
+    badge.textContent = "Create Mode";
+    badge.style.background = "rgba(6, 214, 160, 0.15)";
+    badge.style.color = "#06d6a0";
+    badge.style.borderColor = "rgba(6, 214, 160, 0.3)";
+  }
   if ($("couponFormSubmit")) $("couponFormSubmit").textContent = "Save Coupon";
   const cancelBtn = $("couponCancelBtn");
   if (cancelBtn) cancelBtn.style.display = "none";
+  const resetBtn = $("couponResetNewBtn");
+  if (resetBtn) resetBtn.style.display = "none";
+  const formBox = $("couponFormBox");
+  if (formBox) formBox.style.border = "";
 }
 
 function initialiseCouponManagement() {
@@ -1482,9 +1505,26 @@ function initialiseCouponManagement() {
     resetCouponForm();
     const statusMsg = $("couponFormStatus");
     if (statusMsg) {
-      statusMsg.textContent = "Coupon editing cancelled.";
+      statusMsg.textContent = "Editing cancelled. Switched to Create New Coupon mode.";
       statusMsg.style.color = "var(--kr-cyan)";
     }
+  });
+
+  const resetBtn = $("couponResetNewBtn");
+  resetBtn?.addEventListener("click", () => {
+    resetCouponForm();
+    const statusMsg = $("couponFormStatus");
+    if (statusMsg) {
+      statusMsg.textContent = "Switched to Create New Coupon mode.";
+      statusMsg.style.color = "var(--kr-cyan)";
+    }
+  });
+
+  const topNewBtn = $("couponNewTopBtn");
+  topNewBtn?.addEventListener("click", () => {
+    resetCouponForm();
+    $("couponFormBox")?.scrollIntoView({ behavior: "smooth", block: "center" });
+    $("couponCodeInput")?.focus();
   });
 
   $("couponForm")?.addEventListener("submit", async (e) => {
@@ -1501,12 +1541,12 @@ function initialiseCouponManagement() {
       return;
     }
 
-    const isEditing = Boolean(editingCouponId);
+    const isEditing = editingCouponId !== null;
     const currentEditId = editingCouponId;
     const submitBtn = $("couponFormSubmit");
     if (submitBtn) submitBtn.disabled = true;
     const statusMsg = $("couponFormStatus");
-    if (statusMsg) statusMsg.textContent = isEditing ? `Updating coupon "${currentEditId}"...` : "Creating new coupon...";
+    if (statusMsg) statusMsg.textContent = isEditing ? `Updating existing coupon #${currentEditId}...` : `Creating new coupon "${code}"...`;
 
     try {
       const isActive = status === "active";
@@ -1525,8 +1565,10 @@ function initialiseCouponManagement() {
       };
 
       if (isEditing) {
+        // Strictly update ONLY the existing selected coupon by ID
         await api.put(`/coupons/${encodeURIComponent(currentEditId)}`, data);
       } else {
+        // Create a distinct new coupon
         await api.post("/coupons", data);
       }
 
@@ -1541,7 +1583,7 @@ function initialiseCouponManagement() {
     } catch (err) {
       console.error("COUPON SAVE ERROR:", err);
       if (statusMsg) {
-        statusMsg.textContent = `Could not save coupon: ${err.message}`;
+        statusMsg.textContent = `Notice: ${err.message}`;
         statusMsg.style.color = "#ef476f";
       }
     } finally {
@@ -5586,7 +5628,7 @@ async function convertBookingToFullPayment(bookingId, triggerBtn) {
   }
   const statusEl = $("adminInvoiceModalStatus");
   if (statusEl) {
-    statusEl.textContent = "⚡ Converted to Full Payment! Select Payment Mode, enter Reference ID, then click Save or Send.";
+    statusEl.textContent = "Converted to Full Payment! Select Payment Mode, enter Reference ID, then click Save or Send.";
     statusEl.className = "form-status is-success";
   }
 }
@@ -5811,7 +5853,7 @@ function initialiseInvoiceEditorModal() {
         }
       } finally {
         previewBtn.disabled = false;
-        previewBtn.textContent = "📄 Preview PDF";
+        previewBtn.textContent = "Preview PDF";
       }
     });
   }
@@ -5885,7 +5927,7 @@ function initialiseInvoiceEditorModal() {
         }
       } finally {
         saveBtn.disabled = false;
-        saveBtn.textContent = "💾 Save Changes";
+        saveBtn.textContent = "Save Changes";
       }
     });
   }
@@ -5963,7 +6005,7 @@ function initialiseInvoiceEditorModal() {
         alert(`Email Send Notice:\n\n${err.message}`);
       } finally {
         sendBtn.disabled = false;
-        sendBtn.textContent = "✉️ Send to Customer Email";
+        sendBtn.textContent = "Send to Customer Email";
       }
     });
   }
@@ -7070,7 +7112,7 @@ function renderHostCarsTable(
     </div>
     <div style="padding:10px 16px;font-size:0.8rem;color:var(--kr-text-muted);display:flex;justify-content:space-between;align-items:center;background:rgba(6,10,16,0.45);border-top:1px solid var(--kr-border);border-radius:0 0 var(--kr-radius-md) var(--kr-radius-md);">
       <span>Showing all <strong>${cars.length}</strong> acquisition vehicles</span>
-      <span style="font-size:0.75rem;color:var(--kr-cyan);font-weight:600;">↕ Scrollable Table</span>
+      <span style="font-size:0.75rem;color:var(--kr-cyan);font-weight:600;">Scrollable Table</span>
     </div>
   `;
 
@@ -8195,13 +8237,13 @@ function renderCalendarCell(cellDate, dayNumber, isOtherMonth, todayStr, allBook
 
     let flag = "";
     if (isPickupDay && isDropDay) {
-      flag = `🟢 ${formatCalTime(b.pickupDate)} - 🏁 ${formatCalTime(b.dropDate)}`;
+      flag = `Pickup: ${formatCalTime(b.pickupDate)} - Return: ${formatCalTime(b.dropDate)}`;
     } else if (isPickupDay) {
-      flag = `🟢 Pickup: ${formatCalTime(b.pickupDate)}`;
+      flag = `Pickup: ${formatCalTime(b.pickupDate)}`;
     } else if (isDropDay) {
-      flag = `🏁 Return: ${formatCalTime(b.dropDate)}`;
+      flag = `Return: ${formatCalTime(b.dropDate)}`;
     } else {
-      flag = `🔄 Active Trip`;
+      flag = `Active Trip`;
     }
 
     pillsHtml += `
@@ -8210,7 +8252,7 @@ function renderCalendarCell(cellDate, dayNumber, isOtherMonth, todayStr, allBook
           <strong>${escapeHtml(b.userName)}</strong>
           <span style="font-size:10.5px;font-weight:700;color:var(--kr-cyan);">₹${Number(b.totalAmount).toLocaleString("en-IN")}</span>
         </div>
-        <div class="cal-event-car">🚗 ${escapeHtml(b.carName)} ${b.carReg ? `(${escapeHtml(b.carReg)})` : ""}</div>
+        <div class="cal-event-car">${escapeHtml(b.carName)} ${b.carReg ? `(${escapeHtml(b.carReg)})` : ""}</div>
         <div class="cal-event-time">${flag}</div>
       </div>
     `;
@@ -8219,7 +8261,7 @@ function renderCalendarCell(cellDate, dayNumber, isOtherMonth, todayStr, allBook
   if (matchingBookings.length > maxDisplay) {
     pillsHtml += `
       <div class="cal-event-more" data-date="${cellDateStr}" role="button" tabindex="0" title="Click to view all ${matchingBookings.length} bookings for this day">
-        🔍 +${matchingBookings.length - maxDisplay} more (view details)
+        +${matchingBookings.length - maxDisplay} more (view details)
       </div>
     `;
   }
@@ -8310,7 +8352,7 @@ function openAdminDayBookingsModal(dateStr) {
               <!-- Vehicle Info -->
               <div style="background: rgba(0,0,0,0.25); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
                 <div style="font-size: 0.75rem; color: var(--kr-text-secondary); text-transform: uppercase; margin-bottom: 4px;">Vehicle Assigned</div>
-                <strong style="color: #ffffff; font-size: 0.95rem; display:block; margin-bottom: 4px;">🚗 ${escapeHtml(b.carName)}</strong>
+                <strong style="color: #ffffff; font-size: 0.95rem; display:block; margin-bottom: 4px;">${escapeHtml(b.carName)}</strong>
                 <div style="display:inline-block; font-family:monospace; background:rgba(79, 215, 255, 0.12); color:#4fd7ff; padding:2px 8px; border-radius:6px; font-size:0.8rem; border:1px solid rgba(79, 215, 255, 0.3);">
                   ${escapeHtml(b.carReg || "Registration Pending")}
                 </div>
@@ -8320,10 +8362,10 @@ function openAdminDayBookingsModal(dateStr) {
               <div style="background: rgba(0,0,0,0.25); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
                 <div style="font-size: 0.75rem; color: var(--kr-text-secondary); text-transform: uppercase; margin-bottom: 4px;">Trip Dates & Times</div>
                 <div style="font-size: 0.82rem; color: #ffffff; margin-bottom: 4px;">
-                  <span style="color:#06d6a0; font-weight:700;">🟢 Pickup:</span> ${formatCalDateTime(b.pickupDate)}
+                  <span style="color:#06d6a0; font-weight:700;">Pickup:</span> ${formatCalDateTime(b.pickupDate)}
                 </div>
                 <div style="font-size: 0.82rem; color: #ffffff;">
-                  <span style="color:#ffd166; font-weight:700;">🏁 Return:</span> ${formatCalDateTime(b.dropDate)}
+                  <span style="color:#ffd166; font-weight:700;">Return:</span> ${formatCalDateTime(b.dropDate)}
                 </div>
               </div>
 
@@ -8336,7 +8378,7 @@ function openAdminDayBookingsModal(dateStr) {
                 <div style="font-size: 0.8rem; color: var(--kr-text-muted);">
                   ${escapeHtml(payMethod)} ${payRef ? `· Ref: ${escapeHtml(payRef)}` : ""}
                 </div>
-                ${b.notes ? `<div style="font-size: 0.78rem; color: #ffd166; margin-top:3px;">📝 ${escapeHtml(b.notes)}</div>` : ""}
+                ${b.notes ? `<div style="font-size: 0.78rem; color: #ffd166; margin-top:3px;">Note: ${escapeHtml(b.notes)}</div>` : ""}
               </div>
             </div>
 
@@ -8445,11 +8487,11 @@ function renderAdminCalendarAgenda() {
         </div>
         <div class="cal-agenda-card__timeline">
           <div class="cal-timeline-item">
-            <span class="cal-timeline-label">🟢 PICKUP / START:</span>
+            <span class="cal-timeline-label">PICKUP / START:</span>
             <span class="cal-timeline-value">${formatCalDateTime(b.pickupDate)}</span>
           </div>
           <div class="cal-timeline-item">
-            <span class="cal-timeline-label">🏁 RETURN / END:</span>
+            <span class="cal-timeline-label">RETURN / END:</span>
             <span class="cal-timeline-value">${formatCalDateTime(b.dropDate)}</span>
           </div>
         </div>
