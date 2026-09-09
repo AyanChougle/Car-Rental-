@@ -78,11 +78,11 @@ let allVerifications = [];
 let allFleet = [];
 let allCoupons = [];
 
-const EXEC_BOOKINGS_PER_PAGE = 10;
-const EXEC_PAYMENTS_PER_PAGE = 10;
-const EXEC_KYC_PER_PAGE = 10;
-const EXEC_FLEET_PER_PAGE = 8;
-const EXEC_COUPONS_PER_PAGE = 10;
+let execBookingsPerPage = 5;
+let execPaymentsPerPage = 5;
+let execKycPerPage = 5;
+let execFleetPerPage = 6;
+let execCouponsPerPage = 5;
 
 let execBookingPage = 1;
 let execPaymentPage = 1;
@@ -124,8 +124,11 @@ function getCarImage(car) {
   return "assets/fleet/BMW.png";
 }
 
-function renderPaginationHtml(currentPage, totalPages, totalItems, itemLabel = "items") {
-  if (totalPages <= 1) return "";
+function renderPaginationHtml(currentPage, totalPages, totalItems, itemLabel = "items", pageSize = 5, type = "bookings") {
+  if (!totalItems) return "";
+
+  const startItem = (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(totalItems, currentPage * pageSize);
 
   const getPageWindow = (curr, total) => {
     if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
@@ -139,7 +142,7 @@ function renderPaginationHtml(currentPage, totalPages, totalItems, itemLabel = "
   const buttonsHtml = windowPages
     .map((p) => {
       if (p === "...") {
-        return `<span class="data-pagination__ellipsis" aria-hidden="true">...</span>`;
+        return `<span class="data-pagination__ellipsis" aria-hidden="true" style="color:var(--sub);padding:4px 6px;">...</span>`;
       }
       const isActive = p === currentPage;
       return `<button type="button" class="btn-pagination ${isActive ? "active" : ""}" data-page="${p}">${p}</button>`;
@@ -147,11 +150,21 @@ function renderPaginationHtml(currentPage, totalPages, totalItems, itemLabel = "
     .join("");
 
   return `
-    <div class="data-pagination">
-      <span class="data-pagination__summary">
-        Page <strong>${currentPage}</strong> of <strong>${totalPages}</strong> · <strong>${totalItems}</strong> ${itemLabel}
-      </span>
-      <div class="data-pagination__actions">
+    <div class="data-pagination" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;margin-top:18px;padding:12px 16px;background:rgba(10,15,26,0.75);border:1px solid rgba(255,255,255,0.08);border-radius:12px;">
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+        <span class="data-pagination__summary" style="font-size:13px;color:var(--sub);">
+          Showing <strong>${startItem}-${endItem}</strong> of <strong>${totalItems}</strong> ${itemLabel} (Page <strong>${currentPage}</strong> of <strong>${totalPages}</strong>)
+        </span>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--sub);">
+          <span>Show:</span>
+          <select class="exec-page-size-select" data-type="${type}" style="background:rgba(255,255,255,0.06);color:#ffffff;border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer;">
+            <option value="5" ${pageSize === 5 ? "selected" : ""}>5</option>
+            <option value="10" ${pageSize === 10 ? "selected" : ""}>10</option>
+            <option value="20" ${pageSize === 20 ? "selected" : ""}>20</option>
+          </select>
+        </div>
+      </div>
+      <div class="data-pagination__actions" style="display:flex;gap:6px;align-items:center;">
         <button type="button" class="btn-pagination" data-page="prev" ${currentPage === 1 ? "disabled" : ""}>
           <span class="data-pagination__btn-text">Prev</span>
         </button>
@@ -422,11 +435,11 @@ function renderBookingsTable() {
     return;
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalItems / EXEC_BOOKINGS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalItems / execBookingsPerPage));
   execBookingPage = Math.max(1, Math.min(execBookingPage, totalPages));
 
-  const startIndex = (execBookingPage - 1) * EXEC_BOOKINGS_PER_PAGE;
-  const paginatedBookings = filtered.slice(startIndex, startIndex + EXEC_BOOKINGS_PER_PAGE);
+  const startIndex = (execBookingPage - 1) * execBookingsPerPage;
+  const paginatedBookings = filtered.slice(startIndex, startIndex + execBookingsPerPage);
 
   wrap.innerHTML = `
     <div style="overflow-x: auto;">
@@ -501,7 +514,7 @@ function renderBookingsTable() {
         </tbody>
       </table>
     </div>
-    ${renderPaginationHtml(execBookingPage, totalPages, totalItems, "bookings")}
+    ${renderPaginationHtml(execBookingPage, totalPages, totalItems, "bookings", execBookingsPerPage, "bookings")}
   `;
 
   // Attach action listeners
@@ -531,6 +544,14 @@ function renderBookingsTable() {
   });
 
   // Attach pagination listeners
+  wrap.querySelectorAll(".exec-page-size-select").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      execBookingsPerPage = Number(sel.value) || 5;
+      execBookingPage = 1;
+      renderBookingsTable();
+    });
+  });
+
   wrap.querySelectorAll("[data-page]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const target = btn.dataset.page;
@@ -897,11 +918,11 @@ function renderPaymentsTable() {
     return;
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalItems / EXEC_PAYMENTS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalItems / execPaymentsPerPage));
   execPaymentPage = Math.max(1, Math.min(execPaymentPage, totalPages));
 
-  const startIndex = (execPaymentPage - 1) * EXEC_PAYMENTS_PER_PAGE;
-  const paginatedPayments = allPayments.slice(startIndex, startIndex + EXEC_PAYMENTS_PER_PAGE);
+  const startIndex = (execPaymentPage - 1) * execPaymentsPerPage;
+  const paginatedPayments = allPayments.slice(startIndex, startIndex + execPaymentsPerPage);
 
   wrap.innerHTML = `
     <div style="overflow-x: auto;">
@@ -953,13 +974,21 @@ function renderPaymentsTable() {
         </tbody>
       </table>
     </div>
-    ${renderPaginationHtml(execPaymentPage, totalPages, totalItems, "payments")}
+    ${renderPaginationHtml(execPaymentPage, totalPages, totalItems, "payments", execPaymentsPerPage, "payments")}
   `;
 
   wrap.querySelectorAll(".btn-review-payment").forEach((btn) => {
     btn.addEventListener("click", () => {
       const p = allPayments.find((item) => item.id === btn.dataset.id);
       if (p) openPaymentModal(p);
+    });
+  });
+
+  wrap.querySelectorAll(".exec-page-size-select").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      execPaymentsPerPage = Number(sel.value) || 5;
+      execPaymentPage = 1;
+      renderPaymentsTable();
     });
   });
 
@@ -1107,11 +1136,11 @@ function renderKycTable() {
     return;
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalItems / EXEC_KYC_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalItems / execKycPerPage));
   execKycPage = Math.max(1, Math.min(execKycPage, totalPages));
 
-  const startIndex = (execKycPage - 1) * EXEC_KYC_PER_PAGE;
-  const paginatedKyc = allVerifications.slice(startIndex, startIndex + EXEC_KYC_PER_PAGE);
+  const startIndex = (execKycPage - 1) * execKycPerPage;
+  const paginatedKyc = allVerifications.slice(startIndex, startIndex + execKycPerPage);
 
   wrap.innerHTML = `
     <div style="overflow-x: auto;">
@@ -1157,13 +1186,21 @@ function renderKycTable() {
         </tbody>
       </table>
     </div>
-    ${renderPaginationHtml(execKycPage, totalPages, totalItems, "customer IDs")}
+    ${renderPaginationHtml(execKycPage, totalPages, totalItems, "customer IDs", execKycPerPage, "kyc")}
   `;
 
   wrap.querySelectorAll(".btn-review-kyc").forEach((btn) => {
     btn.addEventListener("click", () => {
       const v = allVerifications.find((item) => (item.userId || item.firebaseUid) === btn.dataset.id);
       if (v) openKycModal(v);
+    });
+  });
+
+  wrap.querySelectorAll(".exec-page-size-select").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      execKycPerPage = Number(sel.value) || 5;
+      execKycPage = 1;
+      renderKycTable();
     });
   });
 
@@ -1313,11 +1350,11 @@ function renderFleetGrid() {
     return;
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalItems / EXEC_FLEET_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalItems / execFleetPerPage));
   execFleetPage = Math.max(1, Math.min(execFleetPage, totalPages));
 
-  const startIndex = (execFleetPage - 1) * EXEC_FLEET_PER_PAGE;
-  const paginatedFleet = allFleet.slice(startIndex, startIndex + EXEC_FLEET_PER_PAGE);
+  const startIndex = (execFleetPage - 1) * execFleetPerPage;
+  const paginatedFleet = allFleet.slice(startIndex, startIndex + execFleetPerPage);
 
   const cardsHtml = paginatedFleet
     .map((car) => {
@@ -1355,9 +1392,17 @@ function renderFleetGrid() {
       ${cardsHtml}
     </div>
     <div style="grid-column: 1 / -1;">
-      ${renderPaginationHtml(execFleetPage, totalPages, totalItems, "vehicles")}
+      ${renderPaginationHtml(execFleetPage, totalPages, totalItems, "vehicles", execFleetPerPage, "fleet")}
     </div>
   `;
+
+  grid.querySelectorAll(".exec-page-size-select").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      execFleetPerPage = Number(sel.value) || 6;
+      execFleetPage = 1;
+      renderFleetGrid();
+    });
+  });
 
   grid.querySelectorAll("[data-page]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1389,11 +1434,11 @@ function renderCouponsTable() {
     return;
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalItems / EXEC_COUPONS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalItems / execCouponsPerPage));
   execCouponsPage = Math.max(1, Math.min(execCouponsPage, totalPages));
 
-  const startIndex = (execCouponsPage - 1) * EXEC_COUPONS_PER_PAGE;
-  const paginatedCoupons = allCoupons.slice(startIndex, startIndex + EXEC_COUPONS_PER_PAGE);
+  const startIndex = (execCouponsPage - 1) * execCouponsPerPage;
+  const paginatedCoupons = allCoupons.slice(startIndex, startIndex + execCouponsPerPage);
 
   wrap.innerHTML = `
     <div style="overflow-x: auto;">
@@ -1431,8 +1476,16 @@ function renderCouponsTable() {
         </tbody>
       </table>
     </div>
-    ${renderPaginationHtml(execCouponsPage, totalPages, totalItems, "coupons")}
+    ${renderPaginationHtml(execCouponsPage, totalPages, totalItems, "coupons", execCouponsPerPage, "coupons")}
   `;
+
+  wrap.querySelectorAll(".exec-page-size-select").forEach((sel) => {
+    sel.addEventListener("change", () => {
+      execCouponsPerPage = Number(sel.value) || 5;
+      execCouponsPage = 1;
+      renderCouponsTable();
+    });
+  });
 
   wrap.querySelectorAll("[data-page]").forEach((btn) => {
     btn.addEventListener("click", () => {

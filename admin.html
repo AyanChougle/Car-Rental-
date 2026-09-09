@@ -1398,34 +1398,78 @@
                   background: rgba(6, 214, 160, 0.04);
                 "
               >
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 12px;
+                    margin-bottom: 12px;
+                  "
+                >
                   <div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                      <h4 style="margin: 0; font-size: 1.1rem; color: #ffffff;">
-                        ★ Manager Summary Active Fleet Roster
+                    <div style="display: flex; align-items: center; gap: 10px">
+                      <h4 style="margin: 0; font-size: 1.1rem; color: #ffffff">
+                        ★ Current Fleet (Manager Summary Roster)
                       </h4>
-                      <span id="adminActiveFleetCountBadge" class="badge" style="background: rgba(6, 214, 160, 0.2); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.4); padding: 3px 10px; border-radius: 8px; font-weight: 800; font-size: 12px;">
-                        7 Active Fleets
+                      <span
+                        id="adminActiveFleetCountBadge"
+                        class="badge"
+                        style="
+                          background: rgba(6, 214, 160, 0.2);
+                          color: #06d6a0;
+                          border: 1px solid rgba(6, 214, 160, 0.4);
+                          padding: 3px 10px;
+                          border-radius: 8px;
+                          font-weight: 800;
+                          font-size: 12px;
+                        "
+                      >
+                        7 Current Fleets
                       </span>
                     </div>
-                    <p style="margin: 4px 0 0; color: var(--kr-text-secondary); font-size: 0.84rem;">
-                      Decide which vehicles are tracked in the Manager Summary analytics, occupancy calculations, and fleet performance roster.
+                    <p
+                      style="
+                        margin: 4px 0 0;
+                        color: var(--kr-text-secondary);
+                        font-size: 0.84rem;
+                      "
+                    >
+                      Vehicles with the "Current Fleet" checkbox checked are
+                      tracked in the Manager Summary analytics, revenue
+                      tracking, and occupancy calculations.
                     </p>
                   </div>
-                  <div style="display: flex; gap: 8px;">
+                  <div style="display: flex; gap: 8px">
                     <button
                       id="adminResetActiveFleetBtn"
                       type="button"
                       class="btn btn-outline"
-                      style="font-size: 12px; padding: 6px 14px; border-color: rgba(255, 255, 255, 0.2);"
+                      style="
+                        font-size: 12px;
+                        padding: 6px 14px;
+                        border-color: rgba(255, 255, 255, 0.2);
+                      "
                     >
                       Reset to Default 7 Fleets
                     </button>
                   </div>
                 </div>
 
-                <div id="adminActiveFleetChipsWrap" style="display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-height: 38px;">
-                  <span style="color: var(--kr-text-muted); font-size: 13px;">Loading active roster...</span>
+                <div
+                  id="adminActiveFleetChipsWrap"
+                  style="
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    align-items: center;
+                    min-height: 38px;
+                  "
+                >
+                  <span style="color: var(--kr-text-muted); font-size: 13px"
+                    >Loading active roster...</span
+                  >
                 </div>
               </div>
 
@@ -1603,7 +1647,9 @@
                     />
                   </div>
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="fleetAcquisitionType"
+                    <label
+                      class="admin-control-label"
+                      for="fleetAcquisitionType"
                       >Acquisition Type</label
                     >
                     <select id="fleetAcquisitionType" class="kr-clean-input">
@@ -1623,7 +1669,9 @@
                     />
                   </div>
                   <div class="admin-control-group">
-                    <label class="admin-control-label" for="fleetAcquisitionDate"
+                    <label
+                      class="admin-control-label"
+                      for="fleetAcquisitionDate"
                       >Acquisition Date</label
                     >
                     <input
@@ -1659,19 +1707,29 @@
                   </div>
                   <div
                     class="admin-control-group"
-                    style="display: flex; align-items: center; gap: 8px; padding-bottom: 10px;"
+                    style="
+                      display: flex;
+                      align-items: center;
+                      gap: 8px;
+                      padding-bottom: 10px;
+                    "
                   >
                     <input
                       id="fleetIsActiveFleet"
                       type="checkbox"
                       checked
-                      style="width: 18px; height: 18px; accent-color: #06d6a0;"
+                      style="width: 18px; height: 18px; accent-color: #06d6a0"
                     />
                     <label
                       for="fleetIsActiveFleet"
-                      style="color: #ffffff; font-size: 13px; font-weight: 600; cursor: pointer;"
+                      style="
+                        color: #ffffff;
+                        font-size: 13px;
+                        font-weight: 600;
+                        cursor: pointer;
+                      "
                     >
-                      Include in Manager Active 7-Fleet Roster
+                      Current Fleet (Show in Manager Summary)
                     </label>
                   </div>
                   <div
@@ -1736,12 +1794,38 @@
 
               <!-- Coupon Creation/Editing Box -->
               <div class="coupon-form-box" id="couponFormBox">
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
-                  <div style="display: flex; align-items: center;">
-                    <h4 class="coupon-box-title" id="couponBoxHeading" style="margin: 0;">
+                <div
+                  style="
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    flex-wrap: wrap;
+                    gap: 10px;
+                    margin-bottom: 16px;
+                  "
+                >
+                  <div style="display: flex; align-items: center">
+                    <h4
+                      class="coupon-box-title"
+                      id="couponBoxHeading"
+                      style="margin: 0"
+                    >
                       Add New Coupon Code
                     </h4>
-                    <span id="couponFormModeBadge" style="display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 9999px; background: rgba(6, 214, 160, 0.15); color: #06d6a0; font-weight: 700; border: 1px solid rgba(6, 214, 160, 0.3); margin-left: 10px;">
+                    <span
+                      id="couponFormModeBadge"
+                      style="
+                        display: inline-block;
+                        font-size: 11px;
+                        padding: 3px 10px;
+                        border-radius: 9999px;
+                        background: rgba(6, 214, 160, 0.15);
+                        color: #06d6a0;
+                        font-weight: 700;
+                        border: 1px solid rgba(6, 214, 160, 0.3);
+                        margin-left: 10px;
+                      "
+                    >
                       Create Mode
                     </span>
                   </div>
@@ -1749,7 +1833,13 @@
                     type="button"
                     id="couponResetNewBtn"
                     class="btn btn-outline"
-                    style="display: none; height: 32px; padding: 0 14px; font-size: 12px; border-radius: 9999px;"
+                    style="
+                      display: none;
+                      height: 32px;
+                      padding: 0 14px;
+                      font-size: 12px;
+                      border-radius: 9999px;
+                    "
                   >
                     + Create New Coupon Instead
                   </button>
@@ -1851,13 +1941,27 @@
 
               <!-- Table Container -->
               <div class="coupon-table-container">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                  <h4 class="coupon-box-title" style="margin: 0;">Configured Coupon Codes</h4>
+                <div
+                  style="
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 14px;
+                  "
+                >
+                  <h4 class="coupon-box-title" style="margin: 0">
+                    Configured Coupon Codes
+                  </h4>
                   <button
                     type="button"
                     id="couponNewTopBtn"
                     class="btn btn-outline"
-                    style="height: 34px; padding: 0 16px; font-size: 12px; border-radius: 9999px;"
+                    style="
+                      height: 34px;
+                      padding: 0 16px;
+                      font-size: 12px;
+                      border-radius: 9999px;
+                    "
                   >
                     + Add New Coupon
                   </button>

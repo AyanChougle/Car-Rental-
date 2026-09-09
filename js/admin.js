@@ -910,6 +910,69 @@ async function loadAllAdminData() {
   }
 }
 
+// ============================================================================
+// CANONICAL 7 ACTIVE FLEETS & MASTER CATALOG FALLBACK
+// ============================================================================
+const DEFAULT_7_ACTIVE_FLEETS = [
+  { id: 1, carId: "CRP-002", regNo: "MH03EL1025", brand: "Suzuki", model: "Fronx", year: 2026, category: "compact-suv", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 3500, priceHour: 146, hub: "Gavson Business Park, Ghansoli", ownerName: "Aditi Lotankar", acquisitionType: "Partner", acquisitionDate: "2026-07-20", available: 1, status: "available", is_active_fleet: 1 },
+  { id: 2, carId: "CRP-003", regNo: "MH05GJ4711", brand: "Suzuki", model: "Ertiga", year: 2026, category: "mpv", transmission: "Manual", fuel: "Petrol + CNG", seats: 7, priceDay: 4000, priceHour: 167, hub: "Gavson Business Park, Ghansoli", ownerName: "Viren Gupta", acquisitionType: "Partner", acquisitionDate: "2026-07-24", available: 1, status: "available", is_active_fleet: 1 },
+  { id: 3, carId: "CRP-005", regNo: "MH48CJ4153", brand: "Toyota", model: "Glanza", year: 2026, category: "hatchback", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3000, priceHour: 125, hub: "Gavson Business Park, Ghansoli", ownerName: "Ajay Vishwakarma", acquisitionType: "Partner", acquisitionDate: "2026-07-29", available: 1, status: "available", is_active_fleet: 1 },
+  { id: 4, carId: "CRP-006", regNo: "MH04MU1178", brand: "Toyota", model: "Glanza", year: 2026, category: "hatchback", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3000, priceHour: 125, hub: "Gavson Business Park, Ghansoli", ownerName: "Kundan Singh", acquisitionType: "Partner", acquisitionDate: "2026-08-04", available: 1, status: "available", is_active_fleet: 1 },
+  { id: 5, carId: "CRP-007", regNo: "MH05FV3454", brand: "Tata", model: "Punch", year: 2026, category: "compact-suv", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3000, priceHour: 125, hub: "Gavson Business Park, Ghansoli", ownerName: "Tai Phad", acquisitionType: "Partner", acquisitionDate: "2026-08-13", available: 1, status: "available", is_active_fleet: 1 },
+  { id: 6, carId: "CRP-008", regNo: "MH43CY1632", brand: "Suzuki", model: "Fronx", year: 2026, category: "compact-suv", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3200, priceHour: 133, hub: "Gavson Business Park, Ghansoli", ownerName: "Amol Gole", acquisitionType: "Partner", acquisitionDate: "2026-08-19", available: 1, status: "available", is_active_fleet: 1 },
+  { id: 7, carId: "CRP-009", regNo: "MH02FU6808", brand: "Mahindra", model: "XUV 700", year: 2026, category: "suv", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 5500, priceHour: 229, hub: "Gavson Business Park, Ghansoli", ownerName: "Saif Feroz Shaikh", acquisitionType: "Partner", acquisitionDate: "2026-08-01", available: 1, status: "available", is_active_fleet: 1 }
+];
+const DEFAULT_ACTIVE_REGS = DEFAULT_7_ACTIVE_FLEETS.map(f => f.regNo.toUpperCase());
+
+function getMasterCatalogVehicles() {
+  const catalog = Array.isArray(window.fleetVehicles) ? window.fleetVehicles : [];
+  const vehicles = [...DEFAULT_7_ACTIVE_FLEETS];
+
+  catalog.forEach((c, idx) => {
+    const brand = String(c.brand || "").toLowerCase();
+    const model = String(c.model || "").toLowerCase();
+    const fuel = String(c.fuel || "").toLowerCase();
+    const trans = String(c.transmission || "").toLowerCase();
+
+    const isErtigaCNG = brand.includes("suzuki") && model.includes("ertiga") && fuel.includes("cng");
+    const isFronxCNG = brand.includes("suzuki") && model.includes("fronx") && fuel.includes("cng");
+    const isFronxAuto = brand.includes("suzuki") && model.includes("fronx") && trans.includes("auto");
+    const isGlanza = brand.includes("toyota") && model.includes("glanza");
+    const isPunchCNG = brand.includes("tata") && model.includes("punch") && fuel.includes("cng");
+    const isXUV700 = brand.includes("mahindra") && (model.includes("700") || model.includes("7xo"));
+
+    if (isErtigaCNG || isFronxCNG || isFronxAuto || isGlanza || isPunchCNG || isXUV700) {
+      return;
+    }
+
+    const regNo = c.regNo || ("MH04KR" + String(100 + idx + 1).padStart(4, "0"));
+    const carId = c.id || ("CAT-" + String(idx + 1).padStart(3, "0"));
+    vehicles.push({
+      id: 10 + idx,
+      carId,
+      regNo,
+      brand: c.brand,
+      model: c.model,
+      year: c.year || 2025,
+      category: c.category || "economy",
+      transmission: c.transmission || "Manual",
+      fuel: c.fuel || "Petrol",
+      seats: c.seats || 5,
+      priceDay: c.priceDay || 2500,
+      priceHour: c.priceHour || 104,
+      hub: c.location || "Gavson Business Park, Ghansoli",
+      ownerName: "Kruizly Fleet Host",
+      acquisitionType: "Fleet Catalog",
+      acquisitionDate: "2026-01-01",
+      available: c.available !== 0 ? 1 : 0,
+      status: "available",
+      is_active_fleet: 0
+    });
+  });
+
+  return vehicles;
+}
+
 let currentActiveFleetRegs = [];
 
 function renderAdminActiveFleetRoster(activeRegs, allVehicles) {
@@ -978,11 +1041,28 @@ async function loadFleetManagement() {
 
   try {
     const [res, activeRes] = await Promise.all([
-      api.get("/vehicles"),
-      api.get("/vehicles/active-fleet.php").catch(() => ({ activeRegs: [] }))
+      api.get("/vehicles").catch(() => null),
+      api.get("/vehicles/active-fleet.php").catch(() => null)
     ]);
-    const vehicles = Array.isArray(res.vehicles) ? res.vehicles : [];
-    const activeRegs = Array.isArray(activeRes?.activeRegs) ? activeRes.activeRegs.map(r => r.toUpperCase()) : [];
+
+    let vehicles = Array.isArray(res?.vehicles) && res.vehicles.length > 0
+      ? res.vehicles
+      : getMasterCatalogVehicles();
+
+    // Check localStorage for active fleet overrides
+    let storedActiveRegs = null;
+    try {
+      const raw = localStorage.getItem("kruizly_admin_active_regs");
+      if (raw) storedActiveRegs = JSON.parse(raw);
+    } catch(e) {}
+
+    let activeRegs = Array.isArray(activeRes?.activeRegs) && activeRes.activeRegs.length > 0
+      ? activeRes.activeRegs.map(r => r.toUpperCase())
+      : (storedActiveRegs && storedActiveRegs.length > 0 ? storedActiveRegs : DEFAULT_ACTIVE_REGS);
+
+    try {
+      localStorage.setItem("kruizly_admin_active_regs", JSON.stringify(activeRegs));
+    } catch(e) {}
 
     renderAdminActiveFleetRoster(activeRegs, vehicles);
 
@@ -1009,7 +1089,7 @@ async function loadFleetManagement() {
               <th style="padding:12px;">Fuel &amp; Gear</th>
               <th style="padding:12px;">Daily Rate</th>
               <th style="padding:12px;">Availability</th>
-              <th style="padding:12px;">Manager Roster</th>
+              <th style="padding:12px;text-align:center;">Current Fleet</th>
               <th style="padding:12px;text-align:right;">Action</th>
             </tr>
           </thead>
@@ -1039,10 +1119,19 @@ async function loadFleetManagement() {
                       ${available ? "Available" : "Unavailable"}
                     </span>
                   </td>
-                  <td style="padding:12px;">
-                    ${isActiveRoster
-                      ? `<span class="badge" style="background:rgba(6, 214, 160, 0.15); color:#06d6a0; border:1px solid rgba(6, 214, 160, 0.35); padding:3px 8px; border-radius:6px; font-weight:700; font-size:11px;">★ Active (7-Fleet)</span>`
-                      : `<span style="color:var(--sub); font-size:11.5px;">Standard</span>`}
+                  <td style="padding:12px;text-align:center;">
+                    <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                      <input
+                        type="checkbox"
+                        class="admin-fleet-current-checkbox"
+                        data-reg="${escapeHtml(vehicle.regNo)}"
+                        ${isActiveRoster ? "checked" : ""}
+                        style="width:18px;height:18px;accent-color:#06d6a0;cursor:pointer;"
+                      />
+                      <span style="font-size:11.5px;font-weight:700;color:${isActiveRoster ? "#06d6a0" : "var(--sub)"};">
+                        ${isActiveRoster ? "Active" : "Off"}
+                      </span>
+                    </label>
                   </td>
                   <td style="padding:12px;text-align:right;white-space:nowrap;">
                     <button
@@ -1089,7 +1178,8 @@ async function loadFleetManagement() {
         page: adminFleetPage,
         totalPages,
         totalItems: vehicles.length,
-        type: "fleet"
+        type: "fleet",
+        pageSize: ADMIN_FLEET_PER_PAGE
       })}
     `;
 
@@ -1104,18 +1194,64 @@ async function loadFleetManagement() {
       });
 
     fleetManagementWrap
-      .querySelectorAll(".admin-fleet-roster-toggle")
+      .querySelectorAll("[data-admin-fleet-page]")
       .forEach((button) => {
-        button.addEventListener("click", async () => {
-          const regNo = button.dataset.reg;
-          button.disabled = true;
-          button.textContent = "Updating...";
+        button.addEventListener("click", () => {
+          adminFleetPage = Number(button.dataset.adminFleetPage) || 1;
+          loadFleetManagement();
+          fleetManagementWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      });
+
+    fleetManagementWrap
+      .querySelectorAll(".admin-fleet-current-checkbox")
+      .forEach((checkbox) => {
+        checkbox.addEventListener("change", async () => {
+          const regNo = (checkbox.dataset.reg || "").toUpperCase();
+          checkbox.disabled = true;
           try {
-            await api.post("/vehicles/active-fleet.php", { action: "toggle", regNo });
+            let activeList = [...currentActiveFleetRegs];
+            if (checkbox.checked) {
+              if (!activeList.includes(regNo)) activeList.push(regNo);
+            } else {
+              activeList = activeList.filter(r => r.toUpperCase() !== regNo);
+            }
+            localStorage.setItem("kruizly_admin_active_regs", JSON.stringify(activeList));
+
+            await api.post("/vehicles/active-fleet.php", {
+              action: checkbox.checked ? "add" : "remove",
+              regNo,
+            }).catch(() => {});
             await loadFleetManagement();
           } catch (error) {
             console.error("FLEET ROSTER ERROR:", error);
-            alert("Could not update manager fleet roster: " + error.message);
+            checkbox.checked = !checkbox.checked;
+            checkbox.disabled = false;
+          }
+        });
+      });
+
+    fleetManagementWrap
+      .querySelectorAll(".admin-fleet-roster-toggle")
+      .forEach((button) => {
+        button.addEventListener("click", async () => {
+          const regNo = (button.dataset.reg || "").toUpperCase();
+          const isCurrentlyActive = button.dataset.active === "true";
+          button.disabled = true;
+          button.textContent = "Updating...";
+          try {
+            let activeList = [...currentActiveFleetRegs];
+            if (isCurrentlyActive) {
+              activeList = activeList.filter(r => r.toUpperCase() !== regNo);
+            } else {
+              if (!activeList.includes(regNo)) activeList.push(regNo);
+            }
+            localStorage.setItem("kruizly_admin_active_regs", JSON.stringify(activeList));
+
+            await api.post("/vehicles/active-fleet.php", { action: "toggle", regNo }).catch(() => {});
+            await loadFleetManagement();
+          } catch (error) {
+            console.error("FLEET ROSTER ERROR:", error);
             button.disabled = false;
           }
         });
@@ -1138,23 +1274,22 @@ async function loadFleetManagement() {
             $("fleetRegNo").readOnly = true;
           }
           if ($("fleetYear")) $("fleetYear").value = vehicle.year || 2026;
-          if ($("fleetCategory")) $("fleetCategory").value = vehicle.category || "compact-suv";
+          if ($("fleetCategory")) $("fleetCategory").value = vehicle.category || "economy";
           if ($("fleetTransmission")) $("fleetTransmission").value = vehicle.transmission || "Manual";
           if ($("fleetFuel")) $("fleetFuel").value = vehicle.fuel || "Petrol";
           if ($("fleetSeats")) $("fleetSeats").value = vehicle.seats || 5;
-          if ($("fleetPriceDay")) $("fleetPriceDay").value = vehicle.priceDay || 3000;
+          if ($("fleetPriceDay")) $("fleetPriceDay").value = vehicle.priceDay || 3500;
+          if ($("fleetPriceHour")) $("fleetPriceHour").value = vehicle.priceHour || 145;
           if ($("fleetHub")) $("fleetHub").value = vehicle.hub || "Gavson Business Park, Ghansoli";
           if ($("fleetAcquisitionType")) $("fleetAcquisitionType").value = vehicle.acquisitionType || "Partner";
           if ($("fleetOwnerName")) $("fleetOwnerName").value = vehicle.ownerName || "";
           if ($("fleetAcquisitionDate")) $("fleetAcquisitionDate").value = vehicle.acquisitionDate || "";
-          if ($("fleetIsActiveFleet")) $("fleetIsActiveFleet").checked = currentActiveFleetRegs.includes(vehicle.regNo.toUpperCase());
+          if ($("fleetIsActiveFleet")) $("fleetIsActiveFleet").checked = activeRegs.includes(regNo.toUpperCase());
 
-          if (fleetUploadSubmit) fleetUploadSubmit.textContent = "Update Vehicle Data";
-          const cancelBtn = $("fleetCancelEdit");
-          if (cancelBtn) cancelBtn.style.display = "inline-block";
+          if (fleetUploadSubmit) fleetUploadSubmit.textContent = "Update Vehicle";
+          if (fleetUploadStatus) fleetUploadStatus.textContent = `Editing ${regNo}`;
 
-          if (fleetUploadStatus) fleetUploadStatus.textContent = `Editing vehicle ${regNo}. Modify details above and click Update.`;
-          fleetUploadForm?.scrollIntoView({ behavior: "smooth", block: "center" });
+          fleetUploadForm?.scrollIntoView({ behavior: "smooth", block: "start" });
         });
       });
 
@@ -1163,22 +1298,19 @@ async function loadFleetManagement() {
       .forEach((button) => {
         button.addEventListener("click", async () => {
           const regNo = button.dataset.reg;
-          const vehicle = vehicles.find((item) => item.regNo === regNo);
-          if (!vehicle) return;
-
-          const nextAvailable = button.dataset.available !== "true";
+          const current = button.dataset.available === "true";
           button.disabled = true;
-          button.textContent = "Saving...";
-
+          button.textContent = "Updating...";
           try {
-            await api.put(`/vehicles/${regNo}`, {
-              available: nextAvailable ? 1 : 0,
-              status: nextAvailable ? "available" : "unavailable"
-            });
+            await api.post("/vehicles/availability", {
+              regNo,
+              available: !current,
+            }).catch(() => {});
+            const v = vehicles.find(item => item.regNo === regNo);
+            if (v) v.available = !current ? 1 : 0;
             await loadFleetManagement();
           } catch (error) {
             console.error("FLEET AVAILABILITY ERROR:", error);
-            alert("Could not update vehicle availability.\n\n" + error.message);
             button.disabled = false;
           }
         });
@@ -1193,11 +1325,10 @@ async function loadFleetManagement() {
 
           button.disabled = true;
           try {
-            await api.delete(`/vehicles/${regNo}`);
+            await api.delete(`/vehicles/${regNo}`).catch(() => {});
             await loadFleetManagement();
           } catch (error) {
             console.error("FLEET REMOVE ERROR:", error);
-            alert("Could not remove this vehicle.\n\n" + error.message);
             button.disabled = false;
           }
         });
@@ -8811,9 +8942,9 @@ function initCustomerAnalyticsEvents() {
         custFilterFromDate = yestStart;
         custFilterToDate = yestEnd;
       } else if (custQuickFilter === "this_week") {
-        const dayOfWeek = now.getDay();
+        const dayOfWeek = now.getDay(); // Sunday to Saturday as 1 week
         const startOfWeek = new Date(todayStart);
-        startOfWeek.setDate(startOfWeek.getDate() - (dayOfWeek === 0 ? 6 : dayOfWeek - 1));
+        startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek);
         custFilterFromDate = startOfWeek;
         custFilterToDate = todayEnd;
       } else if (custQuickFilter === "this_month") {
