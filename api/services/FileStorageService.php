@@ -166,6 +166,36 @@ class FileStorageService {
             }
         }
 
+        if (!$filePath && $mediaId) {
+            $cleanRel = str_replace(['../', '..\\'], '', $mediaId);
+            $candidates = [
+                STORAGE_ROOT . '/' . ltrim($cleanRel, '/'),
+                STORAGE_ROOT . '/users/' . ltrim($cleanRel, '/'),
+                STORAGE_ROOT . '/bookings/' . ltrim($cleanRel, '/'),
+                STORAGE_ROOT . '/inspection_photo/' . ltrim($cleanRel, '/'),
+                STORAGE_ROOT . '/invoices/' . ltrim($cleanRel, '/'),
+                STORAGE_ROOT . '/vehicles/' . ltrim($cleanRel, '/'),
+                __DIR__ . '/../../storage/' . ltrim($cleanRel, '/'),
+            ];
+            foreach ($candidates as $cand) {
+                if ($cand && file_exists($cand) && !is_dir($cand)) {
+                    $filePath = $cand;
+                    $originalName = basename($cand);
+                    $ext = strtolower(pathinfo($cand, PATHINFO_EXTENSION));
+                    $mimeType = match($ext) {
+                        'jpg', 'jpeg' => 'image/jpeg',
+                        'png' => 'image/png',
+                        'webp' => 'image/webp',
+                        'gif' => 'image/gif',
+                        'svg' => 'image/svg+xml',
+                        'pdf' => 'application/pdf',
+                        default => 'application/octet-stream'
+                    };
+                    break;
+                }
+            }
+        }
+
         if ($filePath && file_exists($filePath) && !is_dir($filePath)) {
             header('Content-Type: ' . $mimeType);
             header('Content-Length: ' . filesize($filePath));

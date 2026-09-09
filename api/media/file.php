@@ -9,9 +9,9 @@ declare(strict_types=1);
 require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../services/FileStorageService.php';
 
-$mediaId = trim((string)($_GET['id'] ?? $_GET['mediaId'] ?? ''));
+$mediaId = trim((string)($_GET['id'] ?? $_GET['mediaId'] ?? $_GET['path'] ?? ''));
 if (!$mediaId) {
-    sendErrorResponse('Media ID is required.', 400);
+    sendErrorResponse('Media identifier or file path is required.', 400);
 }
 
 $user = Auth::optionalAuth();

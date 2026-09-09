@@ -3,7 +3,7 @@
  * 
  * Accounts & Financial Verification Console:
  * - Payment Audit Queue (UPI & Bank Transfers)
- * - Verifier Selection (Ayan Chougle, Omkar Tapshale, Rahul Sharma)
+ * - Verifier Selection 
  * - Image & Screenshot Proof Preview
  * - Invoice Generation & Verification Tracking
  */
