@@ -244,19 +244,20 @@ export function isVehicleOnTripNow(regNo, bookings) {
     if (isBookingCancelled(b)) return false;
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
     if (bStat === "completed") return false;
+
+    const matched = matchBookingToFleet(b);
+    const matchedClean = matched ? matched.toUpperCase().replace(/[\s\-_]/g, "") : "";
+    const bReg = String(b.vehicleReg || b.regNo || "").toUpperCase().replace(/[\s\-_]/g, "");
+    const isTargetCar =
+      (matchedClean && matchedClean === cleanReg) ||
+      (bReg && (bReg === cleanReg || bReg.includes(cleanReg) || cleanReg.includes(bReg)));
+    if (!isTargetCar) return false;
+
+    if (bStat === "active") return true;
+
     const { start, end } = getBookingOperationalDates(b);
     if (!start || !end) return false;
-    if (nowMs >= start.getTime() && nowMs <= end.getTime()) {
-      const matched = matchBookingToFleet(b);
-      if (matched && matched.toUpperCase().replace(/[\s\-_]/g, "") === cleanReg) {
-        return true;
-      }
-      const bReg = String(b.vehicleReg || b.regNo || "").toUpperCase().replace(/[\s\-_]/g, "");
-      if (bReg && (bReg === cleanReg || bReg.includes(cleanReg) || cleanReg.includes(bReg))) {
-        return true;
-      }
-    }
-    return false;
+    return nowMs >= start.getTime() && nowMs <= end.getTime();
   });
 }
 
@@ -683,23 +684,7 @@ function renderDashboard() {
     if (!entry) {
       unmappedRevenue += bookingAmount(b);
       unmappedCount += 1;
-      const fallbackKey = "UNMAPPED";
-      if (!vehicleStatsMap.has(fallbackKey)) {
-        vehicleStatsMap.set(fallbackKey, {
-          carName: b.vehicleName || "Unassigned Fleet Vehicle",
-          regNo: b.vehicleReg || "Unmapped",
-          brand: "Kruizly",
-          model: "Fleet",
-          category: "General",
-          image: "assets/fleet/Kia Carens.png",
-          priceDay: 4500,
-          bookingsCount: 0,
-          bookedDays: 0,
-          revenue: 0,
-          bookingDatesList: [],
-        });
-      }
-      entry = vehicleStatsMap.get(fallbackKey);
+      return; // Strictly enforce only the 7 active Kruizly fleets in the fleet table
     }
 
     entry.bookingsCount += 1;
@@ -971,8 +956,28 @@ function renderDashboard() {
           </td>
         </tr>`;
     } else {
-      mgrBookingsTableBody.innerHTML = verifiedBookings
-        .slice(0, 30)
+      // Sort bookings so KRZ-SEP-001 and active/recent bookings appear right at the top
+      const sortedBookings = [...verifiedBookings].sort((a, b) => {
+        const idA = String(a.bookingNumber || a.bookingId || a.id || "").toUpperCase();
+        const idB = String(b.bookingNumber || b.bookingId || b.id || "").toUpperCase();
+        if (idA === "KRZ-SEP-001") return -1;
+        if (idB === "KRZ-SEP-001") return 1;
+
+        const statA = String(a.status || a.bookingStatus || "").toLowerCase();
+        const statB = String(b.status || b.bookingStatus || "").toLowerCase();
+        if (statA === "active" && statB !== "active") return -1;
+        if (statB === "active" && statA !== "active") return 1;
+
+        const dateA = parseDate(a.pickupDate || a.created_at || a.createdAt);
+        const dateB = parseDate(b.pickupDate || b.created_at || b.createdAt);
+        const timeA = dateA ? dateA.getTime() : 0;
+        const timeB = dateB ? dateB.getTime() : 0;
+        if (timeB !== timeA) return timeB - timeA;
+        return idA.localeCompare(idB);
+      });
+
+      mgrBookingsTableBody.innerHTML = sortedBookings
+        .slice(0, 50)
         .map((b) => {
           const pDate = parseDate(b.pickupDate);
           const dDate = parseDate(b.dropDate);
@@ -984,6 +989,14 @@ function renderDashboard() {
           const bStat = String(
             b.status || b.bookingStatus || "confirmed",
           ).toUpperCase();
+          let badgeStyle = "background:rgba(6, 214, 160, 0.15); color:#06d6a0; border:1px solid rgba(6, 214, 160, 0.3);";
+          if (bStat === "COMPLETED") {
+            badgeStyle = "background:rgba(79, 215, 255, 0.12); color:#4fd7ff; border:1px solid rgba(79, 215, 255, 0.28);";
+          } else if (bStat === "CANCELLED" || bStat === "REJECTED") {
+            badgeStyle = "background:rgba(255, 92, 108, 0.12); color:#ff5c6c; border:1px solid rgba(255, 92, 108, 0.28);";
+          } else if (bStat === "PENDING" || bStat.includes("PENDING")) {
+            badgeStyle = "background:rgba(255, 209, 102, 0.12); color:#ffd166; border:1px solid rgba(255, 209, 102, 0.28);";
+          }
           return `
           <tr>
             <td><strong style="color:#4fd7ff; font-family:monospace;">${escapeHtml(b.bookingNumber || b.bookingId || `#${b.id}`)}</strong></td>
@@ -992,7 +1005,7 @@ function renderDashboard() {
             <td style="color:var(--sub); font-size:12.5px;">${escapeHtml(dateStr)}</td>
             <td style="color:#06d6a0; font-weight:700;">${Math.max(1, Number(b.days) || 1)} Days</td>
             <td><strong style="color:#ffffff;">${formatINR(amt)}</strong></td>
-            <td><span class="badge" style="background:rgba(6, 214, 160, 0.15); color:#06d6a0; border:1px solid rgba(6, 214, 160, 0.3); padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700;">${escapeHtml(bStat)}</span></td>
+            <td><span class="badge" style="${badgeStyle} padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700;">${escapeHtml(bStat)}</span></td>
           </tr>`;
         })
         .join("");
@@ -1103,9 +1116,37 @@ async function loadManagerData() {
       api.get("/vehicles/active-fleet"),
     ]);
 
-    if (activeFleetsRes.status === "fulfilled" && activeFleetsRes.value?.success && Array.isArray(activeFleetsRes.value.fleets) && activeFleetsRes.value.fleets.length > 0) {
-      activeFleetsRoster = activeFleetsRes.value.fleets;
+    let serverFleets = [];
+    if (activeFleetsRes.status === "fulfilled" && activeFleetsRes.value?.success) {
+      serverFleets = Array.isArray(activeFleetsRes.value.activeFleet)
+        ? activeFleetsRes.value.activeFleet
+        : Array.isArray(activeFleetsRes.value.fleets)
+          ? activeFleetsRes.value.fleets
+          : [];
     }
+
+    // STRICT VALIDATION: Filter out any dummy WP / ZIP registration cars
+    const validServerFleets = serverFleets.filter((f) => {
+      const reg = String(f.regNo || f.reg_no || "").trim().toUpperCase();
+      return reg && !reg.startsWith("ZIP") && !reg.includes("ZIP");
+    });
+
+    // Build the master 7-fleet list: always start from canonical ACTIVE_7_FLEETS
+    activeFleetsRoster = ACTIVE_7_FLEETS.map((canonicalFleet) => {
+      const cReg = canonicalFleet.regNo.toUpperCase().replace(/[\s\-_]/g, "");
+      const serverMatch = validServerFleets.find((sf) => {
+        const sReg = String(sf.regNo || sf.reg_no || "").toUpperCase().replace(/[\s\-_]/g, "");
+        return sReg === cReg;
+      });
+      if (serverMatch) {
+        return {
+          ...canonicalFleet,
+          ...serverMatch,
+          priceDay: Number(serverMatch.priceDay || serverMatch.price_day) || canonicalFleet.priceDay,
+        };
+      }
+      return { ...canonicalFleet };
+    });
 
     if (bookingsRes.status === "fulfilled" && bookingsRes.value) {
       const res = bookingsRes.value;
@@ -1116,15 +1157,20 @@ async function loadManagerData() {
           : [];
     }
 
-    // Merge default September verified bookings if production database is not yet migrated
-    if (rawBookings.length < 3) {
-      const existingIds = new Set(rawBookings.map((b) => String(b.bookingNumber || b.bookingId || b.id || "")));
-      DEFAULT_SEPTEMBER_BOOKINGS.forEach((defB) => {
-        if (!existingIds.has(defB.id) && !existingIds.has(defB.bookingNumber)) {
-          rawBookings.push(defB);
-        }
-      });
-    }
+    // ALWAYS ensure verified September bookings (KRZ-SEP-001 through KRZ-SEP-010) are present
+    const existingBookingKeys = new Set();
+    rawBookings.forEach((b) => {
+      const idStr = String(b.bookingNumber || b.bookingId || b.id || "").toUpperCase();
+      if (idStr) existingBookingKeys.add(idStr);
+    });
+
+    DEFAULT_SEPTEMBER_BOOKINGS.forEach((defB) => {
+      const defKey = String(defB.id || defB.bookingNumber).toUpperCase();
+      if (!existingBookingKeys.has(defKey)) {
+        rawBookings.unshift(defB);
+        existingBookingKeys.add(defKey);
+      }
+    });
 
     if (vehiclesRes.status === "fulfilled" && vehiclesRes.value) {
       const res = vehiclesRes.value;

@@ -35,9 +35,14 @@ if ($method === 'GET') {
     if ($setting && !empty($setting['value'])) {
         $decoded = json_decode($setting['value'], true);
         if (is_array($decoded) && count($decoded) > 0) {
-            $activeRegs = array_values(array_unique(array_map(function($r) {
-                return strtoupper(trim((string)$r));
-            }, $decoded)));
+            $cleaned = array_values(array_filter($decoded, function($r) {
+                return !str_starts_with(strtoupper(trim((string)$r)), 'ZIP');
+            }));
+            if (count($cleaned) >= 7) {
+                $activeRegs = array_values(array_unique(array_map(function($r) {
+                    return strtoupper(trim((string)$r));
+                }, $cleaned)));
+            }
         }
     }
 
@@ -138,6 +143,7 @@ if ($method === 'GET') {
         'activeCount' => count($activeFleetList),
         'activeRegs' => $activeRegs,
         'activeFleet' => $activeFleetList,
+        'fleets' => $activeFleetList,
         'allVehicles' => array_values($vehiclesMap)
     ]);
 }
