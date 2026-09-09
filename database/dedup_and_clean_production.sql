@@ -10,28 +10,21 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';
 
-START TRANSACTION;
-
 -- ------------------------------------------------------------
--- 1. DEDUPLICATE VEHICLES (Keep lowest ID per reg_no / car_id)
+-- 1. DEDUPLICATE VEHICLES & ADD UNIQUE KEY
 -- ------------------------------------------------------------
 DELETE v1 FROM `vehicles` v1
 INNER JOIN `vehicles` v2 
 WHERE v1.id > v2.id 
-  AND v1.reg_no = v2.reg_no 
-  AND v1.reg_no IS NOT NULL 
-  AND v1.reg_no != '' 
-  AND v1.reg_no != 'TBD';
+  AND (
+    (v1.reg_no = v2.reg_no AND v1.reg_no IS NOT NULL AND v1.reg_no != '' AND v1.reg_no != 'TBD')
+    OR (v1.car_id = v2.car_id AND v1.car_id IS NOT NULL AND v1.car_id != '')
+  );
 
-DELETE v1 FROM `vehicles` v1
-INNER JOIN `vehicles` v2 
-WHERE v1.id > v2.id 
-  AND v1.car_id = v2.car_id 
-  AND v1.car_id IS NOT NULL 
-  AND v1.car_id != '';
+ALTER TABLE `vehicles` ADD UNIQUE KEY `uniq_vehicle_reg` (`reg_no`);
 
 -- ------------------------------------------------------------
--- 2. DEDUPLICATE USERS (Keep lowest ID per firebase_uid)
+-- 2. DEDUPLICATE USERS & ADD UNIQUE KEY
 -- ------------------------------------------------------------
 DELETE u1 FROM `users` u1
 INNER JOIN `users` u2 
@@ -39,6 +32,8 @@ WHERE u1.id > u2.id
   AND u1.firebase_uid = u2.firebase_uid 
   AND u1.firebase_uid IS NOT NULL 
   AND u1.firebase_uid != '';
+
+ALTER TABLE `users` ADD UNIQUE KEY `uniq_user_firebase_uid` (`firebase_uid`);
 
 -- ------------------------------------------------------------
 -- 3. DEDUPLICATE ADMIN USERS
@@ -52,7 +47,7 @@ WHERE a1.id > a2.id
   );
 
 -- ------------------------------------------------------------
--- 4. DEDUPLICATE BOOKINGS (Keep lowest ID per booking_id / booking_number)
+-- 4. DEDUPLICATE BOOKINGS & ADD UNIQUE KEY
 -- ------------------------------------------------------------
 DELETE b1 FROM `bookings` b1
 INNER JOIN `bookings` b2 
@@ -63,8 +58,10 @@ WHERE b1.id > b2.id
     OR (REPLACE(b1.booking_id, '#', '') = REPLACE(b2.booking_id, '#', '') AND b1.booking_id IS NOT NULL AND b1.booking_id != '')
   );
 
+ALTER TABLE `bookings` ADD UNIQUE KEY `uniq_booking_ref` (`booking_id`);
+
 -- ------------------------------------------------------------
--- 5. DEDUPLICATE PAYMENTS (Keep lowest ID per payment_id)
+-- 5. DEDUPLICATE PAYMENTS & ADD UNIQUE KEY
 -- ------------------------------------------------------------
 DELETE p1 FROM `payments` p1
 INNER JOIN `payments` p2 
@@ -74,8 +71,10 @@ WHERE p1.id > p2.id
     OR (p1.booking_id = p2.booking_id AND p1.amount = p2.amount AND p1.booking_id IS NOT NULL AND p1.booking_id != '')
   );
 
+ALTER TABLE `payments` ADD UNIQUE KEY `uniq_payment_id` (`payment_id`);
+
 -- ------------------------------------------------------------
--- 6. DEDUPLICATE COUPONS (Keep lowest ID per code)
+-- 6. DEDUPLICATE COUPONS & ADD UNIQUE KEY
 -- ------------------------------------------------------------
 DELETE c1 FROM `coupons` c1
 INNER JOIN `coupons` c2 
@@ -84,15 +83,6 @@ WHERE c1.id > c2.id
   AND c1.code IS NOT NULL 
   AND c1.code != '';
 
-COMMIT;
-
--- ------------------------------------------------------------
--- 7. ADD UNIQUE CONSTRAINTS (Guarantees no future duplicates)
--- ------------------------------------------------------------
-ALTER TABLE `vehicles` ADD UNIQUE KEY `uniq_vehicle_reg` (`reg_no`);
-ALTER TABLE `users` ADD UNIQUE KEY `uniq_user_firebase_uid` (`firebase_uid`);
-ALTER TABLE `bookings` ADD UNIQUE KEY `uniq_booking_ref` (`booking_id`);
-ALTER TABLE `payments` ADD UNIQUE KEY `uniq_payment_id` (`payment_id`);
 ALTER TABLE `coupons` ADD UNIQUE KEY `uniq_coupon_code` (`code`);
 
 SET FOREIGN_KEY_CHECKS = 1;
