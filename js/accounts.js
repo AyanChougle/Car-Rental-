@@ -257,7 +257,7 @@ function renderPaymentsTable() {
     const statusClass = isVerified ? "verified" : isRejected ? "rejected" : "pending";
     const statusLabel = isVerified ? "VERIFIED" : isRejected ? "REJECTED" : "PENDING";
     const targetBid = p.bookingId || p.id || p.bookingNumber;
-    const verifierName = p.verifiedBy || p.verified_by || (isVerified ? "Ayan Chougle" : "—");
+    const verifierName = p.verifiedBy || p.verified_by || (isVerified ? "—" : "—");
 
     html += `
       <tr style="border-bottom:1px solid rgba(255,255,255,.06); font-size:13.5px;">
@@ -359,7 +359,7 @@ function openReviewModal(p) {
 async function handleApprovePayment() {
   if (!activePaymentItem) return;
   const targetId = activePaymentItem.bookingId || activePaymentItem.id || activePaymentItem.bookingNumber;
-  const verifierName = $("accountsVerifierSelect")?.value || "Ayan Chougle";
+  const verifierName = $("accountsVerifierSelect")?.value || (currentUser?.name) || "Admin";
 
   const btn = $("accountsApproveBtn");
   if (btn) btn.disabled = true;
@@ -383,7 +383,7 @@ async function handleApprovePayment() {
 async function handleRejectPayment() {
   if (!activePaymentItem) return;
   const targetId = activePaymentItem.bookingId || activePaymentItem.id || activePaymentItem.bookingNumber;
-  const verifierName = $("accountsVerifierSelect")?.value || "Ayan Chougle";
+  const verifierName = $("accountsVerifierSelect")?.value || (currentUser?.name) || "Admin";
   const reasonWrap = $("accountsRejectionReasonWrap");
 
   if (reasonWrap && reasonWrap.style.display === "none") {
