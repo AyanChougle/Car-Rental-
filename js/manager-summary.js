@@ -1220,11 +1220,13 @@ function setQuickFilter(type) {
     filterFromDate = yestStart;
     filterToDate = yestEnd;
   } else if (type === "this_week") {
-    const dayOfWeek = now.getDay(); // 0 is Sunday (Sunday to Saturday week)
+    const dayOfWeek = now.getDay(); // 0 is Sunday, 6 is Saturday (Sunday to Saturday week)
     const startOfWeek = new Date(todayStart);
     startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek);
+    const endOfWeek = new Date(todayEnd);
+    endOfWeek.setDate(endOfWeek.getDate() + (6 - dayOfWeek));
     filterFromDate = startOfWeek;
-    filterToDate = todayEnd;
+    filterToDate = endOfWeek;
   } else if (type === "this_month") {
     filterFromDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
     filterToDate = todayEnd; // Till date (1st of month till today)
@@ -1358,8 +1360,9 @@ function renderDashboard() {
   );
 
   // KPI 1: TOTAL REVENUE
-  // Default to all-time verified revenue till now. When date filter is selected, show period revenue.
-  const totalRevenue = isAllTime ? allTimeRevenue : periodRevenue;
+  // User requirement: "total revenue says overall revenue"
+  // Displays overall revenue all-time till now across all bookings
+  const totalRevenue = allTimeRevenue;
   const kpiTotalRevenueEl = document.getElementById("kpiTotalRevenue");
   if (kpiTotalRevenueEl)
     kpiTotalRevenueEl.textContent = formatINR(totalRevenue);
@@ -1401,10 +1404,9 @@ function renderDashboard() {
     kpiCompletedTripsEl.textContent = String(completedTripsCount);
 
   // KPI 4: REVENUE THIS MONTH / PERIOD BENCHMARK
+  // User requirement: "and montly revenue give monthly reveune"
   let monthRevenue = 0;
-  if (activeQuickFilter === "this_month") {
-    monthRevenue = periodRevenue;
-  } else if (!isAllTime) {
+  if (!isAllTime) {
     monthRevenue = periodRevenue;
   } else {
     const curMonthStart = new Date(
@@ -1418,8 +1420,8 @@ function renderDashboard() {
     );
     const curMonthEnd = new Date(
       now.getFullYear(),
-      now.getMonth() + 1,
-      0,
+      now.getMonth(),
+      now.getDate(),
       23,
       59,
       59,
@@ -1438,10 +1440,8 @@ function renderDashboard() {
     kpiRevenueThisMonthEl.textContent = formatINR(monthRevenue);
 
   // KPI 5: TOTAL BOOKINGS
-  // Formula: Total valid non-cancelled bookings in dataset (or all-time when viewing All Time)
-  const totalBookingsCount = isAllTime
-    ? rawBookings.filter((b) => !isBookingCancelled(b)).length
-    : validPeriodBookings.length;
+  // User requirement: "total bookings give overall booking till date"
+  const totalBookingsCount = rawBookings.filter((b) => !isBookingCancelled(b)).length;
   const kpiTotalBookingsEl = document.getElementById("kpiTotalBookings");
   if (kpiTotalBookingsEl)
     kpiTotalBookingsEl.textContent = String(totalBookingsCount);
@@ -1613,50 +1613,90 @@ function renderDashboard() {
   // ============================================================
   // SALES PERFORMANCE CARDS
   // ============================================================
-  // Adapts dynamically: when a date range is selected, calculates for that period;
-  // when All Time / default, calculates for today, current week, and current month.
-  const targetDate = filterToDate ? new Date(filterToDate) : new Date(now);
+  // User specifications:
+  // - Day Sales: gives per day sales; if filter applied, gives in those date range
+  // - Week Sales: gives per week sales; week goes in Sunday to Saturday; if filter applied, gives in those date range
+  // - Month Sales: gives per monthly sales till present date; if filter applies, the range changes and gives as per range
+  // - Overall Sales: gives whole sales from the start to end
 
   // 1. Day Sales
-  const dayStart = new Date(
-    targetDate.getFullYear(),
-    targetDate.getMonth(),
-    targetDate.getDate(),
-    0, 0, 0, 0,
-  );
-  const dayEnd = new Date(
-    targetDate.getFullYear(),
-    targetDate.getMonth(),
-    targetDate.getDate(),
-    23, 59, 59, 999,
-  );
-  const daySales = rawBookings
-    .filter((b) => {
-      if (!isVerifiedRevenue(b)) return false;
-      const sDate = getBookingSaleDate(b);
-      return sDate && sDate >= dayStart && sDate <= dayEnd;
-    })
-    .reduce((sum, b) => sum + bookingAmount(b), 0);
-
-  // 2. Week Sales: revenue for the active/selected week
-  let weekSales = 0;
+  let daySales = 0;
   if (filterFromDate && filterToDate) {
-    const targetDayOfWeek = targetDate.getDay();
-    const selWeekStart = new Date(
-      targetDate.getFullYear(),
-      targetDate.getMonth(),
-      targetDate.getDate() - targetDayOfWeek,
+    const isSingleDay =
+      filterFromDate.getFullYear() === filterToDate.getFullYear() &&
+      filterFromDate.getMonth() === filterToDate.getMonth() &&
+      filterFromDate.getDate() === filterToDate.getDate();
+
+    if (isSingleDay) {
+      daySales = rawBookings
+        .filter((b) => {
+          if (!isVerifiedRevenue(b)) return false;
+          const sDate = getBookingSaleDate(b);
+          return (
+            sDate &&
+            sDate >= filterFromDate &&
+            sDate <= filterToDate
+          );
+        })
+        .reduce((sum, b) => sum + bookingAmount(b), 0);
+    } else {
+      // When a date range filter is applied, give sales in that date range
+      daySales = periodRevenue;
+    }
+  } else {
+    // Default / All Time: Today's sales (00:00:00 to 23:59:59)
+    const todayStart = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
       0, 0, 0, 0,
     );
-    const selWeekEnd = dayEnd;
+    const todayEnd = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23, 59, 59, 999,
+    );
+    daySales = rawBookings
+      .filter((b) => {
+        if (!isVerifiedRevenue(b)) return false;
+        const sDate = getBookingSaleDate(b);
+        return sDate && sDate >= todayStart && sDate <= todayEnd;
+      })
+      .reduce((sum, b) => sum + bookingAmount(b), 0);
+  }
+
+  // 2. Week Sales: "week goes in sunday to saturday"
+  let weekSales = 0;
+  if (filterFromDate && filterToDate) {
+    // When filter applied: sales in that date range aligned with Sunday-to-Saturday week
+    const dRef = new Date(filterToDate);
+    const dow = dRef.getDay(); // 0 is Sunday, 6 is Saturday
+    const rangeSun = new Date(
+      dRef.getFullYear(),
+      dRef.getMonth(),
+      dRef.getDate() - dow,
+      0, 0, 0, 0,
+    );
+    const rangeSat = new Date(
+      dRef.getFullYear(),
+      dRef.getMonth(),
+      dRef.getDate() + (6 - dow),
+      23, 59, 59, 999,
+    );
+
+    const wStart = filterFromDate > rangeSun ? filterFromDate : rangeSun;
+    const wEnd = filterToDate < rangeSat ? filterToDate : rangeSat;
+
     weekSales = rawBookings
       .filter((b) => {
         if (!isVerifiedRevenue(b)) return false;
         const sDate = getBookingSaleDate(b);
-        return sDate && sDate >= selWeekStart && sDate <= selWeekEnd;
+        return sDate && sDate >= wStart && sDate <= wEnd;
       })
       .reduce((sum, b) => sum + bookingAmount(b), 0);
   } else {
+    // Default / All Time: Current calendar week Sunday to Saturday
     const dayOfWeek = now.getDay();
     const sunOfWeek = new Date(
       now.getFullYear(),
@@ -1664,54 +1704,50 @@ function renderDashboard() {
       now.getDate() - dayOfWeek,
       0, 0, 0, 0,
     );
+    const satOfWeek = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + (6 - dayOfWeek),
+      23, 59, 59, 999,
+    );
     weekSales = rawBookings
       .filter((b) => {
         if (!isVerifiedRevenue(b)) return false;
         const sDate = getBookingSaleDate(b);
-        return sDate && sDate >= sunOfWeek && sDate <= dayEnd;
+        return sDate && sDate >= sunOfWeek && sDate <= satOfWeek;
       })
       .reduce((sum, b) => sum + bookingAmount(b), 0);
   }
 
-  // 3. Month Sales: revenue for the active/selected calendar month
+  // 3. Month Sales: "month sales goes in per monthly sales till present date if filter applies the range changes and give as per range"
   let monthSales = 0;
   if (filterFromDate && filterToDate) {
-    const selMonthStart = new Date(
-      targetDate.getFullYear(),
-      targetDate.getMonth(),
-      1,
-      0, 0, 0, 0,
-    );
-    const selMonthEnd = new Date(
-      targetDate.getFullYear(),
-      targetDate.getMonth() + 1,
-      0,
-      23, 59, 59, 999,
-    );
-    monthSales = rawBookings
-      .filter((b) => {
-        if (!isVerifiedRevenue(b)) return false;
-        const sDate = getBookingSaleDate(b);
-        return sDate && sDate >= selMonthStart && sDate <= selMonthEnd;
-      })
-      .reduce((sum, b) => sum + bookingAmount(b), 0);
+    // Range changes and gives as per range
+    monthSales = periodRevenue;
   } else {
+    // Per monthly sales till present date (1st of month to today 23:59:59)
     const startOfMonth = new Date(
       now.getFullYear(),
       now.getMonth(),
       1,
       0, 0, 0, 0,
     );
+    const todayEnd = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      23, 59, 59, 999,
+    );
     monthSales = rawBookings
       .filter((b) => {
         if (!isVerifiedRevenue(b)) return false;
         const sDate = getBookingSaleDate(b);
-        return sDate && sDate >= startOfMonth && sDate <= dayEnd;
+        return sDate && sDate >= startOfMonth && sDate <= todayEnd;
       })
       .reduce((sum, b) => sum + bookingAmount(b), 0);
   }
 
-  // 4. Overall Sales: Cumulative total verified sales money all-time till now
+  // 4. Overall Sales: "overall sales gives whole sales from the start to end"
   const overallSales = allTimeRevenue;
 
   document.getElementById("salesDay") &&
