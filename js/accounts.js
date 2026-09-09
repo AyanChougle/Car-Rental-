@@ -233,24 +233,24 @@ function renderPaymentsTable() {
   }
 
   let html = `
-    <table class="manager-table" style="width:100%; min-width:980px; border-collapse:collapse;">
+    <table class="manager-table accounts-table" style="width:100%; min-width:920px; border-collapse:collapse;">
       <thead>
         <tr style="border-bottom:1px solid var(--line); color:var(--sub); font-size:12px; text-transform:uppercase;">
-          <th style="padding:12px;">Date</th>
-          <th style="padding:12px;">Booking ID</th>
-          <th style="padding:12px;">Customer</th>
-          <th style="padding:12px;">Vehicle</th>
-          <th style="padding:12px;">Amount</th>
-          <th style="padding:12px;">Method / UTR</th>
-          <th style="padding:12px;">Verified By</th>
-          <th style="padding:12px;">Status</th>
-          <th style="padding:12px 16px; text-align:right; min-width:160px;">Action</th>
+          <th style="padding:12px 10px;">Date</th>
+          <th style="padding:12px 10px;">Booking ID</th>
+          <th style="padding:12px 10px;">Customer</th>
+          <th style="padding:12px 10px;">Vehicle</th>
+          <th style="padding:12px 10px;">Amount</th>
+          <th style="padding:12px 10px;">Method / UTR</th>
+          <th style="padding:12px 10px;">Verified By</th>
+          <th style="padding:12px 10px;">Status</th>
+          <th class="col-action">Action</th>
         </tr>
       </thead>
       <tbody>
   `;
 
-  filtered.forEach((p) => {
+  filtered.forEach((p, idx) => {
     const rawStatus = String(p.status || "").toLowerCase();
     const isVerified = ["verified", "approved", "paid"].includes(rawStatus);
     const isRejected = ["rejected", "failed", "cancelled"].includes(rawStatus);
@@ -261,28 +261,28 @@ function renderPaymentsTable() {
 
     html += `
       <tr style="border-bottom:1px solid rgba(255,255,255,.06); font-size:13.5px;">
-        <td style="padding:12px; color:var(--sub); white-space:nowrap;">${escapeHtml(formatDate(p.createdAt))}</td>
-        <td style="padding:12px; font-family:monospace; font-weight:700; color:var(--accent); white-space:nowrap;">#${escapeHtml(targetBid)}</td>
-        <td style="padding:12px;">
+        <td style="padding:12px 10px; color:var(--sub); white-space:nowrap;">${escapeHtml(formatDate(p.createdAt))}</td>
+        <td style="padding:12px 10px; font-family:monospace; font-weight:700; color:var(--accent); white-space:nowrap;">#${escapeHtml(targetBid)}</td>
+        <td style="padding:12px 10px;">
           <strong style="color:#fff;">${escapeHtml(p.userName || "Customer")}</strong><br/>
           <small style="color:#4fd7ff; font-size:12px;">${escapeHtml(p.userEmail || "")}</small>
           ${p.userPhone ? `<br/><small style="color:var(--sub); font-size:11.5px;">${escapeHtml(p.userPhone)}</small>` : ""}
         </td>
-        <td style="padding:12px;">
+        <td style="padding:12px 10px;">
           <strong>${escapeHtml(p.vehicleName || "Vehicle")}</strong>
           ${p.vehicleReg ? `<br/><small style="color:var(--sub); font-family:monospace;">${escapeHtml(p.vehicleReg)}</small>` : ""}
         </td>
-        <td style="padding:12px; font-weight:700; color:#fff; white-space:nowrap;">${formatMoney(p.amount)}</td>
-        <td style="padding:12px; font-family:monospace;">
+        <td style="padding:12px 10px; font-weight:700; color:#fff; white-space:nowrap;">${formatMoney(p.amount)}</td>
+        <td style="padding:12px 10px; font-family:monospace;">
           <span style="font-size:11px; text-transform:uppercase; background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px;">${escapeHtml(p.method || "UPI")}</span><br/>
           ${escapeHtml(p.utr || p.paymentRef || "No UTR")}
         </td>
-        <td style="padding:12px; color:var(--kr-cyan); font-weight:600; white-space:nowrap;">${escapeHtml(verifierName)}</td>
-        <td style="padding:12px; white-space:nowrap;">
+        <td style="padding:12px 10px; color:var(--kr-cyan); font-weight:600; white-space:nowrap;">${escapeHtml(verifierName)}</td>
+        <td style="padding:12px 10px; white-space:nowrap;">
           <span class="status-pill ${statusClass}">${escapeHtml(statusLabel)}</span>
         </td>
-        <td style="padding:12px 16px; text-align:right; white-space:nowrap; min-width:160px;">
-          <button type="button" class="accounts-audit-btn ${isVerified ? "is-verified" : isRejected ? "is-rejected" : ""} open-payment-modal-btn" data-pid="${escapeHtml(targetBid)}">
+        <td class="col-action">
+          <button type="button" class="accounts-audit-btn ${isVerified ? "is-verified" : isRejected ? "is-rejected" : ""} open-payment-modal-btn" data-idx="${idx}" data-pid="${escapeHtml(targetBid)}">
             ${isVerified ? "Review Receipt" : isRejected ? "View Rejection" : "Audit Payment"}
           </button>
         </td>
@@ -295,9 +295,16 @@ function renderPaymentsTable() {
 
   wrap.querySelectorAll(".open-payment-modal-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.idx);
       const pid = btn.dataset.pid;
-      const item = allPayments.find((p) => String(p.bookingId || p.id || p.bookingNumber) === String(pid));
-      if (item) openReviewModal(item);
+      const item = (!Number.isNaN(idx) && filtered[idx])
+        ? filtered[idx]
+        : allPayments.find((p) => String(p.bookingId || p.id || p.bookingNumber || p.paymentId) === String(pid));
+      if (item) {
+        openReviewModal(item);
+      } else {
+        console.warn("Could not find payment item for pid:", pid);
+      }
     });
   });
 }

@@ -16,6 +16,11 @@
     <link rel="stylesheet" href="css/executive.css?v=20260907-v4" />
     <link rel="stylesheet" href="css/kruizly-motion.css?v=20260907-v4" />
     <style>
+      .accounts-table-wrap {
+        width: 100%;
+        overflow-x: auto;
+        position: relative;
+      }
       .accounts-audit-btn {
         display: inline-flex !important;
         align-items: center !important;
@@ -23,47 +28,58 @@
         height: 34px !important;
         min-height: 34px !important;
         padding: 0 16px !important;
-        font-size: 12px !important;
+        font-size: 12.5px !important;
         font-weight: 700 !important;
-        letter-spacing: 0.02em !important;
-        border-radius: 9999px !important;
-        background: rgba(79, 215, 255, 0.15) !important;
-        border: 1px solid rgba(79, 215, 255, 0.45) !important;
-        color: #4fd7ff !important;
+        border-radius: 8px !important;
+        background: #4fd7ff !important;
+        color: #041017 !important;
+        border: 1px solid #4fd7ff !important;
         cursor: pointer !important;
         white-space: nowrap !important;
-        box-shadow: none !important;
-        transform: none !important;
+        box-shadow: 0 2px 10px rgba(79, 215, 255, 0.25) !important;
         transition: all 0.2s ease !important;
         text-decoration: none !important;
       }
       .accounts-audit-btn:hover {
-        background: #4fd7ff !important;
+        background: #38c4ed !important;
         color: #041017 !important;
-        border-color: #4fd7ff !important;
-        box-shadow: 0 0 16px rgba(79, 215, 255, 0.35) !important;
+        border-color: #38c4ed !important;
+        box-shadow: 0 4px 18px rgba(79, 215, 255, 0.45) !important;
         transform: translateY(-1px) !important;
       }
       .accounts-audit-btn.is-verified {
-        background: rgba(6, 214, 160, 0.12) !important;
-        border-color: rgba(6, 214, 160, 0.35) !important;
+        background: rgba(6, 214, 160, 0.15) !important;
+        border: 1px solid rgba(6, 214, 160, 0.45) !important;
         color: #06d6a0 !important;
+        box-shadow: none !important;
       }
       .accounts-audit-btn.is-verified:hover {
         background: #06d6a0 !important;
         color: #041017 !important;
         border-color: #06d6a0 !important;
-        box-shadow: 0 0 16px rgba(6, 214, 160, 0.35) !important;
       }
       .accounts-audit-btn.is-rejected {
-        background: rgba(239, 71, 111, 0.12) !important;
-        border-color: rgba(239, 71, 111, 0.35) !important;
+        background: rgba(239, 71, 111, 0.15) !important;
+        border: 1px solid rgba(239, 71, 111, 0.45) !important;
         color: #ef476f !important;
+        box-shadow: none !important;
       }
       .accounts-audit-btn.is-rejected:hover {
         background: #ef476f !important;
         color: #ffffff !important;
         border-color: #ef476f !important;
+      }
+      /* Sticky Action column so button is never cut off or clipped */
+      .accounts-table th.col-action,
+      .accounts-table td.col-action {
+        position: sticky;
+        right: 0;
+        background: #111a24 !important;
+        z-index: 2;
+        box-shadow: -6px 0 14px rgba(0,0,0,0.4);
+        text-align: center !important;
+        padding: 12px 18px !important;
+        min-width: 145px !important;
       }
     </style>
   </head>
@@ -205,9 +221,9 @@
       </div>
     </div>
 
-    <script src="js/vehicles.js?v=20260907-v10"></script>
-    <script type="module" src="js/accounts.js?v=20260908-v6"></script>
-    <script src="js/glass-ui.js?v=20260907-v4"></script>
-    <script src="js/kruizly-motion.js?v=20260907-v4"></script>
+    <script src="js/vehicles.js?v=20260909-v8"></script>
+    <script type="module" src="js/accounts.js?v=20260909-v8"></script>
+    <script src="js/glass-ui.js?v=20260909-v8"></script>
+    <script src="js/kruizly-motion.js?v=20260909-v8"></script>
   </body>
 </html>
