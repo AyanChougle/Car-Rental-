@@ -925,7 +925,6 @@ export function matchBookingToFleet(b) {
 }
 
 export function isVehicleOnTripNow(regNo, bookings) {
-  const nowMs = Date.now();
   const cleanReg = String(regNo || "")
     .trim()
     .toUpperCase()
@@ -933,7 +932,7 @@ export function isVehicleOnTripNow(regNo, bookings) {
   return bookings.some((b) => {
     if (isBookingCancelled(b)) return false;
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (bStat === "completed") return false;
+    if (bStat === "completed" || bStat === "cancelled" || bStat === "rejected") return false;
 
     const matched = matchBookingToFleet(b);
     const matchedClean = matched
@@ -950,11 +949,13 @@ export function isVehicleOnTripNow(regNo, bookings) {
           cleanReg.includes(bReg)));
     if (!isTargetCar) return false;
 
-    if (bStat === "active") return true;
-
-    const { start, end } = getBookingOperationalDates(b);
-    if (!start || !end) return false;
-    return nowMs >= start.getTime() && nowMs <= end.getTime();
+    // A vehicle is strictly on trip only if executive has handed it over / marked active
+    const isPickedUp = bStat === "active" || 
+                       bStat === "in_trip" || 
+                       bStat === "started" || 
+                       b.pickupStatus === "picked_up" || 
+                       Boolean(b.pickupAt || b.pickup_at || b.startOdometer || b.start_odometer);
+    return isPickedUp;
   });
 }
 
@@ -1343,39 +1344,68 @@ function renderDashboard() {
 
   const now = new Date();
 
-  // KPI 1: TOTAL REVENUE
-  // Formula: Sum of verified bookings strictly within this dataset
-  const totalRevenue = verifiedBookings.reduce(
+  const isAllTime = !filterFromDate && !filterToDate;
+
+  // Total verified revenue all-time till now
+  const allTimeRevenue = rawBookings
+    .filter((b) => !isBookingCancelled(b) && isVerifiedRevenue(b))
+    .reduce((sum, b) => sum + bookingAmount(b), 0);
+
+  // Total verified revenue in selected period
+  const periodRevenue = verifiedBookings.reduce(
     (sum, b) => sum + bookingAmount(b),
     0,
   );
+
+  // KPI 1: TOTAL REVENUE
+  // Default to all-time verified revenue till now. When date filter is selected, show period revenue.
+  const totalRevenue = isAllTime ? allTimeRevenue : periodRevenue;
   const kpiTotalRevenueEl = document.getElementById("kpiTotalRevenue");
   if (kpiTotalRevenueEl)
     kpiTotalRevenueEl.textContent = formatINR(totalRevenue);
 
   // KPI 2: ACTIVE TRIPS
-  // Formula: Trips in this dataset currently active / on-road
-  const activeTripsCount = validPeriodBookings.filter((b) =>
-    isBookingActive(b, now, filterFromDate, filterToDate),
-  ).length;
+  // Strictly counts trips that are on-road / active as changed by executive
+  const activeTripsCount = rawBookings.filter((b) => {
+    if (isBookingCancelled(b)) return false;
+    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+    const isPickedUp = bStat === "active" || 
+                       bStat === "in_trip" || 
+                       bStat === "started" || 
+                       b.pickupStatus === "picked_up" || 
+                       Boolean(b.pickupAt || b.pickup_at || b.startOdometer || b.start_odometer);
+    if (!isPickedUp) return false;
+    
+    // If a historical date range is chosen, check if active trip overlapped that period
+    if (filterFromDate && filterToDate) {
+      const { start, end } = getBookingOperationalDates(b);
+      if (start && end) {
+        return start.getTime() <= filterToDate.getTime() && end.getTime() >= filterFromDate.getTime();
+      }
+    }
+    return true;
+  }).length;
   const kpiActiveTripsEl = document.getElementById("kpiActiveTrips");
   if (kpiActiveTripsEl) kpiActiveTripsEl.textContent = String(activeTripsCount);
 
   // KPI 3: COMPLETED TRIPS
   // Formula: Trips in this dataset that have concluded
-  const completedTripsCount = validPeriodBookings.filter((b) =>
-    isBookingCompleted(b, now, filterFromDate, filterToDate),
-  ).length;
+  const completedTripsCount = validPeriodBookings.filter((b) => {
+    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+    if (bStat === "completed") return true;
+    const { end } = getBookingOperationalDates(b);
+    return end && end.getTime() < now.getTime() && bStat !== "active" && bStat !== "in_trip";
+  }).length;
   const kpiCompletedTripsEl = document.getElementById("kpiCompletedTrips");
   if (kpiCompletedTripsEl)
     kpiCompletedTripsEl.textContent = String(completedTripsCount);
 
   // KPI 4: REVENUE THIS MONTH / PERIOD BENCHMARK
-  // Formula: When viewing 'this_month', 100% matches totalRevenue.
-  // Otherwise, calculates the current calendar month window using the exact same verified formula.
   let monthRevenue = 0;
   if (activeQuickFilter === "this_month") {
-    monthRevenue = totalRevenue;
+    monthRevenue = periodRevenue;
+  } else if (!isAllTime) {
+    monthRevenue = periodRevenue;
   } else {
     const curMonthStart = new Date(
       now.getFullYear(),
@@ -1408,8 +1438,10 @@ function renderDashboard() {
     kpiRevenueThisMonthEl.textContent = formatINR(monthRevenue);
 
   // KPI 5: TOTAL BOOKINGS
-  // Formula: Total valid non-cancelled bookings in this dataset
-  const totalBookingsCount = validPeriodBookings.length;
+  // Formula: Total valid non-cancelled bookings in dataset (or all-time when viewing All Time)
+  const totalBookingsCount = isAllTime
+    ? rawBookings.filter((b) => !isBookingCancelled(b)).length
+    : validPeriodBookings.length;
   const kpiTotalBookingsEl = document.getElementById("kpiTotalBookings");
   if (kpiTotalBookingsEl)
     kpiTotalBookingsEl.textContent = String(totalBookingsCount);
@@ -1578,75 +1610,109 @@ function renderDashboard() {
         : "₹0 · 0 Bookings";
   }
 
+  // ============================================================
   // SALES PERFORMANCE CARDS
-  // 1. Day Sales: Sales/bookings originating on today's calendar date
-  const todayStart = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    0,
-    0,
-    0,
-    0,
+  // ============================================================
+  // Adapts dynamically: when a date range is selected, calculates for that period;
+  // when All Time / default, calculates for today, current week, and current month.
+  const targetDate = filterToDate ? new Date(filterToDate) : new Date(now);
+
+  // 1. Day Sales
+  const dayStart = new Date(
+    targetDate.getFullYear(),
+    targetDate.getMonth(),
+    targetDate.getDate(),
+    0, 0, 0, 0,
   );
-  const todayEnd = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    23,
-    59,
-    59,
-    999,
+  const dayEnd = new Date(
+    targetDate.getFullYear(),
+    targetDate.getMonth(),
+    targetDate.getDate(),
+    23, 59, 59, 999,
   );
   const daySales = rawBookings
     .filter((b) => {
       if (!isVerifiedRevenue(b)) return false;
       const sDate = getBookingSaleDate(b);
-      return sDate && sDate >= todayStart && sDate <= todayEnd;
+      return sDate && sDate >= dayStart && sDate <= dayEnd;
     })
     .reduce((sum, b) => sum + bookingAmount(b), 0);
 
-  // 2. Week Sales: Sunday to Saturday as 1 week, showing running week sales till date
-  const dayOfWeek = now.getDay(); // 0 is Sunday, 6 is Saturday
-  const sunOfWeek = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate() - dayOfWeek,
-    0,
-    0,
-    0,
-    0,
-  );
-  const weekSales = rawBookings
-    .filter((b) => {
-      if (!isVerifiedRevenue(b)) return false;
-      const sDate = getBookingSaleDate(b);
-      return sDate && sDate >= sunOfWeek && sDate <= todayEnd;
-    })
-    .reduce((sum, b) => sum + bookingAmount(b), 0);
+  // 2. Week Sales: revenue for the active/selected week
+  let weekSales = 0;
+  if (filterFromDate && filterToDate) {
+    const targetDayOfWeek = targetDate.getDay();
+    const selWeekStart = new Date(
+      targetDate.getFullYear(),
+      targetDate.getMonth(),
+      targetDate.getDate() - targetDayOfWeek,
+      0, 0, 0, 0,
+    );
+    const selWeekEnd = dayEnd;
+    weekSales = rawBookings
+      .filter((b) => {
+        if (!isVerifiedRevenue(b)) return false;
+        const sDate = getBookingSaleDate(b);
+        return sDate && sDate >= selWeekStart && sDate <= selWeekEnd;
+      })
+      .reduce((sum, b) => sum + bookingAmount(b), 0);
+  } else {
+    const dayOfWeek = now.getDay();
+    const sunOfWeek = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() - dayOfWeek,
+      0, 0, 0, 0,
+    );
+    weekSales = rawBookings
+      .filter((b) => {
+        if (!isVerifiedRevenue(b)) return false;
+        const sDate = getBookingSaleDate(b);
+        return sDate && sDate >= sunOfWeek && sDate <= dayEnd;
+      })
+      .reduce((sum, b) => sum + bookingAmount(b), 0);
+  }
 
-  // 3. Month Sales: Current calendar month sales till date (1st of month to today)
-  const startOfMonth = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    1,
-    0,
-    0,
-    0,
-    0,
-  );
-  const monthSales = rawBookings
-    .filter((b) => {
-      if (!isVerifiedRevenue(b)) return false;
-      const sDate = getBookingSaleDate(b);
-      return sDate && sDate >= startOfMonth && sDate <= todayEnd;
-    })
-    .reduce((sum, b) => sum + bookingAmount(b), 0);
+  // 3. Month Sales: revenue for the active/selected calendar month
+  let monthSales = 0;
+  if (filterFromDate && filterToDate) {
+    const selMonthStart = new Date(
+      targetDate.getFullYear(),
+      targetDate.getMonth(),
+      1,
+      0, 0, 0, 0,
+    );
+    const selMonthEnd = new Date(
+      targetDate.getFullYear(),
+      targetDate.getMonth() + 1,
+      0,
+      23, 59, 59, 999,
+    );
+    monthSales = rawBookings
+      .filter((b) => {
+        if (!isVerifiedRevenue(b)) return false;
+        const sDate = getBookingSaleDate(b);
+        return sDate && sDate >= selMonthStart && sDate <= selMonthEnd;
+      })
+      .reduce((sum, b) => sum + bookingAmount(b), 0);
+  } else {
+    const startOfMonth = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      1,
+      0, 0, 0, 0,
+    );
+    monthSales = rawBookings
+      .filter((b) => {
+        if (!isVerifiedRevenue(b)) return false;
+        const sDate = getBookingSaleDate(b);
+        return sDate && sDate >= startOfMonth && sDate <= dayEnd;
+      })
+      .reduce((sum, b) => sum + bookingAmount(b), 0);
+  }
 
-  // 4. Overall Sales: Cumulative total sales money received/invoiced all-time across all verified bookings
-  const overallSales = rawBookings
-    .filter((b) => isVerifiedRevenue(b))
-    .reduce((sum, b) => sum + bookingAmount(b), 0);
+  // 4. Overall Sales: Cumulative total verified sales money all-time till now
+  const overallSales = allTimeRevenue;
 
   document.getElementById("salesDay") &&
     (document.getElementById("salesDay").textContent = formatINR(daySales));
@@ -1655,8 +1721,7 @@ function renderDashboard() {
   document.getElementById("salesMonth") &&
     (document.getElementById("salesMonth").textContent = formatINR(monthSales));
   document.getElementById("salesOverall") &&
-    (document.getElementById("salesOverall").textContent =
-      formatINR(overallSales));
+    (document.getElementById("salesOverall").textContent = formatINR(overallSales));
 
   // FLEET TABLE SORTING
   const sortMode = fleetSortSelect ? fleetSortSelect.value : "revenue";
@@ -2420,11 +2485,24 @@ async function loadManagerData() {
 
     if (bookingsRes.status === "fulfilled" && bookingsRes.value) {
       const res = bookingsRes.value;
-      rawBookings = Array.isArray(res.bookings)
+      const loaded = Array.isArray(res.bookings)
         ? res.bookings
         : Array.isArray(res.data)
           ? res.data
           : [];
+      
+      // Strictly deduplicate by unique booking identifier
+      const seenBk = new Set();
+      rawBookings = [];
+      loaded.forEach((b) => {
+        const idStr = String(
+          b.bookingNumber || b.bookingId || b.id || "",
+        ).toUpperCase().trim();
+        if (idStr && !seenBk.has(idStr)) {
+          seenBk.add(idStr);
+          rawBookings.push(b);
+        }
+      });
     }
 
     // ALWAYS ensure verified September bookings (KRZ-SEP-001 through KRZ-SEP-010) are present
@@ -2432,12 +2510,12 @@ async function loadManagerData() {
     rawBookings.forEach((b) => {
       const idStr = String(
         b.bookingNumber || b.bookingId || b.id || "",
-      ).toUpperCase();
+      ).toUpperCase().trim();
       if (idStr) existingBookingKeys.add(idStr);
     });
 
     DEFAULT_SEPTEMBER_BOOKINGS.forEach((defB) => {
-      const defKey = String(defB.id || defB.bookingNumber).toUpperCase();
+      const defKey = String(defB.id || defB.bookingNumber).toUpperCase().trim();
       if (!existingBookingKeys.has(defKey)) {
         rawBookings.unshift(defB);
         existingBookingKeys.add(defKey);
@@ -2446,11 +2524,24 @@ async function loadManagerData() {
 
     if (vehiclesRes.status === "fulfilled" && vehiclesRes.value) {
       const res = vehiclesRes.value;
-      rawVehicles = Array.isArray(res.vehicles)
+      const loadedVeh = Array.isArray(res.vehicles)
         ? res.vehicles
         : Array.isArray(res.data)
           ? res.data
           : [];
+
+      // Strictly deduplicate by regNo or carId
+      const seenVeh = new Set();
+      rawVehicles = [];
+      loadedVeh.forEach((v) => {
+        const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase();
+        const carId = String(v.carId || v.car_id || v.id || "").trim().toUpperCase();
+        const key = (reg && reg !== "TBD") ? reg : carId;
+        if (key && !seenVeh.has(key)) {
+          seenVeh.add(key);
+          rawVehicles.push(v);
+        }
+      });
     }
   } catch (err) {
     console.error("Manager summary data fetch error:", err);

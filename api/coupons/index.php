@@ -49,6 +49,21 @@ if ($method === 'GET') {
     $sql = $showAll ? "SELECT * FROM coupons ORDER BY created_at DESC" : "SELECT * FROM coupons WHERE active = 1 AND status = 'active' ORDER BY created_at DESC";
     $rows = Database::fetchAll($sql);
 
+    // Bulletproof deduplication by coupon code
+    $dedupedCoupons = [];
+    $seenCodes = [];
+    foreach ($rows as $c) {
+        $code = strtoupper(trim((string)($c['code'] ?? '')));
+        if ($code !== '' && isset($seenCodes[$code])) {
+            continue;
+        }
+        if ($code !== '') {
+            $seenCodes[$code] = true;
+        }
+        $dedupedCoupons[] = $c;
+    }
+    $rows = $dedupedCoupons;
+
     $coupons = array_map(function($c) {
         $isPercent = ($c['discount_type'] === 'percentage' || $c['discount_type'] === 'percent' || (isset($c['label']) && strpos((string)$c['label'], '%') !== false));
         $normType = $isPercent ? 'percent' : 'flat';

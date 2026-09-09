@@ -38,8 +38,22 @@ $rows = Database::fetchAll(
         v.overall_status AS v_overall_status
      FROM users u
      LEFT JOIN verification v ON u.firebase_uid = v.firebase_uid
-     ORDER BY u.created_at DESC"
 );
+
+// Bulletproof deduplication by firebase_uid or email
+$dedupedUsers = [];
+$seenUsers = [];
+foreach ($rows as $u) {
+    $uid = trim((string)($u['firebase_uid'] ?? ''));
+    $email = strtolower(trim((string)($u['email'] ?? '')));
+    $key = $uid ?: ($email ?: (string)$u['id']);
+    if (isset($seenUsers[$key])) {
+        continue;
+    }
+    $seenUsers[$key] = true;
+    $dedupedUsers[] = $u;
+}
+$rows = $dedupedUsers;
 
 $users = array_map(function($u) {
     $metadata = [];

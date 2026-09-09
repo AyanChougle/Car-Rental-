@@ -164,6 +164,18 @@ async function loadPaymentsData() {
         }));
     }
 
+    // Strictly deduplicate by paymentId, bookingId, or id
+    const seenPay = new Set();
+    const deduped = [];
+    payments.forEach((p) => {
+      const key = String(p.paymentId || p.id || p.utr || p.bookingId || "").trim().toUpperCase();
+      if (key && !seenPay.has(key)) {
+        seenPay.add(key);
+        deduped.push(p);
+      }
+    });
+    payments = deduped;
+
     allPayments = payments;
     updateStats(payments);
     renderPaymentsTable();
@@ -326,7 +338,11 @@ function openReviewModal(p) {
         <img src="${escapeHtml(proofUrl)}" alt="Payment proof" style="width:100%; max-height:280px; object-fit:contain; border-radius:8px; border:1px solid rgba(255,255,255,0.15);" />
       </div>
     ` : `
-      <p style="margin-top:12px; color:var(--sub); font-size:13px; text-align:center;">No payment screenshot attached.</p>
+      <div style="margin-top:14px; background:rgba(79, 215, 255, 0.07); border:1px dashed rgba(79, 215, 255, 0.35); border-radius:8px; padding:14px; text-align:center;">
+        <span style="display:block; color:#4fd7ff; font-weight:700; font-size:13px; margin-bottom:4px;">No Screenshot Attached by Customer</span>
+        <p style="color:var(--sub); font-size:12px; margin:0 0 8px 0;">Customer submitted a direct UPI / Bank transfer with the UTR reference below:</p>
+        <span style="display:inline-block; background:rgba(255,255,255,0.08); padding:4px 10px; border-radius:6px; font-family:monospace; font-weight:700; color:#06d6a0;">UTR: ${escapeHtml(p.utr || p.paymentRef || "N/A")}</span>
+      </div>
     `}
   `;
 

@@ -30,6 +30,21 @@ if ($method === 'GET') {
 
     $rows = Database::fetchAll($sql, $params);
 
+    // Bulletproof deduplication by reg_no or car_id
+    $deduped = [];
+    $seen = [];
+    foreach ($rows as $v) {
+        $reg = strtoupper(trim((string)($v['reg_no'] ?? '')));
+        $carId = strtoupper(trim((string)($v['car_id'] ?? '')));
+        $key = ($reg !== '' && $reg !== 'TBD') ? $reg : ($carId ?: (string)$v['id']);
+        if (isset($seen[$key])) {
+            continue;
+        }
+        $seen[$key] = true;
+        $deduped[] = $v;
+    }
+    $rows = $deduped;
+
     $vehicles = array_map(function($v) {
         $gallery = [];
         if (!empty($v['gallery'])) {

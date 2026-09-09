@@ -20,56 +20,70 @@ if ($method === 'GET') {
     // Accessible to logged-in staff (admin, manager, executive) or authenticated users
     $user = Auth::optionalAuth();
 
-    // 1. Calculate live database statistics
-    $totalUsers = (int)(Database::fetchOne("SELECT COUNT(*) as c FROM users")['c'] ?? 0);
-    $totalBookings = (int)(Database::fetchOne("SELECT COUNT(*) as c FROM bookings")['c'] ?? 0);
+    // 1. Calculate live database statistics using DISTINCT to prevent duplicate counts
+    $totalUsers = (int)(Database::fetchOne("SELECT COUNT(DISTINCT firebase_uid) as c FROM users")['c'] ?? 0);
+    $totalBookings = (int)(Database::fetchOne("SELECT COUNT(DISTINCT COALESCE(NULLIF(booking_id, ''), booking_number, id)) as c FROM bookings")['c'] ?? 0);
     
     $pendingDocs = (int)(Database::fetchOne(
-        "SELECT COUNT(*) as c FROM users WHERE license_status = 'pending' OR aadhar_status = 'pending' OR pan_status = 'pending'"
+        "SELECT COUNT(DISTINCT firebase_uid) as c FROM users WHERE license_status = 'pending' OR aadhar_status = 'pending' OR pan_status = 'pending'"
     )['c'] ?? 0);
 
     $pendingPayments = (int)(Database::fetchOne(
-        "SELECT COUNT(*) as c FROM payments WHERE status = 'pending'"
+        "SELECT COUNT(DISTINCT COALESCE(NULLIF(payment_id, ''), booking_id, id)) as c FROM payments WHERE status = 'pending'"
     )['c'] ?? 0);
 
     if ($pendingPayments === 0) {
         $pendingPayments = (int)(Database::fetchOne(
-            "SELECT COUNT(*) as c FROM bookings WHERE payment_status = 'pending_verification' OR (payment_ref IS NOT NULL AND payment_status NOT IN ('paid','advance_paid','rejected'))"
+            "SELECT COUNT(DISTINCT COALESCE(NULLIF(booking_id, ''), booking_number, id)) as c FROM bookings WHERE payment_status = 'pending_verification' OR (payment_ref IS NOT NULL AND payment_status NOT IN ('paid','advance_paid','rejected'))"
         )['c'] ?? 0);
     }
 
     $paidBookings = (int)(Database::fetchOne(
-        "SELECT COUNT(*) as c FROM bookings WHERE payment_status IN ('paid', 'advance_paid')"
+        "SELECT COUNT(DISTINCT COALESCE(NULLIF(booking_id, ''), booking_number, id)) as c FROM bookings WHERE payment_status IN ('paid', 'advance_paid')"
     )['c'] ?? 0);
 
     $verifiedPaymentsSum = (float)(Database::fetchOne(
-        "SELECT COALESCE(SUM(amount), 0) as s FROM payments WHERE status = 'verified'"
+        "SELECT COALESCE(SUM(amount), 0) as s FROM (SELECT DISTINCT payment_id, amount FROM payments WHERE status = 'verified') t"
     )['s'] ?? 0.0);
 
     $paidBookingsSum = (float)(Database::fetchOne(
-        "SELECT COALESCE(SUM(total_amount), 0) as s FROM bookings WHERE payment_status IN ('paid', 'advance_paid')"
+        "SELECT COALESCE(SUM(total_amount), 0) as s FROM (
+            SELECT COALESCE(NULLIF(booking_id, ''), booking_number, id) as bid, MAX(total_amount) as total_amount 
+            FROM bookings 
+            WHERE payment_status IN ('paid', 'advance_paid') 
+            GROUP BY COALESCE(NULLIF(booking_id, ''), booking_number, id)
+        ) t"
     )['s'] ?? 0.0);
 
     $totalRevenue = max($verifiedPaymentsSum, $paidBookingsSum);
 
     $currentMonthRevenue = (float)(Database::fetchOne(
-        "SELECT COALESCE(SUM(amount), 0) as s FROM payments WHERE status = 'verified' AND MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())"
+        "SELECT COALESCE(SUM(amount), 0) as s FROM (
+            SELECT DISTINCT payment_id, amount 
+            FROM payments 
+            WHERE status = 'verified' AND MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())
+        ) t"
     )['s'] ?? 0.0);
 
     if ($currentMonthRevenue <= 0 && $totalRevenue > 0) {
         $currentMonthRevenue = (float)(Database::fetchOne(
-            "SELECT COALESCE(SUM(total_amount), 0) as s FROM bookings WHERE payment_status IN ('paid', 'advance_paid') AND MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())"
+            "SELECT COALESCE(SUM(total_amount), 0) as s FROM (
+                SELECT COALESCE(NULLIF(booking_id, ''), booking_number, id) as bid, MAX(total_amount) as total_amount 
+                FROM bookings 
+                WHERE payment_status IN ('paid', 'advance_paid') AND MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())
+                GROUP BY COALESCE(NULLIF(booking_id, ''), booking_number, id)
+            ) t"
         )['s'] ?? 0.0);
     }
 
     $avgBooking = $paidBookings > 0 ? round($totalRevenue / $paidBookings, 2) : 0.0;
 
     // Fleet & Operational Yard Statistics
-    $totalFleetDb = (int)(Database::fetchOne("SELECT COUNT(*) as c FROM vehicles WHERE status != 'removed'")['c'] ?? 0);
+    $totalFleetDb = (int)(Database::fetchOne("SELECT COUNT(DISTINCT reg_no) as c FROM vehicles WHERE status != 'removed'")['c'] ?? 0);
     $totalFleet = max(7, $totalFleetDb);
 
     $onRoadFleet = (int)(Database::fetchOne(
-        "SELECT COUNT(DISTINCT COALESCE(vehicle_reg, vehicle_id)) as c FROM bookings 
+        "SELECT COUNT(DISTINCT COALESCE(NULLIF(vehicle_reg, ''), vehicle_id)) as c FROM bookings 
          WHERE status IN ('active', 'confirmed', 'in_progress', 'started') 
            AND payment_status IN ('paid', 'advance_paid', 'verified')
            AND (pickup_date <= NOW() OR pickup_date IS NULL)
@@ -78,7 +92,7 @@ if ($method === 'GET') {
 
     if ($onRoadFleet === 0) {
         $onRoadFleet = (int)(Database::fetchOne(
-            "SELECT COUNT(*) as c FROM bookings 
+            "SELECT COUNT(DISTINCT COALESCE(NULLIF(booking_id, ''), booking_number, id)) as c FROM bookings 
              WHERE status = 'active' OR status = 'in_progress' OR status = 'started'"
         )['c'] ?? 0);
     }

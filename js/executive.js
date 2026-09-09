@@ -293,11 +293,62 @@ async function loadAllExecutiveData() {
       api.get("/coupons").catch(() => ({ coupons: [] }))
     ]);
 
-    allBookings = Array.isArray(bookingsRes?.bookings) ? bookingsRes.bookings : [];
-    allPayments = Array.isArray(paymentsRes?.payments) ? paymentsRes.payments : [];
-    allVerifications = Array.isArray(kycRes?.verifications) ? kycRes.verifications : [];
-    allFleet = Array.isArray(fleetRes?.vehicles) ? fleetRes.vehicles : [];
-    allCoupons = Array.isArray(couponsRes?.coupons) ? couponsRes.coupons : [];
+    const rawBk = Array.isArray(bookingsRes?.bookings) ? bookingsRes.bookings : [];
+    const seenBk = new Set();
+    allBookings = [];
+    rawBk.forEach((b) => {
+      const key = String(b.bookingNumber || b.bookingId || b.id || "").trim().toUpperCase();
+      if (key && !seenBk.has(key)) {
+        seenBk.add(key);
+        allBookings.push(b);
+      }
+    });
+
+    const rawPay = Array.isArray(paymentsRes?.payments) ? paymentsRes.payments : [];
+    const seenPay = new Set();
+    allPayments = [];
+    rawPay.forEach((p) => {
+      const key = String(p.paymentId || p.id || p.utr || "").trim().toUpperCase();
+      if (key && !seenPay.has(key)) {
+        seenPay.add(key);
+        allPayments.push(p);
+      }
+    });
+
+    const rawKyc = Array.isArray(kycRes?.verifications) ? kycRes.verifications : [];
+    const seenKyc = new Set();
+    allVerifications = [];
+    rawKyc.forEach((k) => {
+      const key = String(k.firebase_uid || k.userId || k.email || k.id || "").trim();
+      if (key && !seenKyc.has(key)) {
+        seenKyc.add(key);
+        allVerifications.push(k);
+      }
+    });
+
+    const rawFleet = Array.isArray(fleetRes?.vehicles) ? fleetRes.vehicles : [];
+    const seenFleet = new Set();
+    allFleet = [];
+    rawFleet.forEach((v) => {
+      const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase();
+      const carId = String(v.carId || v.car_id || v.id || "").trim().toUpperCase();
+      const key = (reg && reg !== "TBD") ? reg : carId;
+      if (key && !seenFleet.has(key)) {
+        seenFleet.add(key);
+        allFleet.push(v);
+      }
+    });
+
+    const rawCpn = Array.isArray(couponsRes?.coupons) ? couponsRes.coupons : [];
+    const seenCpn = new Set();
+    allCoupons = [];
+    rawCpn.forEach((c) => {
+      const key = String(c.code || "").trim().toUpperCase();
+      if (key && !seenCpn.has(key)) {
+        seenCpn.add(key);
+        allCoupons.push(c);
+      }
+    });
 
     updateStats();
     renderBookingsTable();

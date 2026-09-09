@@ -1045,9 +1045,22 @@ async function loadFleetManagement() {
       api.get("/vehicles/active-fleet.php").catch(() => null)
     ]);
 
-    let vehicles = Array.isArray(res?.vehicles) && res.vehicles.length > 0
+    let rawVehicles = Array.isArray(res?.vehicles) && res.vehicles.length > 0
       ? res.vehicles
       : getMasterCatalogVehicles();
+
+    // Deduplicate fleet vehicles
+    const seenVeh = new Set();
+    let vehicles = [];
+    rawVehicles.forEach((v) => {
+      const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase();
+      const carId = String(v.carId || v.car_id || v.id || "").trim().toUpperCase();
+      const key = (reg && reg !== "TBD") ? reg : carId;
+      if (key && !seenVeh.has(key)) {
+        seenVeh.add(key);
+        vehicles.push(v);
+      }
+    });
 
     // Check localStorage for active fleet overrides
     let storedActiveRegs = null;
@@ -1459,14 +1472,22 @@ const DEFAULT_COUPONS = [
   { id: "KRUIZLY10", code: "KRUIZLY10", type: "percent", val: 10, label: "10% Off Rental", minOrder: 0, status: "active" },
   { id: "KRUIZLY20", code: "KRUIZLY20", type: "percent", val: 20, label: "20% Off Rental", minOrder: 0, status: "active" },
 ];
-
-async function loadCoupons() {
+async function loadCoupons() {
   const wrap = $("couponsTableWrap");
   if (!wrap) return;
 
   try {
     const res = await api.get("/coupons");
-    couponsData = Array.isArray(res.coupons) ? res.coupons : [];
+    const rawC = Array.isArray(res.coupons) ? res.coupons : [];
+    const seenC = new Set();
+    couponsData = [];
+    rawC.forEach((c) => {
+      const key = String(c.code || "").trim().toUpperCase();
+      if (key && !seenC.has(key)) {
+        seenC.add(key);
+        couponsData.push(c);
+      }
+    });
     renderCouponsTable();
   } catch (error) {
     console.error("COUPONS LOAD ERROR:", error);
@@ -2146,7 +2167,16 @@ async function loadUsers() {
 
   try {
     const res = await api.get("/users");
-    usersData = Array.isArray(res.users) ? res.users : [];
+    const rawU = Array.isArray(res.users) ? res.users : [];
+    const seenU = new Set();
+    usersData = [];
+    rawU.forEach((u) => {
+      const key = String(u.firebase_uid || u.uid || u.email || u.id || "").trim();
+      if (key && !seenU.has(key)) {
+        seenU.add(key);
+        usersData.push(u);
+      }
+    });
 
     usersData.sort(
       (a, b) =>
@@ -3212,7 +3242,16 @@ async function loadBookings() {
 
   try {
     const res = await api.get("/bookings");
-    bookingsData = Array.isArray(res.bookings) ? res.bookings : [];
+    const rawB = Array.isArray(res.bookings) ? res.bookings : [];
+    const seenB = new Set();
+    bookingsData = [];
+    rawB.forEach((b) => {
+      const key = String(b.bookingNumber || b.bookingId || b.id || "").trim().toUpperCase();
+      if (key && !seenB.has(key)) {
+        seenB.add(key);
+        bookingsData.push(b);
+      }
+    });
 
     sortBookings();
 
@@ -5521,7 +5560,16 @@ async function loadPayments() {
   }
   try {
     const res = await api.get("/payments");
-    paymentsData = Array.isArray(res.payments) ? res.payments : [];
+    const rawP = Array.isArray(res.payments) ? res.payments : [];
+    const seenP = new Set();
+    paymentsData = [];
+    rawP.forEach((p) => {
+      const key = String(p.paymentId || p.id || p.utr || "").trim().toUpperCase();
+      if (key && !seenP.has(key)) {
+        seenP.add(key);
+        paymentsData.push(p);
+      }
+    });
     renderPaymentsTable();
   } catch (err) {
     console.error("LOAD PAYMENTS ERROR:", err);
@@ -8133,11 +8181,31 @@ export async function loadAdminCalendar() {
     ]);
 
     if (bookingsRes.status === "fulfilled" && bookingsRes.value && Array.isArray(bookingsRes.value.bookings)) {
-      bookingsData = bookingsRes.value.bookings;
+      const rawBk = bookingsRes.value.bookings;
+      const seenBk = new Set();
+      bookingsData = [];
+      rawBk.forEach((b) => {
+        const key = String(b.bookingNumber || b.bookingId || b.id || "").trim().toUpperCase();
+        if (key && !seenBk.has(key)) {
+          seenBk.add(key);
+          bookingsData.push(b);
+        }
+      });
     }
 
     if (vehiclesRes.status === "fulfilled" && vehiclesRes.value && Array.isArray(vehiclesRes.value.vehicles)) {
-      adminFleetVehicles = vehiclesRes.value.vehicles;
+      const rawV = vehiclesRes.value.vehicles;
+      const seenV = new Set();
+      adminFleetVehicles = [];
+      rawV.forEach((v) => {
+        const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase();
+        const carId = String(v.carId || v.car_id || v.id || "").trim().toUpperCase();
+        const key = (reg && reg !== "TBD") ? reg : carId;
+        if (key && !seenV.has(key)) {
+          seenV.add(key);
+          adminFleetVehicles.push(v);
+        }
+      });
     }
 
     populateAdminVehicleDropdowns();

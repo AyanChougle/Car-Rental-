@@ -104,19 +104,57 @@ if (!$isStaff) {
                 COALESCE(NULLIF(b.vehicle_reg, ''), NULLIF(v.reg_no, ''), '') AS matched_vehicle_reg,
                 b.total_amount, 
                 COALESCE(b.booking_number, b.booking_id, p.booking_id) AS matched_booking_number,
-                b.pickup_date, b.drop_date
+                b.pickup_date, b.drop_date,
+                COALESCE(
+                    NULLIF(p.screenshot_url, ''),
+                    NULLIF(b.payment_screenshot_url, ''),
+                    (SELECT CONCAT('/api/media/file.php?id=', m.media_id) FROM media m WHERE (m.related_id = p.booking_id OR m.related_id = p.payment_id) AND m.category IN ('payment_proof', 'payment_screenshot') ORDER BY m.id DESC LIMIT 1)
+                ) AS effective_screenshot_url
          FROM payments p
-         LEFT JOIN bookings b ON (
-             p.booking_id = b.booking_id 
-             OR p.booking_id = b.booking_number 
-             OR REPLACE(p.booking_id, '#', '') = REPLACE(b.booking_id, '#', '')
-             OR REPLACE(p.booking_id, '#', '') = REPLACE(b.booking_number, '#', '')
+         LEFT JOIN (
+             SELECT booking_id, booking_number, user_name, user_email, user_phone, vehicle_id, vehicle_name, vehicle_reg, total_amount, pickup_date, drop_date, payment_screenshot_url, firebase_uid
+             FROM bookings
+             GROUP BY COALESCE(NULLIF(booking_id, ''), booking_number)
+         ) b ON (
+             p.booking_id IS NOT NULL AND p.booking_id != '' AND (
+                 p.booking_id = b.booking_id 
+                 OR p.booking_id = b.booking_number 
+                 OR REPLACE(p.booking_id, '#', '') = REPLACE(b.booking_id, '#', '')
+                 OR REPLACE(p.booking_id, '#', '') = REPLACE(b.booking_number, '#', '')
+             )
          )
-         LEFT JOIN users u ON (p.firebase_uid = u.firebase_uid OR (b.firebase_uid IS NOT NULL AND b.firebase_uid = u.firebase_uid))
-         LEFT JOIN vehicles v ON (b.vehicle_id = v.id OR b.vehicle_reg = v.reg_no)
+         LEFT JOIN (
+             SELECT firebase_uid, MAX(name) AS name, MAX(email) AS email, MAX(phone) AS phone
+             FROM users
+             GROUP BY firebase_uid
+         ) u ON (p.firebase_uid = u.firebase_uid OR (b.firebase_uid IS NOT NULL AND b.firebase_uid = u.firebase_uid))
+         LEFT JOIN (
+             SELECT id, reg_no, model
+             FROM vehicles
+             WHERE status != 'removed'
+             GROUP BY COALESCE(NULLIF(reg_no, ''), id)
+         ) v ON (
+             (b.vehicle_id IS NOT NULL AND b.vehicle_id > 0 AND b.vehicle_id = v.id)
+             OR (b.vehicle_reg IS NOT NULL AND TRIM(b.vehicle_reg) != '' AND b.vehicle_reg != 'TBD' AND b.vehicle_reg = v.reg_no)
+         )
          ORDER BY p.created_at DESC"
     );
 }
+
+// Bulletproof deduplication by payment_id or id
+$dedupedPayments = [];
+$seenPayments = [];
+foreach ($rows as $r) {
+    $payKey = trim((string)($r['payment_id'] ?? $r['id'] ?? ''));
+    if ($payKey !== '' && isset($seenPayments[$payKey])) {
+        continue;
+    }
+    if ($payKey !== '') {
+        $seenPayments[$payKey] = true;
+    }
+    $dedupedPayments[] = $r;
+}
+$rows = $dedupedPayments;
 
 $payments = array_map(function($p) {
     return [
@@ -136,7 +174,7 @@ $payments = array_map(function($p) {
         'utr' => $p['utr'],
         'transactionReference' => $p['utr'],
         'paymentRef' => $p['payment_ref'],
-        'screenshotUrl' => $p['screenshot_url'],
+        'screenshotUrl' => $p['effective_screenshot_url'] ?? $p['screenshot_url'] ?? null,
         'screenshotMediaId' => $p['screenshot_media_id'],
         'status' => $p['status'],
         'rejectionReason' => $p['rejection_reason'],
