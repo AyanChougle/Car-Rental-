@@ -2210,17 +2210,15 @@ async function loadUsers() {
 }
 
 function updateUserStats() {
+  // Always update live user count from usersData regardless of KPI overrides
+  const totalUsersEl = $("statTotalUsers");
+  if (totalUsersEl) totalUsersEl.textContent = usersData.length;
+
   if (currentKpiStats && currentKpiStats.is_overridden) {
     applyKpiStats();
+    // Re-stamp live user count since applyKpiStats may overwrite with DB value
+    if (totalUsersEl) totalUsersEl.textContent = usersData.length;
     return;
-  }
-
-  const totalUsers =
-    $("statTotalUsers");
-
-  if (totalUsers) {
-    totalUsers.textContent =
-      usersData.length;
   }
 
   const pending =

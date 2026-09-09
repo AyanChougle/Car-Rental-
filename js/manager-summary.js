@@ -1457,14 +1457,40 @@ function renderDashboard() {
     }
   });
 
+
   // KPI 6: AVERAGE OCCUPANCY (%)
-  // Formula: (Fleets on Trips / Active Fleets) * 100
+  // User requirement: "average occupancy goes like 7 fleets occupied in a month divided by on trips per fleet amount"
+  // Formula: (distinct fleet vehicles that had a trip in the target month) / (total active fleet count) * 100
   const activeFleetCount = activeFleetsRoster.length || 7;
+
+  // Determine the target month window for occupancy
+  const occMonthStart = filterFromDate
+    ? new Date(filterFromDate.getFullYear(), filterFromDate.getMonth(), 1, 0, 0, 0, 0)
+    : new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  const occMonthEnd = filterToDate
+    ? filterToDate
+    : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+  // Collect distinct regNos that have a confirmed/active/completed booking overlapping that month
+  const occupiedRegNosThisMonth = new Set();
+  rawBookings.forEach((b) => {
+    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+    if (bStat === "cancelled" || bStat === "rejected") return;
+    const { start, end } = getBookingOperationalDates(b);
+    if (!start || !end) return;
+    // Check if booking period overlaps the target month window
+    if (start.getTime() <= occMonthEnd.getTime() && end.getTime() >= occMonthStart.getTime()) {
+      const reg = String(b.vehicleReg || b.vehicle_reg || b.regNo || "").trim();
+      if (reg) occupiedRegNosThisMonth.add(reg);
+    }
+  });
+
   const occupancyPct = activeFleetCount
-    ? Math.min(100, Math.round((onTripFleetCount / activeFleetCount) * 100))
+    ? Math.min(100, Math.round((occupiedRegNosThisMonth.size / activeFleetCount) * 100))
     : 0;
   const kpiAvgOccupancyEl = document.getElementById("kpiAvgOccupancy");
   if (kpiAvgOccupancyEl) kpiAvgOccupancyEl.textContent = `${occupancyPct}%`;
+
 
   let periodDays = 30;
   if (filterFromDate && filterToDate) {
