@@ -1,4 +1,4 @@
-﻿-- ============================================================
+-- ============================================================
 -- KRUIZLY PRODUCTION CLEANUP & DEDUPLICATION SCRIPT
 -- Execute in Hostinger phpMyAdmin (SQL tab)
 -- 1. Safely removes all duplicate records across all tables
@@ -89,25 +89,11 @@ COMMIT;
 -- ------------------------------------------------------------
 -- 7. ADD UNIQUE CONSTRAINTS (Guarantees no future duplicates)
 -- ------------------------------------------------------------
-SET @exist_idx = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'vehicles' AND index_name = 'uniq_vehicle_reg');
-SET @sql = IF(@exist_idx = 0, 'ALTER TABLE `vehicles` ADD UNIQUE KEY `uniq_vehicle_reg` (`reg_no`)', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @exist_idx = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'users' AND index_name = 'uniq_user_firebase_uid');
-SET @sql = IF(@exist_idx = 0, 'ALTER TABLE `users` ADD UNIQUE KEY `uniq_user_firebase_uid` (`firebase_uid`)', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @exist_idx = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'bookings' AND index_name = 'uniq_booking_ref');
-SET @sql = IF(@exist_idx = 0, 'ALTER TABLE `bookings` ADD UNIQUE KEY `uniq_booking_ref` (`booking_id`)', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @exist_idx = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'payments' AND index_name = 'uniq_payment_id');
-SET @sql = IF(@exist_idx = 0, 'ALTER TABLE `payments` ADD UNIQUE KEY `uniq_payment_id` (`payment_id`)', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
-
-SET @exist_idx = (SELECT COUNT(*) FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = 'coupons' AND index_name = 'uniq_coupon_code');
-SET @sql = IF(@exist_idx = 0, 'ALTER TABLE `coupons` ADD UNIQUE KEY `uniq_coupon_code` (`code`)', 'SELECT 1');
-PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
+ALTER TABLE `vehicles` ADD UNIQUE KEY `uniq_vehicle_reg` (`reg_no`);
+ALTER TABLE `users` ADD UNIQUE KEY `uniq_user_firebase_uid` (`firebase_uid`);
+ALTER TABLE `bookings` ADD UNIQUE KEY `uniq_booking_ref` (`booking_id`);
+ALTER TABLE `payments` ADD UNIQUE KEY `uniq_payment_id` (`payment_id`);
+ALTER TABLE `coupons` ADD UNIQUE KEY `uniq_coupon_code` (`code`);
 
 SET FOREIGN_KEY_CHECKS = 1;
 
