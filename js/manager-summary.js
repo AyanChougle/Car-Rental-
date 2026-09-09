@@ -2138,28 +2138,63 @@ function computeOtherFleetStats(rawBookings, periodDays) {
     return s !== "cancelled" && s !== "rejected";
   });
 
-  return OTHER_CATALOG_FLEETS.map((car) => {
+  // Use live DB vehicles, excluding the 7 active fleet reg numbers
+  const activeRegNos = new Set(
+    activeFleetsRoster.map((f) =>
+      String(f.regNo || "").trim().toUpperCase().replace(/[\s\-_]/g, "")
+    )
+  );
+
+  // Build the catalog fleet list from DB rawVehicles, falling back to hardcoded list only if DB is empty
+  let catalogFleets;
+  if (rawVehicles.length > 0) {
+    catalogFleets = rawVehicles
+      .filter((v) => {
+        const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
+        // Exclude active 7 fleet vehicles
+        if (reg && activeRegNos.has(reg)) return false;
+        // Exclude removed/inactive
+        const status = String(v.status || "").toLowerCase();
+        if (status === "removed") return false;
+        return true;
+      })
+      .map((v) => ({
+        id: v.id || v.carId,
+        carId: v.carId || v.car_id || null,
+        regNo: v.regNo || v.reg_no || "",
+        brand: v.brand || "",
+        model: v.model || "",
+        year: v.year || 2024,
+        category: v.category || "",
+        transmission: v.transmission || "",
+        fuelType: v.fuel || v.fuelType || "",
+        seats: v.seats || 5,
+        priceDay: v.priceDay || v.price_day || 0,
+        hub: v.hub || "Gavson Business Park, Ghansoli",
+      }));
+  } else {
+    // Fallback to hardcoded list if API didn't return vehicles
+    catalogFleets = OTHER_CATALOG_FLEETS;
+  }
+
+  return catalogFleets.map((car) => {
     const carNameLower = `${car.brand} ${car.model}`.toLowerCase();
-    const regLower = car.regNo.toLowerCase();
+    const regLower = String(car.regNo || "").toLowerCase();
 
     const carBookings = verified.filter((b) => {
       const bName = String(b.vehicleName || b.carName || "").toLowerCase();
-      const bReg = String(b.vehicleReg || b.regNo || "").toLowerCase();
-      if (bReg && bReg === regLower) return true;
-      if (
-        bName &&
-        (bName.includes(car.model.toLowerCase()) ||
-          carNameLower.includes(bName))
-      ) {
-        // Exclude active 7 roster matches
-        if (
-          bName.includes("fronx auto") ||
-          bName.includes("ertiga") ||
-          bName.includes("glanza") ||
-          bName.includes("punch") ||
-          bName.includes("xuv 700")
-        ) {
-          return false;
+      const bReg = String(b.vehicleReg || b.regNo || "").toLowerCase().replace(/[\s\-_]/g, "");
+      const carRegClean = regLower.replace(/[\s\-_]/g, "");
+
+      // Exact reg number match wins
+      if (bReg && carRegClean && bReg === carRegClean) return true;
+
+      // Name match — but exclude active 7 fleet models to avoid double-counting
+      if (bName && car.model && bName.includes(car.model.toLowerCase())) {
+        // Don't attribute this booking to a catalog car if it matches an active fleet
+        for (const af of activeFleetsRoster) {
+          const afReg = String(af.regNo || "").toLowerCase().replace(/[\s\-_]/g, "");
+          if (bReg && afReg && bReg === afReg) return false;
         }
         return true;
       }
@@ -2194,6 +2229,7 @@ function computeOtherFleetStats(rawBookings, periodDays) {
     };
   });
 }
+
 
 function renderOtherFleetTablePage(page = 1) {
   const tbody = document.getElementById("mgrOtherFleetTableBody");
