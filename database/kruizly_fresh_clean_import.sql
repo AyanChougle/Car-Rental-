@@ -1,14 +1,14 @@
 -- ============================================================
 -- KRUIZLY FRESH PRODUCTION IMPORT (CLEAN & DEDUPLICATED)
 -- Completely wipes duplicated tables and re-creates clean tables
--- 38 Vehicles, 135 Users, 2 Admin Users, 12 Bookings, 12 Payments, 5 Coupons
+-- 38 Vehicles, 135 Users, 7 Admins, 12 Bookings, 12 Payments, 5 Coupons
 -- ============================================================
 
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';
 
--- 1. DROP OLD TABLES (Safely removes all duplicates and bad state)
+-- 1. DROP OLD TABLES
 DROP TABLE IF EXISTS `verification`;
 DROP TABLE IF EXISTS `payments`;
 DROP TABLE IF EXISTS `bookings`;
@@ -243,10 +243,8 @@ CREATE TABLE `verification` (
 -- 3. INSERT PRISTINE DEDUPLICATED DATA
 
 INSERT INTO `users` (
-  
   `id`, `firebase_uid`, `email`, `name`, `phone`, `age`, 
   `role`, `status`, `license_status`, `aadhar_status`, `pan_status`, `created_at`
-
 ) VALUES
 (1, 'cust_roshan_more', 'roshanmo@kruizly.com', 'Roshan More', '7507323988', NULL, 'customer', 'active', 'not_submitted', 'not_submitted', 'not_submitted', '2026-09-09 06:22:23'),
 (2, 'cust_vivek_hatkamkar', 'vivekhatk@kruizly.com', 'Vivek Anant Hatkamkar', '8355912195', NULL, 'customer', 'active', 'not_submitted', 'not_submitted', 'not_submitted', '2026-09-09 06:22:23'),
@@ -385,9 +383,7 @@ INSERT INTO `users` (
 (135, 'klJJ4VQE8gMjanSxm0uX6Eg2nNG3', 'akash.t@diallo.co.in', 'akash.t', NULL, NULL, 'admin', 'active', 'not_submitted', 'not_submitted', 'not_submitted', '2026-09-07 13:38:45');
 
 INSERT INTO `admin_users` (
-  
   `id`, `firebase_uid`, `email`, `name`, `role`, `created_at`
-
 ) VALUES
 (1, '2RzZfetVnmdHQa119Mddj80bPrs2', 'carrentpedatabase@gmail.com', 'car database', 'admin', '2026-09-04 07:23:21'),
 (2, 'XHt1anv8Eyei92DEPIFfbBSgA402', 'kruizlyexecutive@gmail.com', 'Chaitanya Patil', 'executive', '2026-09-07 10:24:42'),
@@ -398,13 +394,11 @@ INSERT INTO `admin_users` (
 (7, 'klJJ4VQE8gMjanSxm0uX6Eg2nNG3', 'akash.t@diallo.co.in', 'akash.t', 'admin', '2026-09-07 13:38:45');
 
 INSERT INTO `vehicles` (
-  
   `id`, `car_id`, `reg_no`, `brand`, `model`, `year`, `category`, 
   `transmission`, `fuel`, `seats`, `bags`, `price_day`, `price_hour`, 
   `driver_price`, `security_deposit`, `free_km`, `extra_km`, 
   `hub`, `location`, `acquisition_type`, `owner_name`, `acquisition_date`, 
   `available`, `status`, `is_active_fleet`, `is_custom_fleet`, `gallery`
-
 ) VALUES
 (1, 'CAT-001', 'MH04KR0101', 'BMW', '520D', 2017, 'luxury', 'Automatic', 'Diesel', 5, 2, 18000.00, 750.00, 0.00, 15000.00, 250, 60.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Fleet Catalog', 'Kruizly Fleet Host', '2026-01-01', 1, 'available', 0, 1, '["assets/fleet/BMW 520D.png"]'),
 (2, 'CAT-002', 'MH04KR0102', 'Mahindra', '7XO', 2026, 'suv', 'AMT', 'Diesel', 7, 2, 9000.00, 375.00, 0.00, 7000.00, 250, 28.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Fleet Catalog', 'Kruizly Fleet Host', '2026-01-01', 1, 'available', 0, 1, '["assets/fleet/Mahindra 7XO.png"]'),
@@ -446,11 +440,9 @@ INSERT INTO `vehicles` (
 (38, 'CRP-009', 'MH02FU6808', 'Mahindra', 'XUV700', 2025, 'suv', 'Manual', 'Diesel', 7, 2, 6500.00, 270.83, 0.00, 5000.00, 250, 20.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Partner', 'Saif Feroz Shaikh', '2026-08-01', 1, 'available', 1, 1, '["assets/fleet/Mahindra XUV700.png"]');
 
 INSERT INTO `coupons` (
-  
   `id`, `code`, `discount_type`, `discount_value`, `min_order`, 
   `max_discount`, `label`, `description`, `active`, `status`, 
   `used_count`, `max_uses`, `expires_at`
-
 ) VALUES
 (1, 'FIRST500', 'flat', 500.00, 0.00, NULL, '₹500 Flat Off', 'Enjoy ₹500 off on your booking', 0, 'inactive', 0, NULL, NULL),
 (2, 'KRUIZLY10', 'percentage', 10.00, 0.00, NULL, '10% Off Rental', 'Get 10% off on your ride', 1, 'active', 1, NULL, NULL),
@@ -459,7 +451,6 @@ INSERT INTO `coupons` (
 (5, 'FESTIVE15', 'percentage', 15.00, 2500.00, NULL, '15% Off Rental', 'Get 15% off on your ride', 0, 'inactive', 0, NULL, NULL);
 
 INSERT INTO `bookings` (
-  
   `id`, `booking_id`, `booking_number`, `user_id`, `firebase_uid`, 
   `user_name`, `user_email`, `user_phone`, `vehicle_id`, `vehicle_reg`, 
   `vehicle_name`, `vehicle_category`, `pickup_date`, `drop_date`, `duration`, 
@@ -473,7 +464,6 @@ INSERT INTO `bookings` (
   `start_odometer`, `end_odometer`, `start_fastag`, `return_fastag`, 
   `pickup_handled_by`, `pickup_at`, `return_inspection`, `payment_screenshot_url`, 
   `created_at`
-
 ) VALUES
 (1, 'KRZ-SEP-001', 'KRZ-SEP-001', 1, 'cust_roshan_more', 'Roshan More', 'roshanmo@kruizly.com', '7507323988', 20, 'MH48CJ4153', 'Toyota Glanza', NULL, '2026-09-03 09:00:00', '2026-09-16 21:00:00', NULL, 1, 24, 0, 0.00, 0.00, 0.00, 0.00, 0.00, 40000.00, NULL, 0.00, NULL, 40000.00, 40000.00, 0.00, 0.00, 0.00, 'full', 'paid', 'active', 'active', NULL, 40000.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-03 08:30:00'),
 (2, 'KRZ-SEP-002', 'KRZ-SEP-002', 2, 'cust_vivek_hatkamkar', 'Vivek Anant Hatkamkar', 'vivekhatk@kruizly.com', '8355912195', 19, 'MH04MU1178', 'Toyota Glanza', NULL, '2026-09-03 10:00:00', '2026-09-10 20:00:00', NULL, 1, 24, 0, 0.00, 0.00, 0.00, 0.00, 0.00, 25200.00, NULL, 0.00, NULL, 25200.00, 25200.00, 0.00, 0.00, 0.00, 'full', 'paid', 'active', 'active', NULL, 25200.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-03 09:15:00'),
@@ -486,17 +476,15 @@ INSERT INTO `bookings` (
 (9, 'KRZ-SEP-009', 'KRZ-SEP-009', 9, 'cust_shaikh_sarfaraz', 'Shaikh Sarfaraz', 'Sarshaikh@gmail.com', '8928073455', 17, 'MH43CY1632', 'Suzuki Fronx', NULL, '2026-09-01 09:00:00', '2026-09-03 20:00:00', NULL, 1, 24, 0, 0.00, 0.00, 0.00, 0.00, 0.00, 5100.00, NULL, 0.00, NULL, 5100.00, 5100.00, 0.00, 0.00, 0.00, 'full', 'paid', 'completed', 'completed', NULL, 5100.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-08-31 16:00:00'),
 (10, 'KRZ-SEP-010', 'KRZ-SEP-010', 10, 'cust_shaikh_sarfaraz_2', 'Shaikh Sarfaraz', 'Sarshaikh@gmail.com', '8928073455', 17, 'MH43CY1632', 'Suzuki Fronx', NULL, '2026-09-04 09:00:00', '2026-09-06 20:00:00', NULL, 1, 24, 0, 0.00, 0.00, 0.00, 0.00, 0.00, 5200.00, NULL, 0.00, NULL, 5200.00, 5200.00, 0.00, 0.00, 0.00, 'full', 'paid', 'completed', 'completed', NULL, 5200.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-03 14:00:00'),
 (11, '64740873', '64740873', 130, 'wPlKxMamtMZ8wOESGRV9luGE0ur2', 'Chandrakesh Yadav', 'carwithdriver.vikhroli@gmail.com', '8082788465', 1, 'MH04KR0101', 'BMW 520D', NULL, '2026-09-07 06:29:00', '2026-09-09 06:29:00', '1 Day', 1, 24, 0, 0.00, 0.00, 0.00, 0.00, 0.00, 500.00, NULL, 0.00, NULL, 500.00, 500.00, 0.00, 0.00, 0.00, 'full', 'advance_paid', 'pending_payment', 'pending_payment', NULL, 0.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-07 06:29:48'),
-(12, '80487126', '80487126', 130, 'wPlKxMamtMZ8wOESGRV9luGE0ur2', 'Chandrakesh Yadav', 'carwithdriver.vikhroli@gmail.com', '8082788465', 38, 'MH02FU6808', 'Mahindra XUV700', NULL, '2026-10-20 01:30:00', '2026-10-21 01:30:00', '1 Day (24 hrs);
+(12, '80487126', '80487126', 130, 'wPlKxMamtMZ8wOESGRV9luGE0ur2', 'Chandrakesh Yadav', 'carwithdriver.vikhroli@gmail.com', '8082788465', 38, 'MH02FU6808', 'Mahindra XUV700', NULL, '2026-10-20 01:30:00', '2026-10-21 01:30:00', '1 Day (24 hrs)', 1, 24, 0, 0.00, 0.00, 0.00, 0.00, 0.00, 6000.00, NULL, 0.00, NULL, 10000.00, 10000.00, 500.00, 9500.00, 9500.00, 'full', 'advance_paid', 'pending_verification', 'pending_verification', NULL, 500.00, 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', 'Gavson Business Park, Ghansoli', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2026-09-07 11:53:16');
 
 INSERT INTO `payments` (
-  
   `id`, `payment_id`, `booking_id`, `firebase_uid`, `amount`, 
   `currency`, `method`, `utr`, `payment_ref`, 
   `screenshot_url`, `screenshot_media_id`, `razorpay_order_id`, 
   `razorpay_payment_id`, `razorpay_signature`, `status`, 
   `rejection_reason`, `refund_amount`, `refund_reason`, 
   `verified_by`, `verified_at`, `created_at`
-
 ) VALUES
 (1, 'PAY-KRZ-001', 'KRZ-SEP-001', 'cust_roshan_more', 40000.00, 'INR', 'upi', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'verified', NULL, 0.00, NULL, NULL, NULL, '2026-09-03 08:45:00'),
 (2, 'PAY-KRZ-002', 'KRZ-SEP-002', 'cust_vivek_hatkamkar', 25200.00, 'INR', 'upi', NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'verified', NULL, 0.00, NULL, NULL, NULL, '2026-09-03 09:30:00'),
@@ -512,14 +500,12 @@ INSERT INTO `payments` (
 (12, 'PAY-143F0C5CFA79', '80487126', 'wPlKxMamtMZ8wOESGRV9luGE0ur2', 500.00, 'INR', 'upi', '661506823268', NULL, NULL, NULL, NULL, NULL, NULL, 'pending', NULL, 0.00, NULL, NULL, NULL, '2026-09-07 11:53:16');
 
 INSERT INTO `verification` (
-  
   `id`, `verification_id`, `user_id`, `firebase_uid`, `full_name`, 
   `phone`, `license_number`, `license_front_media_id`, `license_back_media_id`, 
   `license_status`, `aadhar_number`, `aadhar_front_media_id`, `aadhar_back_media_id`, 
   `aadhar_status`, `pan_number`, `pan_front_media_id`, `pan_back_media_id`, 
   `pan_status`, `selfie_media_id`, `overall_status`, `rejection_reason`, 
   `verified_by`, `verified_at`, `created_at`
-
 ) VALUES
 (1, 'VER-7F309C777ECF', 11, '2RzZfetVnmdHQa119Mddj80bPrs2', 'car database', NULL, NULL, NULL, NULL, 'verified', NULL, NULL, NULL, 'verified', NULL, NULL, NULL, 'verified', NULL, 'verified', NULL, NULL, NULL, '2026-09-09 06:22:23'),
 (2, 'VER-814A374DD3F6', 13, '0hyIE7QMA6fXEZ56EcrCeXPw7ir1', '96 _Sawant Pranav', '8356881581', NULL, NULL, NULL, 'verified', NULL, NULL, NULL, 'verified', NULL, NULL, NULL, 'verified', NULL, 'verified', NULL, NULL, NULL, '2026-09-09 06:22:23'),
