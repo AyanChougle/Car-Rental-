@@ -38,6 +38,7 @@ $rows = Database::fetchAll(
         v.overall_status AS v_overall_status
      FROM users u
      LEFT JOIN verification v ON u.firebase_uid = v.firebase_uid
+     ORDER BY u.id DESC"
 );
 
 // Bulletproof deduplication by firebase_uid or email
