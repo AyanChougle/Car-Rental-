@@ -388,12 +388,8 @@ function updateStats() {
 
   const activeCount = allBookings.filter((b) => {
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (bStat === "cancelled" || bStat === "rejected") return false;
-    if (bStat === "completed") return false;
-    if (bStat === "active" || b.pickupStatus === "picked_up") return true;
-    const p = parseExecDate(b.pickupDate);
-    const d = parseExecDate(b.dropDate);
-    return !!(p && d && p <= now && d >= now);
+    if (bStat === "cancelled" || bStat === "rejected" || bStat === "completed" || bStat === "returned") return false;
+    return bStat === "active" || bStat === "in_trip" || bStat === "started" || b.pickupStatus === "picked_up";
   }).length;
 
   const pickupsToday = allBookings.filter((b) => {

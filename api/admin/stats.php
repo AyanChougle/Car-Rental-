@@ -84,18 +84,10 @@ if ($method === 'GET') {
 
     $onRoadFleet = (int)(Database::fetchOne(
         "SELECT COUNT(DISTINCT COALESCE(NULLIF(vehicle_reg, ''), vehicle_id)) as c FROM bookings 
-         WHERE status IN ('active', 'confirmed', 'in_progress', 'started') 
-           AND payment_status IN ('paid', 'advance_paid', 'verified')
-           AND (pickup_date <= NOW() OR pickup_date IS NULL)
-           AND (drop_date >= NOW() OR drop_date IS NULL)"
+         WHERE status IN ('active', 'in_trip', 'started') 
+           AND status NOT IN ('completed', 'cancelled', 'rejected', 'returned')"
     )['c'] ?? 0);
 
-    if ($onRoadFleet === 0) {
-        $onRoadFleet = (int)(Database::fetchOne(
-            "SELECT COUNT(DISTINCT COALESCE(NULLIF(booking_id, ''), booking_number, id)) as c FROM bookings 
-             WHERE status = 'active' OR status = 'in_progress' OR status = 'started'"
-        )['c'] ?? 0);
-    }
 
     $availableInYard = max(0, $totalFleet - $onRoadFleet);
     $fleetUtilization = $totalFleet > 0 ? round(($onRoadFleet / $totalFleet) * 100) : 0;

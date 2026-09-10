@@ -1114,26 +1114,18 @@ function isBookingCancelled(b) {
 function isVerifiedRevenue(b) {
   if (isBookingCancelled(b)) return false;
   const pStat = String(b.paymentStatus || "").toLowerCase();
-  const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-
-  if (
-    pStat === "paid" ||
-    pStat === "verified" ||
-    pStat === "advance_paid" ||
-    bStat === "completed" ||
-    bStat === "confirmed" ||
-    bStat === "active"
-  ) {
-    return true;
-  }
-  const paidAmt = Number(b.paymentAmountPaid || b.advanceAmount || 0);
-  return paidAmt > 0;
+  return pStat === "paid" || pStat === "advance_paid" || pStat === "verified";
 }
 
 function bookingAmount(b) {
-  return (
-    Number(b.finalAmount ?? b.totalAmount ?? b.amount ?? b.total ?? 0) || 0
-  );
+  const pStat = String(b.paymentStatus || "").toLowerCase();
+  if (pStat === "advance_paid") {
+    return Number(b.advanceAmount || b.paymentAmountPaid || b.paymentAmount || 500);
+  }
+  if (pStat === "paid" || pStat === "verified") {
+    return Number(b.finalAmount ?? b.totalAmount ?? b.amount ?? b.paymentAmountPaid ?? 0);
+  }
+  return Number(b.paymentAmountPaid || b.advanceAmount || 0);
 }
 
 function bookingDays(b) {
@@ -1368,36 +1360,27 @@ function renderDashboard() {
     kpiTotalRevenueEl.textContent = formatINR(totalRevenue);
 
   // KPI 2: ACTIVE TRIPS
-  // Strictly counts trips that are on-road / active as changed by executive
+  // Only trips that are currently on-road (not completed, not cancelled)
   const activeTripsCount = rawBookings.filter((b) => {
     if (isBookingCancelled(b)) return false;
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    const isPickedUp = bStat === "active" || 
-                       bStat === "in_trip" || 
-                       bStat === "started" || 
-                       b.pickupStatus === "picked_up" || 
-                       Boolean(b.pickupAt || b.pickup_at || b.startOdometer || b.start_odometer);
-    if (!isPickedUp) return false;
-    
-    // If a historical date range is chosen, check if active trip overlapped that period
-    if (filterFromDate && filterToDate) {
-      const { start, end } = getBookingOperationalDates(b);
-      if (start && end) {
-        return start.getTime() <= filterToDate.getTime() && end.getTime() >= filterFromDate.getTime();
-      }
-    }
-    return true;
+    // Completed trips are NOT active
+    if (bStat === "completed" || bStat === "returned") return false;
+    // Only explicitly on-road statuses count
+    const isOnRoad = bStat === "active" || 
+                     bStat === "in_trip" || 
+                     bStat === "started";
+    return isOnRoad;
   }).length;
   const kpiActiveTripsEl = document.getElementById("kpiActiveTrips");
   if (kpiActiveTripsEl) kpiActiveTripsEl.textContent = String(activeTripsCount);
 
   // KPI 3: COMPLETED TRIPS
-  // Formula: Trips in this dataset that have concluded
-  const completedTripsCount = validPeriodBookings.filter((b) => {
+  // Only bookings explicitly marked completed
+  const completedTripsCount = rawBookings.filter((b) => {
+    if (isBookingCancelled(b)) return false;
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (bStat === "completed") return true;
-    const { end } = getBookingOperationalDates(b);
-    return end && end.getTime() < now.getTime() && bStat !== "active" && bStat !== "in_trip";
+    return bStat === "completed";
   }).length;
   const kpiCompletedTripsEl = document.getElementById("kpiCompletedTrips");
   if (kpiCompletedTripsEl)
@@ -1459,34 +1442,10 @@ function renderDashboard() {
 
 
   // KPI 6: AVERAGE OCCUPANCY (%)
-  // User requirement: "average occupancy goes like 7 fleets occupied in a month divided by on trips per fleet amount"
-  // Formula: (distinct fleet vehicles that had a trip in the target month) / (total active fleet count) * 100
+  // Formula: currently on-trip fleet count / total active fleet count * 100
   const activeFleetCount = activeFleetsRoster.length || 7;
-
-  // Determine the target month window for occupancy
-  const occMonthStart = filterFromDate
-    ? new Date(filterFromDate.getFullYear(), filterFromDate.getMonth(), 1, 0, 0, 0, 0)
-    : new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  const occMonthEnd = filterToDate
-    ? filterToDate
-    : new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-
-  // Collect distinct regNos that have a confirmed/active/completed booking overlapping that month
-  const occupiedRegNosThisMonth = new Set();
-  rawBookings.forEach((b) => {
-    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (bStat === "cancelled" || bStat === "rejected") return;
-    const { start, end } = getBookingOperationalDates(b);
-    if (!start || !end) return;
-    // Check if booking period overlaps the target month window
-    if (start.getTime() <= occMonthEnd.getTime() && end.getTime() >= occMonthStart.getTime()) {
-      const reg = String(b.vehicleReg || b.vehicle_reg || b.regNo || "").trim();
-      if (reg) occupiedRegNosThisMonth.add(reg);
-    }
-  });
-
   const occupancyPct = activeFleetCount
-    ? Math.min(100, Math.round((occupiedRegNosThisMonth.size / activeFleetCount) * 100))
+    ? Math.round((onTripFleetCount / activeFleetCount) * 100)
     : 0;
   const kpiAvgOccupancyEl = document.getElementById("kpiAvgOccupancy");
   if (kpiAvgOccupancyEl) kpiAvgOccupancyEl.textContent = `${occupancyPct}%`;
