@@ -1625,8 +1625,22 @@ function renderDashboard() {
         })
         .reduce((sum, b) => sum + bookingAmount(b), 0);
     } else {
-      // When a date range filter is applied, give sales in that date range
-      daySales = periodRevenue;
+      // If the selected range contains today, show today's sales
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      if (todayStart >= filterFromDate && todayStart <= filterToDate) {
+        daySales = rawBookings
+          .filter((b) => {
+            if (!isVerifiedRevenue(b)) return false;
+            const sDate = getBookingSaleDate(b);
+            return sDate && sDate >= todayStart && sDate <= todayEnd;
+          })
+          .reduce((sum, b) => sum + bookingAmount(b), 0);
+      } else {
+        // Otherwise calculate average daily sales across the selected date range
+        const diffDays = Math.max(1, Math.ceil((filterToDate.getTime() - filterFromDate.getTime()) / (1000 * 60 * 60 * 24)));
+        daySales = Math.round(periodRevenue / diffDays);
+      }
     }
   } else {
     // Default / All Time: Today's sales (00:00:00 to 23:59:59)
