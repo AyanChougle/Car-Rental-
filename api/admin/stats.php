@@ -130,6 +130,103 @@ if ($method === 'GET') {
         }
     }
 
+    // 4. Auto-create and sync kpi_metrics table in MySQL database
+    try {
+        Database::execute("
+            CREATE TABLE IF NOT EXISTS kpi_metrics (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                metric_date DATE NOT NULL UNIQUE,
+                day_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                week_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                month_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                total_revenue DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                total_bookings INT NOT NULL DEFAULT 0,
+                paid_bookings INT NOT NULL DEFAULT 0,
+                active_trips INT NOT NULL DEFAULT 0,
+                completed_trips INT NOT NULL DEFAULT 0,
+                total_fleet INT NOT NULL DEFAULT 7,
+                on_road_fleet INT NOT NULL DEFAULT 0,
+                in_yard_fleet INT NOT NULL DEFAULT 7,
+                occupancy_pct DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+                total_users INT NOT NULL DEFAULT 0,
+                pending_payments INT NOT NULL DEFAULT 0,
+                pending_docs INT NOT NULL DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        ");
+
+        $todaySales = (float)(Database::fetchOne("
+            SELECT COALESCE(SUM(amount), 0) as s FROM (
+                SELECT DISTINCT payment_id, amount 
+                FROM payments 
+                WHERE status = 'verified' AND DATE(created_at) = CURRENT_DATE()
+            ) t
+        ")['s'] ?? 0.0);
+
+        $weekSales = (float)(Database::fetchOne("
+            SELECT COALESCE(SUM(amount), 0) as s FROM (
+                SELECT DISTINCT payment_id, amount 
+                FROM payments 
+                WHERE status = 'verified' 
+                  AND created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL (DAYOFWEEK(CURRENT_DATE()) - 1) DAY)
+                  AND created_at <= DATE_ADD(DATE_SUB(CURRENT_DATE(), INTERVAL (DAYOFWEEK(CURRENT_DATE()) - 1) DAY), INTERVAL 6 DAY)
+            ) t
+        ")['s'] ?? 0.0);
+
+        $completedTrips = (int)(Database::fetchOne("
+            SELECT COUNT(DISTINCT COALESCE(NULLIF(booking_id, ''), booking_number, id)) as c 
+            FROM bookings 
+            WHERE status = 'completed'
+        ")['c'] ?? 0);
+
+        Database::execute("
+            INSERT INTO kpi_metrics (
+                metric_date, day_sales, week_sales, month_sales, total_revenue,
+                total_bookings, paid_bookings, active_trips, completed_trips,
+                total_fleet, on_road_fleet, in_yard_fleet, occupancy_pct,
+                total_users, pending_payments, pending_docs
+            ) VALUES (
+                CURRENT_DATE(), ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?, ?,
+                ?, ?, ?
+            ) ON DUPLICATE KEY UPDATE
+                day_sales = VALUES(day_sales),
+                week_sales = VALUES(week_sales),
+                month_sales = VALUES(month_sales),
+                total_revenue = VALUES(total_revenue),
+                total_bookings = VALUES(total_bookings),
+                paid_bookings = VALUES(paid_bookings),
+                active_trips = VALUES(active_trips),
+                completed_trips = VALUES(completed_trips),
+                total_fleet = VALUES(total_fleet),
+                on_road_fleet = VALUES(on_road_fleet),
+                in_yard_fleet = VALUES(in_yard_fleet),
+                occupancy_pct = VALUES(occupancy_pct),
+                total_users = VALUES(total_users),
+                pending_payments = VALUES(pending_payments),
+                pending_docs = VALUES(pending_docs),
+                updated_at = CURRENT_TIMESTAMP
+        ", [
+            $todaySales,
+            $weekSales,
+            $currentMonthRevenue,
+            $totalRevenue,
+            $totalBookings,
+            $paidBookings,
+            $onRoadFleet,
+            $completedTrips,
+            $totalFleet,
+            $onRoadFleet,
+            $availableInYard,
+            $fleetUtilization,
+            $totalUsers,
+            $pendingPayments,
+            $pendingDocs
+        ]);
+    } catch (Throwable $_) {}
+
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode([
         'status' => 'success',
