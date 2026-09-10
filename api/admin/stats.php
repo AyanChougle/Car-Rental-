@@ -57,21 +57,24 @@ if ($method === 'GET') {
 
     $totalRevenue = max($verifiedPaymentsSum, $paidBookingsSum);
 
+    // User directive: attribute payments & revenue to the booking month (pickup_date / created_at of booking)
     $currentMonthRevenue = (float)(Database::fetchOne(
-        "SELECT COALESCE(SUM(amount), 0) as s FROM (
-            SELECT DISTINCT payment_id, amount 
-            FROM payments 
-            WHERE status = 'verified' AND MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())
-        ) t"
+        "SELECT COALESCE(SUM(b.total_amount), 0) as s FROM (
+            SELECT COALESCE(NULLIF(booking_id, ''), booking_number, id) as bid, MAX(total_amount) as total_amount 
+            FROM bookings 
+            WHERE payment_status IN ('paid', 'advance_paid') 
+              AND MONTH(COALESCE(pickup_date, created_at)) = MONTH(CURRENT_DATE()) 
+              AND YEAR(COALESCE(pickup_date, created_at)) = YEAR(CURRENT_DATE())
+            GROUP BY COALESCE(NULLIF(booking_id, ''), booking_number, id)
+        ) b"
     )['s'] ?? 0.0);
 
     if ($currentMonthRevenue <= 0 && $totalRevenue > 0) {
         $currentMonthRevenue = (float)(Database::fetchOne(
-            "SELECT COALESCE(SUM(total_amount), 0) as s FROM (
-                SELECT COALESCE(NULLIF(booking_id, ''), booking_number, id) as bid, MAX(total_amount) as total_amount 
-                FROM bookings 
-                WHERE payment_status IN ('paid', 'advance_paid') AND MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())
-                GROUP BY COALESCE(NULLIF(booking_id, ''), booking_number, id)
+            "SELECT COALESCE(SUM(amount), 0) as s FROM (
+                SELECT DISTINCT payment_id, amount 
+                FROM payments 
+                WHERE status = 'verified' AND MONTH(created_at) = MONTH(CURRENT_DATE()) AND YEAR(created_at) = YEAR(CURRENT_DATE())
             ) t"
         )['s'] ?? 0.0);
     }

@@ -6683,19 +6683,12 @@ function updateRevenueStats() {
   const monthlyRevenue =
     paid
       .filter((booking) => {
+        // User directive: attribute revenue to the booking/pickup month
         const date =
-          parseDateOnly(
-            booking.paymentVerifiedAt
-          ) ||
-          parseDateOnly(
-            booking.createdAt
-          ) ||
-          parseDateOnly(
-            booking.bookingDate
-          ) ||
-          parseDateOnly(
-            booking.pickupDate
-          );
+          parseDateOnly(booking.pickupDate) ||
+          parseDateOnly(booking.bookingDate) ||
+          parseDateOnly(booking.createdAt) ||
+          parseDateOnly(booking.paymentVerifiedAt);
 
         return (
           date &&
