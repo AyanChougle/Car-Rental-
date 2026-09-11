@@ -100,6 +100,21 @@ async function initAccounts() {
 
   initEvents();
   await loadPaymentsData();
+
+  // Auto-fetch payments every 25 seconds
+  setInterval(() => {
+    if (typeof document !== "undefined" && document.visibilityState === "visible") {
+      loadPaymentsData();
+    }
+  }, 25000);
+
+  if (typeof document !== "undefined") {
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        loadPaymentsData();
+      }
+    });
+  }
 }
 
 function initEvents() {

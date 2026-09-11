@@ -2627,6 +2627,10 @@ function initTabNavigation() {
           sec.style.display = "none";
         }
       });
+
+      // Instantly re-render view with latest state and auto-fetch fresh database records
+      renderDashboard();
+      loadManagerData();
     });
   });
 }
@@ -2891,6 +2895,22 @@ async function initManagerSummary() {
     setVisible(content, true);
     initEventListeners();
     await loadManagerData();
+
+    // Auto-fetch data from website and database every 20 seconds
+    setInterval(() => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        loadManagerData();
+      }
+    }, 20000);
+
+    // Auto-fetch immediately when manager switches back to tab
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          loadManagerData();
+        }
+      });
+    }
   } else {
     setVisible(denied, true);
   }
