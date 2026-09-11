@@ -247,15 +247,21 @@
 .manager-date-sort input::-webkit-calendar-picker-indicator,
 .admin-main input::-webkit-calendar-picker-indicator,
 input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+input[type="datetime-local"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator,
+input::-webkit-calendar-picker-indicator {
   display: block !important;
   opacity: 1 !important;
   cursor: pointer !important;
   width: 18px !important;
   height: 18px !important;
-  filter: invert(1) brightness(100%) !important;
-  -webkit-filter: invert(1) brightness(100%) !important;
-  transition: transform 160ms ease;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 18px 18px !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  transition: transform 160ms ease !important;
 }
 
 /* Operations Queue Table & Scrollable Page Format */
@@ -1261,23 +1267,28 @@ input[type="time"] {
 
 input[type="date"]::-webkit-calendar-picker-indicator,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator,
-input[type="time"]::-webkit-calendar-picker-indicator {
+input[type="time"]::-webkit-calendar-picker-indicator,
+input::-webkit-calendar-picker-indicator {
   display: block !important;
   opacity: 1 !important;
   cursor: pointer !important;
   width: 18px !important;
   height: 18px !important;
-  filter: invert(1) brightness(100%) !important;
-  -webkit-filter: invert(1) brightness(100%) !important;
-  transition: transform 140ms ease;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: center !important;
+  background-size: 18px 18px !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  transition: transform 140ms ease, opacity 140ms ease !important;
 }
 
 input[type="date"]::-webkit-calendar-picker-indicator:hover,
 input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover,
-input[type="time"]::-webkit-calendar-picker-indicator:hover {
-  transform: scale(1.15);
-  filter: invert(1) brightness(130%) !important;
-  -webkit-filter: invert(1) brightness(130%) !important;
+input[type="time"]::-webkit-calendar-picker-indicator:hover,
+input::-webkit-calendar-picker-indicator:hover {
+  transform: scale(1.15) !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%234fd7ff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='2' ry='2'%3E%3C/rect%3E%3Cline x1='16' y1='2' x2='16' y2='6'%3E%3C/line%3E%3Cline x1='8' y1='2' x2='8' y2='6'%3E%3C/line%3E%3Cline x1='3' y1='10' x2='21' y2='10'%3E%3C/line%3E%3C/svg%3E") !important;
 }
 
 /* =========================================================
@@ -1676,86 +1687,236 @@ input[type="time"]::-webkit-calendar-picker-indicator:hover {
   margin-top: 4px;
 }
 
+/* =========================================================
+   AGENDA TIMELINE CARD & LIST ALIGNMENT STYLES
+   ========================================================= */
+.admin-cal-agenda-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  width: 100% !important;
+}
+
 .cal-agenda-card {
-  padding: 16px 18px;
-  background-color: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--kr-border);
-  border-radius: 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-  transition: all 180ms ease;
-  cursor: pointer;
+  display: grid !important;
+  grid-template-columns: 210px 1.4fr 1.6fr auto !important;
+  align-items: center !important;
+  padding: 16px 22px !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 14px !important;
+  gap: 20px !important;
+  transition: all 180ms ease !important;
+  box-sizing: border-box !important;
 }
 
 .cal-agenda-card:hover {
-  background-color: var(--kr-surface-control-hover);
-  border-color: var(--kr-cyan-border);
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(79, 215, 255, 0.35) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
 }
 
-.cal-agenda-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+/* Col 1: Status, ID, Price */
+.cal-agenda-col-meta {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  align-items: flex-start !important;
+  min-width: 180px !important;
 }
 
-.cal-agenda-date-box {
-  width: 52px;
-  height: 52px;
-  border-radius: 12px;
-  background: rgba(72, 215, 255, 0.12);
-  border: 1px solid var(--kr-cyan-border);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
+.cal-agenda-badge-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
 }
 
-.cal-agenda-date-num {
-  font-size: 18px;
-  font-weight: 900;
-  color: var(--kr-cyan);
-  line-height: 1;
+.cal-status-pill {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 3px 10px !important;
+  border-radius: 6px !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  line-height: 1.2 !important;
 }
 
-.cal-agenda-date-mon {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  color: var(--kr-text-secondary);
-  margin-top: 2px;
+.cal-status-pill--active {
+  background: rgba(6, 214, 160, 0.16) !important;
+  border: 1px solid rgba(6, 214, 160, 0.4) !important;
+  color: #06d6a0 !important;
 }
 
-.cal-agenda-info {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+.cal-status-pill--completed {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  color: #cbd5e1 !important;
 }
 
-.cal-agenda-info h4 {
-  font-size: 15px;
-  font-weight: 800;
-  color: #ffffff;
-  margin: 0;
+.cal-status-pill--upcoming {
+  background: rgba(79, 215, 255, 0.15) !important;
+  border: 1px solid rgba(79, 215, 255, 0.4) !important;
+  color: #4fd7ff !important;
 }
 
-.cal-agenda-meta {
-  font-size: 13px;
-  color: var(--kr-text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
+.cal-status-pill--pending {
+  background: rgba(255, 209, 102, 0.15) !important;
+  border: 1px solid rgba(255, 209, 102, 0.4) !important;
+  color: #ffd166 !important;
 }
 
-.cal-agenda-right {
-  display: flex;
-  align-items: center;
-  gap: 14px;
+.cal-status-pill--cancelled {
+  background: rgba(239, 71, 111, 0.15) !important;
+  border: 1px solid rgba(239, 71, 111, 0.4) !important;
+  color: #ef476f !important;
+}
+
+.cal-agenda-id {
+  font-family: monospace !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: #4fd7ff !important;
+  letter-spacing: 0.5px !important;
+}
+
+.cal-agenda-price {
+  font-size: 1.15rem !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.2px !important;
+}
+
+/* Col 2: Customer & Vehicle */
+.cal-agenda-col-info {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+}
+
+.cal-agenda-customer {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 8px !important;
+  flex-wrap: wrap !important;
+}
+
+.cal-agenda-name {
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+}
+
+.cal-agenda-phone {
+  font-size: 12.5px !important;
+  color: #94a3b8 !important;
+  font-family: monospace !important;
+}
+
+.cal-agenda-vehicle {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 6px !important;
+  font-size: 13px !important;
+  color: #cbd5e1 !important;
+}
+
+.cal-agenda-car {
+  font-weight: 600 !important;
+  color: #e2e8f0 !important;
+}
+
+.cal-agenda-reg {
+  color: #4fd7ff !important;
+  font-family: monospace !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+/* Col 3: Timeline */
+.cal-agenda-col-timeline {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+}
+
+.cal-timeline-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 12.5px !important;
+}
+
+.cal-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+}
+
+.cal-dot--pickup {
+  background: #06d6a0 !important;
+  box-shadow: 0 0 8px rgba(6, 214, 160, 0.6) !important;
+}
+
+.cal-dot--return {
+  background: #ffd166 !important;
+  box-shadow: 0 0 8px rgba(255, 209, 102, 0.6) !important;
+}
+
+.cal-timeline-label {
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: #94a3b8 !important;
+  letter-spacing: 0.04em !important;
+  min-width: 105px !important;
+}
+
+.cal-timeline-val {
+  font-size: 12.5px !important;
+  font-weight: 600 !important;
+  color: #ffffff !important;
+}
+
+/* Col 4: Action Button */
+.cal-agenda-col-action {
+  display: flex !important;
+  justify-content: flex-end !important;
+  align-items: center !important;
+}
+
+.cal-agenda-col-action .edit-cal-bk-btn {
+  height: 36px !important;
+  padding: 0 16px !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  white-space: nowrap !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  cursor: pointer !important;
+  transition: all 160ms ease !important;
+}
+
+.cal-agenda-col-action .edit-cal-bk-btn:hover {
+  background: rgba(79, 215, 255, 0.15) !important;
+  border-color: #4fd7ff !important;
+  color: #4fd7ff !important;
+  transform: translateY(-1px) !important;
+}
+
+@media (max-width: 900px) {
+  .cal-agenda-card {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+  .cal-agenda-col-action {
+    justify-content: flex-start !important;
+  }
 }
 
 .cal-agenda-badge {

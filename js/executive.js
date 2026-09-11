@@ -16,7 +16,7 @@ import { checkAuth, getCurrentUser, setStoredUser, isExecutiveUser, isManagerUse
 import { api } from "./kruizly-api.js?v=20260908-v5";
 import "./nav-helper.js?v=20260908-v5";
 import { formatBookingNumber } from "./booking-reference.js";
-import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260908-v5";
+import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260911-v11";
 
 
 function $(id) {

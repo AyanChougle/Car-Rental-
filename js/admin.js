@@ -8660,35 +8660,52 @@ function renderAdminCalendarAgenda() {
 
   let html = "";
   sorted.forEach((b) => {
-    const statusLabel = b.badgeCategory.toUpperCase();
+    const statusLabel = (b.status || b.badgeCategory || "active").toUpperCase();
+    const rawId = String(b.id || b.bookingNumber || b.bookingId || "");
+    const cleanId = rawId.startsWith("#") ? rawId.slice(1) : rawId;
+    const formattedPrice = "₹" + Number(b.totalAmount || 0).toLocaleString("en-IN");
+    const userContact = b.userPhone || b.userEmail || "No contact info";
+    const regBadge = b.carReg ? `<span class="cal-agenda-reg">(${escapeHtml(b.carReg)})</span>` : "";
+
     html += `
       <div class="cal-agenda-card cal-agenda-card--${escapeHtml(b.badgeCategory)}">
-        <div class="cal-agenda-card__top">
-          <span class="cal-status-tag cal-status-tag--${escapeHtml(b.badgeCategory)}">${statusLabel}</span>
-          <span class="cal-agenda-id">#${escapeHtml(b.id.slice(0, 8))}</span>
-          <span class="cal-agenda-price">₹${Number(b.totalAmount).toLocaleString("en-IN")}</span>
+        <!-- Col 1: Status Badge, Booking ID, Price -->
+        <div class="cal-agenda-col-meta">
+          <div class="cal-agenda-badge-wrap">
+            <span class="cal-status-pill cal-status-pill--${escapeHtml(b.badgeCategory)}">${escapeHtml(statusLabel)}</span>
+            <span class="cal-agenda-id">#${escapeHtml(cleanId)}</span>
+          </div>
+          <div class="cal-agenda-price">${formattedPrice}</div>
         </div>
-        <div class="cal-agenda-card__main">
-          <div class="cal-agenda-user">
-            <strong>${escapeHtml(b.userName)}</strong>
-            <span class="cal-agenda-sub">${escapeHtml(b.userPhone || b.userEmail || "No contact info")}</span>
+
+        <!-- Col 2: Customer & Vehicle -->
+        <div class="cal-agenda-col-info">
+          <div class="cal-agenda-customer">
+            <strong class="cal-agenda-name">${escapeHtml(b.userName)}</strong>
+            <span class="cal-agenda-phone">${escapeHtml(userContact)}</span>
           </div>
           <div class="cal-agenda-vehicle">
-            <span class="cal-agenda-car-name">${escapeHtml(b.carName)}</span>
-            ${b.carReg ? `<span class="cal-agenda-reg">(${escapeHtml(b.carReg)})</span>` : ""}
+            <span class="cal-agenda-car">${escapeHtml(b.carName)}</span>
+            ${regBadge}
           </div>
         </div>
-        <div class="cal-agenda-card__timeline">
-          <div class="cal-timeline-item">
+
+        <!-- Col 3: Timeline Dates -->
+        <div class="cal-agenda-col-timeline">
+          <div class="cal-timeline-row">
+            <span class="cal-dot cal-dot--pickup"></span>
             <span class="cal-timeline-label">PICKUP / START:</span>
-            <span class="cal-timeline-value">${formatCalDateTime(b.pickupDate)}</span>
+            <span class="cal-timeline-val">${formatCalDateTime(b.pickupDate)}</span>
           </div>
-          <div class="cal-timeline-item">
+          <div class="cal-timeline-row">
+            <span class="cal-dot cal-dot--return"></span>
             <span class="cal-timeline-label">RETURN / END:</span>
-            <span class="cal-timeline-value">${formatCalDateTime(b.dropDate)}</span>
+            <span class="cal-timeline-val">${formatCalDateTime(b.dropDate)}</span>
           </div>
         </div>
-        <div class="cal-agenda-card__actions">
+
+        <!-- Col 4: Action -->
+        <div class="cal-agenda-col-action">
           <button type="button" class="btn btn-outline btn-sm edit-cal-bk-btn" data-bid="${escapeHtml(b.id)}">
             Edit &amp; Manage
           </button>
@@ -8803,11 +8820,13 @@ function openAdminEditBookingModal(booking) {
 
   populateAdminVehicleDropdowns();
 
-  const id = booking.id || booking.bookingId || booking.bookingNumber || "";
+  const rawId = booking.id || booking.bookingId || booking.bookingNumber || "";
+  const cleanId = rawId.startsWith("#") ? rawId.slice(1) : rawId;
+  const id = cleanId;
   const norm = normalizeCalendarBooking(booking);
 
   const titleEl = $("adminEditBookingTitle");
-  if (titleEl) titleEl.textContent = `Edit Booking #${id.slice(0, 8)}`;
+  if (titleEl) titleEl.textContent = `Edit Booking #${cleanId}`;
 
   const idInput = $("editBkId");
   if (idInput) idInput.value = id;
