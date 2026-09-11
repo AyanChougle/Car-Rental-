@@ -901,7 +901,7 @@ async function loadAllAdminData() {
     loadKpiStats()
   ]);
 
-  if (currentKpiStats && currentKpiStats.is_overridden) {
+  if (currentKpiStats) {
     applyKpiStats();
   } else {
     updateUserStats();
@@ -1472,7 +1472,8 @@ const DEFAULT_COUPONS = [
   { id: "KRUIZLY10", code: "KRUIZLY10", type: "percent", val: 10, label: "10% Off Rental", minOrder: 0, status: "active" },
   { id: "KRUIZLY20", code: "KRUIZLY20", type: "percent", val: 20, label: "20% Off Rental", minOrder: 0, status: "active" },
 ];
-async function loadCoupons() {
+
+async function loadCoupons() {
   const wrap = $("couponsTableWrap");
   if (!wrap) return;
 
@@ -2214,10 +2215,8 @@ function updateUserStats() {
   const totalUsersEl = $("statTotalUsers");
   if (totalUsersEl) totalUsersEl.textContent = usersData.length;
 
-  if (currentKpiStats && currentKpiStats.is_overridden) {
+  if (currentKpiStats) {
     applyKpiStats();
-    // Re-stamp live user count since applyKpiStats may overwrite with DB value
-    if (totalUsersEl) totalUsersEl.textContent = usersData.length;
     return;
   }
 
@@ -2242,7 +2241,7 @@ function updateUserStats() {
 }
 
 function updateBookingStats() {
-  if (currentKpiStats && currentKpiStats.is_overridden) {
+  if (currentKpiStats) {
     applyKpiStats();
     return;
   }
@@ -6658,7 +6657,7 @@ function getBookingCollectedAmount(booking) {
 }
 
 function updateRevenueStats() {
-  if (currentKpiStats && currentKpiStats.is_overridden) {
+  if (currentKpiStats) {
     applyKpiStats();
     return;
   }
