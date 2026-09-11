@@ -210,13 +210,9 @@ async function loadPaymentsData() {
 function updateStats(payments) {
   const pendingCount = payments.filter((p) => String(p.status || "").toLowerCase() === "pending" || String(p.status || "").toLowerCase() === "pending_verification").length;
   const verifiedCount = payments.filter((p) => ["verified", "approved", "paid"].includes(String(p.status || "").toLowerCase())).length;
-  const totalVol = payments
-    .filter((p) => ["verified", "approved", "paid"].includes(String(p.status || "").toLowerCase()))
-    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
   if ($("accountsPendingCount")) $("accountsPendingCount").textContent = String(pendingCount);
   if ($("accountsVerifiedCount")) $("accountsVerifiedCount").textContent = String(verifiedCount);
-  if ($("accountsTotalVolume")) $("accountsTotalVolume").textContent = formatMoney(totalVol);
 }
 
 function renderPaymentsTable() {
@@ -255,14 +251,13 @@ function renderPaymentsTable() {
   }
 
   let html = `
-    <table class="manager-table accounts-table" style="width:100%; min-width:920px; border-collapse:collapse;">
+    <table class="manager-table accounts-table" style="width:100%; min-width:860px; border-collapse:collapse;">
       <thead>
         <tr style="border-bottom:1px solid var(--line); color:var(--sub); font-size:12px; text-transform:uppercase;">
           <th style="padding:12px 10px;">Date</th>
           <th style="padding:12px 10px;">Booking ID</th>
           <th style="padding:12px 10px;">Customer</th>
           <th style="padding:12px 10px;">Vehicle</th>
-          <th style="padding:12px 10px;">Amount</th>
           <th style="padding:12px 10px;">Method / UTR</th>
           <th style="padding:12px 10px;">Verified By</th>
           <th style="padding:12px 10px;">Status</th>
@@ -294,7 +289,6 @@ function renderPaymentsTable() {
           <strong>${escapeHtml(p.vehicleName || "Vehicle")}</strong>
           ${p.vehicleReg ? `<br/><small style="color:var(--sub); font-family:monospace;">${escapeHtml(p.vehicleReg)}</small>` : ""}
         </td>
-        <td style="padding:12px 10px; font-weight:700; color:#fff; white-space:nowrap;">${formatMoney(p.amount)}</td>
         <td style="padding:12px 10px; font-family:monospace;">
           <span style="font-size:11px; text-transform:uppercase; background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px;">${escapeHtml(p.method || "UPI")}</span><br/>
           ${escapeHtml(p.utr || p.paymentRef || "No UTR")}
