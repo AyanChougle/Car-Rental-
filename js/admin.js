@@ -6673,15 +6673,15 @@ function updateRevenueStats() {
         booking.paymentStatus === "advance_paid"
     );
 
-  const totalRevenue =
-    paid.reduce(
-      (sum, booking) =>
-        sum + getBookingCollectedAmount(booking),
-      0
-    );
+  const historicalPastRevenue = 50540 + 281857; // July + August baseline
+  const bookingsVerifiedRevenue = paid.reduce(
+    (sum, booking) =>
+      sum + getBookingCollectedAmount(booking),
+    0
+  );
+  const totalRevenue = historicalPastRevenue + bookingsVerifiedRevenue;
 
-  const now =
-    new Date();
+  const now = new Date();
 
   const monthlyRevenue =
     paid
@@ -6695,10 +6695,8 @@ function updateRevenueStats() {
 
         return (
           date &&
-          date.getFullYear() ===
-            now.getFullYear() &&
-          date.getMonth() ===
-            now.getMonth()
+          date.getFullYear() === now.getFullYear() &&
+          date.getMonth() === now.getMonth()
         );
       })
       .reduce(
@@ -6715,57 +6713,66 @@ function updateRevenueStats() {
     ).length;
 
   // Keep the average aligned with the verified revenue cards.
-  // Pending, rejected and unpaid bookings must not dilute this KPI.
   const average =
     paid.length
-      ? totalRevenue / paid.length
+      ? Math.round((totalRevenue / paid.length) * 100) / 100
       : 0;
 
-  const totalRevenueEl =
-    $("statTotalRevenue");
-
+  const totalRevenueEl = $("statTotalRevenue");
   if (totalRevenueEl) {
-    totalRevenueEl.textContent =
-      formatINR(
-        totalRevenue
-      );
+    totalRevenueEl.textContent = formatINR(totalRevenue);
   }
 
-  const monthlyEl =
-    $("statMonthRevenue");
-
+  const monthlyEl = $("statMonthRevenue");
   if (monthlyEl) {
-    monthlyEl.textContent =
-      formatINR(
-        monthlyRevenue
-      );
+    monthlyEl.textContent = formatINR(monthlyRevenue);
   }
 
-  const pendingEl =
-    $("statPendingPayments");
-
+  const pendingEl = $("statPendingPayments");
   if (pendingEl) {
-    pendingEl.textContent =
-      pendingPayments;
+    pendingEl.textContent = pendingPayments;
   }
 
-  const paidBookingsEl =
-    $("statPaidBookings");
-
+  const paidBookingsEl = $("statPaidBookings");
   if (paidBookingsEl) {
-    paidBookingsEl.textContent =
-      paid.length;
+    paidBookingsEl.textContent = paid.length;
   }
 
-  const averageEl =
-    $("statAvgBooking");
-
+  const averageEl = $("statAvgBooking");
   if (averageEl) {
-    averageEl.textContent =
-      formatINR(
-        average
-      );
+    averageEl.textContent = formatINR(average);
   }
+
+  // Fallback Fleet KPIs: ensures fleet cards never stay at 0
+  const totalFleetEl = $("statTotalFleet");
+  const onRoadFleetEl = $("statOnRoadFleet");
+  const activeRentalsEl = $("statActiveRentals");
+  const availableFleetEl = $("statAvailableFleet");
+  const utilizationEl = $("statUtilizationRate");
+
+  const totFleetNum = 7;
+  const nowMs = Date.now();
+  const onRoadCount = bookingsData.filter((b) => {
+    const s = String(b.status || "").toLowerCase();
+    if (s === "completed" || s === "cancelled" || s === "rejected") return false;
+    if (s === "active" || s === "in_trip" || s === "started") return true;
+    if (s === "confirmed") {
+      const pMs = b.pickupDate ? new Date(b.pickupDate).getTime() : 0;
+      const dMs = b.dropDate ? new Date(b.dropDate).getTime() : 0;
+      return pMs && dMs && nowMs >= pMs && nowMs <= dMs;
+    }
+    return false;
+  }).length;
+
+  const onRoadNum = Math.min(totFleetNum, onRoadCount);
+  const yardNum = Math.max(0, totFleetNum - onRoadNum);
+  const rate = Math.round((onRoadNum / totFleetNum) * 100);
+
+  if (totalFleetEl) totalFleetEl.textContent = String(totFleetNum);
+  if (onRoadFleetEl) onRoadFleetEl.textContent = String(onRoadNum);
+  if (activeRentalsEl) activeRentalsEl.textContent = String(onRoadNum);
+  if (availableFleetEl) availableFleetEl.textContent = String(yardNum);
+  if (utilizationEl) utilizationEl.textContent = `${rate}%`;
 
   const badge =
     $("paymentsTabBadge");

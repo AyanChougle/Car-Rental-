@@ -178,6 +178,13 @@ async function loadPaymentsData() {
 
     allPayments = payments;
     updateStats(payments);
+
+    const pendingCount = payments.filter((p) => String(p.status || "").toLowerCase() === "pending" || String(p.status || "").toLowerCase() === "pending_verification").length;
+    if (pendingCount === 0 && $("accountsStatusFilter")?.value === "pending") {
+      const filterEl = $("accountsStatusFilter");
+      if (filterEl) filterEl.value = "all";
+    }
+
     renderPaymentsTable();
   } catch (err) {
     console.error("Error loading accounts payments:", err);

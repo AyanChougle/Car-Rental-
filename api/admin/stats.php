@@ -17,7 +17,8 @@ if ($method === 'OPTIONS') {
 }
 
 if ($method === 'GET') {
-    $user = Auth::optionalAuth();
+    try {
+        $user = Auth::optionalAuth();
 
     // 1. Live operational counts.
     $totalUsers = (int)(Database::fetchOne(
@@ -73,18 +74,25 @@ if ($method === 'GET') {
     $totalFleet = max(7, $totalFleetDb);
 
     // Operational on-road fleet: count vehicles currently on active trip or confirmed within operational dates
-    $onRoadFleet = (int)(Database::fetchOne(
-        "SELECT COUNT(DISTINCT COALESCE(NULLIF(b.vehicle_reg, ''), b.vehicle_id, v.reg_no)) AS c
-         FROM bookings b
-         LEFT JOIN vehicles v ON (b.vehicle_id = v.id)
-         WHERE (
-             b.status IN ('active', 'in_trip', 'started')
-             OR (b.status = 'confirmed' AND CURRENT_TIMESTAMP BETWEEN b.pickup_date AND b.drop_date)
-             OR (b.pickup_status = 'picked_up' AND b.status NOT IN ('completed', 'cancelled', 'rejected'))
-             OR (b.pickup_at IS NOT NULL AND b.status NOT IN ('completed', 'cancelled', 'rejected'))
-         )
-         AND LOWER(COALESCE(b.status, '')) NOT IN ('completed', 'cancelled', 'rejected')"
-    )['c'] ?? 0);
+    $onRoadFleet = 0;
+    try {
+        $onRoadFleet = (int)(Database::fetchOne(
+            "SELECT COUNT(DISTINCT COALESCE(NULLIF(b.vehicle_reg, ''), b.vehicle_id, v.reg_no)) AS c
+             FROM bookings b
+             LEFT JOIN vehicles v ON (b.vehicle_id = v.id)
+             WHERE (
+                 b.status IN ('active', 'in_trip', 'started')
+                 OR (b.status = 'confirmed' AND CURRENT_TIMESTAMP >= b.pickup_date AND CURRENT_TIMESTAMP <= b.drop_date)
+             )
+             AND LOWER(COALESCE(b.status, '')) NOT IN ('completed', 'cancelled', 'rejected')"
+        )['c'] ?? 0);
+    } catch (Throwable $_) {
+        $onRoadFleet = (int)(Database::fetchOne(
+            "SELECT COUNT(DISTINCT COALESCE(NULLIF(vehicle_reg, ''), vehicle_id)) AS c
+             FROM bookings
+             WHERE status IN ('active', 'in_trip', 'started')"
+        )['c'] ?? 0);
+    }
 
     $availableInYard = max(0, $totalFleet - $onRoadFleet);
     $fleetUtilization = $totalFleet > 0
@@ -130,28 +138,33 @@ if ($method === 'GET') {
         )['s'] ?? 0.0);
     }
 
-    // Create the KPI history table if it is not present yet.
-    Database::execute("CREATE TABLE IF NOT EXISTS kpi_metrics (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        metric_date DATE NOT NULL UNIQUE,
-        day_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-        week_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-        month_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-        total_revenue DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-        total_bookings INT NOT NULL DEFAULT 0,
-        paid_bookings INT NOT NULL DEFAULT 0,
-        active_trips INT NOT NULL DEFAULT 0,
-        completed_trips INT NOT NULL DEFAULT 0,
-        total_fleet INT NOT NULL DEFAULT 7,
-        on_road_fleet INT NOT NULL DEFAULT 0,
-        in_yard_fleet INT NOT NULL DEFAULT 7,
-        occupancy_pct DECIMAL(5,2) NOT NULL DEFAULT 0.00,
-        total_users INT NOT NULL DEFAULT 0,
-        pending_payments INT NOT NULL DEFAULT 0,
-        pending_docs INT NOT NULL DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    // Create the KPI history table if it is not present yet, and auto-heal missing columns
+    try {
+        Database::execute("CREATE TABLE IF NOT EXISTS kpi_metrics (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            metric_date DATE NOT NULL UNIQUE,
+            day_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            week_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            month_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            total_revenue DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+            total_bookings INT NOT NULL DEFAULT 0,
+            paid_bookings INT NOT NULL DEFAULT 0,
+            active_trips INT NOT NULL DEFAULT 0,
+            completed_trips INT NOT NULL DEFAULT 0,
+            total_fleet INT NOT NULL DEFAULT 7,
+            on_road_fleet INT NOT NULL DEFAULT 0,
+            in_yard_fleet INT NOT NULL DEFAULT 7,
+            occupancy_pct DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+            total_users INT NOT NULL DEFAULT 0,
+            pending_payments INT NOT NULL DEFAULT 0,
+            pending_docs INT NOT NULL DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+        try { Database::execute("ALTER TABLE kpi_metrics ADD COLUMN day_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER metric_date"); } catch (Throwable $_) {}
+        try { Database::execute("ALTER TABLE kpi_metrics ADD COLUMN week_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER day_sales"); } catch (Throwable $_) {}
+    } catch (Throwable $_) {}
 
     // Discover all months with activity in database, including historical accounting months
     $knownMonths = [
@@ -291,50 +304,52 @@ if ($method === 'GET') {
         $rowDaySales = $isCurrentMonth ? $daySales : 0.0;
         $rowWeekSales = $isCurrentMonth ? $weekSales : 0.0;
 
-        // Auto-sync into MySQL kpi_metrics table
-        Database::execute(
-            "INSERT INTO kpi_metrics (
-                metric_date, day_sales, week_sales, month_sales, total_revenue,
-                total_bookings, paid_bookings, active_trips, completed_trips,
-                total_fleet, on_road_fleet, in_yard_fleet, occupancy_pct,
-                total_users, pending_payments, pending_docs
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                day_sales = VALUES(day_sales),
-                week_sales = VALUES(week_sales),
-                month_sales = VALUES(month_sales),
-                total_revenue = VALUES(total_revenue),
-                total_bookings = VALUES(total_bookings),
-                paid_bookings = VALUES(paid_bookings),
-                active_trips = VALUES(active_trips),
-                completed_trips = VALUES(completed_trips),
-                total_fleet = VALUES(total_fleet),
-                on_road_fleet = VALUES(on_road_fleet),
-                in_yard_fleet = VALUES(in_yard_fleet),
-                occupancy_pct = VALUES(occupancy_pct),
-                total_users = VALUES(total_users),
-                pending_payments = VALUES(pending_payments),
-                pending_docs = VALUES(pending_docs),
-                updated_at = CURRENT_TIMESTAMP",
-            [
-                $monthStart,
-                $rowDaySales,
-                $rowWeekSales,
-                $monthRev,
-                $monthRev,
-                $monthBookings,
-                $monthPaidBookings,
-                $rowActive,
-                $monthCompletedTrips,
-                $totalFleet,
-                $rowOnRoad,
-                $rowYard,
-                $rowOccupancy,
-                $rowUsers,
-                $rowPendingPayments,
-                $rowPendingDocs,
-            ]
-        );
+        // Auto-sync into MySQL kpi_metrics table (fail-safe)
+        try {
+            Database::execute(
+                "INSERT INTO kpi_metrics (
+                    metric_date, day_sales, week_sales, month_sales, total_revenue,
+                    total_bookings, paid_bookings, active_trips, completed_trips,
+                    total_fleet, on_road_fleet, in_yard_fleet, occupancy_pct,
+                    total_users, pending_payments, pending_docs
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON DUPLICATE KEY UPDATE
+                    day_sales = VALUES(day_sales),
+                    week_sales = VALUES(week_sales),
+                    month_sales = VALUES(month_sales),
+                    total_revenue = VALUES(total_revenue),
+                    total_bookings = VALUES(total_bookings),
+                    paid_bookings = VALUES(paid_bookings),
+                    active_trips = VALUES(active_trips),
+                    completed_trips = VALUES(completed_trips),
+                    total_fleet = VALUES(total_fleet),
+                    on_road_fleet = VALUES(on_road_fleet),
+                    in_yard_fleet = VALUES(in_yard_fleet),
+                    occupancy_pct = VALUES(occupancy_pct),
+                    total_users = VALUES(total_users),
+                    pending_payments = VALUES(pending_payments),
+                    pending_docs = VALUES(pending_docs),
+                    updated_at = CURRENT_TIMESTAMP",
+                [
+                    $monthStart,
+                    $rowDaySales,
+                    $rowWeekSales,
+                    $monthRev,
+                    $monthRev,
+                    $monthBookings,
+                    $monthPaidBookings,
+                    $rowActive,
+                    $monthCompletedTrips,
+                    $totalFleet,
+                    $rowOnRoad,
+                    $rowYard,
+                    $rowOccupancy,
+                    $rowUsers,
+                    $rowPendingPayments,
+                    $rowPendingDocs,
+                ]
+            );
+        } catch (Throwable $_) {}
 
         $monthlyRows[$monthStart] = [
             'metric_date' => $monthStart,
@@ -412,22 +427,34 @@ if ($method === 'GET') {
         }
     }
 
-    header('Content-Type: application/json; charset=utf-8');
-    echo json_encode([
-        'status' => 'success',
-        'success' => true,
-        'data' => [
-            'live' => $liveStats,
-            'overrides' => $overrides,
-            'effective' => $effectiveStats,
-            'is_overridden' => $overrides !== null,
-            'monthly' => $monthlyRows,
-            'reporting_month' => $currentMonthKey,
-            'previous_month' => $previousMonthKey,
-            'revenue_ledger' => $monthlyRevenue,
-        ]
-    ], JSON_UNESCAPED_UNICODE);
-    exit;
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'status' => 'success',
+            'success' => true,
+            'data' => [
+                'live' => $liveStats,
+                'overrides' => $overrides,
+                'effective' => $effectiveStats,
+                'is_overridden' => $overrides !== null,
+                'monthly' => $monthlyRows,
+                'reporting_month' => $currentMonthKey,
+                'previous_month' => $previousMonthKey,
+                'revenue_ledger' => $monthlyRevenue,
+            ]
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    } catch (Throwable $e) {
+        error_log("stats.php exception: " . $e->getMessage());
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode([
+            'status' => 'error',
+            'success' => false,
+            'message' => $e->getMessage(),
+            'file' => basename($e->getFile()),
+            'line' => $e->getLine()
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 }
 
 if ($method === 'POST') {
