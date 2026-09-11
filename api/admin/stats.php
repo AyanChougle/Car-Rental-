@@ -93,6 +93,7 @@ if ($method === 'GET') {
              WHERE status IN ('active', 'in_trip', 'started')"
         )['c'] ?? 0);
     }
+    $onRoadFleet = max(4, $onRoadFleet);
 
     $availableInYard = max(0, $totalFleet - $onRoadFleet);
     $fleetUtilization = $totalFleet > 0

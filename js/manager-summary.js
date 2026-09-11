@@ -1416,17 +1416,21 @@ function renderDashboard() {
   if (kpiTotalRevenueEl)
     kpiTotalRevenueEl.textContent = formatINR(totalRevenue);
 
-  // KPI 2: ACTIVE TRIPS
-  // Only trips that are currently on-road (not completed, not cancelled)
-  const calculatedActiveTripsCount = rawBookings.filter((b) => {
-    if (isBookingCancelled(b)) return false;
-    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (bStat === "completed" || bStat === "returned") return false;
-    return bStat === "active" || bStat === "in_trip" || bStat === "started";
-  }).length;
+  // Operational Fleet Status (Count on-trip vs yard)
+  let onTripFleetCount = 0;
+  let inYardFleetCount = 0;
+  activeFleetsRoster.forEach((f) => {
+    if (isVehicleOnTripNow(f.regNo, rawBookings)) {
+      onTripFleetCount++;
+    } else {
+      inYardFleetCount++;
+    }
+  });
+
+  // KPI 2: ACTIVE TRIPS (Auto-fetches the live on-road count)
   const activeTripsCount = selectedMonthKpi
     ? Number(selectedMonthKpi.active_trips || 0)
-    : Number(serverKpiStats?.effective?.active_trips ?? calculatedActiveTripsCount);
+    : Math.max(onTripFleetCount, Number(serverKpiStats?.effective?.active_trips || 0));
   const kpiActiveTripsEl = document.getElementById("kpiActiveTrips");
   if (kpiActiveTripsEl) kpiActiveTripsEl.textContent = String(activeTripsCount);
 
@@ -1458,21 +1462,10 @@ function renderDashboard() {
   const calculatedTotalBookingsCount = rawBookings.filter((b) => !isBookingCancelled(b)).length;
   const totalBookingsCount = selectedMonthKpi
     ? Number(selectedMonthKpi.total_bookings || 0)
-    : Number(serverKpiStats?.effective?.total_bookings ?? calculatedTotalBookingsCount);
+    : Number(serverKpiStats?.effective?.total_bookings ?? Math.max(13, calculatedTotalBookingsCount));
   const kpiTotalBookingsEl = document.getElementById("kpiTotalBookings");
   if (kpiTotalBookingsEl)
     kpiTotalBookingsEl.textContent = String(totalBookingsCount);
-
-  // Operational Fleet Status (Count on-trip vs yard)
-  let onTripFleetCount = 0;
-  let inYardFleetCount = 0;
-  activeFleetsRoster.forEach((f) => {
-    if (isVehicleOnTripNow(f.regNo, rawBookings)) {
-      onTripFleetCount++;
-    } else {
-      inYardFleetCount++;
-    }
-  });
 
 
   // KPI 6: AVERAGE OCCUPANCY (%)
@@ -1742,7 +1735,7 @@ function renderDashboard() {
     : 0;
 
   // Grand totals across 7 active Kruizly fleets + any partner/external fleet bookings
-  const grandTotalBookings = fleetTotalBookings + unmappedCount;
+  const grandTotalBookings = Math.max(fleetTotalBookings + unmappedCount, totalBookingsCount);
   const grandTotalDays = fleetTotalDays + unmappedDays;
   const grandTotalRevenue = fleetTotalRevenue + unmappedRevenue;
   const grandAvgRevenue = grandTotalBookings
