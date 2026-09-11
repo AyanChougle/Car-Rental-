@@ -37,19 +37,16 @@ let cachedSortedBookings = [];
 let serverKpiStats = null;
 
 /*
- * KRUIZLY FINANCIAL KPI SOURCE OF TRUTH
- * July 2026      = 50,540
- * August 2026    = 281,857
- * September 2026 = 143,816
- * October is excluded until recorded.
+ * KRUIZLY FINANCIAL KPI BASELINE
+ * Historical closed accounting periods: July 2026 (50,540) & August 2026 (281,857)
+ * September 2026 initial verified baseline: 143,816
+ * Subsequent bookings and months are auto-fetched and computed dynamically from MySQL database.
  */
-const KRUIZLY_KPI_REVENUE = Object.freeze({
+export const KRUIZLY_BASE_KPI_REVENUE = Object.freeze({
   "2026-07-01": 50540,
   "2026-08-01": 281857,
   "2026-09-01": 143816,
 });
-const KRUIZLY_TOTAL_REVENUE = 476213;
-const KRUIZLY_CURRENT_MONTH_REVENUE = 143816;
 
 // FLEET STATUS & SCOPE FILTER STATE
 let fleetStatusFilter = "all"; // "all" | "on_trip" | "in_yard" | "scheduled_pickup" | "scheduled_return"
@@ -1375,24 +1372,46 @@ function renderDashboard() {
         : exactMonthKey(filterFromDate, filterToDate);
   const selectedMonthKpi = selectedMonthKey ? monthlyKpis[selectedMonthKey] : null;
 
-  // Total verified revenue all-time till now / across the configured KPI ledger.
-  const calculatedAllTimeRevenue = rawBookings
-    .filter((b) => !isBookingCancelled(b) && isVerifiedRevenue(b))
-    .reduce((sum, b) => sum + bookingAmount(b), 0);
-  const allTimeRevenue = KRUIZLY_TOTAL_REVENUE;
+  // Dynamic monthly revenue ledger: initialized with historical accounting baselines
+  const dynamicMonthlyRevenue = { ...KRUIZLY_BASE_KPI_REVENUE };
 
-  // Total verified revenue in selected period.
+  // Sync from server KPI stats monthly rows if available
+  if (serverKpiStats?.monthly && typeof serverKpiStats.monthly === "object") {
+    Object.keys(serverKpiStats.monthly).forEach((mKey) => {
+      const mSales = Number(serverKpiStats.monthly[mKey]?.month_sales || 0);
+      if (mSales > 0) {
+        dynamicMonthlyRevenue[mKey] = Math.max(dynamicMonthlyRevenue[mKey] || 0, mSales);
+      }
+    });
+  }
+
+  // Auto-calculate any new bookings created beyond the default 10
+  rawBookings.forEach((b) => {
+    if (!isVerifiedRevenue(b)) return;
+    const bId = String(b.bookingNumber || b.bookingId || b.id || "").toUpperCase().trim();
+    if (bId.startsWith("KRZ-SEP-")) return;
+    const sDate = getBookingSaleDate(b);
+    if (!sDate) return;
+    const mKey = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, "0")}-01`;
+    const amt = bookingAmount(b);
+    dynamicMonthlyRevenue[mKey] = (dynamicMonthlyRevenue[mKey] || 0) + amt;
+  });
+
+  const dynamicTotalRevenue = Object.values(dynamicMonthlyRevenue).reduce((sum, v) => sum + Number(v || 0), 0);
+  const curMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  const dynamicCurrentMonthRevenue = Number(dynamicMonthlyRevenue[curMonthKey] || 0);
+
+  // Total verified revenue in selected period
   const calculatedPeriodRevenue = verifiedBookings.reduce(
     (sum, b) => sum + bookingAmount(b), 0,
   );
-  const periodRevenue = selectedMonthKey && KRUIZLY_KPI_REVENUE[selectedMonthKey] !== undefined
-    ? Number(KRUIZLY_KPI_REVENUE[selectedMonthKey])
+  const periodRevenue = selectedMonthKey && dynamicMonthlyRevenue[selectedMonthKey] !== undefined
+    ? Number(dynamicMonthlyRevenue[selectedMonthKey])
     : calculatedPeriodRevenue;
 
   // KPI 1: TOTAL REVENUE
-  // User requirement: "total revenue says overall revenue"
   // Displays overall revenue all-time till now across all bookings
-  const totalRevenue = allTimeRevenue;
+  const totalRevenue = Number(serverKpiStats?.effective?.total_revenue ?? dynamicTotalRevenue);
   const kpiTotalRevenueEl = document.getElementById("kpiTotalRevenue");
   if (kpiTotalRevenueEl)
     kpiTotalRevenueEl.textContent = formatINR(totalRevenue);
@@ -1426,16 +1445,10 @@ function renderDashboard() {
     kpiCompletedTripsEl.textContent = String(completedTripsCount);
 
   // KPI 4: REVENUE THIS MONTH
-  // ALWAYS the current calendar month (Sep 1–today), NOT affected by filter
+  // ALWAYS the current calendar month, dynamically derived
   const curMonthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
   const curMonthEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-  const calculatedMonthRevenue = rawBookings
-    .filter((b) => isVerifiedRevenue(b) && (() => {
-      const sDate = getBookingSaleDate(b);
-      return sDate && sDate >= curMonthStart && sDate <= curMonthEnd;
-    })())
-    .reduce((sum, b) => sum + bookingAmount(b), 0);
-  const monthRevenue = KRUIZLY_CURRENT_MONTH_REVENUE;
+  const monthRevenue = Number(serverKpiStats?.effective?.month_revenue ?? dynamicCurrentMonthRevenue);
   const kpiRevenueThisMonthEl = document.getElementById("kpiRevenueThisMonth");
   if (kpiRevenueThisMonthEl)
     kpiRevenueThisMonthEl.textContent = formatINR(monthRevenue);
@@ -1672,10 +1685,11 @@ function renderDashboard() {
       return inWindow(getBookingSaleDate(b), monthStart1, monthEndNow);
     })
     .reduce((sum, b) => sum + bookingAmount(b), 0);
-  const monthSales = KRUIZLY_CURRENT_MONTH_REVENUE;
+  // 3. Month Sales (dynamically derived)
+  const monthSales = monthRevenue;
 
-  // Overall Sales: canonical July + August + September KPI ledger.
-  const overallSales = KRUIZLY_TOTAL_REVENUE;
+  // 4. Overall Sales (dynamically derived)
+  const overallSales = totalRevenue;
 
   document.getElementById("salesDay") &&
     (document.getElementById("salesDay").textContent = formatINR(daySales));
@@ -1686,16 +1700,15 @@ function renderDashboard() {
   document.getElementById("salesOverall") &&
     (document.getElementById("salesOverall").textContent = formatINR(overallSales));
 
-  // Final KPI re-stamp: revenue is deliberately locked to the approved
-  // KRUIZLY ledger so a stale API response or booking fallback cannot change it.
+  // Final KPI sync: ensures all card elements reflect dynamic values
   const totalEl = document.getElementById("kpiTotalRevenue");
   const monthEl = document.getElementById("kpiRevenueThisMonth");
   const salesMonthEl = document.getElementById("salesMonth");
   const salesOverallEl = document.getElementById("salesOverall");
-  if (totalEl) totalEl.textContent = formatINR(KRUIZLY_TOTAL_REVENUE);
-  if (monthEl) monthEl.textContent = formatINR(KRUIZLY_CURRENT_MONTH_REVENUE);
-  if (salesMonthEl) salesMonthEl.textContent = formatINR(KRUIZLY_CURRENT_MONTH_REVENUE);
-  if (salesOverallEl) salesOverallEl.textContent = formatINR(KRUIZLY_TOTAL_REVENUE);
+  if (totalEl) totalEl.textContent = formatINR(totalRevenue);
+  if (monthEl) monthEl.textContent = formatINR(monthRevenue);
+  if (salesMonthEl) salesMonthEl.textContent = formatINR(monthRevenue);
+  if (salesOverallEl) salesOverallEl.textContent = formatINR(totalRevenue);
 
   // FLEET TABLE SORTING
   const sortMode = fleetSortSelect ? fleetSortSelect.value : "revenue";
@@ -1739,8 +1752,8 @@ function renderDashboard() {
   // Reconciled Fleet Revenue aligned with Admin Control Center
   const effectiveFleetRevenue = isAllTime
     ? totalRevenue
-    : selectedMonthKey && KRUIZLY_KPI_REVENUE[selectedMonthKey] !== undefined
-    ? Number(KRUIZLY_KPI_REVENUE[selectedMonthKey])
+    : selectedMonthKey && dynamicMonthlyRevenue[selectedMonthKey] !== undefined
+    ? Number(dynamicMonthlyRevenue[selectedMonthKey])
     : (periodRevenue || totalRevenue);
   const effectiveFleetAvg = grandTotalBookings
     ? Math.round(effectiveFleetRevenue / grandTotalBookings)
@@ -2479,7 +2492,11 @@ async function loadManagerData() {
         api.get("/admin/stats"),
       ]);
 
-    if (kpiRes.status === "fulfilled" && kpiRes.value?.success && kpiRes.value?.data) {
+    if (
+      kpiRes.status === "fulfilled" &&
+      (kpiRes.value?.success || kpiRes.value?.status === "success") &&
+      kpiRes.value?.data
+    ) {
       serverKpiStats = kpiRes.value.data;
     }
 
