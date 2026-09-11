@@ -141,19 +141,22 @@ try {
             $pdo->prepare("UPDATE users SET " . implode(', ', $uFields) . ", updated_at = CURRENT_TIMESTAMP WHERE firebase_uid = ?")->execute($uParams);
         }
 
-        // 3. If coupon applied, record coupon_usage
+        // 3. If coupon applied, record coupon_usage (supports single and multi-coupon codes)
         if ($couponCode && $couponDiscount > 0) {
-            $coupon = Database::fetchOne("SELECT id FROM coupons WHERE code = ? LIMIT 1", [$couponCode]);
-            if ($coupon && !empty($coupon['id'])) {
-                try {
-                    $pdo->prepare(
-                        "INSERT INTO coupon_usage (coupon_id, coupon_code, user_id, firebase_uid, booking_id, discount_applied)
-                         VALUES (?, ?, ?, ?, ?, ?)
-                         ON DUPLICATE KEY UPDATE discount_applied = VALUES(discount_applied)"
-                    )->execute([(int)$coupon['id'], $couponCode, $dbUserId, $user['firebase_uid'], $bookingId, $couponDiscount]);
+            $codes = array_filter(array_map('trim', explode(',', $couponCode)));
+            foreach ($codes as $singleCode) {
+                $coupon = Database::fetchOne("SELECT id FROM coupons WHERE UPPER(code) = ? LIMIT 1", [strtoupper($singleCode)]);
+                if ($coupon && !empty($coupon['id'])) {
+                    try {
+                        $pdo->prepare(
+                            "INSERT INTO coupon_usage (coupon_id, coupon_code, user_id, firebase_uid, booking_id, discount_applied)
+                             VALUES (?, ?, ?, ?, ?, ?)
+                             ON DUPLICATE KEY UPDATE discount_applied = VALUES(discount_applied)"
+                        )->execute([(int)$coupon['id'], strtoupper($singleCode), $dbUserId, $user['firebase_uid'], $bookingId, $couponDiscount]);
 
-                    $pdo->prepare("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?")->execute([(int)$coupon['id']]);
-                } catch (Throwable $_) {}
+                        $pdo->prepare("UPDATE coupons SET used_count = used_count + 1 WHERE id = ?")->execute([(int)$coupon['id']]);
+                    } catch (Throwable $_) {}
+                }
             }
         }
     });

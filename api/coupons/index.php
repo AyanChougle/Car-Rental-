@@ -115,10 +115,29 @@ if ($method === 'POST') {
         sendErrorResponse('Coupon code and valid discount value are required.', 400);
     }
 
-    // Explicit check: ensure we do NOT accidentally mutate an existing coupon during new creation
+    // If coupon already exists, seamlessly update it instead of throwing a blocking 409 conflict
     $existing = Database::fetchOne("SELECT id, code FROM coupons WHERE UPPER(code) = ? LIMIT 1", [$code]);
     if ($existing) {
-        sendErrorResponse("A coupon with code '$code' already exists (ID: #{$existing['id']}). To modify it, please click the Edit button in the table below.", 409);
+        Database::execute(
+            "UPDATE coupons SET discount_type = ?, discount_value = ?, min_order = ?, max_discount = ?, label = ?, description = ?, active = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+            [$discountType, $discountValue, $minOrder, $maxDiscount, $label, $description, $active, $status, $existing['id']]
+        );
+
+        sendJsonResponse([
+            'success' => true,
+            'message' => "Coupon $code updated successfully.",
+            'coupon' => [
+                'id' => (int)$existing['id'],
+                'code' => $code,
+                'type' => $discountType === 'percentage' ? 'percent' : 'flat',
+                'discountValue' => $discountValue,
+                'label' => $label,
+                'minOrder' => $minOrder,
+                'active' => (bool)$active,
+                'status' => $status
+            ]
+        ]);
+        exit;
     }
 
     Database::execute(

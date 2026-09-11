@@ -1478,7 +1478,7 @@ async function loadCoupons() {
   if (!wrap) return;
 
   try {
-    const res = await api.get("/coupons");
+    const res = await api.get("/coupons?all=1");
     const rawC = Array.isArray(res.coupons) ? res.coupons : [];
     const seenC = new Set();
     couponsData = [];
@@ -1717,9 +1717,13 @@ function initialiseCouponManagement() {
         minimumBookingAmount: minOrder
       };
 
+      const existingCoupon = couponsData.find(item => String(item.code || "").toUpperCase() === code);
       if (isEditing) {
         // Strictly update ONLY the existing selected coupon by ID
         await api.put(`/coupons/${encodeURIComponent(currentEditId)}`, data);
+      } else if (existingCoupon) {
+        // Automatically update the matching existing coupon
+        await api.put(`/coupons/${encodeURIComponent(existingCoupon.id || existingCoupon.code)}`, data);
       } else {
         // Create a distinct new coupon
         await api.post("/coupons", data);
