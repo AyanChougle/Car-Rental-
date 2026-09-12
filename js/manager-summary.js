@@ -1245,10 +1245,14 @@ function bookingAmount(b) {
   if (pStat === "advance_paid") {
     return Number(b.advanceAmount || b.paymentAmountPaid || b.paymentAmount || 500);
   }
-  if (pStat === "paid" || pStat === "verified") {
-    return Number(b.finalAmount ?? b.totalAmount ?? b.amount ?? b.paymentAmountPaid ?? 0);
+  // Exclude security deposits from revenue, sales, and booking amounts:
+  const base = Number(b.baseAmount ?? b.base_amount ?? 0);
+  if (base > 0) {
+    return base;
   }
-  return Number(b.paymentAmountPaid || b.advanceAmount || 0);
+  const total = Number(b.finalAmount ?? b.totalAmount ?? b.amount ?? b.paymentAmountPaid ?? 0);
+  const deposit = Number(b.securityDeposit ?? b.security_deposit ?? 0);
+  return Math.max(0, total - deposit);
 }
 
 function bookingDays(b) {
@@ -2261,9 +2265,7 @@ function computeOtherFleetStats(rawBookings, periodDays) {
       0,
     );
     const revenue = carBookings.reduce(
-      (sum, b) =>
-        sum +
-        (Number(b.paymentAmountPaid || b.finalAmount || b.totalAmount) || 0),
+      (sum, b) => sum + bookingAmount(b),
       0,
     );
     const avgRevenue = bookingsCount ? Math.round(revenue / bookingsCount) : 0;
@@ -2872,7 +2874,9 @@ function initExportExcel() {
           "Start FASTag (₹)": startFastag,
           "Return FASTag (₹)": returnFastag,
           "FASTag Used (₹)": tollUsed,
-          "Total Amount (₹)":
+          "Base Rental Amount (₹)": bookingAmount(b),
+          "Security Deposit (₹)": Number(b.securityDeposit ?? b.security_deposit ?? 0),
+          "Total Collected (₹)":
             b["Total Amount (₹)"] ??
             b.finalAmount ??
             b.totalAmount ??
