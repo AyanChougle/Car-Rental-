@@ -16,15 +16,28 @@ if ($method === 'OPTIONS') {
     exit;
 }
 
-// Default 7 Kruizly Fleet vehicles
+// Default 7 Kruizly Fleet vehicles (supporting both DB variations e.g. GJ/CJ, CU/CY, EF/EL)
 $defaultActiveRegs = [
+    'MH03EF1025',
     'MH03EL1025',
     'MH05GJ4711',
+    'MH48GJ4153',
     'MH48CJ4153',
     'MH04MU1178',
     'MH05FV3454',
+    'MH43CU1632',
     'MH43CY1632',
     'MH02FU6808'
+];
+
+$canonicalFleetCarIds = [
+    'CRP-002',
+    'CRP-003',
+    'CRP-005',
+    'CRP-006',
+    'CRP-007',
+    'CRP-008',
+    'CRP-009'
 ];
 
 if ($method === 'GET') {
@@ -50,15 +63,17 @@ if ($method === 'GET') {
     $allDbVehicles = Database::fetchAll("SELECT * FROM vehicles WHERE status != 'removed' ORDER BY brand ASC, model ASC");
 
     $vehiclesMap = [];
+    $vehiclesByCarId = [];
     foreach ($allDbVehicles as $v) {
         $cleanReg = strtoupper(trim((string)$v['reg_no']));
+        $cleanCarId = strtoupper(trim((string)($v['car_id'] ?? '')));
         $gallery = [];
         if (!empty($v['gallery'])) {
             $gallery = is_string($v['gallery']) ? json_decode($v['gallery'], true) : $v['gallery'];
         }
         $img = (is_array($gallery) && !empty($gallery[0])) ? $gallery[0] : 'assets/fleet/' . $v['brand'] . ' ' . $v['model'] . '.png';
 
-        $vehiclesMap[$cleanReg] = [
+        $item = [
             'id' => $v['id'],
             'carId' => $v['car_id'] ?? null,
             'regNo' => $v['reg_no'],
@@ -78,64 +93,78 @@ if ($method === 'GET') {
             'available' => (int)$v['available'],
             'status' => $v['status'],
             'imageUrl' => $img,
-            'isActiveFleet' => in_array($cleanReg, $activeRegs, true)
+            'isActiveFleet' => true
         ];
+
+        if ($cleanReg !== '') {
+            $vehiclesMap[$cleanReg] = $item;
+            $simpReg = str_replace(['C', 'G'], 'C', str_replace(['U', 'Y'], 'U', str_replace(['F', 'L'], 'F', $cleanReg)));
+            $vehiclesMap[$simpReg] = $item;
+        }
+        if ($cleanCarId !== '') {
+            $vehiclesByCarId[$cleanCarId] = $item;
+        }
     }
 
     // Default metadata for the 7 standard Kruizly fleets
     $standardFleetMeta = [
+        'MH03EF1025' => ['carId' => 'CRP-002', 'brand' => 'Suzuki', 'model' => 'Fronx', 'year' => 2026, 'category' => 'compact-suv', 'transmission' => 'Automatic', 'fuel' => 'Petrol', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Aditi Lotankar', 'acquisitionDate' => '2026-07-20', 'priceDay' => 3500, 'image' => 'assets/fleet/Suzuki Fronx.png'],
         'MH03EL1025' => ['carId' => 'CRP-002', 'brand' => 'Suzuki', 'model' => 'Fronx', 'year' => 2026, 'category' => 'compact-suv', 'transmission' => 'Automatic', 'fuel' => 'Petrol', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Aditi Lotankar', 'acquisitionDate' => '2026-07-20', 'priceDay' => 3500, 'image' => 'assets/fleet/Suzuki Fronx.png'],
         'MH05GJ4711' => ['carId' => 'CRP-003', 'brand' => 'Suzuki', 'model' => 'Ertiga', 'year' => 2026, 'category' => 'mpv', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 7, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Viren Gupta', 'acquisitionDate' => '2026-07-24', 'priceDay' => 4000, 'image' => 'assets/fleet/Suzuki Ertiga.png'],
+        'MH48GJ4153' => ['carId' => 'CRP-005', 'brand' => 'Toyota', 'model' => 'Glanza', 'year' => 2026, 'category' => 'hatchback', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Ajay Vishwakarma', 'acquisitionDate' => '2026-07-29', 'priceDay' => 3000, 'image' => 'assets/fleet/Toyota Glanza.png'],
         'MH48CJ4153' => ['carId' => 'CRP-005', 'brand' => 'Toyota', 'model' => 'Glanza', 'year' => 2026, 'category' => 'hatchback', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Ajay Vishwakarma', 'acquisitionDate' => '2026-07-29', 'priceDay' => 3000, 'image' => 'assets/fleet/Toyota Glanza.png'],
         'MH04MU1178' => ['carId' => 'CRP-006', 'brand' => 'Toyota', 'model' => 'Glanza', 'year' => 2026, 'category' => 'hatchback', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Kundan Singh', 'acquisitionDate' => '2026-08-04', 'priceDay' => 3000, 'image' => 'assets/fleet/Toyota Glanza.png'],
         'MH05FV3454' => ['carId' => 'CRP-007', 'brand' => 'Tata', 'model' => 'Punch', 'year' => 2026, 'category' => 'compact-suv', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Tai Phad', 'acquisitionDate' => '2026-08-13', 'priceDay' => 3000, 'image' => 'assets/fleet/Tata Punch.png'],
+        'MH43CU1632' => ['carId' => 'CRP-008', 'brand' => 'Suzuki', 'model' => 'Fronx', 'year' => 2026, 'category' => 'compact-suv', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Amol Gole', 'acquisitionDate' => '2026-08-19', 'priceDay' => 3200, 'image' => 'assets/fleet/Suzuki Fronx.png'],
         'MH43CY1632' => ['carId' => 'CRP-008', 'brand' => 'Suzuki', 'model' => 'Fronx', 'year' => 2026, 'category' => 'compact-suv', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Amol Gole', 'acquisitionDate' => '2026-08-19', 'priceDay' => 3200, 'image' => 'assets/fleet/Suzuki Fronx.png'],
         'MH02FU6808' => ['carId' => 'CRP-009', 'brand' => 'Mahindra', 'model' => 'XUV 700', 'year' => 2026, 'category' => 'suv', 'transmission' => 'Automatic', 'fuel' => 'Petrol', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Saif Feroz Shaikh', 'acquisitionDate' => '2026-08-01', 'priceDay' => 5500, 'image' => 'assets/fleet/Mahindra XUV 700.png'],
     ];
 
     // Build active fleet roster
     $activeFleetList = [];
+    $seenCarIds = [];
+
+    // First, add all canonical partner fleets found in DB by car_id
+    foreach ($canonicalFleetCarIds as $cId) {
+        if (isset($vehiclesByCarId[$cId])) {
+            $activeFleetList[] = $vehiclesByCarId[$cId];
+            $seenCarIds[$cId] = true;
+        }
+    }
+
+    // Next, check activeRegs for any remaining fleets
     foreach ($activeRegs as $reg) {
-        if (isset($vehiclesMap[$reg])) {
-            $activeFleetList[] = $vehiclesMap[$reg];
+        $simp = str_replace(['C', 'G'], 'C', str_replace(['U', 'Y'], 'U', str_replace(['F', 'L'], 'F', $reg)));
+        $matchedVeh = $vehiclesMap[$reg] ?? $vehiclesMap[$simp] ?? null;
+
+        if ($matchedVeh) {
+            $mCarId = $matchedVeh['carId'] ?? null;
+            if (!$mCarId || empty($seenCarIds[$mCarId])) {
+                $activeFleetList[] = $matchedVeh;
+                if ($mCarId) $seenCarIds[$mCarId] = true;
+            }
         } elseif (isset($standardFleetMeta[$reg])) {
             $m = $standardFleetMeta[$reg];
-            $activeFleetList[] = [
-                'id' => null,
-                'regNo' => $reg,
-                'brand' => $m['brand'],
-                'model' => $m['model'],
-                'year' => $m['year'],
-                'category' => $m['category'],
-                'transmission' => $m['transmission'],
-                'fuel' => $m['fuel'],
-                'seats' => $m['seats'],
-                'priceDay' => (float)$m['priceDay'],
-                'priceHour' => round($m['priceDay'] / 24),
-                'available' => 1,
-                'status' => 'available',
-                'imageUrl' => $m['image'],
-                'isActiveFleet' => true
-            ];
-        } else {
-            $activeFleetList[] = [
-                'id' => null,
-                'regNo' => $reg,
-                'brand' => 'Kruizly',
-                'model' => 'Fleet Vehicle',
-                'year' => 2025,
-                'category' => 'Fleet',
-                'transmission' => 'Manual',
-                'fuel' => 'Diesel',
-                'seats' => 5,
-                'priceDay' => 4500,
-                'priceHour' => 188,
-                'available' => 1,
-                'status' => 'available',
-                'imageUrl' => 'assets/fleet/Kia Carens.png',
-                'isActiveFleet' => true
-            ];
-        }
+            if (empty($seenCarIds[$m['carId']])) {
+                $activeFleetList[] = [
+                    'id' => null,
+                    'carId' => $m['carId'],
+                    'regNo' => $reg,
+                    'brand' => $m['brand'],
+                    'model' => $m['model'],
+                    'year' => $m['year'],
+                    'category' => $m['category'],
+                    'transmission' => $m['transmission'],
+                    'fuel' => $m['fuel'],
+                    'seats' => $m['seats'],
+                    'priceDay' => (float)$m['priceDay'],
+                    'priceHour' => round($m['priceDay'] / 24),
+                    'available' => 1,
+                    'status' => 'available',
+                    'imageUrl' => $m['image'],
+                    'isActiveFleet' => true
+                ];
+                $seenCarIds[$m['carId']] = true;
     }
 
     sendJsonResponse([

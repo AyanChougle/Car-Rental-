@@ -58,7 +58,7 @@ let fleetScope = "active"; // "active" (7) | "all" (38)
 export const ACTIVE_7_FLEETS = [
   {
     carId: "CRP-002",
-    regNo: "MH03EL1025",
+    regNo: "MH03EF1025",
     brand: "Suzuki",
     model: "Fronx",
     year: 2026,
@@ -71,7 +71,7 @@ export const ACTIVE_7_FLEETS = [
     ownerName: "Aditi Lotankar",
     acquisitionDate: "2026-07-20",
     image: "assets/fleet/Suzuki Fronx.png",
-    priceDay: 3500,
+    priceDay: 2700,
   },
   {
     carId: "CRP-003",
@@ -88,11 +88,11 @@ export const ACTIVE_7_FLEETS = [
     ownerName: "Viren Gupta",
     acquisitionDate: "2026-07-24",
     image: "assets/fleet/Suzuki Ertiga.png",
-    priceDay: 4000,
+    priceDay: 3300,
   },
   {
     carId: "CRP-005",
-    regNo: "MH48CJ4153",
+    regNo: "MH48GJ4153",
     brand: "Toyota",
     model: "Glanza",
     year: 2026,
@@ -105,7 +105,7 @@ export const ACTIVE_7_FLEETS = [
     ownerName: "Ajay Vishwakarma",
     acquisitionDate: "2026-07-29",
     image: "assets/fleet/Toyota Glanza.png",
-    priceDay: 3000,
+    priceDay: 2600,
   },
   {
     carId: "CRP-006",
@@ -122,7 +122,7 @@ export const ACTIVE_7_FLEETS = [
     ownerName: "Kundan Singh",
     acquisitionDate: "2026-08-04",
     image: "assets/fleet/Toyota Glanza.png",
-    priceDay: 3000,
+    priceDay: 2600,
   },
   {
     carId: "CRP-007",
@@ -139,11 +139,11 @@ export const ACTIVE_7_FLEETS = [
     ownerName: "Tai Phad",
     acquisitionDate: "2026-08-13",
     image: "assets/fleet/Tata Punch.png",
-    priceDay: 3000,
+    priceDay: 2700,
   },
   {
     carId: "CRP-008",
-    regNo: "MH43CY1632",
+    regNo: "MH43CU1632",
     brand: "Suzuki",
     model: "Fronx",
     year: 2026,
@@ -156,7 +156,7 @@ export const ACTIVE_7_FLEETS = [
     ownerName: "Amol Gole",
     acquisitionDate: "2026-08-19",
     image: "assets/fleet/Suzuki Fronx.png",
-    priceDay: 3200,
+    priceDay: 2600,
   },
   {
     carId: "CRP-009",
@@ -194,8 +194,8 @@ export const DEFAULT_SEPTEMBER_BOOKINGS = [
     finalAmount: 40000,
     paymentAmountPaid: 40000,
     paymentStatus: "paid",
-    status: "active",
-    bookingStatus: "active",
+    status: "completed",
+    bookingStatus: "completed",
     source: "Meta",
   },
   {
@@ -214,8 +214,8 @@ export const DEFAULT_SEPTEMBER_BOOKINGS = [
     finalAmount: 25200,
     paymentAmountPaid: 25200,
     paymentStatus: "paid",
-    status: "active",
-    bookingStatus: "active",
+    status: "completed",
+    bookingStatus: "completed",
     source: "Meta",
   },
   {
@@ -294,8 +294,8 @@ export const DEFAULT_SEPTEMBER_BOOKINGS = [
     finalAmount: 3300,
     paymentAmountPaid: 3300,
     paymentStatus: "paid",
-    status: "active",
-    bookingStatus: "active",
+    status: "completed",
+    bookingStatus: "completed",
     source: "Google",
   },
   {
@@ -853,22 +853,40 @@ export function matchBookingToFleet(b) {
   const nameRaw = String(b.vehicleName || b.carName || "")
     .trim()
     .toUpperCase();
+  const carIdRaw = String(b.carId || b.car_id || "")
+    .trim()
+    .toUpperCase();
 
   // 1. Direct registration / carId match
-  if (regRaw) {
+  if (regRaw || carIdRaw) {
     for (const f of activeFleetsRoster) {
       const fReg = f.regNo.toUpperCase().replace(/[\s\-_]/g, "");
-      if (regRaw === fReg || regRaw.includes(fReg) || fReg.includes(regRaw)) {
+      const fCarId = String(f.carId || "").toUpperCase().trim();
+
+      if (carIdRaw && fCarId && carIdRaw === fCarId) {
         return f.regNo;
       }
-      if (f.carId) {
-        const fCarId = f.carId.toUpperCase().replace(/[\s\-_]/g, "");
-        if (regRaw === fCarId || regRaw.includes(fCarId)) {
+      if (regRaw) {
+        if (regRaw === fReg || regRaw.includes(fReg) || fReg.includes(regRaw)) {
+          return f.regNo;
+        }
+        // Normalize common letter variations between user typed and RTO format
+        const rSimp = regRaw.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+        const fSimp = fReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+        if (rSimp === fSimp || rSimp.includes(fSimp) || fSimp.includes(rSimp)) {
           return f.regNo;
         }
       }
     }
   }
+
+  // Helper to find reg from activeFleetsRoster by carId or model
+  const findRosterReg = (carId, modelKeyword) => {
+    const found = activeFleetsRoster.find(
+      (f) => (carId && f.carId === carId) || (modelKeyword && f.model.toUpperCase().includes(modelKeyword))
+    );
+    return found ? found.regNo : null;
+  };
 
   // 2. Keyword match on car name & fleet details
   if (
@@ -876,13 +894,13 @@ export function matchBookingToFleet(b) {
     nameRaw.includes("XUV 700") ||
     nameRaw.includes("XUV700")
   ) {
-    return "MH02FU6808";
+    return findRosterReg("CRP-009", "700") || "MH02FU6808";
   }
   if (nameRaw.includes("ERTIGA")) {
-    return "MH05GJ4711";
+    return findRosterReg("CRP-003", "ERTIGA") || "MH05GJ4711";
   }
   if (nameRaw.includes("PUNCH")) {
-    return "MH05FV3454";
+    return findRosterReg("CRP-007", "PUNCH") || "MH05FV3454";
   }
   if (nameRaw.includes("GLANZA")) {
     if (
@@ -890,9 +908,9 @@ export function matchBookingToFleet(b) {
       nameRaw.includes("KUNDAN") ||
       nameRaw.includes("VIVEK")
     ) {
-      return "MH04MU1178";
+      return findRosterReg("CRP-006", "1178") || "MH04MU1178";
     }
-    return "MH48CJ4153";
+    return findRosterReg("CRP-005", "4153") || "MH48GJ4153";
   }
   if (nameRaw.includes("FRONX")) {
     if (
@@ -900,9 +918,9 @@ export function matchBookingToFleet(b) {
       regRaw.includes("1025") ||
       nameRaw.includes("ARUN")
     ) {
-      return "MH03EL1025";
+      return findRosterReg("CRP-002", "1025") || "MH03EF1025";
     }
-    return "MH43CY1632";
+    return findRosterReg("CRP-008", "1632") || "MH43CU1632";
   }
 
   // 3. Fallback matching across active roster
@@ -937,67 +955,159 @@ export function matchBookingToFleet(b) {
   return null;
 }
 
-export function isVehicleOnTripNow(regNo, bookings) {
-  const cleanReg = String(regNo || "")
-    .trim()
-    .toUpperCase()
-    .replace(/[\s\-_]/g, "");
+export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
+  if (!vehicleOrReg || !Array.isArray(bookings) || bookings.length === 0) return false;
+
+  let targetReg = "";
+  let targetCarId = "";
+  let targetModel = "";
+  let targetBrand = "";
+
+  if (typeof vehicleOrReg === "string") {
+    targetReg = vehicleOrReg.trim().toUpperCase().replace(/[\s\-_]/g, "");
+  } else if (typeof vehicleOrReg === "object" && vehicleOrReg !== null) {
+    targetReg = String(vehicleOrReg.regNo || vehicleOrReg.reg_no || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
+    targetCarId = String(vehicleOrReg.carId || vehicleOrReg.car_id || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
+    targetModel = String(vehicleOrReg.model || "").trim().toUpperCase();
+    targetBrand = String(vehicleOrReg.brand || "").trim().toUpperCase();
+  }
+
+  // Safety check: if no registration, carId, or model, cannot match
+  if (!targetReg && !targetCarId && !targetModel) return false;
+
+  const nowMs = Date.now();
+
   return bookings.some((b) => {
     if (isBookingCancelled(b)) return false;
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
     if (bStat === "completed" || bStat === "cancelled" || bStat === "rejected") return false;
 
+    const bReg = String(b.vehicleReg || b.regNo || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
+    const bCarId = String(b.carId || b.car_id || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
+    const bName = String(b.vehicleName || b.carName || "").trim().toUpperCase();
     const matched = matchBookingToFleet(b);
-    const matchedClean = matched
-      ? matched.toUpperCase().replace(/[\s\-_]/g, "")
-      : "";
-    const bReg = String(b.vehicleReg || b.regNo || "")
-      .toUpperCase()
-      .replace(/[\s\-_]/g, "");
-    const isTargetCar =
-      (matchedClean && matchedClean === cleanReg) ||
-      (bReg &&
-        (bReg === cleanReg ||
-          bReg.includes(cleanReg) ||
-          cleanReg.includes(bReg)));
+    const matchedClean = matched ? matched.toUpperCase().replace(/[\s\-_]/g, "") : "";
+
+    let isTargetCar = false;
+
+    // 1. Match by registration if target has reg
+    if (targetReg) {
+      if (
+        (matchedClean && matchedClean === targetReg) ||
+        (bReg && (bReg === targetReg || bReg.includes(targetReg) || targetReg.includes(bReg)))
+      ) {
+        isTargetCar = true;
+      }
+      if (!isTargetCar && bReg) {
+        const rSimp = bReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+        const tSimp = targetReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+        if (rSimp === tSimp || rSimp.includes(tSimp) || tSimp.includes(rSimp)) {
+          isTargetCar = true;
+        }
+      }
+    }
+
+    // 2. Match by carId
+    if (!isTargetCar && targetCarId && bCarId) {
+      if (bCarId === targetCarId || bCarId.includes(targetCarId)) {
+        isTargetCar = true;
+      }
+    }
+
+    // 3. Match by Model Name (especially for catalog cars like Baleno without registration)
+    if (!isTargetCar && targetModel && targetModel.length >= 3) {
+      if (bName && bName.includes(targetModel)) {
+        isTargetCar = true;
+      }
+    }
+
     if (!isTargetCar) return false;
 
-    // A vehicle is strictly on trip only if executive has handed it over / marked active
-    const isPickedUp = bStat === "active" || 
-                       bStat === "in_trip" || 
-                       bStat === "started" || 
-                       b.pickupStatus === "picked_up" || 
-                       Boolean(b.pickupAt || b.pickup_at || b.startOdometer || b.start_odometer);
-    return isPickedUp;
+    // Determine if booking is currently on trip:
+    // A: Explicitly started or handed over
+    const isExplicitlyActive =
+      bStat === "active" ||
+      bStat === "in_trip" ||
+      bStat === "started" ||
+      bStat === "ongoing" ||
+      b.pickupStatus === "picked_up" ||
+      Boolean(b.pickupAt || b.pickup_at || b.startOdometer || b.start_odometer);
+
+    if (isExplicitlyActive) return true;
+
+    // B: Confirmed / Paid booking whose operational dates cover current time
+    const isConfirmedOrPaid =
+      bStat === "confirmed" ||
+      bStat === "approved" ||
+      bStat === "paid" ||
+      bStat === "advance_paid" ||
+      String(b.paymentStatus || "").toLowerCase() === "paid";
+
+    if (isConfirmedOrPaid) {
+      const { start, end } = getBookingOperationalDates(b);
+      if (start && end) {
+        const startMs = start.getTime();
+        const endMs = end.getTime() + (2 * 60 * 60 * 1000); // 2 hours grace period
+        if (nowMs >= startMs && nowMs <= endMs) {
+          return true;
+        }
+      } else if (start && nowMs >= start.getTime()) {
+        return true;
+      }
+    }
+
+    return false;
   });
 }
 
-export function getFleetLiveStatusInfo(regNo, bookings) {
-  const cleanReg = String(regNo || "")
-    .trim()
-    .toUpperCase()
-    .replace(/[\s\-_]/g, "");
+export function getFleetLiveStatusInfo(vehicleOrReg, bookings = rawBookings) {
+  let targetReg = "";
+  let targetCarId = "";
+  let targetModel = "";
+
+  if (typeof vehicleOrReg === "string") {
+    targetReg = vehicleOrReg.trim().toUpperCase().replace(/[\s\-_]/g, "");
+  } else if (typeof vehicleOrReg === "object" && vehicleOrReg !== null) {
+    targetReg = String(vehicleOrReg.regNo || vehicleOrReg.reg_no || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
+    targetCarId = String(vehicleOrReg.carId || vehicleOrReg.car_id || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
+    targetModel = String(vehicleOrReg.model || "").trim().toUpperCase();
+  }
+
   const todayStartMs = new Date().setHours(0, 0, 0, 0);
 
   const carBookings = bookings.filter((b) => {
     if (isBookingCancelled(b)) return false;
+    const bReg = String(b.vehicleReg || b.regNo || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
+    const bCarId = String(b.carId || b.car_id || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
+    const bName = String(b.vehicleName || b.carName || "").trim().toUpperCase();
     const matched = matchBookingToFleet(b);
-    const matchedClean = matched
-      ? matched.toUpperCase().replace(/[\s\-_]/g, "")
-      : "";
-    const bReg = String(b.vehicleReg || b.regNo || "")
-      .toUpperCase()
-      .replace(/[\s\-_]/g, "");
-    return (
-      (matchedClean && matchedClean === cleanReg) ||
-      (bReg &&
-        (bReg === cleanReg ||
-          bReg.includes(cleanReg) ||
-          cleanReg.includes(bReg)))
-    );
+    const matchedClean = matched ? matched.toUpperCase().replace(/[\s\-_]/g, "") : "";
+
+    if (targetReg) {
+      if (
+        (matchedClean && matchedClean === targetReg) ||
+        (bReg && (bReg === targetReg || bReg.includes(targetReg) || targetReg.includes(bReg)))
+      ) {
+        return true;
+      }
+      if (bReg) {
+        const rSimp = bReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+        const tSimp = targetReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+        if (rSimp === tSimp || rSimp.includes(tSimp) || tSimp.includes(rSimp)) {
+          return true;
+        }
+      }
+    }
+    if (targetCarId && bCarId && (bCarId === targetCarId || bCarId.includes(targetCarId))) {
+      return true;
+    }
+    if (targetModel && targetModel.length >= 3 && bName && bName.includes(targetModel)) {
+      return true;
+    }
+    return false;
   });
 
-  const isOnTrip = isVehicleOnTripNow(regNo, bookings);
+  const isOnTrip = isVehicleOnTripNow(vehicleOrReg, bookings);
 
   const returnBooking = carBookings.find((b) => {
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
@@ -1420,7 +1530,7 @@ function renderDashboard() {
   let onTripFleetCount = 0;
   let inYardFleetCount = 0;
   activeFleetsRoster.forEach((f) => {
-    if (isVehicleOnTripNow(f.regNo, rawBookings)) {
+    if (isVehicleOnTripNow(f, rawBookings)) {
       onTripFleetCount++;
     } else {
       inYardFleetCount++;
@@ -1859,7 +1969,7 @@ function renderDashboard() {
           const avgRev = item.bookingsCount
             ? Math.round(item.revenue / item.bookingsCount)
             : 0;
-          const isOnTrip = isVehicleOnTripNow(item.regNo, rawBookings);
+          const isOnTrip = isVehicleOnTripNow(item, rawBookings);
           const yardBadge = isOnTrip
             ? `<span class="badge" style="background: rgba(255, 209, 102, 0.15); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.3); padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; white-space: nowrap;">On Trip</span>`
             : `<span class="badge" style="background: rgba(6, 214, 160, 0.15); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.3); padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; white-space: nowrap;">In Yard</span>`;
@@ -2026,7 +2136,7 @@ function renderDashboard() {
         const carOccupancy = periodDays
           ? Math.min(100, Math.round((stat.bookedDays / periodDays) * 100))
           : 0;
-        const isOnTrip = isVehicleOnTripNow(f.regNo, rawBookings);
+        const isOnTrip = isVehicleOnTripNow(f, rawBookings);
         const statusBadge = isOnTrip
           ? `<span class="badge" style="background: rgba(255, 209, 102, 0.15); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.3); font-size: 11px; padding: 3px 9px; border-radius: 6px; font-weight: 700; white-space: nowrap;">On Trip</span>`
           : `<span class="badge" style="background: rgba(6, 214, 160, 0.12); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.25); font-size: 11px; padding: 3px 9px; border-radius: 6px; font-weight: 700; white-space: nowrap;">In Yard</span>`;
@@ -2160,7 +2270,7 @@ function computeOtherFleetStats(rawBookings, periodDays) {
     const carOccupancy = periodDays
       ? Math.min(100, Math.round((bookedDays / periodDays) * 100))
       : 0;
-    const isOnTrip = isVehicleOnTripNow(car.regNo, rawBookings);
+    const isOnTrip = isVehicleOnTripNow(car, rawBookings);
 
     return {
       ...car,
@@ -2513,19 +2623,35 @@ async function loadManagerData() {
       return reg && !reg.startsWith("ZIP") && !reg.includes("ZIP");
     });
 
-    // Build the master 7-fleet list: always start from canonical ACTIVE_7_FLEETS
+    // Build the master 7-fleet list: always match by carId first, then normalized regNo
     activeFleetsRoster = ACTIVE_7_FLEETS.map((canonicalFleet) => {
-      const cReg = canonicalFleet.regNo.toUpperCase().replace(/[\s\-_]/g, "");
+      const cCarId = String(canonicalFleet.carId || "").toUpperCase().trim();
+      const cRegNorm = canonicalFleet.regNo.toUpperCase().replace(/[\s\-_]/g, "");
+
       const serverMatch = validServerFleets.find((sf) => {
-        const sReg = String(sf.regNo || sf.reg_no || "")
+        const sCarId = String(sf.carId || sf.car_id || "").toUpperCase().trim();
+        if (cCarId && sCarId && cCarId === sCarId) return true;
+
+        const sRegNorm = String(sf.regNo || sf.reg_no || "")
           .toUpperCase()
           .replace(/[\s\-_]/g, "");
-        return sReg === cReg;
+        if (sRegNorm && cRegNorm) {
+          if (sRegNorm === cRegNorm) return true;
+          const sSimp = sRegNorm.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+          const cSimp = cRegNorm.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+          if (sSimp === cSimp) return true;
+        }
+        return false;
       });
+
       if (serverMatch) {
         return {
           ...canonicalFleet,
           ...serverMatch,
+          regNo: serverMatch.regNo || serverMatch.reg_no || canonicalFleet.regNo,
+          carId: serverMatch.carId || serverMatch.car_id || canonicalFleet.carId,
+          brand: serverMatch.brand || canonicalFleet.brand,
+          model: serverMatch.model || canonicalFleet.model,
           priceDay:
             Number(serverMatch.priceDay || serverMatch.price_day) ||
             canonicalFleet.priceDay,
@@ -2556,22 +2682,11 @@ async function loadManagerData() {
       });
     }
 
-    // ALWAYS ensure verified September bookings (KRZ-SEP-001 through KRZ-SEP-010) are present
-    const existingBookingKeys = new Set();
-    rawBookings.forEach((b) => {
-      const idStr = String(
-        b.bookingNumber || b.bookingId || b.id || "",
-      ).toUpperCase().trim();
-      if (idStr) existingBookingKeys.add(idStr);
-    });
-
-    DEFAULT_SEPTEMBER_BOOKINGS.forEach((defB) => {
-      const defKey = String(defB.id || defB.bookingNumber).toUpperCase().trim();
-      if (!existingBookingKeys.has(defKey)) {
-        rawBookings.unshift(defB);
-        existingBookingKeys.add(defKey);
-      }
-    });
+    // Only use offline fallback bookings if database returned 0 bookings (offline/demo mode)
+    if (rawBookings.length === 0) {
+      console.warn("No bookings returned from Hostinger SQL API, loading offline baseline cache");
+      rawBookings = [...DEFAULT_SEPTEMBER_BOOKINGS];
+    }
 
     if (vehiclesRes.status === "fulfilled" && vehiclesRes.value) {
       const res = vehiclesRes.value;
