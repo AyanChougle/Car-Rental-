@@ -1023,37 +1023,31 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
 
     if (!isTargetCar) return false;
 
-    // Determine if booking is currently on trip:
-    // A: Explicitly started or handed over
+    // A booking is actively on trip IF AND ONLY IF:
+    // 1. It is explicitly marked active / started / in_trip, or pickup_status === 'picked_up'
+    // 2. AND it has not been marked completed, returned, or cancelled
+    const isReturned =
+      b.dropStatus === "returned" ||
+      b.drop_status === "returned" ||
+      bStat === "completed" ||
+      Boolean(b.returnedAt || b.return_at || b.endOdometer || b.end_odometer);
+
+    if (isReturned) return false;
+
     const isExplicitlyActive =
       bStat === "active" ||
       bStat === "in_trip" ||
       bStat === "started" ||
       bStat === "ongoing" ||
       b.pickupStatus === "picked_up" ||
+      b.pickup_status === "picked_up" ||
       Boolean(b.pickupAt || b.pickup_at || b.startOdometer || b.start_odometer);
 
     if (isExplicitlyActive) return true;
 
-    // B: Confirmed / Paid booking whose operational dates cover current time
-    const isConfirmedOrPaid =
-      bStat === "confirmed" ||
-      bStat === "approved" ||
-      bStat === "paid" ||
-      bStat === "advance_paid" ||
-      String(b.paymentStatus || "").toLowerCase() === "paid";
-
-    if (isConfirmedOrPaid) {
-      const { start, end } = getBookingOperationalDates(b);
-      if (start && end) {
-        const startMs = start.getTime();
-        const endMs = end.getTime() + (2 * 60 * 60 * 1000); // 2 hours grace period
-        if (nowMs >= startMs && nowMs <= endMs) {
-          return true;
-        }
-      } else if (start && nowMs >= start.getTime()) {
-        return true;
-      }
+    // If confirmed and within active rental window AND marked picked up
+    if (bStat === "confirmed" && (b.pickupStatus === "picked_up" || b.pickup_status === "picked_up")) {
+      return true;
     }
 
     return false;
