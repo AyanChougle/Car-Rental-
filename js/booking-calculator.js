@@ -39,6 +39,13 @@ export function parseDateTime(val) {
   const stringVal = String(val).trim();
   if (!stringVal || stringVal === "—") return null;
 
+  // If string has explicit UTC 'Z' or timezone offset (+HH:mm / -HH:mm)
+  // Let standard Date constructor parse it accurately to preserve timezone instant
+  if (/(?:Z|[+-]\d{2}:?\d{2})$/i.test(stringVal)) {
+    const parsedUtc = new Date(stringVal);
+    if (!isNaN(parsedUtc.getTime())) return parsedUtc;
+  }
+
   // 1. Check DD/MM/YYYY [HH:mm[:ss] [AM|PM]]
   const dmyMatch = stringVal.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?)?/i);
   if (dmyMatch) {
@@ -57,7 +64,7 @@ export function parseDateTime(val) {
     if (!isNaN(parsed.getTime())) return parsed;
   }
 
-  // 2. Check ISO YYYY-MM-DD[THH:mm[:ss]]
+  // 2. Check ISO / SQL YYYY-MM-DD[THH:mm[:ss]]
   const isoMatch = stringVal.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/i);
   if (isoMatch) {
     let year = parseInt(isoMatch[1], 10);
@@ -286,6 +293,7 @@ export function formatHumanDateTime(dateVal) {
   if (!d) return "—";
 
   return d.toLocaleDateString("en-IN", {
+    timeZone: "Asia/Kolkata",
     day: "numeric",
     month: "short",
     year: "numeric",

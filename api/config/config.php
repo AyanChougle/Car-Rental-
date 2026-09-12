@@ -8,6 +8,9 @@
 
 declare(strict_types=1);
 
+// Set default timezone to Indian Standard Time (Navi Mumbai)
+date_default_timezone_set('Asia/Kolkata');
+
 // Error reporting for production vs development
 $isLocal = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1', 'localhost:5500', 'localhost:5501'], true);
 if ($isLocal) {

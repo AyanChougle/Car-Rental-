@@ -473,8 +473,8 @@ async function initBooking(vehicle) {
     if (pickupInput.value) {
       dropInput.min = pickupInput.value;
       if (!dropInput.value || dropInput.value <= pickupInput.value) {
-        const pDate = new Date(pickupInput.value);
-        if (!isNaN(pDate.getTime())) {
+        const pDate = parseDateTime(pickupInput.value);
+        if (pDate && !isNaN(pDate.getTime())) {
           const dDate = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
           dropInput.value = toLocalDateTime(dDate);
         }
@@ -616,8 +616,8 @@ async function initBooking(vehicle) {
         vehicleCategory: vehicle.category,
         vehicleIcon: "",
 
-        pickupDate: (parseDateTime(pickupInput) || new Date()).toISOString(),
-        dropDate: (parseDateTime(dropInput) || new Date()).toISOString(),
+        pickupDate: pDate ? `${toLocalDateTime(pDate).replace("T", " ")}:00` : new Date().toISOString(),
+        dropDate: dDate ? `${toLocalDateTime(dDate).replace("T", " ")}:00` : new Date().toISOString(),
         duration: calculation.duration.formattedDuration,
         durationDays: calculation.days,
         days: calculation.days,
