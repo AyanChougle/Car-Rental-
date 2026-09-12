@@ -3498,9 +3498,11 @@ function renderBookingsTable(
       const rawDep = Number(booking.securityDeposit ?? booking.security_deposit ?? 0);
       const rawBase = Number(booking.baseAmount ?? booking.base_amount ?? 0);
       const rawDisc = Number(booking.couponDiscount ?? booking.coupon_discount ?? 0);
-      const amount = (rawTot > 0 && rawDep > 0)
+      const baseAmt = (rawTot > 0 && rawDep > 0)
         ? Math.max(0, rawTot - rawDep)
         : (rawBase > 0 ? Math.max(0, rawBase - rawDisc) : Math.max(0, rawTot - rawDep));
+      const totalAmt = (rawTot > 0) ? rawTot : (baseAmt + rawDep);
+      const amount = baseAmt;
 
       const startOdo =
         getStartOdometer(
@@ -3596,10 +3598,13 @@ function renderBookingsTable(
             style="
               padding:14px;
               font-family:monospace;
+              font-weight:700;
+              color:var(--accent);
+              white-space:nowrap;
             "
           >
-            #${escapeHtml(
-              id.slice(0, 8)
+            ${escapeHtml(
+              id.toUpperCase().startsWith("KRZ-") ? id : `#${id.slice(0, 8)}`
             )}
           </td>
 
@@ -3652,13 +3657,11 @@ function renderBookingsTable(
           <td
             style="
               padding:14px;
-              color:var(--accent);
-              font-weight:700;
+              white-space:nowrap;
             "
           >
-            ${formatINR(
-              amount
-            )}
+            <div style="font-weight:700;color:#06d6a0;">${formatINR(baseAmt)}</div>
+            ${rawDep > 0 ? `<small style="color:var(--sub);font-size:11px;display:block;margin-top:2px;">Total: ${formatINR(totalAmt)} (₹${rawDep} dep)</small>` : `<small style="color:var(--sub);font-size:11px;display:block;margin-top:2px;">Total: ${formatINR(totalAmt)}</small>`}
           </td>
 
           <td style="padding:14px;">

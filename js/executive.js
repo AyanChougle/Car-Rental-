@@ -523,10 +523,14 @@ function renderBookingsTable() {
               const isCompleted = b.status === "completed";
               const isCancelled = b.status === "cancelled" || b.status === "rejected";
 
+              const rawTot = Number(b.finalAmount ?? b.totalAmount ?? 0);
+              const rawDep = Number(b.securityDeposit ?? 0);
+              const totalAmt = (rawTot > 0) ? rawTot : (baseAmt + rawDep);
+
               return `
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13.5px;">
                   <td style="padding: 12px 10px; color: var(--sub); white-space: nowrap;">${escapeHtml(formatReadableDate(b.pickupDate || b.createdAt))}</td>
-                  <td style="padding: 12px 10px; font-family: monospace; font-weight: 700; color: var(--accent);">#${escapeHtml(formatBookingNumber(b))}</td>
+                  <td style="padding: 12px 10px; font-family: monospace; font-weight: 700; color: var(--accent); white-space: nowrap;">#${escapeHtml(formatBookingNumber(b))}</td>
                   <td style="padding: 12px 10px;">
                     <strong style="color: #fff;">${escapeHtml(b.userName || "Customer")}</strong><br/>
                     <small style="color: #4fd7ff; font-size: 12px;">${escapeHtml(b.userEmail || "")}</small>
@@ -536,7 +540,10 @@ function renderBookingsTable() {
                     <strong>${escapeHtml(b.vehicleName || "Vehicle")}</strong><br/>
                     <small style="color: var(--sub); font-family: monospace;">${escapeHtml(b.vehicleReg || "—")}</small>
                   </td>
-                  <td style="padding: 12px 10px; font-weight: 700; color: #06d6a0;">${formatMoney(baseAmt)}</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">
+                    <div style="font-weight: 700; color: #06d6a0;">${formatMoney(baseAmt)}</div>
+                    ${rawDep > 0 ? `<small style="color: var(--sub); font-size: 11px; display: block; margin-top: 2px;">Total: ${formatMoney(totalAmt)} (₹${rawDep} dep)</small>` : `<small style="color: var(--sub); font-size: 11px; display: block; margin-top: 2px;">Total: ${formatMoney(totalAmt)}</small>`}
+                  </td>
                   <td style="padding: 12px 10px; font-weight: 700; ${statusClass}">${escapeHtml(displayStatus)}</td>
                   <td style="padding: 12px 10px; text-align: right;">
                     <div style="display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; flex-wrap: wrap;">

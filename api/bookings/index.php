@@ -111,10 +111,16 @@ if ($method === 'GET') {
         $pickupPhotoMediaIds = $inspection['pickupPhotoMediaIds'] ?? [];
         $pickupPhotos = $inspection['pickupPhotos'] ?? [];
 
+        $rawBId = trim((string)($b['booking_id'] ?? ''));
+        $rawBNum = trim((string)($b['booking_number'] ?? ''));
+        $rowId = (int)($b['id'] ?? 1);
+        $bId = ($rawBId !== '') ? $rawBId : (($rawBNum !== '') ? $rawBNum : ('KRZ-SEP-' . str_pad((string)$rowId, 3, '0', STR_PAD_LEFT)));
+        $bNum = ($rawBNum !== '') ? $rawBNum : $bId;
+
         return [
-            'id' => $b['booking_id'],
-            'bookingId' => $b['booking_id'],
-            'bookingNumber' => $b['booking_number'] ?? $b['booking_id'],
+            'id' => $bId,
+            'bookingId' => $bId,
+            'bookingNumber' => $bNum,
             'userId' => $b['firebase_uid'],
             'firebaseUid' => $b['firebase_uid'],
             'userName' => $b['resolved_user_name'] ?? ($b['user_name'] ?: 'Customer'),

@@ -2511,7 +2511,10 @@ function renderBookingsTablePage(page = 1) {
         <td><span style="color:#ffffff; font-weight:700;">${escapeHtml(b.userName || b.resolvedUserName || "Customer")}</span></td>
         <td><span style="color:#ffd166; font-weight:600;">${escapeHtml(b.vehicleName || b.carName || "Kruizly Fleet")}</span></td>
         <td style="color:#06d6a0; font-weight:700;">${Math.max(1, Number(b.days) || 1)} Days</td>
-        <td><strong style="color:#ffffff;">${formatINR(amt)}</strong></td>
+        <td style="white-space:nowrap;">
+          <strong style="color:#ffffff;">${formatINR(amt)}</strong>
+          ${Number(b.securityDeposit || b.security_deposit || 0) > 0 ? `<small style="color:var(--sub);font-size:10.5px;display:block;margin-top:2px;">Total: ${formatINR(Number(b.finalAmount ?? b.totalAmount ?? (amt + Number(b.securityDeposit || b.security_deposit || 0))))} (₹${Number(b.securityDeposit || b.security_deposit || 0)} dep)</small>` : `<small style="color:var(--sub);font-size:10.5px;display:block;margin-top:2px;">Total: ${formatINR(Number(b.finalAmount ?? b.totalAmount ?? amt))}</small>`}
+        </td>
         <td><span class="badge" style="${badgeStyle} padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700;">${escapeHtml(bStat)}</span></td>
       </tr>`;
     })
