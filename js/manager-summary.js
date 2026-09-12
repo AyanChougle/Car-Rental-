@@ -1023,31 +1023,37 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
 
     if (!isTargetCar) return false;
 
-    // A booking is actively on trip IF AND ONLY IF:
-    // 1. It is explicitly marked active / started / in_trip, or pickup_status === 'picked_up'
-    // 2. AND it has not been marked completed, returned, or cancelled
-    const isReturned =
-      b.dropStatus === "returned" ||
-      b.drop_status === "returned" ||
-      bStat === "completed" ||
-      Boolean(b.returnedAt || b.return_at || b.endOdometer || b.end_odometer);
-
-    if (isReturned) return false;
-
+    // Determine if booking is currently on trip:
+    // A: Explicitly started or handed over
     const isExplicitlyActive =
       bStat === "active" ||
       bStat === "in_trip" ||
       bStat === "started" ||
       bStat === "ongoing" ||
       b.pickupStatus === "picked_up" ||
-      b.pickup_status === "picked_up" ||
       Boolean(b.pickupAt || b.pickup_at || b.startOdometer || b.start_odometer);
 
     if (isExplicitlyActive) return true;
 
-    // If confirmed and within active rental window AND marked picked up
-    if (bStat === "confirmed" && (b.pickupStatus === "picked_up" || b.pickup_status === "picked_up")) {
-      return true;
+    // B: Confirmed / Paid booking whose operational dates cover current time
+    const isConfirmedOrPaid =
+      bStat === "confirmed" ||
+      bStat === "approved" ||
+      bStat === "paid" ||
+      bStat === "advance_paid" ||
+      String(b.paymentStatus || "").toLowerCase() === "paid";
+
+    if (isConfirmedOrPaid) {
+      const { start, end } = getBookingOperationalDates(b);
+      if (start && end) {
+        const startMs = start.getTime();
+        const endMs = end.getTime() + (2 * 60 * 60 * 1000); // 2 hours grace period
+        if (nowMs >= startMs && nowMs <= endMs) {
+          return true;
+        }
+      } else if (start && nowMs >= start.getTime()) {
+        return true;
+      }
     }
 
     return false;
@@ -1235,17 +1241,23 @@ function isVerifiedRevenue(b) {
 }
 
 function bookingAmount(b) {
+  if (!b) return 0;
   const pStat = String(b.paymentStatus || "").toLowerCase();
   if (pStat === "advance_paid") {
     return Number(b.advanceAmount || b.paymentAmountPaid || b.paymentAmount || 500);
   }
-  // Exclude security deposits from revenue, sales, and booking amounts:
-  const base = Number(b.baseAmount ?? b.base_amount ?? 0);
-  if (base > 0) {
-    return base;
-  }
-  const total = Number(b.finalAmount ?? b.totalAmount ?? b.amount ?? b.paymentAmountPaid ?? 0);
   const deposit = Number(b.securityDeposit ?? b.security_deposit ?? 0);
+  const total = Number(b.finalAmount ?? b.totalAmount ?? b.amount ?? b.paymentAmountPaid ?? 0);
+  const base = Number(b.baseAmount ?? b.base_amount ?? 0);
+  const discount = Number(b.couponDiscount ?? b.coupon_discount ?? 0);
+
+  // Pure fleet rental revenue (strictly excluding security deposits):
+  if (total > 0 && deposit > 0) {
+    return Math.max(0, total - deposit);
+  }
+  if (base > 0) {
+    return Math.max(0, base - discount);
+  }
   return Math.max(0, total - deposit);
 }
 
@@ -1493,14 +1505,15 @@ function renderDashboard() {
     });
   }
 
-  // Auto-calculate any new bookings created beyond the default 10
+  // Auto-calculate any new bookings created beyond the default verified baseline
+  const seedIds = new Set([
+    "KRZ-SEP-001", "KRZ-SEP-002", "KRZ-SEP-003", "KRZ-SEP-004", "KRZ-SEP-005",
+    "KRZ-SEP-006", "KRZ-SEP-007", "KRZ-SEP-008", "KRZ-SEP-009", "KRZ-SEP-010",
+    "KRZ-SEP-012"
+  ]);
   rawBookings.forEach((b) => {
     if (!isVerifiedRevenue(b)) return;
     const bId = String(b.bookingNumber || b.bookingId || b.id || "").toUpperCase().trim();
-    const seedIds = new Set([
-      "KRZ-SEP-001", "KRZ-SEP-002", "KRZ-SEP-003", "KRZ-SEP-004", "KRZ-SEP-005",
-      "KRZ-SEP-006", "KRZ-SEP-007", "KRZ-SEP-008", "KRZ-SEP-009", "KRZ-SEP-010"
-    ]);
     if (seedIds.has(bId)) return;
     const sDate = getBookingSaleDate(b);
     if (!sDate) return;
@@ -2872,9 +2885,7 @@ function initExportExcel() {
           "Start FASTag (₹)": startFastag,
           "Return FASTag (₹)": returnFastag,
           "FASTag Used (₹)": tollUsed,
-          "Base Rental Amount (₹)": bookingAmount(b),
-          "Security Deposit (₹)": Number(b.securityDeposit ?? b.security_deposit ?? 0),
-          "Total Collected (₹)":
+          "Total Amount (₹)":
             b["Total Amount (₹)"] ??
             b.finalAmount ??
             b.totalAmount ??

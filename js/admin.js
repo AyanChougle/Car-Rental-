@@ -3428,38 +3428,34 @@ function renderBookingsTable(
             "
           >
 
-            <th style="padding:14px 12px; text-align:left; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--sub);">
+            <th style="padding:14px;">
               DATE
             </th>
 
-            <th style="padding:14px 12px; text-align:left; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--sub);">
+            <th style="padding:14px;">
               BOOKING REF
             </th>
 
-            <th style="padding:14px 12px; text-align:left; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--sub);">
+            <th style="padding:14px;">
               CUSTOMER
             </th>
 
-            <th style="padding:14px 12px; text-align:left; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--sub);">
+            <th style="padding:14px;">
               VEHICLE
             </th>
 
-            <th style="padding:14px 12px; text-align:left; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--sub);">
-              AMOUNT (EXCL. DEPOSIT)
+            <th style="padding:14px;">
+              AMOUNT
             </th>
 
-            <th style="padding:14px 12px; text-align:left; font-size:0.78rem; text-transform:uppercase; letter-spacing:0.05em; color:var(--sub);">
+            <th style="padding:14px;">
               STATUS
             </th>
 
             <th
               style="
-                padding:14px 12px;
+                padding:14px;
                 text-align:right;
-                font-size:0.78rem;
-                text-transform:uppercase;
-                letter-spacing:0.05em;
-                color:var(--sub);
               "
             >
               DETAILS
@@ -3498,13 +3494,13 @@ function renderBookingsTable(
         booking.vehicle ||
         "Vehicle";
 
+      const rawTot = Number(booking.totalAmount ?? booking.finalAmount ?? booking.amount ?? 0);
+      const rawDep = Number(booking.securityDeposit ?? booking.security_deposit ?? 0);
       const rawBase = Number(booking.baseAmount ?? booking.base_amount ?? 0);
-      const rawTotal = Number(booking.totalAmount ?? booking.amount ?? booking.total ?? 0);
-      const rawDeposit = Number(booking.securityDeposit ?? booking.security_deposit ?? 0);
-      const amount = (rawBase > 0) ? rawBase : Math.max(0, rawTotal - rawDeposit);
-
-      const rawRef = String(booking.bookingNumber || booking.bookingId || id || "");
-      const displayRef = rawRef.startsWith("#") ? rawRef : `#${rawRef}`;
+      const rawDisc = Number(booking.couponDiscount ?? booking.coupon_discount ?? 0);
+      const amount = (rawTot > 0 && rawDep > 0)
+        ? Math.max(0, rawTot - rawDep)
+        : (rawBase > 0 ? Math.max(0, rawBase - rawDisc) : Math.max(0, rawTot - rawDep));
 
       const startOdo =
         getStartOdometer(
@@ -3580,18 +3576,15 @@ function renderBookingsTable(
       html += `
         <tr
           style="
-            border-bottom: 1px solid rgba(255,255,255,.06);
-            transition: background 0.15s ease;
+            border-bottom:
+              1px solid rgba(255,255,255,.06);
           "
         >
 
           <td
             style="
-              padding:14px 12px;
+              padding:14px;
               white-space:nowrap;
-              vertical-align:middle;
-              font-size:0.88rem;
-              color:#cbd5e1;
             "
           >
             ${getBookingDisplayDate(
@@ -3601,32 +3594,28 @@ function renderBookingsTable(
 
           <td
             style="
-              padding:14px 12px;
+              padding:14px;
               font-family:monospace;
-              font-weight:700;
-              color:#4fd7ff;
-              white-space:nowrap;
-              vertical-align:middle;
             "
           >
-            ${escapeHtml(
-              displayRef
+            #${escapeHtml(
+              id.slice(0, 8)
             )}
           </td>
 
-          <td style="padding:14px 12px; vertical-align:middle;">
-            <strong style="color:#ffffff; font-size:0.92rem; display:block;">
+          <td style="padding:14px;">
+            <strong>
               ${escapeHtml(
                 customer
               )}
             </strong>
 
+            <br>
+
             <span
               style="
                 color:var(--sub);
                 font-size:.78rem;
-                display:block;
-                margin-top:2px;
               "
             >
               ${escapeHtml(
@@ -3638,20 +3627,17 @@ function renderBookingsTable(
             </span>
           </td>
 
-          <td style="padding:14px 12px; vertical-align:middle;">
-            <strong style="color:#ffffff; font-size:0.92rem; display:block;">
-              ${escapeHtml(
-                vehicle
-              )}
-            </strong>
+          <td style="padding:14px;">
+            ${escapeHtml(
+              vehicle
+            )}
+
+            <br>
 
             <span
               style="
-                color:#ffd166;
-                font-family:monospace;
+                color:var(--sub);
                 font-size:.78rem;
-                display:block;
-                margin-top:2px;
               "
             >
               ${escapeHtml(
@@ -3665,12 +3651,9 @@ function renderBookingsTable(
 
           <td
             style="
-              padding:14px 12px;
-              color:#06d6a0;
-              font-weight:800;
-              font-size:0.95rem;
-              white-space:nowrap;
-              vertical-align:middle;
+              padding:14px;
+              color:var(--accent);
+              font-weight:700;
             "
           >
             ${formatINR(
@@ -3678,7 +3661,7 @@ function renderBookingsTable(
             )}
           </td>
 
-          <td style="padding:14px 12px; white-space:nowrap; vertical-align:middle;">
+          <td style="padding:14px;">
             <span
               class="fleet-status ${getStatusClass(
                 booking.paymentStatus === 'rejected' ? 'rejected' : status
@@ -8009,11 +7992,7 @@ function normalizeCalendarBooking(bk) {
   if (!dropDate && pickupDate) dropDate = new Date(pickupDate);
   if (!pickupDate && dropDate) pickupDate = new Date(dropDate);
   
-  const rawBase = Number(bk.baseAmount ?? bk.base_amount ?? 0);
-  const rawTot = Number(bk.totalAmount ?? bk.total_amount ?? bk.finalAmount ?? bk.amount ?? bk.total ?? 0);
-  const rawDep = Number(bk.securityDeposit ?? bk.security_deposit ?? 0);
-  const baseRentalAmt = (rawBase > 0) ? rawBase : Math.max(0, rawTot - rawDep);
-  const totalAmount = baseRentalAmt > 0 ? baseRentalAmt : rawTot;
+  const totalAmount = Number(bk.totalAmount ?? bk.total_amount ?? bk.finalAmount ?? bk.amount ?? bk.total ?? 0);
   const tokenPaid = Number(bk.advanceAmount ?? bk.advance_amount ?? bk.tokenAmount ?? bk.token_amount ?? bk.paymentAmount ?? bk.amountPaid ?? 0);
   const rawStatus = String(bk.status || bk.bookingStatus || bk.booking_status || 'confirmed').toLowerCase();
   

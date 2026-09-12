@@ -90,8 +90,7 @@ if ($method === 'GET') {
         $onRoadFleet = (int)(Database::fetchOne(
             "SELECT COUNT(DISTINCT COALESCE(NULLIF(vehicle_reg, ''), vehicle_id)) AS c
              FROM bookings
-             WHERE status IN ('active', 'in_trip', 'started')
-               AND LOWER(COALESCE(status, '')) NOT IN ('completed', 'cancelled', 'rejected')"
+             WHERE status IN ('active', 'in_trip', 'started')"
         )['c'] ?? 0);
     }
     $onRoadFleet = max(0, $onRoadFleet);
@@ -101,33 +100,43 @@ if ($method === 'GET') {
         ? round(($onRoadFleet / $totalFleet) * 100)
         : 0;
 
-    // Calculate today's Day Sales (base rental amount only, strictly excluding security deposit)
+    // Calculate today's Day Sales (pure fleet price, excluding security deposits)
     $daySales = (float)(Database::fetchOne(
         "SELECT COALESCE(SUM(
             CASE 
-                WHEN payment_status = 'advance_paid' THEN COALESCE(advance_amount, 500)
-                ELSE COALESCE(NULLIF(base_amount, 0), GREATEST(0, COALESCE(final_amount, total_amount, 0) - COALESCE(security_deposit, 0)))
+                WHEN b.payment_status = 'advance_paid' THEN COALESCE(b.advance_amount, 500)
+                WHEN COALESCE(b.final_amount, b.total_amount, 0) > 0 AND COALESCE(b.security_deposit, 0) > 0 THEN 
+                    GREATEST(0, COALESCE(b.final_amount, b.total_amount, 0) - b.security_deposit)
+                WHEN COALESCE(b.base_amount, 0) > 0 THEN 
+                    GREATEST(0, b.base_amount - COALESCE(b.coupon_discount, 0))
+                ELSE 
+                    GREATEST(0, COALESCE(b.final_amount, b.total_amount, b.base_amount, 0) - COALESCE(b.security_deposit, 0))
             END
-        ), 0) AS s FROM bookings
-        WHERE LOWER(COALESCE(status, '')) NOT IN ('cancelled', 'rejected')
-          AND LOWER(COALESCE(payment_status, '')) NOT IN ('cancelled', 'rejected')
-          AND (payment_status IN ('paid', 'advance_paid', 'verified') OR status IN ('completed', 'active', 'confirmed', 'in_trip'))
-          AND DATE(COALESCE(created_at, pickup_date)) = CURRENT_DATE()"
+        ), 0) AS s FROM bookings b
+        WHERE LOWER(COALESCE(b.status, '')) NOT IN ('cancelled', 'rejected')
+          AND LOWER(COALESCE(b.payment_status, '')) NOT IN ('cancelled', 'rejected')
+          AND (b.payment_status IN ('paid', 'advance_paid', 'verified') OR b.status IN ('completed', 'active', 'confirmed', 'in_trip'))
+          AND DATE(COALESCE(b.created_at, b.pickup_date)) = CURRENT_DATE()"
     )['s'] ?? 0.0);
 
-    // Calculate this week's Week Sales (base rental amount only, strictly excluding security deposit)
+    // Calculate this week's Week Sales (pure fleet price, excluding security deposits)
     $weekSales = (float)(Database::fetchOne(
         "SELECT COALESCE(SUM(
             CASE 
-                WHEN payment_status = 'advance_paid' THEN COALESCE(advance_amount, 500)
-                ELSE COALESCE(NULLIF(base_amount, 0), GREATEST(0, COALESCE(final_amount, total_amount, 0) - COALESCE(security_deposit, 0)))
+                WHEN b.payment_status = 'advance_paid' THEN COALESCE(b.advance_amount, 500)
+                WHEN COALESCE(b.final_amount, b.total_amount, 0) > 0 AND COALESCE(b.security_deposit, 0) > 0 THEN 
+                    GREATEST(0, COALESCE(b.final_amount, b.total_amount, 0) - b.security_deposit)
+                WHEN COALESCE(b.base_amount, 0) > 0 THEN 
+                    GREATEST(0, b.base_amount - COALESCE(b.coupon_discount, 0))
+                ELSE 
+                    GREATEST(0, COALESCE(b.final_amount, b.total_amount, b.base_amount, 0) - COALESCE(b.security_deposit, 0))
             END
-        ), 0) AS s FROM bookings
-        WHERE LOWER(COALESCE(status, '')) NOT IN ('cancelled', 'rejected')
-          AND LOWER(COALESCE(payment_status, '')) NOT IN ('cancelled', 'rejected')
-          AND (payment_status IN ('paid', 'advance_paid', 'verified') OR status IN ('completed', 'active', 'confirmed', 'in_trip'))
-          AND COALESCE(created_at, pickup_date) >= DATE_SUB(CURRENT_DATE(), INTERVAL (DAYOFWEEK(CURRENT_DATE()) - 1) DAY)
-          AND COALESCE(created_at, pickup_date) <= DATE_ADD(DATE_SUB(CURRENT_DATE(), INTERVAL (DAYOFWEEK(CURRENT_DATE()) - 1) DAY), INTERVAL 6 DAY)"
+        ), 0) AS s FROM bookings b
+        WHERE LOWER(COALESCE(b.status, '')) NOT IN ('cancelled', 'rejected')
+          AND LOWER(COALESCE(b.payment_status, '')) NOT IN ('cancelled', 'rejected')
+          AND (b.payment_status IN ('paid', 'advance_paid', 'verified') OR b.status IN ('completed', 'active', 'confirmed', 'in_trip'))
+          AND COALESCE(b.created_at, b.pickup_date) >= DATE_SUB(CURRENT_DATE(), INTERVAL (DAYOFWEEK(CURRENT_DATE()) - 1) DAY)
+          AND COALESCE(b.created_at, b.pickup_date) <= DATE_ADD(DATE_SUB(CURRENT_DATE(), INTERVAL (DAYOFWEEK(CURRENT_DATE()) - 1) DAY), INTERVAL 6 DAY)"
     )['s'] ?? 0.0);
 
     // Create the KPI history table if it is not present yet, and auto-heal missing columns
@@ -232,12 +241,17 @@ if ($method === 'GET') {
             [$monthEnd]
         )['c'] ?? 0);
 
-        // Sum verified payments/bookings from DB for this month (base rental amount only, strictly excluding security deposit)
+        // Sum verified fleet rental revenue from DB for this month (strictly excluding security deposits)
         $dbMonthRevenue = (float)(Database::fetchOne(
             "SELECT COALESCE(SUM(
                 CASE
                     WHEN payment_status = 'advance_paid' THEN COALESCE(advance_amount, 500)
-                    ELSE COALESCE(NULLIF(base_amount, 0), GREATEST(0, COALESCE(final_amount, total_amount, 0) - COALESCE(security_deposit, 0)))
+                    WHEN COALESCE(final_amount, total_amount, 0) > 0 AND COALESCE(security_deposit, 0) > 0 THEN
+                        GREATEST(0, COALESCE(final_amount, total_amount, 0) - security_deposit)
+                    WHEN COALESCE(base_amount, 0) > 0 THEN
+                        GREATEST(0, base_amount - COALESCE(coupon_discount, 0))
+                    ELSE
+                        GREATEST(0, COALESCE(final_amount, total_amount, base_amount, 0) - COALESCE(security_deposit, 0))
                 END
             ), 0) AS s
             FROM bookings
@@ -253,8 +267,8 @@ if ($method === 'GET') {
 
         // Calculate dynamic month revenue:
         // July & August retain historical accounting baselines unless DB exceeds it
-        // September starts with verified 10-booking baseline (₹143,816) + auto-adds any new bookings created (excluding security deposits)
-        // Any subsequent months (October, etc.) are 100% dynamically derived from verified bookings/payments
+        // September starts with verified baseline (₹143,816) + auto-adds any new bookings created without security deposits
+        // Any subsequent months (October, etc.) are 100% dynamically derived from pure fleet prices
         if ($monthStart === '2026-07-01') {
             $monthRev = max(50540.00, $dbMonthRevenue);
         } elseif ($monthStart === '2026-08-01') {
@@ -264,7 +278,12 @@ if ($method === 'GET') {
                 "SELECT COALESCE(SUM(
                     CASE
                         WHEN payment_status = 'advance_paid' THEN COALESCE(advance_amount, 500)
-                        ELSE COALESCE(NULLIF(base_amount, 0), GREATEST(0, COALESCE(final_amount, total_amount, 0) - COALESCE(security_deposit, 0)))
+                        WHEN COALESCE(final_amount, total_amount, 0) > 0 AND COALESCE(security_deposit, 0) > 0 THEN
+                            GREATEST(0, COALESCE(final_amount, total_amount, 0) - security_deposit)
+                        WHEN COALESCE(base_amount, 0) > 0 THEN
+                            GREATEST(0, base_amount - COALESCE(coupon_discount, 0))
+                        ELSE
+                            GREATEST(0, COALESCE(final_amount, total_amount, base_amount, 0) - COALESCE(security_deposit, 0))
                     END
                 ), 0) AS s
                 FROM bookings
@@ -275,7 +294,10 @@ if ($method === 'GET') {
                       OR status IN ('completed', 'active', 'confirmed', 'in_trip', 'started')
                   )
                   AND {$bookingMonthSql}
-                  AND UPPER(COALESCE(booking_id, booking_number, '')) NOT IN ('KRZ-SEP-001','KRZ-SEP-002','KRZ-SEP-003','KRZ-SEP-004','KRZ-SEP-005','KRZ-SEP-006','KRZ-SEP-007','KRZ-SEP-008','KRZ-SEP-009','KRZ-SEP-010')",
+                  AND UPPER(COALESCE(booking_id, booking_number, '')) NOT IN (
+                      'KRZ-SEP-001', 'KRZ-SEP-002', 'KRZ-SEP-003', 'KRZ-SEP-004', 'KRZ-SEP-005',
+                      'KRZ-SEP-006', 'KRZ-SEP-007', 'KRZ-SEP-008', 'KRZ-SEP-009', 'KRZ-SEP-010', 'KRZ-SEP-012'
+                  )",
                 [$monthStart, $monthEnd]
             )['s'] ?? 0.0);
             $monthRev = max(143816.00 + $newSeptAdditions, $dbMonthRevenue);

@@ -17,7 +17,6 @@ if ($method === 'POST') {
 }
 
 if ($method === 'GET') {
-    // Optional auth so manager dashboard and staff consoles never fail on token expiration
     $user = Auth::optionalAuth();
 
     $status = trim((string)($_GET['status'] ?? ''));
@@ -132,7 +131,8 @@ if ($method === 'GET') {
             'duration' => $b['duration'],
             'days' => (int)$b['days'],
             'hours' => (int)$b['hours'],
-            'baseAmount' => ((float)$b['base_amount'] > 0) ? (float)$b['base_amount'] : max(0.0, ((float)$b['final_amount'] > 0 ? (float)$b['final_amount'] : (float)$b['total_amount']) - (float)$b['security_deposit']),
+            'withDriver' => (int)$b['with_driver'],
+            'baseAmount' => (float)$b['base_amount'],
             'totalAmount' => (float)$b['total_amount'],
             'finalAmount' => (float)$b['final_amount'],
             'advanceAmount' => (float)$b['advance_amount'],

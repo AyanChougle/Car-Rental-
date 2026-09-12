@@ -1633,10 +1633,10 @@ function openBookingDetailModal(b) {
 
         <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px;">
           <strong style="color: var(--accent); display: block; margin-bottom: 6px;">Financial Breakdown</strong>
-          <div><strong>Base Rental Amount:</strong> ${formatMoney(b.baseAmount)}</div>
+          <div><strong>Base Amount:</strong> ${formatMoney(b.baseAmount)}</div>
           <div><strong>Coupon Discount:</strong> ${b.couponDiscount ? `-₹${b.couponDiscount}` : "₹0"} (${escapeHtml(b.couponCode || "None")})</div>
-          <div><strong>Security Deposit (Refundable):</strong> ${formatMoney(b.securityDeposit)}</div>
-          <div style="font-size: 15px; font-weight: 700; color: #06d6a0; margin-top: 4px;"><strong>Total Collected (Rental + Deposit):</strong> ${formatMoney(b.finalAmount || b.totalAmount)}</div>
+          <div><strong>Security Deposit:</strong> ${formatMoney(b.securityDeposit)}</div>
+          <div style="font-size: 15px; font-weight: 700; color: #06d6a0; margin-top: 4px;"><strong>Total Amount:</strong> ${formatMoney(b.finalAmount || b.totalAmount)}</div>
           <div><strong>Payment Status:</strong> <span style="font-weight:700; text-transform:uppercase;">${escapeHtml(b.paymentStatus || "pending")}</span></div>
           <div><strong>Payment Ref:</strong> <span style="font-family:monospace;">${escapeHtml(b.paymentRef || "—")}</span></div>
         </div>
