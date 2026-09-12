@@ -11,6 +11,7 @@ import "./nav-helper.js?v=20260908-v5";
 
 import { openReturnModal } from "./return-inspection.js";
 import { formatBookingNumber } from "./booking-reference.js";
+import { openImageLightbox } from "./image-lightbox.js?v=20260912-v1";
 
 async function getAuthToken() {
   try {
@@ -2781,6 +2782,33 @@ function initialiseDocumentModal() {
         );
       }
     );
+  }
+
+  // Click-to-enlarge high-res preview handlers for admin doc inspection
+  const modalImg = $("modalImg");
+  if (modalImg) {
+    modalImg.style.cursor = "zoom-in";
+    modalImg.title = "Click to enlarge Front Side";
+    modalImg.addEventListener("click", () => {
+      if (modalImg.src && !modalImg.src.startsWith("data:image/svg+xml")) {
+        const title = $("modalTitle")?.textContent || "Document Front Preview";
+        const userDesc = activeDocUser ? `${activeDocUser.name || "Customer"} (${activeDocUser.phone || activeDocUser.email || ""})` : "";
+        openImageLightbox(modalImg.src, `${title} — Front Side`, userDesc);
+      }
+    });
+  }
+
+  const modalBackImg = $("modalBackImg");
+  if (modalBackImg) {
+    modalBackImg.style.cursor = "zoom-in";
+    modalBackImg.title = "Click to enlarge Back Side";
+    modalBackImg.addEventListener("click", () => {
+      if (modalBackImg.src && !modalBackImg.src.startsWith("data:image/svg+xml")) {
+        const title = $("modalTitle")?.textContent || "Document Back Preview";
+        const userDesc = activeDocUser ? `${activeDocUser.name || "Customer"} (${activeDocUser.phone || activeDocUser.email || ""})` : "";
+        openImageLightbox(modalBackImg.src, `${title} — Back Side`, userDesc);
+      }
+    });
   }
 
   const approve =

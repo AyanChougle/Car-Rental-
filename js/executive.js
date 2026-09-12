@@ -16,8 +16,8 @@ import { checkAuth, getCurrentUser, setStoredUser, isExecutiveUser, isManagerUse
 import { api } from "./kruizly-api.js?v=20260908-v5";
 import "./nav-helper.js?v=20260908-v5";
 import { formatBookingNumber } from "./booking-reference.js";
-import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260911-v11";
-
+import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260911-v15";
+import { openImageLightbox } from "./image-lightbox.js?v=20260912-v1";
 
 function $(id) {
   return document.getElementById(id);
@@ -1312,16 +1312,64 @@ function renderKycDocPreviews() {
     backUrl = activeKycItem.panBackURL || (activeKycItem.panBackMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.panBackMediaId)}` : null);
   }
 
+  const docTypeName = activeKycDocTab === "license" ? "Driving License" : activeKycDocTab === "aadhar" ? "Aadhaar Card" : "PAN Card";
+  const customerName = activeKycItem.fullName || "Customer";
+  const customerPhone = activeKycItem.phone || "";
+
   if (frontBox) {
-    frontBox.innerHTML = frontUrl
-      ? `<img src="${escapeHtml(frontUrl)}" alt="Front Document" style="width:100%;height:100%;object-fit:contain;" onerror="this.onerror=null;this.parentElement.innerHTML='<span style=\\'color:var(--sub);font-size:13px;\\'>Document image not accessible</span>';" />`
-      : `<span style="color:var(--sub);font-size:13px;">No front image submitted</span>`;
+    if (frontUrl) {
+      frontBox.innerHTML = `
+        <div class="exec-doc-img-wrapper" role="button" tabindex="0" title="Click to enlarge Front Side">
+          <img src="${escapeHtml(frontUrl)}" alt="${docTypeName} Front" class="enlargeable-kyc-img" onerror="this.onerror=null;this.parentElement.innerHTML='<span style=\\'color:var(--sub);font-size:13px;\\'>Document image not accessible</span>';" />
+          <div class="exec-doc-zoom-overlay">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+            <span>Click to Enlarge</span>
+          </div>
+        </div>
+      `;
+      const wrap = frontBox.querySelector(".exec-doc-img-wrapper");
+      if (wrap) {
+        wrap.addEventListener("click", () => {
+          openImageLightbox(frontUrl, `${docTypeName} — Front Side`, `${customerName} ${customerPhone ? `· ${customerPhone}` : ""}`);
+        });
+        wrap.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openImageLightbox(frontUrl, `${docTypeName} — Front Side`, `${customerName} ${customerPhone ? `· ${customerPhone}` : ""}`);
+          }
+        });
+      }
+    } else {
+      frontBox.innerHTML = `<span style="color:var(--sub);font-size:13px;">No front image submitted</span>`;
+    }
   }
 
   if (backBox) {
-    backBox.innerHTML = backUrl
-      ? `<img src="${escapeHtml(backUrl)}" alt="Back Document" style="width:100%;height:100%;object-fit:contain;" onerror="this.onerror=null;this.parentElement.innerHTML='<span style=\\'color:var(--sub);font-size:13px;\\'>Document image not accessible</span>';" />`
-      : `<span style="color:var(--sub);font-size:13px;">No back image submitted</span>`;
+    if (backUrl) {
+      backBox.innerHTML = `
+        <div class="exec-doc-img-wrapper" role="button" tabindex="0" title="Click to enlarge Back Side">
+          <img src="${escapeHtml(backUrl)}" alt="${docTypeName} Back" class="enlargeable-kyc-img" onerror="this.onerror=null;this.parentElement.innerHTML='<span style=\\'color:var(--sub);font-size:13px;\\'>Document image not accessible</span>';" />
+          <div class="exec-doc-zoom-overlay">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+            <span>Click to Enlarge</span>
+          </div>
+        </div>
+      `;
+      const wrap = backBox.querySelector(".exec-doc-img-wrapper");
+      if (wrap) {
+        wrap.addEventListener("click", () => {
+          openImageLightbox(backUrl, `${docTypeName} — Back Side`, `${customerName} ${customerPhone ? `· ${customerPhone}` : ""}`);
+        });
+        wrap.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            openImageLightbox(backUrl, `${docTypeName} — Back Side`, `${customerName} ${customerPhone ? `· ${customerPhone}` : ""}`);
+          }
+        });
+      }
+    } else {
+      backBox.innerHTML = `<span style="color:var(--sub);font-size:13px;">No back image submitted</span>`;
+    }
   }
 }
 

@@ -12,6 +12,7 @@ import { auth } from "./firebase-init.js";
 import { checkAuth, getCurrentUser, setStoredUser, isAccountantUser, isAdminUser } from "./auth.js?v=20260908-v5";
 import { api } from "./kruizly-api.js?v=20260908-v5";
 import "./nav-helper.js?v=20260908-v5";
+import { openImageLightbox } from "./image-lightbox.js?v=20260912-v1";
 
 function $(id) {
   return document.getElementById(id);
@@ -357,8 +358,14 @@ function openReviewModal(p) {
     </div>
     ${proofUrl ? `
       <div style="margin-top:14px;">
-        <span style="color:var(--sub); font-size:12px; font-weight:700; display:block; margin-bottom:6px;">PAYMENT PROOF SCREENSHOT</span>
-        <img src="${escapeHtml(proofUrl)}" alt="Payment proof" style="width:100%; max-height:280px; object-fit:contain; border-radius:8px; border:1px solid rgba(255,255,255,0.15);" />
+        <span style="color:var(--sub); font-size:12px; font-weight:700; display:block; margin-bottom:6px;">PAYMENT PROOF SCREENSHOT (CLICK TO ENLARGE)</span>
+        <div id="accountsProofZoomWrap" style="position:relative; cursor:zoom-in; border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.15); background:#060a11;" role="button" tabindex="0" title="Click to enlarge payment screenshot">
+          <img src="${escapeHtml(proofUrl)}" alt="Payment proof" style="width:100%; max-height:280px; object-fit:contain; display:block; transition:transform 200ms ease;" />
+          <div style="position:absolute; bottom:8px; right:8px; background:rgba(3,7,13,0.85); backdrop-filter:blur(8px); color:#4fd7ff; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid rgba(79,215,255,0.4); pointer-events:none; display:inline-flex; align-items:center; gap:5px;">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+            <span>Click to Enlarge</span>
+          </div>
+        </div>
       </div>
     ` : `
       <div style="margin-top:14px; background:rgba(79, 215, 255, 0.07); border:1px dashed rgba(79, 215, 255, 0.35); border-radius:8px; padding:14px; text-align:center;">
@@ -368,6 +375,13 @@ function openReviewModal(p) {
       </div>
     `}
   `;
+
+  const zoomWrap = $("accountsProofZoomWrap");
+  if (zoomWrap && proofUrl) {
+    zoomWrap.addEventListener("click", () => {
+      openImageLightbox(proofUrl, `Payment Proof — Booking #${p.bookingId || p.id}`, `${p.userName || "Customer"} · Ref: ${p.utr || p.paymentRef || "N/A"}`);
+    });
+  }
 
   showModal("accountsReviewModal");
 }
