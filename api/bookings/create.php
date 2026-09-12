@@ -11,14 +11,32 @@ require_once __DIR__ . '/../middleware/auth.php';
 $user = Auth::requireAuth();
 $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 
-$bookingId = trim((string)($input['bookingId'] ?? $input['bookingNumber'] ?? ''));
-if (!$bookingId) {
-    $bookingId = 'BK-' . strtoupper(bin2hex(random_bytes(5)));
+$pickupDate = date('Y-m-d H:i:s', strtotime((string)($input['pickupDate'] ?? 'now')));
+$monthCode = strtoupper(date('M', strtotime($pickupDate)));
+$prefix = 'KRZ-' . $monthCode . '-';
+
+$incomingId = trim((string)($input['bookingId'] ?? $input['bookingNumber'] ?? ''));
+if (!$incomingId || !preg_match('/^KRZ-[A-Z]{3}-\d+$/i', $incomingId)) {
+    // Determine the next sequence number for this month in MySQL
+    $latestRow = Database::fetchOne(
+        "SELECT booking_number FROM bookings 
+         WHERE (booking_number LIKE ? OR booking_id LIKE ?) 
+         ORDER BY CAST(SUBSTRING(COALESCE(booking_number, booking_id), 9) AS UNSIGNED) DESC, booking_number DESC 
+         LIMIT 1",
+        [$prefix . '%', $prefix . '%']
+    );
+
+    $nextSeq = 1;
+    if ($latestRow && preg_match('/KRZ-[A-Z]{3}-(\d+)/i', (string)($latestRow['booking_number'] ?? ''), $m)) {
+        $nextSeq = ((int)$m[1]) + 1;
+    }
+    $bookingId = sprintf("KRZ-%s-%03d", $monthCode, $nextSeq);
+} else {
+    $bookingId = strtoupper($incomingId);
 }
 $bookingNumber = $bookingId;
 
 $vehicleReg = strtoupper(trim((string)($input['vehicleReg'] ?? $input['carId'] ?? '')));
-$pickupDate = date('Y-m-d H:i:s', strtotime((string)($input['pickupDate'] ?? 'now')));
 $dropDate = date('Y-m-d H:i:s', strtotime((string)($input['dropDate'] ?? '+1 day')));
 $duration = trim((string)($input['duration'] ?? '1 Day'));
 $days = (int)($input['days'] ?? $input['durationDays'] ?? 1);

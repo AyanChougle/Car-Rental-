@@ -1503,7 +1503,11 @@ function renderDashboard() {
   rawBookings.forEach((b) => {
     if (!isVerifiedRevenue(b)) return;
     const bId = String(b.bookingNumber || b.bookingId || b.id || "").toUpperCase().trim();
-    if (bId.startsWith("KRZ-SEP-")) return;
+    const seedIds = new Set([
+      "KRZ-SEP-001", "KRZ-SEP-002", "KRZ-SEP-003", "KRZ-SEP-004", "KRZ-SEP-005",
+      "KRZ-SEP-006", "KRZ-SEP-007", "KRZ-SEP-008", "KRZ-SEP-009", "KRZ-SEP-010"
+    ]);
+    if (seedIds.has(bId)) return;
     const sDate = getBookingSaleDate(b);
     if (!sDate) return;
     const mKey = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, "0")}-01`;

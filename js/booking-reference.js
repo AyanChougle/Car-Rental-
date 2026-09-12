@@ -1,48 +1,25 @@
-const BOOKING_NUMBER_LENGTH = 8;
+const MONTH_CODES = [
+  "JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+  "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"
+];
 
-export function generateNumericBookingId() {
-  const values = new Uint32Array(1);
-  crypto.getRandomValues(values);
-
-  const minimum = 10 ** (BOOKING_NUMBER_LENGTH - 1);
-  const range = 9 * minimum;
-
-  return String(minimum + (values[0] % range));
+export function generateNumericBookingId(date = new Date()) {
+  const mCode = MONTH_CODES[date.getMonth()] || "SEP";
+  // Generates client-side KRZ placeholder which backend finalizes sequentially
+  const randNum = Math.floor(10 + Math.random() * 90);
+  return `KRZ-${mCode}-0${randNum}`;
 }
 
 export function formatBookingNumber(bookingOrId) {
-  const booking =
-    bookingOrId && typeof bookingOrId === "object"
-      ? bookingOrId
-      : { id: bookingOrId };
-
-  const preferred = [
-    booking.bookingNumber,
-    booking.bookingRef,
-    booking.reference,
-    booking.id,
-  ].find((value) => /^\d+$/.test(String(value || "").trim()));
-
-  if (preferred) {
-    return String(preferred).trim();
+  if (!bookingOrId) return "";
+  if (typeof bookingOrId === "string") {
+    return bookingOrId.trim();
   }
-
-  const source = String(
-    booking.id ||
-      booking.bookingRef ||
-      booking.reference ||
-      "0"
-  );
-
-  let hash = 2166136261;
-
-  for (let index = 0; index < source.length; index += 1) {
-    hash ^= source.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  const minimum = 10 ** (BOOKING_NUMBER_LENGTH - 1);
-  const range = 9 * minimum;
-
-  return String(minimum + ((hash >>> 0) % range));
+  const raw = String(
+    bookingOrId.bookingNumber ||
+    bookingOrId.bookingId ||
+    bookingOrId.id ||
+    ""
+  ).trim();
+  return raw;
 }
