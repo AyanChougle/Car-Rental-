@@ -988,7 +988,14 @@ function renderAdminActiveFleetRoster(activeRegs, allVehicles) {
       chipsWrap.innerHTML = `<span style="color:var(--sub); font-size:13px;">No active fleet selected. Standard fleet will be used.</span>`;
     } else {
       chipsWrap.innerHTML = activeRegs.map((reg) => {
-        const v = allVehicles.find((item) => (item.regNo || "").toUpperCase() === reg.toUpperCase());
+        const regNorm = String(reg || "").trim().toUpperCase();
+        const v = allVehicles.find((item) => {
+          const vReg = String(item.regNo || item.reg_no || "").trim().toUpperCase();
+          const vRaw = String(item.rawReg || "").trim().toUpperCase();
+          const vCarId = String(item.carId || item.car_id || "").trim().toUpperCase();
+          const vId = String(item.id || "").trim().toUpperCase();
+          return (vReg && vReg === regNorm) || (vRaw && vRaw === regNorm) || (vCarId && vCarId === regNorm) || (vId && vId === regNorm);
+        });
         const name = v ? `${v.brand} ${v.model}` : reg;
         return `
           <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(6, 214, 160, 0.12); border:1px solid rgba(6, 214, 160, 0.35); padding:4px 10px; border-radius:8px; font-size:12px; color:#ffffff;">
@@ -1048,16 +1055,24 @@ async function loadFleetManagement() {
       ? res.vehicles
       : getMasterCatalogVehicles();
 
-    // Deduplicate fleet vehicles
+    // Deduplicate and normalize fleet vehicles
     const seenVeh = new Set();
     let vehicles = [];
     rawVehicles.forEach((v) => {
       const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase();
-      const carId = String(v.carId || v.car_id || v.id || "").trim().toUpperCase();
-      const key = (reg && reg !== "TBD") ? reg : carId;
+      const carId = String(v.carId || v.car_id || "").trim().toUpperCase();
+      const id = String(v.id || "").trim();
+      const key = (reg && reg !== "TBD") ? reg : (carId || id);
       if (key && !seenVeh.has(key)) {
         seenVeh.add(key);
-        vehicles.push(v);
+        const effectiveReg = (reg && reg !== "TBD") ? reg : (carId || ("CAT-" + id));
+        vehicles.push({
+          ...v,
+          rawReg: reg,
+          regNo: effectiveReg,
+          carId: carId || v.carId || null,
+          identifier: effectiveReg
+        });
       }
     });
 
@@ -1108,7 +1123,15 @@ async function loadFleetManagement() {
           <tbody>
             ${pageVehicles.map((vehicle) => {
               const available = Boolean(vehicle.available);
-              const isActiveRoster = activeRegs.includes((vehicle.regNo || "").toUpperCase());
+              const isActiveRoster = activeRegs.some(r => {
+                const norm = String(r || "").trim().toUpperCase();
+                if (!norm) return false;
+                return (vehicle.regNo && norm === vehicle.regNo.toUpperCase()) ||
+                       (vehicle.rawReg && norm === vehicle.rawReg.toUpperCase()) ||
+                       (vehicle.carId && norm === vehicle.carId.toUpperCase()) ||
+                       (vehicle.id && norm === String(vehicle.id).toUpperCase());
+              });
+              const vehKey = vehicle.identifier || vehicle.regNo || vehicle.carId || String(vehicle.id);
               return `
                 <tr style="border-bottom:1px solid rgba(255,255,255,.06);">
                   <td style="padding:12px;font-family:monospace;font-weight:700;color:#4fd7ff;">${escapeHtml(vehicle.carId || "—")}</td>
@@ -1116,7 +1139,10 @@ async function loadFleetManagement() {
                     <strong style="color:#ffffff;">${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}</strong>
                     <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.category || "Economy")}</small>
                   </td>
-                  <td style="padding:12px;font-family:monospace;font-weight:700;color:#ffffff;">${escapeHtml(vehicle.regNo)}</td>
+                  <td style="padding:12px;font-family:monospace;font-weight:700;color:#ffffff;">
+                    ${escapeHtml(vehicle.rawReg || vehicle.regNo)}
+                    ${!vehicle.rawReg ? '<span style="font-size:10px;color:var(--sub);margin-left:4px;font-weight:normal;">(Catalog)</span>' : ''}
+                  </td>
                   <td style="padding:12px;">
                     <span style="color:#ffffff;font-weight:600;">${escapeHtml(vehicle.ownerName || "Kruizly Fleet")}</span>
                     <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.acquisitionType || "Partner")} · ${escapeHtml(vehicle.hub || "Gavson Hub")}</small>
@@ -1136,7 +1162,7 @@ async function loadFleetManagement() {
                       <input
                         type="checkbox"
                         class="admin-fleet-current-checkbox"
-                        data-reg="${escapeHtml(vehicle.regNo)}"
+                        data-reg="${escapeHtml(vehKey)}"
                         ${isActiveRoster ? "checked" : ""}
                         style="width:18px;height:18px;accent-color:#06d6a0;cursor:pointer;"
                       />
@@ -1149,7 +1175,7 @@ async function loadFleetManagement() {
                     <button
                       type="button"
                       class="btn btn-outline admin-fleet-roster-toggle"
-                      data-reg="${escapeHtml(vehicle.regNo)}"
+                      data-reg="${escapeHtml(vehKey)}"
                       data-active="${String(isActiveRoster)}"
                       style="margin-right:6px; font-size:11.5px; border-color:${isActiveRoster ? "rgba(255, 209, 102, 0.4)" : "rgba(6, 214, 160, 0.4)"}; color:${isActiveRoster ? "#ffd166" : "#06d6a0"};"
                     >
@@ -1158,7 +1184,7 @@ async function loadFleetManagement() {
                     <button
                       type="button"
                       class="btn btn-outline admin-fleet-edit"
-                      data-reg="${escapeHtml(vehicle.regNo)}"
+                      data-reg="${escapeHtml(vehKey)}"
                       style="margin-right:6px;"
                     >
                       Edit
@@ -1166,7 +1192,7 @@ async function loadFleetManagement() {
                     <button
                       type="button"
                       class="btn ${available ? "btn-outline" : "btn-dark"} admin-fleet-toggle"
-                      data-reg="${escapeHtml(vehicle.regNo)}"
+                      data-reg="${escapeHtml(vehKey)}"
                       data-available="${String(available)}"
                     >
                       ${available ? "Mark Unavailable" : "Make Available"}
@@ -1174,7 +1200,7 @@ async function loadFleetManagement() {
                     <button
                       type="button"
                       class="btn btn-outline admin-fleet-remove"
-                      data-reg="${escapeHtml(vehicle.regNo)}"
+                      data-reg="${escapeHtml(vehKey)}"
                       style="margin-left:6px;border-color:#ef476f;color:#ef476f;"
                     >
                       Remove
@@ -1219,7 +1245,8 @@ async function loadFleetManagement() {
       .querySelectorAll(".admin-fleet-current-checkbox")
       .forEach((checkbox) => {
         checkbox.addEventListener("change", async () => {
-          const regNo = (checkbox.dataset.reg || "").toUpperCase();
+          const regNo = (checkbox.dataset.reg || "").trim().toUpperCase();
+          if (!regNo) return;
           checkbox.disabled = true;
           try {
             let activeList = [...currentActiveFleetRegs];
@@ -1233,10 +1260,11 @@ async function loadFleetManagement() {
             await api.post("/vehicles/active-fleet.php", {
               action: checkbox.checked ? "add" : "remove",
               regNo,
-            }).catch(() => {});
+            });
             await loadFleetManagement();
           } catch (error) {
             console.error("FLEET ROSTER ERROR:", error);
+            alert("Roster update error: " + (error.message || error));
             checkbox.checked = !checkbox.checked;
             checkbox.disabled = false;
           }
@@ -1247,7 +1275,11 @@ async function loadFleetManagement() {
       .querySelectorAll(".admin-fleet-roster-toggle")
       .forEach((button) => {
         button.addEventListener("click", async () => {
-          const regNo = (button.dataset.reg || "").toUpperCase();
+          const regNo = (button.dataset.reg || "").trim().toUpperCase();
+          if (!regNo) {
+            alert("Could not determine vehicle registration or catalog ID.");
+            return;
+          }
           const isCurrentlyActive = button.dataset.active === "true";
           button.disabled = true;
           button.textContent = "Updating...";
@@ -1260,11 +1292,16 @@ async function loadFleetManagement() {
             }
             localStorage.setItem("kruizly_admin_active_regs", JSON.stringify(activeList));
 
-            await api.post("/vehicles/active-fleet.php", { action: "toggle", regNo }).catch(() => {});
+            await api.post("/vehicles/active-fleet.php", {
+              action: isCurrentlyActive ? "remove" : "add",
+              regNo
+            });
             await loadFleetManagement();
           } catch (error) {
             console.error("FLEET ROSTER ERROR:", error);
+            alert("Roster update error: " + (error.message || error));
             button.disabled = false;
+            button.textContent = isCurrentlyActive ? "Remove from Roster" : "+ Add to Roster";
           }
         });
       });
@@ -1274,16 +1311,16 @@ async function loadFleetManagement() {
       .forEach((button) => {
         button.addEventListener("click", () => {
           const regNo = button.dataset.reg;
-          const vehicle = vehicles.find((item) => item.regNo === regNo);
+          const vehicle = vehicles.find((item) => item.regNo === regNo || item.identifier === regNo || item.rawReg === regNo || item.carId === regNo);
           if (!vehicle) return;
 
-          editingFleetRegNo = regNo;
+          editingFleetRegNo = vehicle.rawReg || vehicle.regNo;
           if ($("fleetCarId")) $("fleetCarId").value = vehicle.carId || "";
           if ($("fleetBrand")) $("fleetBrand").value = vehicle.brand || "";
           if ($("fleetModel")) $("fleetModel").value = vehicle.model || "";
           if ($("fleetRegNo")) {
-            $("fleetRegNo").value = vehicle.regNo || "";
-            $("fleetRegNo").readOnly = true;
+            $("fleetRegNo").value = vehicle.rawReg || vehicle.regNo || "";
+            $("fleetRegNo").readOnly = Boolean(vehicle.rawReg);
           }
           if ($("fleetYear")) $("fleetYear").value = vehicle.year || 2026;
           if ($("fleetCategory")) $("fleetCategory").value = vehicle.category || "economy";
