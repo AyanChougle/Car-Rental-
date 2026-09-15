@@ -165,6 +165,8 @@ if ($method === 'GET') {
                     'isActiveFleet' => true
                 ];
                 $seenCarIds[$m['carId']] = true;
+            }
+        }
     }
 
     sendJsonResponse([
@@ -243,3 +245,5 @@ if ($method === 'POST') {
         'activeRegs' => $currentActiveRegs
     ]);
 }
+
+sendErrorResponse('Method not allowed.', 405);
