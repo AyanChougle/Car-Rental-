@@ -1,32 +1,30 @@
 <?php
 /**
- * api/vehicles/active-fleet.php
- * GET  - Get the list of active fleet vehicles shown in Manager Summary
- * POST - (Admin / Manager) Add, remove, or toggle active fleet vehicles
+ * KRUIZLY - Active Fleet Roster API
+ * Manages the custom manager-selected active fleet roster for display & booking.
+ * GET  /api/vehicles/active-fleet.php -> returns active fleet roster + all vehicles
+ * POST /api/vehicles/active-fleet.php -> update active fleet roster (add/remove/toggle/reset/set)
  */
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../bootstrap.php';
 
-$method = $_SERVER['REQUEST_METHOD'];
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
 
-// Default 7 Kruizly Fleet vehicles (supporting both DB variations e.g. GJ/CJ, CU/CY, EF/EL)
+// Canonical 7 Kruizly Fleet vehicles
 $defaultActiveRegs = [
-    'MH03EF1025',
     'MH03EL1025',
     'MH05GJ4711',
     'MH48GJ4153',
-    'MH48CJ4153',
     'MH04MU1178',
     'MH05FV3454',
     'MH43CU1632',
-    'MH43CY1632',
     'MH02FU6808'
 ];
 
@@ -40,6 +38,16 @@ $canonicalFleetCarIds = [
     'CRP-009'
 ];
 
+function normalizeActiveReg(string $reg): string {
+    $r = strtoupper(trim($reg));
+    $map = [
+        'MH03EF1025' => 'MH03EL1025',
+        'MH48CJ4153' => 'MH48GJ4153',
+        'MH43CY1632' => 'MH43CU1632'
+    ];
+    return $map[$r] ?? $r;
+}
+
 if ($method === 'GET') {
     // 1. Fetch current active fleet list from settings
     $setting = Database::fetchOne("SELECT `value` FROM settings WHERE `key` = 'manager_active_fleets' LIMIT 1");
@@ -51,10 +59,9 @@ if ($method === 'GET') {
             $cleaned = array_values(array_filter($decoded, function($r) {
                 return !str_starts_with(strtoupper(trim((string)$r)), 'ZIP');
             }));
-            if (count($cleaned) >= 7) {
-                $activeRegs = array_values(array_unique(array_map(function($r) {
-                    return strtoupper(trim((string)$r));
-                }, $cleaned)));
+            $normalized = array_values(array_unique(array_map('normalizeActiveReg', $cleaned)));
+            if (count($normalized) > 0) {
+                $activeRegs = $normalized;
             }
         }
     }
@@ -115,6 +122,8 @@ if ($method === 'GET') {
         }
         $vehiclesById[$id] = $item;
         $vehiclesMap[(string)$id] = $item;
+        $vehiclesMap['CAT-' . $id] = $item;
+        $vehiclesMap['CAT-' . str_pad((string)$id, 3, '0', STR_PAD_LEFT)] = $item;
     }
 
     // Default metadata for the 7 standard Kruizly fleets
@@ -139,7 +148,15 @@ if ($method === 'GET') {
     foreach ($activeRegs as $reg) {
         $regUpper = strtoupper(trim((string)$reg));
         $simp = str_replace(['C', 'G'], 'C', str_replace(['U', 'Y'], 'U', str_replace(['F', 'L'], 'F', preg_replace('/[^A-Z0-9]/', '', $regUpper))));
-        $matchedVeh = $vehiclesMap[$regUpper] ?? $vehiclesMap[$simp] ?? $vehiclesByCarId[$regUpper] ?? (is_numeric($regUpper) ? ($vehiclesById[(int)$regUpper] ?? null) : null);
+        
+        $catNum = -1;
+        if (is_numeric($regUpper)) {
+            $catNum = (int)$regUpper;
+        } elseif (preg_match('/^CAT-?(\d+)$/i', $regUpper, $m)) {
+            $catNum = (int)$m[1];
+        }
+
+        $matchedVeh = $vehiclesMap[$regUpper] ?? $vehiclesMap[$simp] ?? $vehiclesByCarId[$regUpper] ?? ($catNum > 0 ? ($vehiclesById[$catNum] ?? null) : null);
 
         if ($matchedVeh) {
             $mKey = $matchedVeh['id'] ?? $matchedVeh['carId'] ?? $matchedVeh['regNo'];
@@ -210,15 +227,53 @@ if ($method === 'POST') {
     if (preg_match('/^[A-Z]{2}\s*\d{1,2}\s*[A-Z]{0,3}\s*\d{1,4}$/i', $targetReg)) {
         $targetReg = preg_replace('/[^A-Z0-9]/', '', $targetReg);
     }
+    $targetReg = normalizeActiveReg($targetReg);
 
     // Resolve vehicle from DB if needed
     $targetVeh = null;
     if ($targetReg !== '') {
+        $numId = -1;
+        if (is_numeric($targetReg)) {
+            $numId = (int)$targetReg;
+        } elseif (preg_match('/^CAT-?(\d+)$/i', $targetReg, $m)) {
+            $numId = (int)$m[1];
+        }
+
         $targetVeh = Database::fetchOne(
             "SELECT * FROM vehicles WHERE UPPER(reg_no) = ? OR UPPER(car_id) = ? OR id = ? LIMIT 1",
-            [$targetReg, $targetReg, is_numeric($targetReg) ? (int)$targetReg : -1]
+            [$targetReg, $targetReg, $numId]
         );
     }
+
+    // Determine canonical identifier for this target
+    $identifier = $targetReg;
+    if ($targetVeh) {
+        $vehReg = strtoupper(trim((string)($targetVeh['reg_no'] ?? '')));
+        $vehCarId = strtoupper(trim((string)($targetVeh['car_id'] ?? '')));
+        if ($vehReg !== '' && $vehReg !== 'TBD') {
+            $identifier = normalizeActiveReg($vehReg);
+        } elseif ($vehCarId !== '') {
+            $identifier = $vehCarId;
+        } else {
+            $identifier = 'CAT-' . $targetVeh['id'];
+        }
+    }
+
+    // Build list of all possible aliases for removal/matching
+    $targetAliases = array_values(array_unique(array_filter([$targetReg, $identifier])));
+    if ($targetVeh) {
+        if (!empty($targetVeh['reg_no'])) {
+            $rawPl = strtoupper(trim((string)$targetVeh['reg_no']));
+            $targetAliases[] = $rawPl;
+            $targetAliases[] = normalizeActiveReg($rawPl);
+        }
+        if (!empty($targetVeh['car_id'])) {
+            $targetAliases[] = strtoupper(trim((string)$targetVeh['car_id']));
+        }
+        $targetAliases[] = (string)$targetVeh['id'];
+        $targetAliases[] = 'CAT-' . $targetVeh['id'];
+    }
+    $targetAliases = array_values(array_unique(array_filter($targetAliases)));
 
     // Fetch existing settings
     $setting = Database::fetchOne("SELECT `value` FROM settings WHERE `key` = 'manager_active_fleets' LIMIT 1");
@@ -227,9 +282,7 @@ if ($method === 'POST') {
     if ($setting && !empty($setting['value'])) {
         $decoded = json_decode($setting['value'], true);
         if (is_array($decoded) && count($decoded) > 0) {
-            $currentActiveRegs = array_values(array_unique(array_map(function($r) {
-                return strtoupper(trim((string)$r));
-            }, $decoded)));
+            $currentActiveRegs = array_values(array_unique(array_map('normalizeActiveReg', $decoded)));
         }
     }
 
@@ -237,85 +290,89 @@ if ($method === 'POST') {
         $currentActiveRegs = $defaultActiveRegs;
     } elseif ($action === 'set' && isset($input['activeRegs']) && is_array($input['activeRegs'])) {
         $currentActiveRegs = array_values(array_unique(array_filter(array_map(function($r) {
-            return strtoupper(trim((string)$r));
+            return normalizeActiveReg(strtoupper(trim((string)$r)));
         }, $input['activeRegs']))));
-    } elseif ($action === 'add' && $targetReg !== '') {
-        if (!in_array($targetReg, $currentActiveRegs, true)) {
-            $currentActiveRegs[] = $targetReg;
+    } elseif ($action === 'add' && $identifier !== '') {
+        if (!in_array($identifier, $currentActiveRegs, true)) {
+            $currentActiveRegs[] = $identifier;
         }
-        if ($targetVeh) {
-            $vehReg = strtoupper(trim((string)($targetVeh['reg_no'] ?? '')));
-            $vehCarId = strtoupper(trim((string)($targetVeh['car_id'] ?? '')));
-            if ($vehReg !== '' && !in_array($vehReg, $currentActiveRegs, true)) {
-                $currentActiveRegs[] = $vehReg;
-            }
-            if ($vehCarId !== '' && !in_array($vehCarId, $currentActiveRegs, true)) {
-                $currentActiveRegs[] = $vehCarId;
-            }
-        }
-    } elseif ($action === 'remove' && $targetReg !== '') {
-        $removeTargets = [$targetReg];
-        if ($targetVeh) {
-            $vehReg = strtoupper(trim((string)($targetVeh['reg_no'] ?? '')));
-            $vehCarId = strtoupper(trim((string)($targetVeh['car_id'] ?? '')));
-            if ($vehReg !== '') $removeTargets[] = $vehReg;
-            if ($vehCarId !== '') $removeTargets[] = $vehCarId;
-        }
-        $currentActiveRegs = array_values(array_diff($currentActiveRegs, $removeTargets));
-    } elseif ($action === 'toggle' && $targetReg !== '') {
-        $isCurrentlyActive = in_array($targetReg, $currentActiveRegs, true);
-        if ($targetVeh) {
-            $vehReg = strtoupper(trim((string)($targetVeh['reg_no'] ?? '')));
-            $vehCarId = strtoupper(trim((string)($targetVeh['car_id'] ?? '')));
-            if (($vehReg !== '' && in_array($vehReg, $currentActiveRegs, true)) ||
-                ($vehCarId !== '' && in_array($vehCarId, $currentActiveRegs, true))) {
+    } elseif ($action === 'remove' && !empty($targetAliases)) {
+        $currentActiveRegs = array_values(array_filter($currentActiveRegs, function($r) use ($targetAliases) {
+            return !in_array($r, $targetAliases, true);
+        }));
+    } elseif ($action === 'toggle' && $identifier !== '') {
+        $isCurrentlyActive = false;
+        foreach ($targetAliases as $alias) {
+            if (in_array($alias, $currentActiveRegs, true)) {
                 $isCurrentlyActive = true;
+                break;
             }
         }
 
         if ($isCurrentlyActive) {
-            $removeTargets = [$targetReg];
-            if ($targetVeh) {
-                $vehReg = strtoupper(trim((string)($targetVeh['reg_no'] ?? '')));
-                $vehCarId = strtoupper(trim((string)($targetVeh['car_id'] ?? '')));
-                if ($vehReg !== '') $removeTargets[] = $vehReg;
-                if ($vehCarId !== '') $removeTargets[] = $vehCarId;
-            }
-            $currentActiveRegs = array_values(array_diff($currentActiveRegs, $removeTargets));
+            $currentActiveRegs = array_values(array_filter($currentActiveRegs, function($r) use ($targetAliases) {
+                return !in_array($r, $targetAliases, true);
+            }));
         } else {
-            $currentActiveRegs[] = $targetReg;
+            $currentActiveRegs[] = $identifier;
         }
     } else {
         sendErrorResponse('Invalid action or target registration number / identifier.', 400);
     }
 
+    // Normalize active fleet roster
+    $currentActiveRegs = array_values(array_unique(array_map('normalizeActiveReg', $currentActiveRegs)));
+
     // Save to settings table
-    $jsonValue = json_encode(array_values(array_unique($currentActiveRegs)));
-    Database::execute(
-        "INSERT INTO settings (`key`, `value`, `updated_at`)
-         VALUES ('manager_active_fleets', ?, NOW())
-         ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `updated_at` = NOW()",
-        [$jsonValue]
-    );
+    $jsonValue = json_encode($currentActiveRegs);
+    try {
+        Database::execute(
+            "INSERT INTO settings (`key`, `value`, `updated_at`)
+             VALUES ('manager_active_fleets', ?, NOW())
+             ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `updated_at` = NOW()",
+            [$jsonValue]
+        );
+    } catch (Throwable $e) {
+        // Fallback for schemas without updated_at column
+        Database::execute(
+            "INSERT INTO settings (`key`, `value`)
+             VALUES ('manager_active_fleets', ?)
+             ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)",
+            [$jsonValue]
+        );
+    }
 
     // Update is_custom_fleet flag in vehicles table for consistency
+    Database::execute("UPDATE vehicles SET is_custom_fleet = 0 WHERE status != 'removed'");
     if (count($currentActiveRegs) > 0) {
         $inPlaceholders = implode(',', array_fill(0, count($currentActiveRegs), '?'));
-        Database::execute("UPDATE vehicles SET is_custom_fleet = 0 WHERE status != 'removed'");
         Database::execute(
             "UPDATE vehicles SET is_custom_fleet = 1 
              WHERE UPPER(reg_no) IN ($inPlaceholders) 
-                OR UPPER(car_id) IN ($inPlaceholders)
-                OR id IN ($inPlaceholders)",
-            array_merge($currentActiveRegs, $currentActiveRegs, $currentActiveRegs)
+                OR UPPER(car_id) IN ($inPlaceholders)",
+            array_merge($currentActiveRegs, $currentActiveRegs)
         );
+
+        $numericIds = [];
+        foreach ($currentActiveRegs as $r) {
+            if (is_numeric($r)) {
+                $numericIds[] = (int)$r;
+            } elseif (preg_match('/^CAT-?(\d+)$/i', $r, $m)) {
+                $numericIds[] = (int)$m[1];
+            }
+        }
+        $numericIds = array_values(array_unique($numericIds));
+        if (count($numericIds) > 0) {
+            $numPlaceholders = implode(',', array_fill(0, count($numericIds), '?'));
+            Database::execute("UPDATE vehicles SET is_custom_fleet = 1 WHERE id IN ($numPlaceholders)", $numericIds);
+        }
     }
 
     sendJsonResponse([
         'success' => true,
         'message' => 'Active fleet roster updated successfully.',
         'activeCount' => count($currentActiveRegs),
-        'activeRegs' => array_values(array_unique($currentActiveRegs))
+        'activeRegs' => $currentActiveRegs
     ]);
 }
 

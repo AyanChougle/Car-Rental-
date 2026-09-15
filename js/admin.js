@@ -915,13 +915,23 @@ async function loadAllAdminData() {
 const DEFAULT_7_ACTIVE_FLEETS = [
   { id: 1, carId: "CRP-002", regNo: "MH03EL1025", brand: "Suzuki", model: "Fronx", year: 2026, category: "compact-suv", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 3500, priceHour: 146, hub: "Gavson Business Park, Ghansoli", ownerName: "Aditi Lotankar", acquisitionType: "Partner", acquisitionDate: "2026-07-20", available: 1, status: "available", is_active_fleet: 1 },
   { id: 2, carId: "CRP-003", regNo: "MH05GJ4711", brand: "Suzuki", model: "Ertiga", year: 2026, category: "mpv", transmission: "Manual", fuel: "Petrol + CNG", seats: 7, priceDay: 4000, priceHour: 167, hub: "Gavson Business Park, Ghansoli", ownerName: "Viren Gupta", acquisitionType: "Partner", acquisitionDate: "2026-07-24", available: 1, status: "available", is_active_fleet: 1 },
-  { id: 3, carId: "CRP-005", regNo: "MH48CJ4153", brand: "Toyota", model: "Glanza", year: 2026, category: "hatchback", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3000, priceHour: 125, hub: "Gavson Business Park, Ghansoli", ownerName: "Ajay Vishwakarma", acquisitionType: "Partner", acquisitionDate: "2026-07-29", available: 1, status: "available", is_active_fleet: 1 },
+  { id: 3, carId: "CRP-005", regNo: "MH48GJ4153", brand: "Toyota", model: "Glanza", year: 2026, category: "hatchback", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3000, priceHour: 125, hub: "Gavson Business Park, Ghansoli", ownerName: "Ajay Vishwakarma", acquisitionType: "Partner", acquisitionDate: "2026-07-29", available: 1, status: "available", is_active_fleet: 1 },
   { id: 4, carId: "CRP-006", regNo: "MH04MU1178", brand: "Toyota", model: "Glanza", year: 2026, category: "hatchback", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3000, priceHour: 125, hub: "Gavson Business Park, Ghansoli", ownerName: "Kundan Singh", acquisitionType: "Partner", acquisitionDate: "2026-08-04", available: 1, status: "available", is_active_fleet: 1 },
   { id: 5, carId: "CRP-007", regNo: "MH05FV3454", brand: "Tata", model: "Punch", year: 2026, category: "compact-suv", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3000, priceHour: 125, hub: "Gavson Business Park, Ghansoli", ownerName: "Tai Phad", acquisitionType: "Partner", acquisitionDate: "2026-08-13", available: 1, status: "available", is_active_fleet: 1 },
-  { id: 6, carId: "CRP-008", regNo: "MH43CY1632", brand: "Suzuki", model: "Fronx", year: 2026, category: "compact-suv", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3200, priceHour: 133, hub: "Gavson Business Park, Ghansoli", ownerName: "Amol Gole", acquisitionType: "Partner", acquisitionDate: "2026-08-19", available: 1, status: "available", is_active_fleet: 1 },
+  { id: 6, carId: "CRP-008", regNo: "MH43CU1632", brand: "Suzuki", model: "Fronx", year: 2026, category: "compact-suv", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3200, priceHour: 133, hub: "Gavson Business Park, Ghansoli", ownerName: "Amol Gole", acquisitionType: "Partner", acquisitionDate: "2026-08-19", available: 1, status: "available", is_active_fleet: 1 },
   { id: 7, carId: "CRP-009", regNo: "MH02FU6808", brand: "Mahindra", model: "XUV 700", year: 2026, category: "suv", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 5500, priceHour: 229, hub: "Gavson Business Park, Ghansoli", ownerName: "Saif Feroz Shaikh", acquisitionType: "Partner", acquisitionDate: "2026-08-01", available: 1, status: "available", is_active_fleet: 1 }
 ];
 const DEFAULT_ACTIVE_REGS = DEFAULT_7_ACTIVE_FLEETS.map(f => f.regNo.toUpperCase());
+
+function normalizeActivePlate(plate) {
+  const p = String(plate || "").trim().toUpperCase();
+  const map = {
+    "MH03EF1025": "MH03EL1025",
+    "MH48CJ4153": "MH48GJ4153",
+    "MH43CY1632": "MH43CU1632"
+  };
+  return map[p] || p;
+}
 
 function getMasterCatalogVehicles() {
   const catalog = Array.isArray(window.fleetVehicles) ? window.fleetVehicles : [];
@@ -1030,6 +1040,7 @@ function renderAdminActiveFleetRoster(activeRegs, allVehicles) {
       resetBtn.disabled = true;
       resetBtn.textContent = "Resetting...";
       try {
+        localStorage.removeItem("kruizly_admin_active_regs");
         await api.post("/vehicles/active-fleet.php", { action: "reset" });
         await loadFleetManagement();
       } catch (err) {
@@ -1083,9 +1094,11 @@ async function loadFleetManagement() {
       if (raw) storedActiveRegs = JSON.parse(raw);
     } catch(e) {}
 
-    let activeRegs = Array.isArray(activeRes?.activeRegs) && activeRes.activeRegs.length > 0
-      ? activeRes.activeRegs.map(r => r.toUpperCase())
+    let rawList = Array.isArray(activeRes?.activeRegs) && activeRes.activeRegs.length > 0
+      ? activeRes.activeRegs
       : (storedActiveRegs && storedActiveRegs.length > 0 ? storedActiveRegs : DEFAULT_ACTIVE_REGS);
+
+    let activeRegs = Array.from(new Set(rawList.map(r => normalizeActivePlate(r))));
 
     try {
       localStorage.setItem("kruizly_admin_active_regs", JSON.stringify(activeRegs));
@@ -1124,12 +1137,17 @@ async function loadFleetManagement() {
             ${pageVehicles.map((vehicle) => {
               const available = Boolean(vehicle.available);
               const isActiveRoster = activeRegs.some(r => {
-                const norm = String(r || "").trim().toUpperCase();
+                const norm = normalizeActivePlate(r);
                 if (!norm) return false;
-                return (vehicle.regNo && norm === vehicle.regNo.toUpperCase()) ||
-                       (vehicle.rawReg && norm === vehicle.rawReg.toUpperCase()) ||
-                       (vehicle.carId && norm === vehicle.carId.toUpperCase()) ||
-                       (vehicle.id && norm === String(vehicle.id).toUpperCase());
+                const vReg = normalizeActivePlate(vehicle.regNo);
+                const vRaw = normalizeActivePlate(vehicle.rawReg);
+                const vCarId = String(vehicle.carId || "").trim().toUpperCase();
+                const vId = String(vehicle.id || "").trim().toUpperCase();
+                return (vReg && norm === vReg) ||
+                       (vRaw && norm === vRaw) ||
+                       (vCarId && norm === vCarId) ||
+                       (vId && norm === vId) ||
+                       (vId && norm === ("CAT-" + vId));
               });
               const vehKey = vehicle.identifier || vehicle.regNo || vehicle.carId || String(vehicle.id);
               return `
@@ -1249,12 +1267,14 @@ async function loadFleetManagement() {
           if (!regNo) return;
           checkbox.disabled = true;
           try {
+            const norm = normalizeActivePlate(regNo);
             let activeList = [...currentActiveFleetRegs];
             if (checkbox.checked) {
-              if (!activeList.includes(regNo)) activeList.push(regNo);
+              if (!activeList.includes(norm)) activeList.push(norm);
             } else {
-              activeList = activeList.filter(r => r.toUpperCase() !== regNo);
+              activeList = activeList.filter(r => r.toUpperCase() !== regNo && r.toUpperCase() !== norm);
             }
+            activeList = Array.from(new Set(activeList.map(r => normalizeActivePlate(r))));
             localStorage.setItem("kruizly_admin_active_regs", JSON.stringify(activeList));
 
             await api.post("/vehicles/active-fleet.php", {
@@ -1281,15 +1301,18 @@ async function loadFleetManagement() {
             return;
           }
           const isCurrentlyActive = button.dataset.active === "true";
+          const originalText = button.textContent;
           button.disabled = true;
           button.textContent = "Updating...";
           try {
+            const norm = normalizeActivePlate(regNo);
             let activeList = [...currentActiveFleetRegs];
             if (isCurrentlyActive) {
-              activeList = activeList.filter(r => r.toUpperCase() !== regNo);
+              activeList = activeList.filter(r => r.toUpperCase() !== regNo && r.toUpperCase() !== norm);
             } else {
-              if (!activeList.includes(regNo)) activeList.push(regNo);
+              if (!activeList.includes(norm)) activeList.push(norm);
             }
+            activeList = Array.from(new Set(activeList.map(r => normalizeActivePlate(r))));
             localStorage.setItem("kruizly_admin_active_regs", JSON.stringify(activeList));
 
             await api.post("/vehicles/active-fleet.php", {
@@ -1301,7 +1324,7 @@ async function loadFleetManagement() {
             console.error("FLEET ROSTER ERROR:", error);
             alert("Roster update error: " + (error.message || error));
             button.disabled = false;
-            button.textContent = isCurrentlyActive ? "Remove from Roster" : "+ Add to Roster";
+            button.textContent = originalText;
           }
         });
       });
