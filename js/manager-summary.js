@@ -5,7 +5,7 @@ import {
   isAdminUser,
   isExecutiveUser,
 } from "./auth.js?v=20260908-v5";
-import { api } from "./kruizly-api.js?v=20260908-v5";
+import { api } from "./kruizly-api.js?v=20260915-v1";
 import "./nav-helper.js?v=20260908-v5";
 
 /* ============================================================
@@ -58,7 +58,7 @@ let fleetScope = "active"; // "active" (7) | "all" (38)
 export const ACTIVE_7_FLEETS = [
   {
     carId: "CRP-002",
-    regNo: "MH03EF1025",
+    regNo: "MH03EL1025",
     brand: "Suzuki",
     model: "Fronx",
     year: 2026,
@@ -918,7 +918,7 @@ export function matchBookingToFleet(b) {
       regRaw.includes("1025") ||
       nameRaw.includes("ARUN")
     ) {
-      return findRosterReg("CRP-002", "1025") || "MH03EF1025";
+      return findRosterReg("CRP-002", "1025") || "MH03EL1025";
     }
     return findRosterReg("CRP-008", "1632") || "MH43CU1632";
   }
@@ -2607,7 +2607,7 @@ async function loadManagerData() {
       await Promise.allSettled([
         api.get("/bookings"),
         api.get("/vehicles"),
-        api.get("/vehicles/active-fleet?_t=" + Date.now()),
+        api.get("/vehicles/active-fleet.php?_t=" + Date.now()),
         api.get("/admin/stats"),
       ]);
 
@@ -2617,6 +2617,28 @@ async function loadManagerData() {
       kpiRes.value?.data
     ) {
       serverKpiStats = kpiRes.value.data;
+    }
+
+    if (vehiclesRes.status === "fulfilled" && vehiclesRes.value) {
+      const res = vehiclesRes.value;
+      const loadedVeh = Array.isArray(res.vehicles)
+        ? res.vehicles
+        : Array.isArray(res.data)
+          ? res.data
+          : [];
+
+      // Strictly deduplicate by regNo or carId
+      const seenVeh = new Set();
+      rawVehicles = [];
+      loadedVeh.forEach((v) => {
+        const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase();
+        const carId = String(v.carId || v.car_id || v.id || "").trim().toUpperCase();
+        const key = (reg && reg !== "TBD") ? reg : carId;
+        if (key && !seenVeh.has(key)) {
+          seenVeh.add(key);
+          rawVehicles.push(v);
+        }
+      });
     }
 
     let serverFleets = [];
@@ -2645,10 +2667,10 @@ async function loadManagerData() {
         const sCarId = String(sf.carId || sf.car_id || "").toUpperCase().trim();
         const sRegNorm = String(sf.regNo || sf.reg_no || "").toUpperCase().replace(/[\s\-_]/g, "");
 
-        const cMatch = ACTIVE_7_FLEETS.find((cf) => {
-          const cCarId = String(cf.carId || "").toUpperCase().trim();
+        const cMatch = [...ACTIVE_7_FLEETS, ...OTHER_CATALOG_FLEETS, ...rawVehicles].find((cf) => {
+          const cCarId = String(cf.carId || cf.car_id || cf.id || "").toUpperCase().trim();
           if (cCarId && sCarId && cCarId === sCarId) return true;
-          const cRegNorm = cf.regNo.toUpperCase().replace(/[\s\-_]/g, "");
+          const cRegNorm = String(cf.regNo || cf.reg_no || "").toUpperCase().replace(/[\s\-_]/g, "");
           if (cRegNorm && sRegNorm) {
             if (cRegNorm === sRegNorm) return true;
             const cSimp = cRegNorm.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
@@ -2661,11 +2683,23 @@ async function loadManagerData() {
         return {
           ...(cMatch || {}),
           ...sf,
-          regNo: sf.regNo || sf.reg_no || cMatch?.regNo || "",
-          carId: sf.carId || sf.car_id || cMatch?.carId || "",
+          regNo: sf.regNo || sf.reg_no || cMatch?.regNo || cMatch?.reg_no || "",
+          carId: sf.carId || sf.car_id || cMatch?.carId || cMatch?.car_id || "",
           brand: sf.brand || cMatch?.brand || "",
           model: sf.model || cMatch?.model || "",
-          priceDay: Number(sf.priceDay || sf.price_day || cMatch?.priceDay || 0)
+          year: sf.year || cMatch?.year || 2026,
+          category: sf.category || cMatch?.category || "Economy",
+          transmission: sf.transmission || cMatch?.transmission || "Manual",
+          fuelType: sf.fuel || sf.fuelType || cMatch?.fuel || cMatch?.fuelType || "Petrol",
+          seats: Number(sf.seats || cMatch?.seats || 5),
+          hub: sf.hub || cMatch?.hub || "Gavson Business Park, Ghansoli",
+          acquisitionType: sf.acquisitionType || sf.acquisition_type || cMatch?.acquisitionType || "Partner",
+          ownerName: sf.ownerName || sf.owner_name || cMatch?.ownerName || "",
+          acquisitionDate: sf.acquisitionDate || sf.acquisition_date || cMatch?.acquisitionDate || "",
+          image: sf.imageUrl || sf.image || cMatch?.image || cMatch?.imageUrl || "",
+          priceDay: Number(sf.priceDay || sf.price_day || cMatch?.priceDay || 0),
+          available: sf.available !== undefined ? Number(sf.available) : 1,
+          status: sf.status || "available"
         };
       });
     } else {
@@ -2698,28 +2732,6 @@ async function loadManagerData() {
     if (rawBookings.length === 0) {
       console.warn("No bookings returned from Hostinger SQL API, loading offline baseline cache");
       rawBookings = [...DEFAULT_SEPTEMBER_BOOKINGS];
-    }
-
-    if (vehiclesRes.status === "fulfilled" && vehiclesRes.value) {
-      const res = vehiclesRes.value;
-      const loadedVeh = Array.isArray(res.vehicles)
-        ? res.vehicles
-        : Array.isArray(res.data)
-          ? res.data
-          : [];
-
-      // Strictly deduplicate by regNo or carId
-      const seenVeh = new Set();
-      rawVehicles = [];
-      loadedVeh.forEach((v) => {
-        const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase();
-        const carId = String(v.carId || v.car_id || v.id || "").trim().toUpperCase();
-        const key = (reg && reg !== "TBD") ? reg : carId;
-        if (key && !seenVeh.has(key)) {
-          seenVeh.add(key);
-          rawVehicles.push(v);
-        }
-      });
     }
   } catch (err) {
     console.error("Manager summary data fetch error:", err);

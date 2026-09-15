@@ -45,6 +45,48 @@ export function resolveEndpoint(endpoint, params = {}) {
     return { path: `/${clean}`, params: queryParams };
   }
 
+  // Route map for standard endpoints
+  const routeMap = {
+    "health": "/health.php",
+    "users/me": "/users/me.php",
+    "users/sync": "/users/sync.php",
+    "users/partner-cars": "/users/partner-cars.php",
+    "users/role": "/users/role.php",
+    "users": "/users/index.php",
+    "bookings/my-bookings": "/bookings/my-bookings.php",
+    "bookings/create": "/bookings/create.php",
+    "bookings/cancel": "/bookings/cancel.php",
+    "bookings/detail": "/bookings/detail.php",
+    "bookings": "/bookings/index.php",
+    "vehicles/active-fleet": "/vehicles/active-fleet.php",
+    "vehicles/detail": "/vehicles/detail.php",
+    "vehicles": "/vehicles/index.php",
+    "payments/submit": "/payments/submit.php",
+    "payments/verify": "/payments/verify.php",
+    "payments": "/payments/index.php",
+    "coupons/validate": "/coupons/validate.php",
+    "coupons/detail": "/coupons/detail.php",
+    "coupons": "/coupons/index.php",
+    "verification/submit": "/verification/submit.php",
+    "verification/me": "/verification/me.php",
+    "verification/user-status": "/verification/user-status.php",
+    "verification": "/verification/index.php",
+    "media/upload": "/media/upload.php",
+    "media/my-media": "/media/my-media.php",
+    "media/file": "/media/file.php",
+    "media/delete": "/media/delete.php",
+    "invoices/get": "/invoices/get.php",
+    "invoices/update": "/invoices/update.php",
+    "invoices/pdf": "/invoices/pdf.php",
+    "invoices/send": "/invoices/send.php",
+    "admin/export": "/admin/export.php",
+    "admin/stats": "/admin/stats.php"
+  };
+
+  if (routeMap[clean]) {
+    return { path: routeMap[clean], params: queryParams };
+  }
+
   // Handle parameterized routes
   // /payments/:id/verify
   const paymentVerifyMatch = clean.match(/^payments\/([^/]+)\/verify$/);
@@ -62,7 +104,7 @@ export function resolveEndpoint(endpoint, params = {}) {
 
   // /vehicles/:id
   const vehicleDetailMatch = clean.match(/^vehicles\/([^/]+)$/);
-  if (vehicleDetailMatch && vehicleDetailMatch[1] !== "index") {
+  if (vehicleDetailMatch && vehicleDetailMatch[1] !== "index" && vehicleDetailMatch[1] !== "active-fleet") {
     queryParams.id = vehicleDetailMatch[1];
     return { path: "/vehicles/detail.php", params: queryParams };
   }
@@ -107,48 +149,6 @@ export function resolveEndpoint(endpoint, params = {}) {
   if (mediaDeleteMatch && !["upload", "my-media", "file", "delete"].includes(mediaDeleteMatch[1])) {
     queryParams.id = mediaDeleteMatch[1];
     return { path: "/media/delete.php", params: queryParams };
-  }
-
-
-  // Route map for standard endpoints
-  const routeMap = {
-    "health": "/health.php",
-    "users/me": "/users/me.php",
-    "users/sync": "/users/sync.php",
-    "users/partner-cars": "/users/partner-cars.php",
-    "users/role": "/users/role.php",
-    "users": "/users/index.php",
-    "bookings/my-bookings": "/bookings/my-bookings.php",
-    "bookings/create": "/bookings/create.php",
-    "bookings/cancel": "/bookings/cancel.php",
-    "bookings/detail": "/bookings/detail.php",
-    "bookings": "/bookings/index.php",
-    "vehicles/detail": "/vehicles/detail.php",
-    "vehicles": "/vehicles/index.php",
-    "payments/submit": "/payments/submit.php",
-    "payments/verify": "/payments/verify.php",
-    "payments": "/payments/index.php",
-    "coupons/validate": "/coupons/validate.php",
-    "coupons/detail": "/coupons/detail.php",
-    "coupons": "/coupons/index.php",
-    "verification/submit": "/verification/submit.php",
-    "verification/me": "/verification/me.php",
-    "verification/user-status": "/verification/user-status.php",
-    "verification": "/verification/index.php",
-    "media/upload": "/media/upload.php",
-    "media/my-media": "/media/my-media.php",
-    "media/file": "/media/file.php",
-    "media/delete": "/media/delete.php",
-    "invoices/get": "/invoices/get.php",
-    "invoices/update": "/invoices/update.php",
-    "invoices/pdf": "/invoices/pdf.php",
-    "invoices/send": "/invoices/send.php",
-    "admin/export": "/admin/export.php",
-    "admin/stats": "/admin/stats.php"
-  };
-
-  if (routeMap[clean]) {
-    return { path: routeMap[clean], params: queryParams };
   }
 
   // Default: if it's a directory or module, check if it has a slash
