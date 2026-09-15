@@ -35,7 +35,14 @@ $canonicalFleetCarIds = [
     'CRP-006',
     'CRP-007',
     'CRP-008',
-    'CRP-009'
+    'CRP-009',
+    'CRP-033',
+    'CRP-034',
+    'CRP-035',
+    'CRP-036',
+    'CRP-037',
+    'CRP-038',
+    'CRP-039'
 ];
 
 function normalizeActiveReg(string $reg): string {
@@ -50,7 +57,12 @@ function normalizeActiveReg(string $reg): string {
 
 if ($method === 'GET') {
     // 1. Fetch current active fleet list from settings
-    $setting = Database::fetchOne("SELECT `value` FROM settings WHERE `key` = 'manager_active_fleets' LIMIT 1");
+    $setting = null;
+    try {
+        $setting = Database::fetchOne("SELECT `value` FROM settings WHERE `key` = 'manager_active_fleets' ORDER BY updated_at DESC LIMIT 1");
+    } catch (Throwable $_) {
+        $setting = Database::fetchOne("SELECT `value` FROM settings WHERE `key` = 'manager_active_fleets' LIMIT 1");
+    }
     $activeRegs = $defaultActiveRegs;
 
     if ($setting && !empty($setting['value'])) {
@@ -210,7 +222,8 @@ if ($method === 'GET') {
         'activeRegs' => $activeRegs,
         'activeFleet' => $activeFleetList,
         'fleets' => $activeFleetList,
-        'allVehicles' => array_values($vehiclesMap)
+        'debugSetting' => $setting['value'] ?? null,
+        'allVehicles' => array_values($vehiclesById)
     ]);
 }
 
@@ -276,7 +289,12 @@ if ($method === 'POST') {
     $targetAliases = array_values(array_unique(array_filter($targetAliases)));
 
     // Fetch existing settings
-    $setting = Database::fetchOne("SELECT `value` FROM settings WHERE `key` = 'manager_active_fleets' LIMIT 1");
+    $setting = null;
+    try {
+        $setting = Database::fetchOne("SELECT `value` FROM settings WHERE `key` = 'manager_active_fleets' ORDER BY updated_at DESC LIMIT 1");
+    } catch (Throwable $_) {
+        $setting = Database::fetchOne("SELECT `value` FROM settings WHERE `key` = 'manager_active_fleets' LIMIT 1");
+    }
     $currentActiveRegs = $defaultActiveRegs;
 
     if ($setting && !empty($setting['value'])) {
@@ -323,23 +341,29 @@ if ($method === 'POST') {
     // Normalize active fleet roster
     $currentActiveRegs = array_values(array_unique(array_map('normalizeActiveReg', $currentActiveRegs)));
 
-    // Save to settings table
+    // Save to settings table cleanly: delete old entries first to ensure 100% single canonical record
     $jsonValue = json_encode($currentActiveRegs);
+    $saveAffected = 0;
+    $saveError = null;
     try {
-        Database::execute(
+        Database::execute("DELETE FROM settings WHERE `key` = 'manager_active_fleets'");
+        $saveAffected = Database::execute(
             "INSERT INTO settings (`key`, `value`, `updated_at`)
-             VALUES ('manager_active_fleets', ?, NOW())
-             ON DUPLICATE KEY UPDATE `value` = VALUES(`value`), `updated_at` = NOW()",
+             VALUES ('manager_active_fleets', ?, NOW())",
             [$jsonValue]
         );
     } catch (Throwable $e) {
-        // Fallback for schemas without updated_at column
-        Database::execute(
-            "INSERT INTO settings (`key`, `value`)
-             VALUES ('manager_active_fleets', ?)
-             ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)",
-            [$jsonValue]
-        );
+        $saveError = $e->getMessage();
+        try {
+            Database::execute("DELETE FROM settings WHERE `key` = 'manager_active_fleets'");
+            $saveAffected = Database::execute(
+                "INSERT INTO settings (`key`, `value`)
+                 VALUES ('manager_active_fleets', ?)",
+                [$jsonValue]
+            );
+        } catch (Throwable $e2) {
+            $saveError .= ' | ' . $e2->getMessage();
+        }
     }
 
     // Update is_custom_fleet flag in vehicles table for consistency
@@ -372,7 +396,9 @@ if ($method === 'POST') {
         'success' => true,
         'message' => 'Active fleet roster updated successfully.',
         'activeCount' => count($currentActiveRegs),
-        'activeRegs' => $currentActiveRegs
+        'activeRegs' => $currentActiveRegs,
+        'saveAffected' => $saveAffected,
+        'saveError' => $saveError
     ]);
 }
 

@@ -2607,7 +2607,7 @@ async function loadManagerData() {
       await Promise.allSettled([
         api.get("/bookings"),
         api.get("/vehicles"),
-        api.get("/vehicles/active-fleet"),
+        api.get("/vehicles/active-fleet?_t=" + Date.now()),
         api.get("/admin/stats"),
       ]);
 
@@ -2639,42 +2639,38 @@ async function loadManagerData() {
       return reg && !reg.startsWith("ZIP") && !reg.includes("ZIP");
     });
 
-    // Build the master 7-fleet list: always match by carId first, then normalized regNo
-    activeFleetsRoster = ACTIVE_7_FLEETS.map((canonicalFleet) => {
-      const cCarId = String(canonicalFleet.carId || "").toUpperCase().trim();
-      const cRegNorm = canonicalFleet.regNo.toUpperCase().replace(/[\s\-_]/g, "");
-
-      const serverMatch = validServerFleets.find((sf) => {
+    // Build dynamic active fleet roster from server response
+    if (validServerFleets.length > 0) {
+      activeFleetsRoster = validServerFleets.map((sf) => {
         const sCarId = String(sf.carId || sf.car_id || "").toUpperCase().trim();
-        if (cCarId && sCarId && cCarId === sCarId) return true;
+        const sRegNorm = String(sf.regNo || sf.reg_no || "").toUpperCase().replace(/[\s\-_]/g, "");
 
-        const sRegNorm = String(sf.regNo || sf.reg_no || "")
-          .toUpperCase()
-          .replace(/[\s\-_]/g, "");
-        if (sRegNorm && cRegNorm) {
-          if (sRegNorm === cRegNorm) return true;
-          const sSimp = sRegNorm.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
-          const cSimp = cRegNorm.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
-          if (sSimp === cSimp) return true;
-        }
-        return false;
-      });
+        const cMatch = ACTIVE_7_FLEETS.find((cf) => {
+          const cCarId = String(cf.carId || "").toUpperCase().trim();
+          if (cCarId && sCarId && cCarId === sCarId) return true;
+          const cRegNorm = cf.regNo.toUpperCase().replace(/[\s\-_]/g, "");
+          if (cRegNorm && sRegNorm) {
+            if (cRegNorm === sRegNorm) return true;
+            const cSimp = cRegNorm.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+            const sSimp = sRegNorm.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+            return cSimp === sSimp;
+          }
+          return false;
+        });
 
-      if (serverMatch) {
         return {
-          ...canonicalFleet,
-          ...serverMatch,
-          regNo: serverMatch.regNo || serverMatch.reg_no || canonicalFleet.regNo,
-          carId: serverMatch.carId || serverMatch.car_id || canonicalFleet.carId,
-          brand: serverMatch.brand || canonicalFleet.brand,
-          model: serverMatch.model || canonicalFleet.model,
-          priceDay:
-            Number(serverMatch.priceDay || serverMatch.price_day) ||
-            canonicalFleet.priceDay,
+          ...(cMatch || {}),
+          ...sf,
+          regNo: sf.regNo || sf.reg_no || cMatch?.regNo || "",
+          carId: sf.carId || sf.car_id || cMatch?.carId || "",
+          brand: sf.brand || cMatch?.brand || "",
+          model: sf.model || cMatch?.model || "",
+          priceDay: Number(sf.priceDay || sf.price_day || cMatch?.priceDay || 0)
         };
-      }
-      return { ...canonicalFleet };
-    });
+      });
+    } else {
+      activeFleetsRoster = ACTIVE_7_FLEETS.map((cf) => ({ ...cf }));
+    }
 
     if (bookingsRes.status === "fulfilled" && bookingsRes.value) {
       const res = bookingsRes.value;

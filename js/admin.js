@@ -1059,7 +1059,7 @@ async function loadFleetManagement() {
   try {
     const [res, activeRes] = await Promise.all([
       api.get("/vehicles").catch(() => null),
-      api.get("/vehicles/active-fleet.php").catch(() => null)
+      api.get("/vehicles/active-fleet.php?_t=" + Date.now()).catch(() => null)
     ]);
 
     let rawVehicles = Array.isArray(res?.vehicles) && res.vehicles.length > 0
