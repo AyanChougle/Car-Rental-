@@ -1237,7 +1237,10 @@ function isBookingCancelled(b) {
 function isVerifiedRevenue(b) {
   if (isBookingCancelled(b)) return false;
   const pStat = String(b.paymentStatus || "").toLowerCase();
-  return pStat === "paid" || pStat === "advance_paid" || pStat === "verified";
+  const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+  if (pStat === "paid" || pStat === "advance_paid" || pStat === "verified") return true;
+  if (["confirmed", "active", "completed", "in_progress", "on_trip"].includes(bStat) && pStat !== "failed" && pStat !== "refunded") return true;
+  return false;
 }
 
 function bookingAmount(b) {
@@ -1781,20 +1784,47 @@ function renderDashboard() {
   }
 
   // 1. Day Sales
-  const daySales = rawBookings
-    .filter((b) => {
-      if (!isVerifiedRevenue(b)) return false;
-      return inWindow(getBookingSaleDate(b), todayStart, todayEnd);
-    })
-    .reduce((sum, b) => sum + bookingAmount(b), 0);
+  let daySales = 0;
+  const isSingleDay =
+    filterFromDate &&
+    filterToDate &&
+    filterFromDate.getFullYear() === filterToDate.getFullYear() &&
+    filterFromDate.getMonth() === filterToDate.getMonth() &&
+    filterFromDate.getDate() === filterToDate.getDate();
+
+  if (isSingleDay) {
+    daySales = rawBookings
+      .filter((b) => isVerifiedRevenue(b) && isBookingInPeriod(b, filterFromDate, filterToDate))
+      .reduce((sum, b) => sum + bookingAmount(b), 0);
+  } else {
+    daySales = rawBookings
+      .filter((b) => {
+        if (!isVerifiedRevenue(b)) return false;
+        return inWindow(getBookingSaleDate(b), todayStart, todayEnd);
+      })
+      .reduce((sum, b) => sum + bookingAmount(b), 0);
+  }
+  if (daySales === 0 && (!filterFromDate || isBookingInPeriod({ pickupDate: now }, filterFromDate, filterToDate))) {
+    daySales = Number(serverKpiStats?.effective?.day_sales || serverKpiStats?.live?.day_sales || 0);
+  }
 
   // 2. Week Sales (Sunday to Saturday)
-  const weekSales = rawBookings
-    .filter((b) => {
-      if (!isVerifiedRevenue(b)) return false;
-      return inWindow(getBookingSaleDate(b), sunOfWeek, satOfWeek);
-    })
-    .reduce((sum, b) => sum + bookingAmount(b), 0);
+  let weekSales = 0;
+  if (activeQuickFilter === "this_week") {
+    weekSales = rawBookings
+      .filter((b) => isVerifiedRevenue(b) && isBookingInPeriod(b, filterFromDate, filterToDate))
+      .reduce((sum, b) => sum + bookingAmount(b), 0);
+  } else {
+    weekSales = rawBookings
+      .filter((b) => {
+        if (!isVerifiedRevenue(b)) return false;
+        return inWindow(getBookingSaleDate(b), sunOfWeek, satOfWeek);
+      })
+      .reduce((sum, b) => sum + bookingAmount(b), 0);
+  }
+  if (weekSales === 0 && (!filterFromDate || isBookingInPeriod({ pickupDate: now }, filterFromDate, filterToDate))) {
+    weekSales = Number(serverKpiStats?.effective?.week_sales || serverKpiStats?.live?.week_sales || 0);
+  }
 
   // 3. Month Sales (1st of month to today)
   const calculatedMonthSales = rawBookings
