@@ -1068,6 +1068,34 @@ const fleetVehicles = [
     "odometer": "pending",
     "lastService": "pending",
     "tracking": "pending"
+  },
+  {
+    "id": "krz-39",
+    "slug": "mg-hector-petrol-automatic",
+    "regNo": "MH-03-QQ-4568",
+    "brand": "MG",
+    "model": "Hector",
+    "year": 2024,
+    "category": "suv",
+    "icon": "",
+    "transmission": "Automatic",
+    "fuel": "Petrol",
+    "seats": 5,
+    "bags": 2,
+    "available": 1,
+    "priceDay": 2400,
+    "priceHour": 100,
+    "driverPrice": 2000,
+    "securityDeposit": 2000,
+    "freeKm": 250,
+    "extraKm": 12,
+    "commission": 10,
+    "status": "available",
+    "trackerId": "",
+    "location": "Gavson Business Park, Ghansoli",
+    "odometer": "pending",
+    "lastService": "pending",
+    "tracking": "pending"
   }
 ];
 
@@ -1123,8 +1151,8 @@ const fleetImageOverrides = {
   "venue": "assets/fleet/Hyundai Creta.png",
 
   // Tata models
-  "tata altroz": "assets/fleet/Tata Altroz.png",
-  "altroz": "assets/fleet/Tata Altroz.png",
+  "tata altroz": "assets/fleet/Tata Altroz .png",
+  "altroz": "assets/fleet/Tata Altroz .png",
   "tata nexon": "assets/fleet/Tata Nexon.png",
   "nexon": "assets/fleet/Tata Nexon.png",
   "tata punch": "assets/fleet/Tata Punch.png",
@@ -1145,9 +1173,9 @@ const fleetImageOverrides = {
   "mahindra xuv3xo": "assets/fleet/Mahindra 7XO.png",
   "3xo": "assets/fleet/Mahindra 7XO.png",
   "xuv 3xo": "assets/fleet/Mahindra 7XO.png",
-  "mahindra xuv700": "assets/fleet/Mahindra XUV700.png",
-  "xuv700": "assets/fleet/Mahindra XUV700.png",
-  "mahindra xuv 700": "assets/fleet/Mahindra XUV700.png",
+  "mahindra xuv700": "assets/fleet/Mahindra XUV700 .png",
+  "xuv700": "assets/fleet/Mahindra XUV700 .png",
+  "mahindra xuv 700": "assets/fleet/Mahindra XUV700 .png",
   "mahindra scorpio n": "assets/fleet/Mahindra Scorpio N.png",
   "scorpio n": "assets/fleet/Mahindra Scorpio N.png",
   "mahindra scorpio": "assets/fleet/Mahindra Scorpio N.png",
@@ -1158,10 +1186,11 @@ const fleetImageOverrides = {
   "bolero": "assets/fleet/Mahindra Scorpio N.png",
   "mahindra thar": "assets/fleet/Mahindra Thar.png",
   "thar": "assets/fleet/Mahindra Thar.png",
-  "mahindra thar roxx": "assets/fleet/Mahindra Thar.png",
-  "thar roxx": "assets/fleet/Mahindra Thar.png",
+  "mahindra thar roxx": "assets/fleet/thar roxx.png",
+  "thar roxx": "assets/fleet/thar roxx.png",
   "mahindra xuv500": "assets/fleet/Mahindra XUV500.png",
   "xuv500": "assets/fleet/Mahindra XUV500.png",
+  "mahindra xuv 500": "assets/fleet/Mahindra XUV500.png",
 
   // Toyota models
   "toyota glanza": "assets/fleet/Toyota Glanza.png",
@@ -1174,18 +1203,24 @@ const fleetImageOverrides = {
   "innova": "assets/fleet/Toyota Innova Crysta.png",
   "toyota rumion": "assets/fleet/Toyota Rumion.png",
   "rumion": "assets/fleet/Toyota Rumion.png",
-  "toyota urban cruiser": "assets/fleet/Toyota Urban Cruiser Taisor.png",
-  "toyota urban cruiser taisor": "assets/fleet/Toyota Urban Cruiser Taisor.png",
-  "urban cruiser taisor": "assets/fleet/Toyota Urban Cruiser Taisor.png",
-  "urban cruiser": "assets/fleet/Toyota Urban Cruiser Taisor.png",
-  "toyota taisor": "assets/fleet/Toyota Urban Cruiser Taisor.png",
-  "taisor": "assets/fleet/Toyota Urban Cruiser Taisor.png",
+  "toyota urban cruiser": "assets/fleet/Toyota Urban Cruiser Taisor .png",
+  "toyota urban cruiser taisor": "assets/fleet/Toyota Urban Cruiser Taisor .png",
+  "urban cruiser taisor": "assets/fleet/Toyota Urban Cruiser Taisor .png",
+  "urban cruiser": "assets/fleet/Toyota Urban Cruiser Taisor .png",
+  "toyota taisor": "assets/fleet/Toyota Urban Cruiser Taisor .png",
+  "taisor": "assets/fleet/Toyota Urban Cruiser Taisor .png",
   "toyota fortuner legender": "assets/fleet/Toyota Innova Crysta.png",
   "fortuner legender": "assets/fleet/Toyota Innova Crysta.png",
   "toyota fortuner": "assets/fleet/Toyota Innova Crysta.png",
   "fortuner": "assets/fleet/Toyota Innova Crysta.png",
 
-  // Honda, Skoda, VW, Kia, MG, BMW
+  // MG models
+  "mg hector": "assets/fleet/MG hector.jpg",
+  "mg hector plus": "assets/fleet/MG hector.jpg",
+  "hector": "assets/fleet/MG hector.jpg",
+  "mg": "assets/fleet/MG hector.jpg",
+
+  // Honda, Skoda, VW, Kia, BMW, Jeep
   "honda amaze": "assets/fleet/Hyundai Aura.png",
   "amaze": "assets/fleet/Hyundai Aura.png",
   "honda city": "assets/fleet/Hyundai Aura.png",
@@ -1200,13 +1235,11 @@ const fleetImageOverrides = {
   "sonet": "assets/fleet/Hyundai Creta.png",
   "kia carens": "assets/fleet/Kia Carens.png",
   "carens": "assets/fleet/Kia Carens.png",
-  "mg hector": "assets/fleet/Tata Safari.png",
-  "hector": "assets/fleet/Tata Safari.png",
   "jeep compass": "assets/fleet/Jeep Compass.png",
   "compass": "assets/fleet/Jeep Compass.png",
   "bmw 520d": "assets/fleet/BMW 520D.png",
   "520d": "assets/fleet/BMW 520D.png",
-  "bmw": "assets/fleet/BMW.png",
+  "bmw": "assets/fleet/BMW 520D.png",
   "mercedes": "assets/fleet/BMW 520D.png",
   "mercedes-benz": "assets/fleet/BMW 520D.png"
 };
@@ -1223,7 +1256,7 @@ function findFleetImageOverride(key) {
 }
 
 function fleetImagePath(vehicle) {
-  if (!vehicle) return "assets/fleet/BMW.png";
+  if (!vehicle) return "assets/fleet/BMW 520D.png";
   if (typeof vehicle === "string") {
     if (vehicle.startsWith("http") || vehicle.startsWith("/api/media/")) return vehicle;
     if (vehicle.startsWith("assets/fleet/")) {
@@ -1234,7 +1267,7 @@ function fleetImagePath(vehicle) {
     }
     const ov = findFleetImageOverride(vehicle);
     if (ov) return encodeURI(ov);
-    return `assets/fleet/BMW.png`;
+    return `assets/fleet/BMW 520D.png`;
   }
 
   // If vehicle has an uploaded media ID / external URL, use it
@@ -1254,28 +1287,37 @@ function fleetImagePath(vehicle) {
 
   const ov = findFleetImageOverride(fullName) ||
     findFleetImageOverride(model) ||
-    (brand.toLowerCase() === "maruti" ? findFleetImageOverride(`Maruti Suzuki ${model}`) : null);
+    (brand.toLowerCase() === "maruti" ? findFleetImageOverride(`Maruti Suzuki ${model}`) : null) ||
+    (brand.toLowerCase() === "mg" ? findFleetImageOverride("mg hector") : null);
 
   if (ov) return encodeURI(ov);
 
-  return "assets/fleet/BMW.png";
+  return "assets/fleet/BMW 520D.png";
 }
 
 function getFleetVehicle(query) {
   if (!query || query === "undefined" || query === "null") return null;
   const q = String(query).trim().toLowerCase();
-  return (
-    fleetVehicles.find(
-      (v) =>
-        (v.id && v.id.toLowerCase() === q) ||
-        (v.slug && v.slug.toLowerCase() === q) ||
-        (v.regNo && v.regNo.toLowerCase() === q) ||
-        `${v.brand} ${v.model}`.toLowerCase() === q ||
-        `${v.brand}-${v.model}`.toLowerCase().replace(/\s+/g, "-") === q ||
-        v.brand.toLowerCase() === q ||
-        v.model.toLowerCase() === q
-    ) || null
+  
+  const direct = fleetVehicles.find(
+    (v) =>
+      (v.id && (v.id.toLowerCase() === q || String(v.id).replace(/\D/g, "") === q)) ||
+      (v.slug && v.slug.toLowerCase() === q) ||
+      (v.regNo && v.regNo.toLowerCase() === q) ||
+      `${v.brand} ${v.model}`.toLowerCase() === q ||
+      `${v.brand}-${v.model}`.toLowerCase().replace(/\s+/g, "-") === q ||
+      v.brand.toLowerCase() === q ||
+      v.model.toLowerCase() === q
   );
+  if (direct) return direct;
+
+  const num = parseInt(q, 10);
+  if (!isNaN(num)) {
+    if (fleetVehicles[num - 1]) return fleetVehicles[num - 1];
+    const byNum = fleetVehicles.find(v => v.id === `krz-${String(num).padStart(2, "0")}` || v.id === String(num));
+    if (byNum) return byNum;
+  }
+  return null;
 }
 
 if (typeof window !== "undefined") {

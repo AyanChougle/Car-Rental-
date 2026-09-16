@@ -95,6 +95,47 @@ function showUnavailable(message) {
 }
 
 if (!vehicle) {
+  if (queryId) {
+    if (bookingTitle) bookingTitle.textContent = "Loading vehicle...";
+    api.get("/vehicles")
+      .then((res) => {
+        const list = res?.vehicles || [];
+        const qStr = String(queryId).toLowerCase().trim();
+        const matched = list.find((v) =>
+          (v.id && (String(v.id).toLowerCase() === qStr || String(v.id).replace(/\D/g, "") === qStr)) ||
+          (v.carId && String(v.carId).toLowerCase() === qStr) ||
+          (v.regNo && String(v.regNo).toLowerCase() === qStr) ||
+          `${v.brand} ${v.model}`.toLowerCase() === qStr ||
+          (v.slug && String(v.slug).toLowerCase() === qStr)
+        );
+        if (matched) {
+          if (!matched.available) {
+            if (vehicleName) vehicleName.textContent = matched.brand + " " + matched.model;
+            showUnavailable("This car is currently booked. Please choose another vehicle from the fleet.");
+          } else {
+            initBooking(matched);
+          }
+        } else {
+          showNoVehicleSelected();
+        }
+      })
+      .catch(() => {
+        showNoVehicleSelected();
+      });
+  } else {
+    showNoVehicleSelected();
+  }
+} else if (!vehicle.available) {
+  if (vehicleName)
+    vehicleName.textContent = vehicle.brand + " " + vehicle.model;
+  showUnavailable(
+    "This car is currently booked. Please choose another vehicle from the fleet.",
+  );
+} else {
+  initBooking(vehicle);
+}
+
+function showNoVehicleSelected() {
   if (bookingTitle) bookingTitle.textContent = "No Vehicle Selected";
   showUnavailable(
     "Please choose a vehicle from our fleet to start your rental booking.",
@@ -108,14 +149,6 @@ if (!vehicle) {
     btnFleet.textContent = "Browse Fleet & Choose Car";
     bookContainer.appendChild(btnFleet);
   }
-} else if (!vehicle.available) {
-  if (vehicleName)
-    vehicleName.textContent = vehicle.brand + " " + vehicle.model;
-  showUnavailable(
-    "This car is currently booked. Please choose another vehicle from the fleet.",
-  );
-} else {
-  initBooking(vehicle);
 }
 
 async function initBooking(vehicle) {
