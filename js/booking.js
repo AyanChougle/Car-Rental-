@@ -46,7 +46,9 @@ let queryId =
   params.get("id") ||
   params.get("car") ||
   params.get("reg") ||
-  params.get("vehicle");
+  params.get("vehicle") ||
+  sessionStorageGet("crp_selectedCarId") ||
+  sessionStorageGet("crp_lastVehicleId");
 if (queryId === "undefined" || queryId === "null" || queryId === "")
   queryId = null;
 
@@ -63,7 +65,13 @@ const vehicle =
       (queryId &&
         `${item.brand} ${item.model}`.toLowerCase() === queryId.toLowerCase()),
   ) ||
-  catalog[0];
+  null;
+
+if (vehicle?.id) {
+  try {
+    sessionStorage.setItem("crp_selectedCarId", vehicle.id);
+  } catch (e) {}
+}
 
 const form = document.getElementById("bookingForm");
 const totalsEl = document.getElementById("bookingTotals");
@@ -87,9 +95,19 @@ function showUnavailable(message) {
 }
 
 if (!vehicle) {
+  if (bookingTitle) bookingTitle.textContent = "No Vehicle Selected";
   showUnavailable(
-    "We couldn't find that car. Please return to the fleet and choose another vehicle.",
+    "Please choose a vehicle from our fleet to start your rental booking.",
   );
+  const bookContainer = document.querySelector(".booking-layout") || document.querySelector(".booking-panel") || form?.parentElement;
+  if (bookContainer && !document.getElementById("btnReturnToFleet")) {
+    const btnFleet = document.createElement("a");
+    btnFleet.id = "btnReturnToFleet";
+    btnFleet.href = "fleet.html";
+    btnFleet.style.cssText = "display:inline-block;margin-top:20px;padding:12px 24px;text-align:center;text-decoration:none;border-radius:8px;font-weight:700;background:var(--kz-primary,#ffb703);color:#000;";
+    btnFleet.textContent = "Browse Fleet & Choose Car";
+    bookContainer.appendChild(btnFleet);
+  }
 } else if (!vehicle.available) {
   if (vehicleName)
     vehicleName.textContent = vehicle.brand + " " + vehicle.model;
@@ -543,7 +561,8 @@ async function initBooking(vehicle) {
 
     if (!currentUser) {
       const nextParams = new URLSearchParams();
-      if (vehicle?.regNo) nextParams.set("reg", vehicle.regNo);
+      const vId = vehicle?.id || vehicle?.slug || vehicle?.regNo || queryId || sessionStorageGet("crp_selectedCarId");
+      if (vId) nextParams.set("id", vId);
       if (pickupInput?.value) nextParams.set("pickup", pickupInput.value);
       if (dropInput?.value) nextParams.set("drop", dropInput.value);
       const next = "booking.html?" + nextParams.toString();

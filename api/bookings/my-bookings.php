@@ -116,9 +116,9 @@ $bookings = array_map(function($b) {
     $pickupPhotos = $inspection['pickupPhotos'] ?? [];
 
     return [
-        'id' => $b['booking_id'],
-        'bookingId' => $b['booking_id'],
-        'bookingNumber' => $b['booking_number'],
+        'id' => $b['booking_id'] ?: ($b['booking_number'] ?: (string)$b['id']),
+        'bookingId' => $b['booking_id'] ?: ($b['booking_number'] ?: (string)$b['id']),
+        'bookingNumber' => $b['booking_number'] ?: ($b['booking_id'] ?: (string)$b['id']),
         'vehicleReg' => $b['vehicle_reg'],
         'vehicleName' => $b['vehicle_name'],
         'vehicleCategory' => $b['vehicle_category'],
@@ -140,6 +140,10 @@ $bookings = array_map(function($b) {
         'paymentStatus' => $b['payment_status'],
         'status' => $status,
         'bookingStatus' => $b['booking_status'] ?? $status,
+        'cancellationReason' => $b['cancellation_reason'] ?? null,
+        'cancellation_reason' => $b['cancellation_reason'] ?? null,
+        'refundStatus' => $b['refund_status'] ?? null,
+        'refund_status' => $b['refund_status'] ?? null,
         'paymentRef' => $b['payment_ref'],
         'location' => $b['location'],
         'pickupStatus' => $pickupStatus,

@@ -253,7 +253,7 @@ async function openManagerPaymentModal(booking) {
       </div>
       <div class="manager-summary-row">
         <span>Reference</span>
-        <strong style="font-family:monospace;">${escapeHtml(booking.paymentRef || "—")}</strong>
+        <strong style="font-family:monospace;">${escapeHtml(booking.paymentRef || "ï¿½")}</strong>
       </div>
       ${screenshotMarkup}
     </div>
@@ -346,7 +346,7 @@ function renderManagerPayments() {
               <td style="padding:12px;">${escapeHtml(booking.userName || "Customer")}</td>
               <td style="padding:12px;">${escapeHtml(booking.vehicleName || "Vehicle")}</td>
               <td style="padding:12px;color:var(--accent);font-weight:700;">&#8377;${formatMoney(booking.totalAmount)}</td>
-              <td style="padding:12px;font-family:monospace;">${escapeHtml(booking.paymentRef || "—")}</td>
+              <td style="padding:12px;font-family:monospace;">${escapeHtml(booking.paymentRef || "ï¿½")}</td>
               <td style="padding:12px;text-align:right;">
                 <button type="button" class="btn btn-dark manager-review-payment-btn" data-booking-id="${escapeHtml(booking.id)}">
                   Review
@@ -409,6 +409,9 @@ function initialiseManagerPaymentModal() {
 
       closeManagerPaymentModal();
       await loadManagerBookings();
+      if (typeof window.loadManagerSummaryData === 'function') {
+        try { await window.loadManagerSummaryData(); } catch (_) {}
+      }
     } catch (error) {
       console.error("Manager payment approval error:", error);
       alert("Could not approve payment.\n\n" + error.message);
@@ -500,7 +503,7 @@ function openExecutivePickupModal(booking) {
 
   if (title) {
     title.textContent =
-      `Pickup — ${booking.vehicleName || "Vehicle"} (#${formatBookingNumber(booking)})`;
+      `Pickup ï¿½ ${booking.vehicleName || "Vehicle"} (#${formatBookingNumber(booking)})`;
   }
 
   if (notes) notes.value = booking.pickupNotes || "";
@@ -824,20 +827,20 @@ async function openExecutiveBookingDetails(booking) {
         <div class="executive-details-grid">
           ${[
             ["Customer", customer.name || customer.fullName || customer.displayName || booking.userName || booking.customerName || "Customer"],
-            ["Email", customer.email || booking.userEmail || booking.customerEmail || "—"],
-            ["Phone", customer.phone || customer.phoneNumber || booking.userPhone || booking.customerPhone || booking.phone || "—"],
-            ["Age", customer.age || booking.userAge || booking.age || "—"],
+            ["Email", customer.email || booking.userEmail || booking.customerEmail || "ï¿½"],
+            ["Phone", customer.phone || customer.phoneNumber || booking.userPhone || booking.customerPhone || booking.phone || "ï¿½"],
+            ["Age", customer.age || booking.userAge || booking.age || "ï¿½"],
             ["Vehicle", booking.vehicleName || "Vehicle"],
-            ["Registration", booking.vehicleReg || booking.registration || booking.vehicleRegistration || booking.regNo || booking.regNumber || "—"],
+            ["Registration", booking.vehicleReg || booking.registration || booking.vehicleRegistration || booking.regNo || booking.regNumber || "ï¿½"],
             ["Pickup", formatDisplayDate(booking.pickupDate)],
             ["Drop", formatDisplayDate(booking.dropDate)],
             ["Booking status", formatStatus(booking.status || booking.bookingStatus)],
             ["Pickup status", formatStatus(booking.pickupStatus || (booking.status === "in_trip" || booking.status === "completed" ? "picked_up" : "awaiting pickup"))],
-            ["Pickup Odometer", booking.pickupOdometer != null ? `${Number(booking.pickupOdometer).toLocaleString("en-IN")} km` : (booking.startOdometer != null ? `${Number(booking.startOdometer).toLocaleString("en-IN")} km` : "—")],
-            ["Return Odometer", returnInspection.returnOdometer != null ? `${Number(returnInspection.returnOdometer).toLocaleString("en-IN")} km` : (booking.endOdometer != null ? `${Number(booking.endOdometer).toLocaleString("en-IN")} km` : "—")],
-            ["Pickup FASTag", booking.pickupFastagBalance != null ? `?${Number(booking.pickupFastagBalance).toLocaleString("en-IN")}` : (booking.startFastag != null ? `?${Number(booking.startFastag).toLocaleString("en-IN")}` : "—")],
-            ["Return FASTag", returnInspection.returnFastagBalance != null ? `?${Number(returnInspection.returnFastagBalance).toLocaleString("en-IN")}` : (booking.returnFastag != null ? `?${Number(booking.returnFastag).toLocaleString("en-IN")}` : "—")],
-            ["Fuel Level", booking.pickupFuelLevel || booking.fuelLevel || returnInspection.fuelLevel || "—"],
+            ["Pickup Odometer", booking.pickupOdometer != null ? `${Number(booking.pickupOdometer).toLocaleString("en-IN")} km` : (booking.startOdometer != null ? `${Number(booking.startOdometer).toLocaleString("en-IN")} km` : "ï¿½")],
+            ["Return Odometer", returnInspection.returnOdometer != null ? `${Number(returnInspection.returnOdometer).toLocaleString("en-IN")} km` : (booking.endOdometer != null ? `${Number(booking.endOdometer).toLocaleString("en-IN")} km` : "ï¿½")],
+            ["Pickup FASTag", booking.pickupFastagBalance != null ? `?${Number(booking.pickupFastagBalance).toLocaleString("en-IN")}` : (booking.startFastag != null ? `?${Number(booking.startFastag).toLocaleString("en-IN")}` : "ï¿½")],
+            ["Return FASTag", returnInspection.returnFastagBalance != null ? `?${Number(returnInspection.returnFastagBalance).toLocaleString("en-IN")}` : (booking.returnFastag != null ? `?${Number(booking.returnFastag).toLocaleString("en-IN")}` : "ï¿½")],
+            ["Fuel Level", booking.pickupFuelLevel || booking.fuelLevel || returnInspection.fuelLevel || "ï¿½"],
           ].map(([label, value]) => `
             <div class="executive-detail-item">
               <span>${escapeHtml(label)}</span>
@@ -1115,7 +1118,7 @@ function getManagerBookingDateMillis(booking) {
 }
 
 function formatDisplayDate(value) {
-  if (!value) return "—";
+  if (!value) return "ï¿½";
   let date;
   if (value instanceof Date) {
     date = value;
@@ -1136,7 +1139,7 @@ function formatDisplayDate(value) {
     }
   }
 
-  if (!date || Number.isNaN(date.getTime())) return String(value || "—");
+  if (!date || Number.isNaN(date.getTime())) return String(value || "ï¿½");
 
   return date.toLocaleDateString("en-IN", {
     day: "2-digit",
@@ -1283,7 +1286,7 @@ function renderManagerBookingsTable(bookings) {
       booking.phone ||
       booking.userEmail ||
       booking.email ||
-      "—";
+      "ï¿½";
 
     /* =====================================================
        VEHICLE
@@ -1299,7 +1302,7 @@ function renderManagerBookingsTable(bookings) {
       booking.vehicleReg ||
       booking.regNumber ||
       booking.registration ||
-      "—";
+      "ï¿½";
 
     /* =====================================================
        DATES
@@ -1568,7 +1571,7 @@ function renderManagerPagination(totalPages, totalItems) {
   return `
     <nav class="data-pagination" aria-label="Executive booking pages">
       <span class="data-pagination__summary">
-        Page <strong>${managerBookingPage}</strong> of <strong>${totalPages}</strong> · <span style="color:var(--kr-text-muted);">${totalItems} bookings</span>
+        Page <strong>${managerBookingPage}</strong> of <strong>${totalPages}</strong> ï¿½ <span style="color:var(--kr-text-muted);">${totalItems} bookings</span>
       </span>
       <div class="data-pagination__actions">
         <button type="button" class="btn-pagination" data-manager-page-action="previous" ${managerBookingPage === 1 ? "disabled" : ""}>
@@ -1828,7 +1831,7 @@ function openReturnReport(booking) {
     booking.vehicleReg ||
     booking.regNumber ||
     booking.registration ||
-    "—";
+    "ï¿½";
 
   const customer =
     booking.userName ||
@@ -2077,27 +2080,27 @@ function openReturnReport(booking) {
       <div class="rr-info-grid" style="margin-top: 10px;">
         <div class="rr-info-cell">
           <span class="rr-info-key">Pickup Odometer</span>
-          <strong class="rr-info-val">${booking.pickupOdometer != null ? `${Number(booking.pickupOdometer).toLocaleString("en-IN")} km` : "—"}</strong>
+          <strong class="rr-info-val">${booking.pickupOdometer != null ? `${Number(booking.pickupOdometer).toLocaleString("en-IN")} km` : "ï¿½"}</strong>
         </div>
         <div class="rr-info-cell">
           <span class="rr-info-key">Return Odometer</span>
-          <strong class="rr-info-val">${inspection.returnOdometer != null ? `${Number(inspection.returnOdometer).toLocaleString("en-IN")} km` : "—"}</strong>
+          <strong class="rr-info-val">${inspection.returnOdometer != null ? `${Number(inspection.returnOdometer).toLocaleString("en-IN")} km` : "ï¿½"}</strong>
         </div>
         <div class="rr-info-cell">
           <span class="rr-info-key">Distance Driven</span>
-          <strong class="rr-info-val">${(inspection.returnOdometer != null && booking.pickupOdometer != null && Number(inspection.returnOdometer) >= Number(booking.pickupOdometer)) ? `${(Number(inspection.returnOdometer) - Number(booking.pickupOdometer)).toLocaleString("en-IN")} km` : "—"}</strong>
+          <strong class="rr-info-val">${(inspection.returnOdometer != null && booking.pickupOdometer != null && Number(inspection.returnOdometer) >= Number(booking.pickupOdometer)) ? `${(Number(inspection.returnOdometer) - Number(booking.pickupOdometer)).toLocaleString("en-IN")} km` : "ï¿½"}</strong>
         </div>
         <div class="rr-info-cell">
           <span class="rr-info-key">Pickup FASTag</span>
-          <strong class="rr-info-val">${booking.pickupFastagBalance != null ? `?${Number(booking.pickupFastagBalance).toLocaleString("en-IN")}` : "—"}</strong>
+          <strong class="rr-info-val">${booking.pickupFastagBalance != null ? `?${Number(booking.pickupFastagBalance).toLocaleString("en-IN")}` : "ï¿½"}</strong>
         </div>
         <div class="rr-info-cell">
           <span class="rr-info-key">Return FASTag</span>
-          <strong class="rr-info-val">${inspection.returnFastagBalance != null ? `?${Number(inspection.returnFastagBalance).toLocaleString("en-IN")}` : "—"}</strong>
+          <strong class="rr-info-val">${inspection.returnFastagBalance != null ? `?${Number(inspection.returnFastagBalance).toLocaleString("en-IN")}` : "ï¿½"}</strong>
         </div>
         <div class="rr-info-cell">
           <span class="rr-info-key">Fuel Level</span>
-          <strong class="rr-info-val">${escapeHtml(booking.pickupFuelLevel || "—")}</strong>
+          <strong class="rr-info-val">${escapeHtml(booking.pickupFuelLevel || "ï¿½")}</strong>
         </div>
       </div>
 
@@ -2131,7 +2134,7 @@ function openReturnReport(booking) {
             return `
               <div class="rr-item">
                 <span class="rr-item-name">${escapeHtml(title)}</span>
-                ${amount > 0 ? `<span class="rr-item-amount">?${formatMoney(amount)}</span>` : `<span class="rr-item-nil">—</span>`}
+                ${amount > 0 ? `<span class="rr-item-amount">?${formatMoney(amount)}</span>` : `<span class="rr-item-nil">ï¿½</span>`}
               </div>
             `;
           }).join("")}
@@ -2382,7 +2385,7 @@ async function openManagerDocumentModal(user, type) {
 
   if (title) {
     title.textContent =
-      `${user.name || "Customer"} — ${documentLabel}`;
+      `${user.name || "Customer"} ï¿½ ${documentLabel}`;
   }
 
   const isComplete = isLicense ? mediaUrls.length === 2 : mediaUrls.length > 0;
@@ -2783,7 +2786,7 @@ function renderManagerDocsList(users) {
 
           ${escapeHtml(
             user.email ||
-            "—"
+            "ï¿½"
           )}
 
           <br>
@@ -2794,7 +2797,7 @@ function renderManagerDocsList(users) {
           ">
             ${escapeHtml(
               user.phone ||
-              "—"
+              "ï¿½"
             )}
           </span>
 

@@ -1377,7 +1377,10 @@ function initUserCancellationModal() {
     confirmBtn.textContent = "Cancelling...";
 
     try {
-      await api.post(`/bookings/${encodeURIComponent(bookingId)}/cancel`, {
+      await api.post("/bookings/cancel", {
+        id: bookingId,
+        bookingId: bookingId,
+        bookingNumber: bookingId,
         reason: reason,
         cancellationReason: reason
       });
@@ -1777,7 +1780,7 @@ function renderBooking(
         ${paymentButton}
         ${
           status !== "cancelled" && status !== "rejected" && status !== "completed"
-            ? `<button type="button" class="btn-cancel-booking" data-booking-id="${escapeHtml(booking.id)}" style="background: rgba(239, 71, 111, 0.12); color: #ef476f; border: 1px solid rgba(239, 71, 111, 0.3); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer;">Cancel Booking</button>`
+            ? `<button type="button" class="btn-cancel-booking" data-booking-id="${escapeHtml(booking.bookingId || booking.bookingNumber || booking.id || "")}" style="background: rgba(239, 71, 111, 0.12); color: #ef476f; border: 1px solid rgba(239, 71, 111, 0.3); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer;">Cancel Booking</button>`
             : ""
         }
       </div>

@@ -95,6 +95,13 @@ export function resolveEndpoint(endpoint, params = {}) {
     return { path: "/payments/verify.php", params: queryParams };
   }
 
+  // /bookings/:id/cancel
+  const bookingCancelMatch = clean.match(/^bookings\/([^/]+)\/cancel$/);
+  if (bookingCancelMatch) {
+    queryParams.id = bookingCancelMatch[1];
+    return { path: "/bookings/cancel.php", params: queryParams };
+  }
+
   // /bookings/:id (GET or PUT)
   const bookingDetailMatch = clean.match(/^bookings\/([^/]+)$/);
   if (bookingDetailMatch && bookingDetailMatch[1] !== "index" && bookingDetailMatch[1] !== "my-bookings" && bookingDetailMatch[1] !== "create" && bookingDetailMatch[1] !== "cancel") {

@@ -43,7 +43,14 @@
 
 	const bookBtn = document.getElementById("vehicleBookBtn");
 	if (vehicle.available) {
-		bookBtn.href = `booking.html?id=${encodeURIComponent(vehicle.id || vehicle.slug || vehicle.regNo)}`;
+		const vIdentifier = vehicle.id || vehicle.slug || vehicle.regNo;
+		bookBtn.href = `booking.html?id=${encodeURIComponent(vIdentifier)}`;
+		bookBtn.addEventListener("click", () => {
+			try {
+				sessionStorage.setItem("crp_selectedCarId", vIdentifier);
+				localStorage.setItem("crp_selectedCarId", vIdentifier);
+			} catch (_) {}
+		});
 	} else {
 		bookBtn.textContent = "Currently Unavailable";
 		bookBtn.classList.remove("btn-dark");

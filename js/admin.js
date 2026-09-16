@@ -6372,6 +6372,7 @@ function initialisePaymentModal() {
             if (typeof loadPayments === "function") await loadPayments();
             if (typeof loadBookings === "function") await loadBookings();
             if (typeof loadAdminCalendar === "function") await loadAdminCalendar();
+            if (typeof loadKpiStats === "function") await loadKpiStats();
           } catch (syncErr) {
             console.warn("Sync error after payment approval:", syncErr);
           }
@@ -6461,6 +6462,7 @@ function initialisePaymentModal() {
             if (typeof loadPayments === "function") await loadPayments();
             if (typeof loadBookings === "function") await loadBookings();
             if (typeof loadAdminCalendar === "function") await loadAdminCalendar();
+            if (typeof loadKpiStats === "function") await loadKpiStats();
           } catch (syncErr) {
             console.warn("Sync error after payment rejection:", syncErr);
           }
@@ -6470,6 +6472,8 @@ function initialisePaymentModal() {
           renderBookingsTable(
             getFilteredBookings()
           );
+
+          updateRevenueStats();
 
         } catch (error) {
           console.error(

@@ -591,6 +591,11 @@ grid.addEventListener("click", (event) => {
       return;
     }
 
+    try {
+      sessionStorage.setItem("crp_selectedCarId", registrationNumber);
+      localStorage.setItem("crp_selectedCarId", registrationNumber);
+    } catch (e) {}
+
     window.location.href = `booking.html?id=${encodeURIComponent(
       registrationNumber,
     )}${bookingDateParams()}`;
