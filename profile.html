@@ -984,6 +984,7 @@
         </div>
 
         <div class="doc-camera-viewfinder" id="docCameraViewfinder">
+          <input type="file" id="docCameraFallbackInput" accept="image/*" capture="environment" hidden />
           <video id="docCameraVideo" class="doc-camera-video" playsinline autoplay muted></video>
           <canvas id="docCameraCanvas" hidden></canvas>
           <img id="docCameraSnapshot" class="doc-camera-snapshot" alt="Captured document preview" hidden />
@@ -1207,7 +1208,7 @@
 
     <script type="module" src="js/vehicles.js?v=20260917-v1"></script>
 
-    <script type="module" src="js/profile.js?v=20260917-v2"></script>
+    <script type="module" src="js/profile.js?v=20260917-v3"></script>
 
     <script src="js/glass-ui.js?v=20260917-v1"></script>
     <script src="js/kruizly-motion.js?v=20260917-v1"></script>

@@ -1768,6 +1768,71 @@ function initDocumentCameraModal() {
     }
   });
 
+  const fallbackInput = $("docCameraFallbackInput");
+
+  const renderCameraError = (title, message, isNotFound = false) => {
+    if (liveActions) liveActions.hidden = true;
+    if (video) video.hidden = true;
+    if (guideOverlay) guideOverlay.hidden = true;
+    if (statusMsg) {
+      statusMsg.hidden = false;
+      statusMsg.innerHTML = `
+        <div style="text-align: center; max-width: 380px; margin: 0 auto;">
+          <div style="font-size: 38px; margin-bottom: 12px; line-height: 1;">📷</div>
+          <h4 style="color: #ff6b6b; font-size: 1.05rem; font-weight: 700; margin: 0 0 8px;">${title}</h4>
+          <p style="color: #cbd5e1; font-size: 0.84rem; line-height: 1.5; margin: 0 0 20px;">${message}</p>
+          <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+            <button type="button" id="docCameraTriggerFallbackBtn" style="background: #48d7ff; color: #050607; font-weight: 700; font-size: 0.84rem; text-transform: uppercase; letter-spacing: 0.04em; border-radius: 10px; padding: 10px 18px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 4px 14px rgba(72, 215, 255, 0.4);">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              <span>${isNotFound ? "Choose / Snap Photo" : "Use Camera App"}</span>
+            </button>
+            <button type="button" id="docCameraCancelFallbackBtn" style="background: rgba(255, 255, 255, 0.08); color: #fff; font-weight: 600; font-size: 0.84rem; border-radius: 10px; padding: 10px 16px; border: 1px solid rgba(255, 255, 255, 0.2); cursor: pointer;">
+              Cancel
+            </button>
+          </div>
+        </div>
+      `;
+
+      const triggerBtn = $("docCameraTriggerFallbackBtn");
+      if (triggerBtn && fallbackInput) {
+        triggerBtn.addEventListener("click", () => {
+          fallbackInput.click();
+        });
+      }
+      const cancelBtn = $("docCameraCancelFallbackBtn");
+      if (cancelBtn) {
+        cancelBtn.addEventListener("click", closeModal);
+      }
+    }
+  };
+
+  if (fallbackInput) {
+    fallbackInput.addEventListener("change", () => {
+      const file = fallbackInput.files?.[0];
+      if (!file || !activeCameraTargetInputId) {
+        closeModal();
+        return;
+      }
+
+      const targetInput = $(activeCameraTargetInputId);
+      if (targetInput) {
+        targetInput._capturedFile = file;
+        try {
+          if (typeof DataTransfer !== "undefined") {
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            targetInput.files = dt.files;
+          }
+        } catch (e) {
+          console.warn("DataTransfer fallback:", e);
+        }
+        targetInput.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      fallbackInput.value = "";
+      closeModal();
+    });
+  }
+
   const startCamera = async () => {
     stopStream();
     if (statusMsg) {
@@ -1784,53 +1849,69 @@ function initDocumentCameraModal() {
     if (previewActions) previewActions.hidden = true;
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      if (statusMsg) {
-        statusMsg.hidden = false;
-        statusMsg.innerHTML = `
-          <p style="color:#ff6b6b;font-weight:700;">Camera Not Supported</p>
-          <p style="font-size:0.82rem;color:#cbd5e1;">Your browser or connection does not support live camera access. Please use the "Choose File" option to upload or take a photo.</p>
-        `;
-      }
+      renderCameraError(
+        "Camera Not Supported",
+        "Your browser or connection does not support live video capture. You can take a photo with your device camera app or choose an existing file.",
+        true,
+      );
       return;
     }
 
+    let stream = null;
     try {
-      const constraints = {
-        video: {
-          facingMode: { ideal: currentFacingMode },
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: currentFacingMode },
         audio: false,
-      };
-      docCameraStream = await navigator.mediaDevices.getUserMedia(constraints);
-      if (video) {
-        video.srcObject = docCameraStream;
-        await video.play();
-      }
-    } catch (err) {
-      console.warn(
-        "Camera with facingMode " + currentFacingMode + " failed:",
-        err,
-      );
+      });
+    } catch (e1) {
       try {
-        docCameraStream = await navigator.mediaDevices.getUserMedia({
+        stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: false,
         });
-        if (video) {
-          video.srcObject = docCameraStream;
-          await video.play();
+      } catch (err) {
+        console.warn("Camera access failed:", err);
+        const errName = err?.name || "";
+        if (errName === "NotFoundError" || errName === "DevicesNotFoundError") {
+          renderCameraError(
+            "No Camera Detected",
+            "No webcam or camera hardware was detected on this device. If your computer does not have a camera, click below to select a photo from your files or take a photo on mobile.",
+            true,
+          );
+        } else if (
+          errName === "NotAllowedError" ||
+          errName === "PermissionDeniedError"
+        ) {
+          renderCameraError(
+            "Camera Access Blocked",
+            "Camera permission was denied. Please allow camera permissions in your browser address bar, or click below to select a photo.",
+            false,
+          );
+        } else if (
+          errName === "NotReadableError" ||
+          errName === "TrackStartError"
+        ) {
+          renderCameraError(
+            "Camera In Use",
+            "The camera is currently in use by another application. Please close other camera apps, or click below to select a photo.",
+            false,
+          );
+        } else {
+          renderCameraError(
+            "Camera Unavailable",
+            `Could not start camera (${err?.message || errName || "Error"}). Click below to choose or snap a photo.`,
+            true,
+          );
         }
-      } catch (fallbackErr) {
-        console.error("Camera access failed:", fallbackErr);
-        if (statusMsg) {
-          statusMsg.hidden = false;
-          statusMsg.innerHTML = `
-            <p style="color:#ff6b6b;font-weight:700;font-size:1rem;">Camera Permission Required</p>
-            <p style="font-size:0.82rem;color:#cbd5e1;line-height:1.5;">Please allow camera access in your browser or device settings, or select a file directly.</p>
-          `;
-        }
+        return;
+      }
+    }
+
+    if (stream) {
+      docCameraStream = stream;
+      if (video) {
+        video.srcObject = docCameraStream;
+        await video.play();
       }
     }
   };
