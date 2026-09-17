@@ -2000,8 +2000,14 @@ main.profile-page,
   width: 100% !important;
 }
 
+.doc-upload__input-group {
+  display: flex !important;
+  gap: 8px !important;
+  width: 100% !important;
+}
+
 .doc-upload__controls label,
-.doc-upload__controls button {
+.doc-upload__controls .doc-btn-upload {
   width: 100% !important;
   text-align: center !important;
   justify-content: center !important;
@@ -2009,39 +2015,68 @@ main.profile-page,
 }
 
 .doc-btn-choose,
-.doc-upload__controls label {
+.doc-upload__input-group label {
+  flex: 1 1 50% !important;
   background: rgba(255, 255, 255, 0.04) !important;
   color: #ffffff !important;
   font-weight: 700 !important;
-  font-size: 0.82rem !important;
+  font-size: 0.78rem !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.06em !important;
-  padding: 10px 16px !important;
+  letter-spacing: 0.04em !important;
+  padding: 10px 12px !important;
   border-radius: 10px !important;
   border: 1px solid rgba(255, 255, 255, 0.14) !important;
   cursor: pointer !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
+  gap: 6px !important;
   transition: all 0.2s ease !important;
   box-shadow: none !important;
 }
 
 .doc-btn-choose:hover,
-.doc-upload__controls label:hover {
+.doc-upload__input-group label:hover {
   background: rgba(72, 215, 255, 0.12) !important;
   border-color: rgba(72, 215, 255, 0.45) !important;
   color: #48d7ff !important;
   transform: translateY(-1px) !important;
 }
 
-.doc-btn-upload,
-.doc-upload__controls button {
+.doc-btn-camera {
+  flex: 1 1 50% !important;
+  background: rgba(72, 215, 255, 0.08) !important;
+  color: #48d7ff !important;
+  font-weight: 700 !important;
+  font-size: 0.78rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  padding: 10px 12px !important;
+  border-radius: 10px !important;
+  border: 1px solid rgba(72, 215, 255, 0.32) !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.doc-btn-camera:hover {
+  background: rgba(72, 215, 255, 0.22) !important;
+  border-color: #48d7ff !important;
+  color: #ffffff !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 14px rgba(72, 215, 255, 0.28) !important;
+}
+
+.doc-btn-upload {
+  width: 100% !important;
   font-weight: 800 !important;
   font-size: 0.82rem !important;
   text-transform: uppercase !important;
   letter-spacing: 0.06em !important;
-  padding: 10px 16px !important;
+  padding: 11px 16px !important;
   border-radius: 10px !important;
   cursor: pointer !important;
   display: inline-flex !important;
@@ -2050,16 +2085,15 @@ main.profile-page,
   transition: all 0.2s ease !important;
 }
 
-.doc-btn-upload:enabled,
-.doc-upload__controls button:enabled {
+.doc-btn-upload:enabled {
   background: #48d7ff !important;
   color: #050607 !important;
   border: none !important;
   box-shadow: 0 4px 16px rgba(72, 215, 255, 0.35) !important;
+  display: inline-flex !important;
 }
 
-.doc-btn-upload:disabled,
-.doc-upload__controls button:disabled {
+.doc-btn-upload:disabled {
   display: none !important;
 }
 

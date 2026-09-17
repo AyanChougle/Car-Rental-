@@ -17,28 +17,28 @@ async function getAuthToken(user = null) {
     if (user && typeof user.getIdToken === "function") {
       return await user.getIdToken();
     }
-    if (auth && auth.currentUser && typeof auth.currentUser.getIdToken === "function") {
+    if (
+      auth &&
+      auth.currentUser &&
+      typeof auth.currentUser.getIdToken === "function"
+    ) {
       return await auth.currentUser.getIdToken();
     }
   } catch (_) {}
   return "";
 }
 
-
 /* ============================================================
    CONFIG
    ============================================================ */
 
-const MEDIA_SERVER_URL = window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__.replace(/\/api$/, '') : window.location.origin;
+const MEDIA_SERVER_URL = window.__KRUIZLY_API_URL__
+  ? window.__KRUIZLY_API_URL__.replace(/\/api$/, "")
+  : window.location.origin;
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-const ALLOWED_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp"
-];
-
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 /* ============================================================
    HELPERS
@@ -48,7 +48,6 @@ function $(id) {
   return document.getElementById(id);
 }
 
-
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -57,7 +56,6 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
 }
-
 
 function initials(name) {
   const parts = String(name || "")
@@ -71,27 +69,20 @@ function initials(name) {
 
   return parts
     .slice(0, 2)
-    .map(part => part.charAt(0).toUpperCase())
+    .map((part) => part.charAt(0).toUpperCase())
     .join("");
 }
-
 
 function toMillis(value) {
   if (!value) {
     return 0;
   }
 
-  if (
-    typeof value === "object" &&
-    typeof value.toMillis === "function"
-  ) {
+  if (typeof value === "object" && typeof value.toMillis === "function") {
     return value.toMillis();
   }
 
-  if (
-    typeof value === "object" &&
-    typeof value.seconds === "number"
-  ) {
+  if (typeof value === "object" && typeof value.seconds === "number") {
     return value.seconds * 1000;
   }
 
@@ -101,11 +92,8 @@ function toMillis(value) {
 
   const parsed = new Date(value).getTime();
 
-  return Number.isNaN(parsed)
-    ? 0
-    : parsed;
+  return Number.isNaN(parsed) ? 0 : parsed;
 }
-
 
 function formatDate(value) {
   if (!value || value === "—") {
@@ -117,12 +105,17 @@ function formatDate(value) {
     if (!trimmed || trimmed === "—") return "—";
 
     // If it's already formatted nicely like "28 Aug 2026", "28 Aug 2026, 10:00 AM"
-    if (/^[A-Za-z]{3,}\s+\d{1,2}/i.test(trimmed) || /^\d{1,2}\s+[A-Za-z]{3,}\s+\d{4}/i.test(trimmed)) {
+    if (
+      /^[A-Za-z]{3,}\s+\d{1,2}/i.test(trimmed) ||
+      /^\d{1,2}\s+[A-Za-z]{3,}\s+\d{4}/i.test(trimmed)
+    ) {
       return trimmed;
     }
 
     // Handle "DD-MM-YYYY" or "DD/MM/YYYY" or "DD-MM-YYYY HH:mm"
-    const ddmmyyyy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(.*)$/);
+    const ddmmyyyy = trimmed.match(
+      /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(.*)$/,
+    );
     if (ddmmyyyy) {
       const [, d, m, y, rest] = ddmmyyyy;
       const dObj = new Date(Number(y), Number(m) - 1, Number(d));
@@ -130,14 +123,16 @@ function formatDate(value) {
         const str = new Intl.DateTimeFormat("en-IN", {
           day: "2-digit",
           month: "short",
-          year: "numeric"
+          year: "numeric",
         }).format(dObj);
         return rest && rest.trim() ? `${str}, ${rest.trim()}` : str;
       }
     }
 
     // Handle "YYYY-MM-DD" or "YYYY-MM-DDTHH:mm:ss"
-    const yyyymmdd = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(.*)$/);
+    const yyyymmdd = trimmed.match(
+      /^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(.*)$/,
+    );
     if (yyyymmdd) {
       const [, y, m, d, rest] = yyyymmdd;
       const dObj = new Date(Number(y), Number(m) - 1, Number(d));
@@ -145,7 +140,7 @@ function formatDate(value) {
         const str = new Intl.DateTimeFormat("en-IN", {
           day: "2-digit",
           month: "short",
-          year: "numeric"
+          year: "numeric",
         }).format(dObj);
         return rest && rest.trim() && !rest.includes("T00:00") ? `${str}` : str;
       }
@@ -156,7 +151,7 @@ function formatDate(value) {
       return new Intl.DateTimeFormat("en-IN", {
         day: "2-digit",
         month: "short",
-        year: "numeric"
+        year: "numeric",
       }).format(new Date(parsed));
     }
 
@@ -168,16 +163,12 @@ function formatDate(value) {
     return "—";
   }
 
-  return new Intl.DateTimeFormat(
-    "en-IN",
-    {
-      day: "2-digit",
-      month: "short",
-      year: "numeric"
-    }
-  ).format(new Date(millis));
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(millis));
 }
-
 
 function formatINR(value) {
   const amount = Number(value || 0);
@@ -185,23 +176,17 @@ function formatINR(value) {
   return `₹${Math.round(amount).toLocaleString("en-IN")}`;
 }
 
-
 function withTimeout(promise, milliseconds = 10000) {
   return Promise.race([
     promise,
 
     new Promise((_, reject) => {
       setTimeout(() => {
-        reject(
-          new Error(
-            "Request timed out. Please check your connection."
-          )
-        );
+        reject(new Error("Request timed out. Please check your connection."));
       }, milliseconds);
-    })
+    }),
   ]);
 }
-
 
 /* ============================================================
    LOCAL MEDIA SERVER
@@ -215,11 +200,7 @@ function withTimeout(promise, milliseconds = 10000) {
    The Firebase ID token proves who the user is.
 */
 
-async function uploadDocumentToServer(
-  user,
-  file,
-  category
-) {
+async function uploadDocumentToServer(user, file, category) {
   if (!user) {
     throw new Error("You are not signed in.");
   }
@@ -234,13 +215,15 @@ async function uploadDocumentToServer(
   formData.append("category", category);
 
   const result = await api.upload("/media/upload", formData);
-  if (result && (result.url || result.mediaUrl || result.mediaId || result.id)) {
+  if (
+    result &&
+    (result.url || result.mediaUrl || result.mediaId || result.id)
+  ) {
     return result;
   }
 
   throw new Error("Document upload failed: No URL returned from server.");
 }
-
 
 /*
    The media server protects files with Firebase Auth.
@@ -252,16 +235,8 @@ async function uploadDocumentToServer(
    convert it into a temporary browser URL.
 */
 
-async function loadProtectedMediaPreview(
-  user,
-  mediaUrl,
-  imageElement
-) {
-  if (
-    !user ||
-    !mediaUrl ||
-    !imageElement
-  ) {
+async function loadProtectedMediaPreview(user, mediaUrl, imageElement) {
+  if (!user || !mediaUrl || !imageElement) {
     return;
   }
 
@@ -271,20 +246,14 @@ async function loadProtectedMediaPreview(
     let url = mediaUrl;
 
     if (!url.startsWith("http")) {
-      url =
-        `${MEDIA_SERVER_URL}${mediaUrl}`;
+      url = `${MEDIA_SERVER_URL}${mediaUrl}`;
     }
 
-    const response =
-      await fetch(
-        url,
-        {
-          headers: {
-            Authorization:
-              `Bearer ${token}`
-          }
-        }
-      );
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -292,166 +261,117 @@ async function loadProtectedMediaPreview(
         imageElement.hidden = true;
         return;
       }
-      throw new Error(
-        `Media request failed (${response.status})`
-      );
+      throw new Error(`Media request failed (${response.status})`);
     }
 
-    const blob =
-      await response.blob();
+    const blob = await response.blob();
 
-    const objectUrl =
-      URL.createObjectURL(blob);
+    const objectUrl = URL.createObjectURL(blob);
 
     /*
        Revoke the previous object URL if this
        image had one.
     */
 
-    if (
-      imageElement.dataset.objectUrl
-    ) {
-      URL.revokeObjectURL(
-        imageElement.dataset.objectUrl
-      );
+    if (imageElement.dataset.objectUrl) {
+      URL.revokeObjectURL(imageElement.dataset.objectUrl);
     }
 
-    imageElement.dataset.objectUrl =
-      objectUrl;
+    imageElement.dataset.objectUrl = objectUrl;
 
-    imageElement.src =
-      objectUrl;
+    imageElement.src = objectUrl;
 
-    imageElement.hidden =
-      false;
+    imageElement.hidden = false;
 
-    if (imageElement.nextElementSibling && imageElement.nextElementSibling.classList.contains("profile-listing-card__placeholder")) {
+    if (
+      imageElement.nextElementSibling &&
+      imageElement.nextElementSibling.classList.contains(
+        "profile-listing-card__placeholder",
+      )
+    ) {
       imageElement.nextElementSibling.hidden = true;
     }
-
   } catch (error) {
-    console.warn(
-      "Protected media preview unavailable:",
-      error.message
-    );
+    console.warn("Protected media preview unavailable:", error.message);
 
-    imageElement.hidden =
-      true;
+    imageElement.hidden = true;
   }
 }
-
 
 /* ============================================================
    STATUS
    ============================================================ */
 
 const STATUS = {
-
   not_submitted: {
     label: "Not Submitted",
-    className: ""
+    className: "",
   },
 
   pending: {
     label: "Pending Review",
-    className: "pending"
+    className: "pending",
   },
 
   verified: {
     label: "Verified",
-    className: "verified"
+    className: "verified",
   },
 
   rejected: {
     label: "Rejected",
-    className: "rejected"
-  }
-
+    className: "rejected",
+  },
 };
 
-
-function setStatusPill(
-  id,
-  status
-) {
-  const element =
-    $(id);
+function setStatusPill(id, status) {
+  const element = $(id);
 
   if (!element) {
     return;
   }
 
-  const normalized =
-    String(
-      status ||
-      "not_submitted"
-    ).toLowerCase();
+  const normalized = String(status || "not_submitted").toLowerCase();
 
-  const info =
-    STATUS[normalized] ||
-    STATUS.not_submitted;
+  const info = STATUS[normalized] || STATUS.not_submitted;
 
-  element.textContent =
-    info.label;
+  element.textContent = info.label;
 
   element.className =
-    "status-pill" +
-    (
-      info.className
-        ? ` ${info.className}`
-        : ""
-    );
+    "status-pill" + (info.className ? ` ${info.className}` : "");
 }
-
 
 /* ============================================================
    TABS
    ============================================================ */
 
 function initTabs() {
-  const buttons =
-    document.querySelectorAll(
-      ".prof-tab-btn"
-    );
+  const buttons = document.querySelectorAll(".prof-tab-btn");
 
-  const panels =
-    document.querySelectorAll(
-      ".prof-panel"
-    );
+  const panels = document.querySelectorAll(".prof-panel");
 
-  const activateTab = target => {
-    const selectedButton =
-      Array.from(buttons).find(
-        button =>
-          button.dataset.tab === target
-      );
+  const activateTab = (target) => {
+    const selectedButton = Array.from(buttons).find(
+      (button) => button.dataset.tab === target,
+    );
 
     if (!selectedButton) {
       return;
     }
 
-    buttons.forEach(button => {
-      const active =
-        button === selectedButton;
+    buttons.forEach((button) => {
+      const active = button === selectedButton;
 
-      button.classList.toggle(
-        "active",
-        active
-      );
+      button.classList.toggle("active", active);
 
-      button.setAttribute(
-        "aria-selected",
-        String(active)
-      );
+      button.setAttribute("aria-selected", String(active));
     });
 
-    panels.forEach(panel => {
-      panel.hidden =
-        panel.id !== target;
+    panels.forEach((panel) => {
+      panel.hidden = panel.id !== target;
     });
 
-    const tabName =
-      target.replace("prof-tab-", "");
+    const tabName = target.replace("prof-tab-", "");
 
     if (tabName === "bookings") {
       loadBookings(currentUser?.id || currentUser?.uid);
@@ -470,31 +390,16 @@ function initTabs() {
     window.history.replaceState({}, "", url);
   };
 
-  buttons.forEach(button => {
-
-    button.addEventListener(
-      "click",
-      () => {
-        activateTab(
-          button.dataset.tab
-        );
-      }
-    );
-
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      activateTab(button.dataset.tab);
+    });
   });
 
-  const requestedTab =
-    new URLSearchParams(
-      window.location.search
-    ).get("tab");
+  const requestedTab = new URLSearchParams(window.location.search).get("tab");
 
-  activateTab(
-    requestedTab
-      ? `prof-tab-${requestedTab}`
-      : "prof-tab-info"
-  );
+  activateTab(requestedTab ? `prof-tab-${requestedTab}` : "prof-tab-info");
 }
-
 
 /* ============================================================
    MY VEHICLE LISTINGS
@@ -503,9 +408,8 @@ function initTabs() {
 const LISTING_STATUS = {
   pending_approval: { label: "Pending review", className: "pending" },
   approved: { label: "Approved", className: "approved" },
-  rejected: { label: "Needs attention", className: "rejected" }
+  rejected: { label: "Needs attention", className: "rejected" },
 };
-
 
 async function loadMyListings(userParam) {
   const grid = $("profListingsGrid");
@@ -513,9 +417,14 @@ async function loadMyListings(userParam) {
 
   if (!grid || !summary) return;
 
-  const currentU = (typeof userParam === "object" && userParam) ? userParam : (currentUser || {});
-  const currentUid = String(currentU.uid || currentU.firebaseUid || currentU.id || "").trim();
-  const currentEmail = String(currentU.email || "").trim().toLowerCase();
+  const currentU =
+    typeof userParam === "object" && userParam ? userParam : currentUser || {};
+  const currentUid = String(
+    currentU.uid || currentU.firebaseUid || currentU.id || "",
+  ).trim();
+  const currentEmail = String(currentU.email || "")
+    .trim()
+    .toLowerCase();
 
   try {
     const res = await api.get("/users/partner-cars");
@@ -525,7 +434,9 @@ async function loadMyListings(userParam) {
     if (currentUid || currentEmail) {
       const userFiltered = listings.filter((car) => {
         const cUid = String(car.userId || car.firebaseUid || "").trim();
-        const cEmail = String(car.userEmail || car.email || "").trim().toLowerCase();
+        const cEmail = String(car.userEmail || car.email || "")
+          .trim()
+          .toLowerCase();
         const cDbId = String(car.dbUserId || car.user_id || "").trim();
         if (currentEmail && cEmail && cEmail === currentEmail) return true;
         if (currentUid && cUid && cUid === currentUid) return true;
@@ -537,10 +448,16 @@ async function loadMyListings(userParam) {
       }
     }
 
-    const totalMonthRevenue = listings.reduce((sum, item) => sum + Number(item.monthRevenue || 0), 0);
-    const totalLifetimeRevenue = listings.reduce((sum, item) => sum + Number(item.totalRevenue || 0), 0);
+    const totalMonthRevenue = listings.reduce(
+      (sum, item) => sum + Number(item.monthRevenue || 0),
+      0,
+    );
+    const totalLifetimeRevenue = listings.reduce(
+      (sum, item) => sum + Number(item.totalRevenue || 0),
+      0,
+    );
     const approvedCount = listings.filter(
-      listing => listing.status === "approved"
+      (listing) => listing.status === "approved",
     ).length;
 
     summary.innerHTML = `
@@ -561,31 +478,40 @@ async function loadMyListings(userParam) {
       return;
     }
 
-    grid.innerHTML = listings.map(listing => {
-      const status = LISTING_STATUS[listing.status] || {
-        label: listing.status || "Submitted",
-        className: "pending"
-      };
-      const vehicleName =
-        `${listing.brand || "Vehicle"} ${listing.model || ""}`.trim();
-      
-      let firstPhoto = "";
-      if (Array.isArray(listing.photos) && listing.photos.length) {
-        const p0 = listing.photos[0];
-        firstPhoto = typeof p0 === "object" && p0 ? (p0.url || p0.mediaUrl || "") : String(p0 || "");
-      } else if (typeof listing.imageUrl === "string") {
-        firstPhoto = listing.imageUrl.trim();
-      }
+    grid.innerHTML = listings
+      .map((listing) => {
+        const status = LISTING_STATUS[listing.status] || {
+          label: listing.status || "Submitted",
+          className: "pending",
+        };
+        const vehicleName =
+          `${listing.brand || "Vehicle"} ${listing.model || ""}`.trim();
 
-      const rejectionNote =
-        listing.rejectionReason || listing.adminNote || listing.reviewNote || "";
+        let firstPhoto = "";
+        if (Array.isArray(listing.photos) && listing.photos.length) {
+          const p0 = listing.photos[0];
+          firstPhoto =
+            typeof p0 === "object" && p0
+              ? p0.url || p0.mediaUrl || ""
+              : String(p0 || "");
+        } else if (typeof listing.imageUrl === "string") {
+          firstPhoto = listing.imageUrl.trim();
+        }
 
-      return `
+        const rejectionNote =
+          listing.rejectionReason ||
+          listing.adminNote ||
+          listing.reviewNote ||
+          "";
+
+        return `
         <article class="profile-listing-card">
           <div class="profile-listing-card__media">
-            ${firstPhoto
-              ? `<img src="${escapeHtml(firstPhoto)}" alt="${escapeHtml(vehicleName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\\'profile-listing-card__placeholder\\\'>CAR</div>';" />`
-              : `<div class="profile-listing-card__placeholder" aria-hidden="true">${escapeHtml(listing.brand || "CAR")}</div>`}
+            ${
+              firstPhoto
+                ? `<img src="${escapeHtml(firstPhoto)}" alt="${escapeHtml(vehicleName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\\'profile-listing-card__placeholder\\\'>CAR</div>';" />`
+                : `<div class="profile-listing-card__placeholder" aria-hidden="true">${escapeHtml(listing.brand || "CAR")}</div>`
+            }
           </div>
           <div class="profile-listing-card__body">
             <div class="profile-listing-card__top">
@@ -619,12 +545,18 @@ async function loadMyListings(userParam) {
               </div>
             </div>
 
-            ${rejectionNote
-              ? `<p class="profile-listing-note"><strong>Review note:</strong> ${escapeHtml(rejectionNote)}</p>`
-              : ""}
+            ${
+              rejectionNote
+                ? `<p class="profile-listing-note"><strong>Review note:</strong> ${escapeHtml(rejectionNote)}</p>`
+                : ""
+            }
 
             <div class="profile-listing-card__footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-              <span>Listing ID #${escapeHtml(String(listing.id || "").slice(0, 8).toUpperCase())}</span>
+              <span>Listing ID #${escapeHtml(
+                String(listing.id || "")
+                  .slice(0, 8)
+                  .toUpperCase(),
+              )}</span>
               <div style="display: flex; gap: 8px; align-items: center;">
                 <button type="button" class="btn-withdraw-listing" data-listing-id="${escapeHtml(listing.id)}" data-vehicle-name="${escapeHtml(vehicleName)}" data-reg-no="${escapeHtml(listing.regNo || listing.regNumber || "Not provided")}" style="background: rgba(255, 183, 3, 0.12); color: #ffb703; border: 1px solid rgba(255, 183, 3, 0.35); border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Request withdrawal of vehicle from fleet">
                   <span>Withdraw Fleet</span>
@@ -635,7 +567,8 @@ async function loadMyListings(userParam) {
             </div>
           </div>
         </article>`;
-    }).join("");
+      })
+      .join("");
 
     // Withdraw Fleet mailto handler
     grid.querySelectorAll(".btn-withdraw-listing").forEach((btn) => {
@@ -648,9 +581,11 @@ async function loadMyListings(userParam) {
         const uEmail = currentU.email || "";
         const uPhone = currentU.phone || "";
 
-        const subject = encodeURIComponent(`Fleet Withdrawal Request: ${vName} (${vReg})`);
+        const subject = encodeURIComponent(
+          `Fleet Withdrawal Request: ${vName} (${vReg})`,
+        );
         const body = encodeURIComponent(
-`Hello Kruizly Fleet Operations,
+          `Hello Kruizly Fleet Operations,
 
 I am writing to formally request the withdrawal of my vehicle from the Kruizly hosting fleet.
 
@@ -668,7 +603,7 @@ Reason for Withdrawal:
 [Please enter your reason or effective date here]
 
 Thank you,
-${uName}`
+${uName}`,
         );
 
         window.location.href = `mailto:support@kruizly.com?subject=${subject}&body=${body}`;
@@ -681,7 +616,8 @@ ${uName}`
         e.preventDefault();
         const id = btn.dataset.listingId;
         if (!id) return;
-        if (!confirm("Are you sure you want to delete this vehicle listing?")) return;
+        if (!confirm("Are you sure you want to delete this vehicle listing?"))
+          return;
         btn.disabled = true;
         btn.textContent = "Deleting...";
         try {
@@ -718,12 +654,15 @@ async function loadProfile(user) {
 
   // Pre-fill UI with local auth user details
   if (user) {
-    renderProfileData({
-      name: user.name || user.displayName || "",
-      email: user.email || "",
-      phone: user.phone || user.phoneNumber || "",
-      status: "active"
-    }, user);
+    renderProfileData(
+      {
+        name: user.name || user.displayName || "",
+        email: user.email || "",
+        phone: user.phone || user.phoneNumber || "",
+        status: "active",
+      },
+      user,
+    );
   }
 
   try {
@@ -739,33 +678,19 @@ async function loadProfile(user) {
   }
 }
 
-
 /* ============================================================
    RENDER PROFILE
    ============================================================ */
 
-async function renderProfileData(
-  data,
-  user
-) {
-
+async function renderProfileData(data, user) {
   const name =
     data.name ||
     user.displayName ||
-    (
-      user.email
-        ? user.email.split("@")[0]
-        : "KRUZLY Member"
-    );
+    (user.email ? user.email.split("@")[0] : "KRUZLY Member");
 
+  const phone = data.phone || "";
 
-  const phone =
-    data.phone || "";
-
-
-  const age =
-    data.age || "";
-
+  const age = data.age || "";
 
   const hasLicense = Boolean(data.licenseFrontURL || data.licenseURL);
   const hasAadhar = Boolean(data.aadharFrontURL || data.aadharURL);
@@ -783,170 +708,136 @@ async function renderProfileData(
     ? String(data.panStatus || "pending").toLowerCase()
     : "not_submitted";
 
-
   /* ==========================================================
      NAME
      ========================================================== */
 
   if ($("profileName")) {
-    $("profileName").textContent =
-      name;
+    $("profileName").textContent = name;
   }
-
 
   /* ==========================================================
      AVATAR
      ========================================================== */
 
   if ($("profileAvatar")) {
-    $("profileAvatar").textContent =
-      initials(name);
+    $("profileAvatar").textContent = initials(name);
   }
-
 
   /* ==========================================================
      PHONE
      ========================================================== */
 
   if ($("profilePhone")) {
-    $("profilePhone").textContent =
-      phone ||
-      "Phone not added";
+    $("profilePhone").textContent = phone || "Phone not added";
   }
-
 
   /* ==========================================================
      AGE
      ========================================================== */
 
   if ($("profileAge")) {
-    $("profileAge").textContent =
-      age
-        ? `${age} yrs`
-        : "Not added";
+    $("profileAge").textContent = age ? `${age} yrs` : "Not added";
   }
-
 
   /* ==========================================================
      EMAIL
      ========================================================== */
 
   if ($("profileEmail")) {
-    $("profileEmail").textContent =
-      data.email ||
-      user.email ||
-      "—";
+    $("profileEmail").textContent = data.email || user.email || "—";
   }
-
 
   /* ==========================================================
      DOCUMENT STATUS
      ========================================================== */
 
-  setStatusPill(
-    "licenseStatusPill",
-    licenseStatus
-  );
+  setStatusPill("licenseStatusPill", licenseStatus);
 
-  setStatusPill(
-    "aadharStatusPill",
-    aadharStatus
-  );
+  setStatusPill("aadharStatusPill", aadharStatus);
 
-  setStatusPill(
-    "panStatusPill",
-    panStatus
-  );
-
+  setStatusPill("panStatusPill", panStatus);
 
   /* ==========================================================
      VERIFICATION BADGE
      ========================================================== */
 
-  const badge =
-    $("verificationBadge");
+  const badge = $("verificationBadge");
 
   if (badge) {
-
-    badge.className =
-      "profile-verification-badge";
-
+    badge.className = "profile-verification-badge";
 
     if (
       licenseStatus === "verified" &&
       aadharStatus === "verified" &&
       panStatus === "verified"
     ) {
+      badge.textContent = "Verified Account";
 
-      badge.textContent =
-        "Verified Account";
-
-      badge.classList.add(
-        "verified"
-      );
-
+      badge.classList.add("verified");
     } else if (
       licenseStatus === "rejected" ||
       aadharStatus === "rejected" ||
       panStatus === "rejected"
     ) {
+      badge.textContent = "Verification Required";
 
-      badge.textContent =
-        "Verification Required";
-
-      badge.classList.add(
-        "rejected"
-      );
-
+      badge.classList.add("rejected");
     } else if (
       licenseStatus === "pending" ||
       aadharStatus === "pending" ||
       panStatus === "pending"
     ) {
+      badge.textContent = "Verification Pending";
 
-      badge.textContent =
-        "Verification Pending";
-
-      badge.classList.add(
-        "pending"
-      );
-
+      badge.classList.add("pending");
     } else {
-
-      badge.textContent =
-        "Unverified Account";
+      badge.textContent = "Unverified Account";
     }
   }
-
 
   /* ==========================================================
      PROTECTED DOCUMENT PREVIEWS
      ========================================================== */
 
   if (data.licenseFrontURL || data.licenseURL) {
-    await loadProtectedMediaPreview(user, data.licenseFrontURL || data.licenseURL, $("licenseFrontPreview"));
+    await loadProtectedMediaPreview(
+      user,
+      data.licenseFrontURL || data.licenseURL,
+      $("licenseFrontPreview"),
+    );
   }
 
   if (data.licenseBackURL) {
-    await loadProtectedMediaPreview(user, data.licenseBackURL, $("licenseBackPreview"));
+    await loadProtectedMediaPreview(
+      user,
+      data.licenseBackURL,
+      $("licenseBackPreview"),
+    );
   }
 
-
   if (data.aadharFrontURL || data.aadharURL) {
-
     await loadProtectedMediaPreview(
       user,
       data.aadharFrontURL || data.aadharURL,
-      $("aadharFrontPreview")
+      $("aadharFrontPreview"),
     );
   }
 
   if (data.aadharBackURL) {
-    await loadProtectedMediaPreview(user, data.aadharBackURL, $("aadharBackPreview"));
+    await loadProtectedMediaPreview(
+      user,
+      data.aadharBackURL,
+      $("aadharBackPreview"),
+    );
   }
 
   if (data.panFrontURL) {
-    await loadProtectedMediaPreview(user, data.panFrontURL, $("panFrontPreview"));
+    await loadProtectedMediaPreview(
+      user,
+      data.panFrontURL,
+      $("panFrontPreview"),
+    );
   }
 
   if (data.panBackURL) {
@@ -954,83 +845,56 @@ async function renderProfileData(
   }
 }
 
-
 /* ============================================================
    PROFILE ERROR
    ============================================================ */
 
-function renderProfileError(
-  error
-) {
-
+function renderProfileError(error) {
   if ($("profileName")) {
-    $("profileName").textContent =
-      "Unable to load profile";
+    $("profileName").textContent = "Unable to load profile";
   }
 
   if ($("profileAvatar")) {
-    $("profileAvatar").textContent =
-      "!";
+    $("profileAvatar").textContent = "!";
   }
 
   if ($("profilePhone")) {
-    $("profilePhone").textContent =
-      "Unavailable";
+    $("profilePhone").textContent = "Unavailable";
   }
 
   if ($("profileAge")) {
-    $("profileAge").textContent =
-      "Unavailable";
+    $("profileAge").textContent = "Unavailable";
   }
 
   if ($("verificationBadge")) {
-    $("verificationBadge").textContent =
-      "Profile Error";
+    $("verificationBadge").textContent = "Profile Error";
   }
 
-  console.error(
-    "KRUZLY profile error:",
-    error
-  );
+  console.error("KRUZLY profile error:", error);
 }
-
 
 /* ============================================================
    EDIT PROFILE
    ============================================================ */
 
-function initEditProfile(
-  user,
-  profileData
-) {
+function initEditProfile(user, profileData) {
+  const editButton = $("editProfile");
 
-  const editButton =
-    $("editProfile");
+  const cancelButton = $("cancelProfile");
 
-  const cancelButton =
-    $("cancelProfile");
+  const form = $("profileEditForm");
 
-  const form =
-    $("profileEditForm");
+  const view = $("profileView");
 
-  const view =
-    $("profileView");
+  const nameInput = $("editName");
 
-  const nameInput =
-    $("editName");
+  const ageInput = $("editAge");
 
-  const ageInput =
-    $("editAge");
+  const phoneInput = $("editPhone");
 
-  const phoneInput =
-    $("editPhone");
+  const saveButton = $("saveProfile");
 
-  const saveButton =
-    $("saveProfile");
-
-  const status =
-    $("editProfileStatus");
-
+  const status = $("editProfileStatus");
 
   if (phoneInput && !phoneInput._phoneMaskAttached) {
     phoneInput._phoneMaskAttached = true;
@@ -1041,235 +905,153 @@ function initEditProfile(
     });
   }
 
-  if (
-    !editButton ||
-    !cancelButton ||
-    !form ||
-    !view
-  ) {
-
-    console.warn(
-      "Edit profile elements missing."
-    );
+  if (!editButton || !cancelButton || !form || !view) {
+    console.warn("Edit profile elements missing.");
 
     return;
   }
 
+  editButton.addEventListener("click", (event) => {
+    event.preventDefault();
 
-  editButton.addEventListener(
-    "click",
-    event => {
+    if (nameInput) {
+      nameInput.value = profileData?.name || user.displayName || "";
+    }
 
-      event.preventDefault();
+    if (ageInput) {
+      ageInput.value = profileData?.age || "";
+    }
 
-      if (nameInput) {
-        nameInput.value =
-          profileData?.name ||
-          user.displayName ||
-          "";
-      }
+    if (phoneInput) {
+      phoneInput.value = profileData?.phone || "";
+    }
 
-      if (ageInput) {
-        ageInput.value =
-          profileData?.age ||
-          "";
-      }
+    if (status) {
+      status.textContent = "";
 
-      if (phoneInput) {
-        phoneInput.value =
-          profileData?.phone ||
-          "";
-      }
+      status.className = "form-status";
+    }
 
+    view.hidden = true;
+
+    form.hidden = false;
+
+    nameInput?.focus();
+  });
+
+  cancelButton.addEventListener("click", (event) => {
+    event.preventDefault();
+
+    form.hidden = true;
+
+    view.hidden = false;
+  });
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const name = nameInput?.value.trim() || "";
+
+    const phone = phoneInput?.value.trim() || "";
+
+    let cleanPhone = phone.replace(/\D/g, "");
+    if (cleanPhone.length === 12 && cleanPhone.startsWith("91")) {
+      cleanPhone = cleanPhone.slice(2);
+    }
+    if (cleanPhone && !/^[6-9]\d{9}$/.test(cleanPhone)) {
       if (status) {
         status.textContent =
-          "";
-
-        status.className =
-          "form-status";
+          "Please enter a valid 10-digit Indian mobile number (e.g. 9876543210).";
+        status.className = "form-status error";
       }
-
-      view.hidden =
-        true;
-
-      form.hidden =
-        false;
-
-      nameInput?.focus();
+      return;
     }
-  );
 
+    const ageRaw = ageInput?.value.trim() || "";
 
-  cancelButton.addEventListener(
-    "click",
-    event => {
+    const age = ageRaw ? Number(ageRaw) : null;
 
-      event.preventDefault();
-
-      form.hidden =
-        true;
-
-      view.hidden =
-        false;
-    }
-  );
-
-
-  form.addEventListener(
-    "submit",
-    async event => {
-
-      event.preventDefault();
-
-
-      const name =
-        nameInput?.value.trim() || "";
-
-      const phone =
-        phoneInput?.value.trim() || "";
-
-      let cleanPhone = phone.replace(/\D/g, "");
-      if (cleanPhone.length === 12 && cleanPhone.startsWith("91")) {
-        cleanPhone = cleanPhone.slice(2);
-      }
-      if (cleanPhone && !/^[6-9]\d{9}$/.test(cleanPhone)) {
-        if (status) {
-          status.textContent =
-            "Please enter a valid 10-digit Indian mobile number (e.g. 9876543210).";
-          status.className =
-            "form-status error";
-        }
-        return;
-      }
-
-      const ageRaw =
-        ageInput?.value.trim() || "";
-
-
-      const age =
-        ageRaw
-          ? Number(ageRaw)
-          : null;
-
-
-      if (!name) {
-
-        if (status) {
-          status.textContent =
-            "Please enter your full name.";
-
-          status.className =
-            "form-status error";
-        }
-
-        return;
-      }
-
-
-      if (
-        age !== null &&
-        (
-          Number.isNaN(age) ||
-          age < 18 ||
-          age > 100
-        )
-      ) {
-
-        if (status) {
-          status.textContent =
-            "Age must be between 18 and 100.";
-
-          status.className =
-            "form-status error";
-        }
-
-        return;
-      }
-
-
-      if (saveButton) {
-        saveButton.disabled =
-          true;
-      }
-
-
+    if (!name) {
       if (status) {
-        status.textContent =
-          "Saving changes...";
+        status.textContent = "Please enter your full name.";
 
-        status.className =
-          "form-status";
+        status.className = "form-status error";
       }
 
+      return;
+    }
 
-      try {
-        const updateRes = await api.put("/users/me", {
-          name: name || null,
-          phone: cleanPhone || null,
-          age: age || null
-        });
+    if (age !== null && (Number.isNaN(age) || age < 18 || age > 100)) {
+      if (status) {
+        status.textContent = "Age must be between 18 and 100.";
 
-        const updatedUser = updateRes?.user || {};
+        status.className = "form-status error";
+      }
 
-        /* Update local profileData and UI immediately */
-        if (profileData) {
-          profileData.name = updatedUser.name || name;
-          profileData.phone = updatedUser.phone || cleanPhone || null;
-          profileData.age = updatedUser.age || age || null;
-        }
+      return;
+    }
 
-        renderProfileData({
+    if (saveButton) {
+      saveButton.disabled = true;
+    }
+
+    if (status) {
+      status.textContent = "Saving changes...";
+
+      status.className = "form-status";
+    }
+
+    try {
+      const updateRes = await api.put("/users/me", {
+        name: name || null,
+        phone: cleanPhone || null,
+        age: age || null,
+      });
+
+      const updatedUser = updateRes?.user || {};
+
+      /* Update local profileData and UI immediately */
+      if (profileData) {
+        profileData.name = updatedUser.name || name;
+        profileData.phone = updatedUser.phone || cleanPhone || null;
+        profileData.age = updatedUser.age || age || null;
+      }
+
+      renderProfileData(
+        {
           ...(profileData || {}),
           name: updatedUser.name || name,
           phone: updatedUser.phone || cleanPhone || "",
-          age: updatedUser.age || age || ""
-        }, user);
+          age: updatedUser.age || age || "",
+        },
+        user,
+      );
 
-        if (status) {
-          status.textContent = "Profile saved successfully.";
-          status.className = "form-status success";
-        }
-
-
-        setTimeout(() => {
-
-          form.hidden =
-            true;
-
-          view.hidden =
-            false;
-
-        }, 600);
-
-
-      } catch (error) {
-
-        console.error(
-          "Profile save error:",
-          error
-        );
-
-
-        if (status) {
-          status.textContent =
-            error?.message ||
-            "Could not save your profile.";
-
-          status.className =
-            "form-status error";
-        }
-
+      if (status) {
+        status.textContent = "Profile saved successfully.";
+        status.className = "form-status success";
       }
 
+      setTimeout(() => {
+        form.hidden = true;
 
-      if (saveButton) {
-        saveButton.disabled =
-          false;
+        view.hidden = false;
+      }, 600);
+    } catch (error) {
+      console.error("Profile save error:", error);
+
+      if (status) {
+        status.textContent = error?.message || "Could not save your profile.";
+
+        status.className = "form-status error";
       }
     }
-  );
-}
 
+    if (saveButton) {
+      saveButton.disabled = false;
+    }
+  });
+}
 
 /* ============================================================
    BOOKINGS
@@ -1279,7 +1061,6 @@ const PROFILE_BOOKINGS_PER_PAGE = 6;
 let profileBookingPage = 1;
 let profileBookings = [];
 
-
 function renderProfileBookings() {
   const container = $("profLiveBookings");
 
@@ -1287,16 +1068,15 @@ function renderProfileBookings() {
 
   const totalPages = Math.max(
     1,
-    Math.ceil(profileBookings.length / PROFILE_BOOKINGS_PER_PAGE)
+    Math.ceil(profileBookings.length / PROFILE_BOOKINGS_PER_PAGE),
   );
 
   profileBookingPage = Math.min(profileBookingPage, totalPages);
 
-  const start =
-    (profileBookingPage - 1) * PROFILE_BOOKINGS_PER_PAGE;
+  const start = (profileBookingPage - 1) * PROFILE_BOOKINGS_PER_PAGE;
   const visibleBookings = profileBookings.slice(
     start,
-    start + PROFILE_BOOKINGS_PER_PAGE
+    start + PROFILE_BOOKINGS_PER_PAGE,
   );
 
   container.innerHTML = `
@@ -1305,28 +1085,23 @@ function renderProfileBookings() {
       page: profileBookingPage,
       totalPages,
       totalItems: profileBookings.length,
-      label: "bookings"
+      label: "bookings",
     })}
   `;
 
-  container
-    .querySelectorAll(".btn-cancel-booking")
-    .forEach(button => {
-      button.addEventListener("click", () => {
-        openUserCancelModal(button.dataset.bookingId);
-      });
+  container.querySelectorAll(".btn-cancel-booking").forEach((button) => {
+    button.addEventListener("click", () => {
+      openUserCancelModal(button.dataset.bookingId);
     });
+  });
 
-  container
-    .querySelectorAll("[data-page-action]")
-    .forEach(button => {
-      button.addEventListener("click", () => {
-        profileBookingPage +=
-          button.dataset.pageAction === "next" ? 1 : -1;
-        renderProfileBookings();
-        container.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
+  container.querySelectorAll("[data-page-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      profileBookingPage += button.dataset.pageAction === "next" ? 1 : -1;
+      renderProfileBookings();
+      container.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+  });
 }
 
 function openUserCancelModal(bookingId) {
@@ -1384,10 +1159,13 @@ function initUserCancellationModal() {
         bookingId: bookingId,
         bookingNumber: bookingId,
         reason: reason,
-        cancellationReason: reason
+        cancellationReason: reason,
       });
 
-      alert(res?.message || "Booking cancelled successfully! Your refund has been processed automatically.");
+      alert(
+        res?.message ||
+          "Booking cancelled successfully! Your refund has been processed automatically.",
+      );
       closeModal();
 
       const user = getCurrentUser();
@@ -1405,7 +1183,6 @@ function initUserCancellationModal() {
   });
 }
 
-
 function renderPaginationBar({ page, totalPages, totalItems, label }) {
   if (totalPages <= 1) return "";
 
@@ -1421,18 +1198,12 @@ function renderPaginationBar({ page, totalPages, totalItems, label }) {
     </nav>`;
 }
 
-async function loadBookings(
-  userId
-) {
-
-  const container =
-    $("profLiveBookings");
-
+async function loadBookings(userId) {
+  const container = $("profLiveBookings");
 
   if (!container) {
     return;
   }
-
 
   container.innerHTML = `
     <div class="loading-state">
@@ -1440,14 +1211,11 @@ async function loadBookings(
     </div>
   `;
 
-
   try {
     const res = await api.get("/bookings/my-bookings");
     const bookings = Array.isArray(res.bookings) ? res.bookings : [];
 
-
     if (!bookings.length) {
-
       container.innerHTML = `
 
         <div class="empty-state">
@@ -1474,19 +1242,11 @@ async function loadBookings(
       return;
     }
 
-
     profileBookings = bookings;
     profileBookingPage = 1;
     renderProfileBookings();
-
-
   } catch (error) {
-
-    console.error(
-      "Booking loading error:",
-      error
-    );
-
+    console.error("Booking loading error:", error);
 
     container.innerHTML = `
 
@@ -1499,10 +1259,7 @@ async function loadBookings(
         <br><br>
 
         <small>
-          ${escapeHtml(
-            error?.message ||
-            "Unknown Firestore error"
-          )}
+          ${escapeHtml(error?.message || "Unknown Firestore error")}
         </small>
 
       </div>
@@ -1511,41 +1268,25 @@ async function loadBookings(
   }
 }
 
-
 /* ============================================================
    BOOKING CARD
    ============================================================ */
 
-function renderBooking(
-  booking
-) {
-
-  const status =
-    String(
-      booking.status ||
-      "unknown"
-    ).toLowerCase();
+function renderBooking(booking) {
+  const status = String(booking.status || "unknown").toLowerCase();
 
   let statusClass = "pending";
   let displayStatus = status
     .replace(/_/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
 
-  if (
-    status === "confirmed" ||
-    status === "completed"
-  ) {
+  if (status === "confirmed" || status === "completed") {
     statusClass = "verified";
     displayStatus = status === "completed" ? "Completed" : "Confirmed";
-  } else if (
-    status === "pending_payment"
-  ) {
+  } else if (status === "pending_payment") {
     statusClass = "pending";
     displayStatus = "Pending Payment";
-  } else if (
-    status === "pending_verification" ||
-    status === "pending"
-  ) {
+  } else if (status === "pending_verification" || status === "pending") {
     statusClass = "pending";
     displayStatus = "Under Review";
   } else if (
@@ -1554,19 +1295,14 @@ function renderBooking(
     booking.paymentStatus === "rejected"
   ) {
     statusClass = "rejected";
-    displayStatus = booking.paymentStatus === "rejected" ? "Payment Rejected" : "Cancelled";
+    displayStatus =
+      booking.paymentStatus === "rejected" ? "Payment Rejected" : "Cancelled";
   }
 
-
   const vehicleName =
-    booking.vehicleName ||
-    booking.carName ||
-    "Rental Vehicle";
+    booking.vehicleName || booking.carName || "Rental Vehicle";
 
-
-  const bookingRef =
-    formatBookingNumber(booking);
-
+  const bookingRef = formatBookingNumber(booking);
 
   const pickup =
     booking.pickupDate ||
@@ -1578,7 +1314,8 @@ function renderBooking(
     booking.startAt ||
     booking.bookingDate ||
     booking.date ||
-    (booking.rental && (booking.rental.pickupDate || booking.rental.startDate)) ||
+    (booking.rental &&
+      (booking.rental.pickupDate || booking.rental.startDate)) ||
     (booking.dates && booking.dates.pickup) ||
     "—";
 
@@ -1594,30 +1331,19 @@ function renderBooking(
     booking.drop ||
     booking.return ||
     booking.endAt ||
-    (booking.rental && (booking.rental.dropDate || booking.rental.returnDate || booking.rental.endDate)) ||
+    (booking.rental &&
+      (booking.rental.dropDate ||
+        booking.rental.returnDate ||
+        booking.rental.endDate)) ||
     (booking.dates && (booking.dates.drop || booking.dates.return)) ||
     "—";
 
+  const amount = booking.totalAmount ?? booking.amount ?? 0;
 
-  const amount =
-    booking.totalAmount ??
-    booking.amount ??
-    0;
+  let paymentButton = "";
 
-
-  let paymentButton =
-    "";
-
-
-  if (
-    status === "pending_payment"
-  ) {
-
-    if (
-      booking.paymentStatus ===
-      "pending_verification"
-    ) {
-
+  if (status === "pending_payment") {
+    if (booking.paymentStatus === "pending_verification") {
       paymentButton = `
 
         <span class="status-pill pending">
@@ -1625,20 +1351,15 @@ function renderBooking(
         </span>
 
       `;
-
     } else {
-
       paymentButton = `
 
         <a
-          href="payment.html?booking=${encodeURIComponent(
-            booking.id
-          )}"
+          href="payment.html?booking=${encodeURIComponent(booking.id)}"
           class="profile-button primary"
         >
           ${
-            booking.paymentStatus ===
-            "rejected"
+            booking.paymentStatus === "rejected"
               ? "Resubmit Payment"
               : "Pay Now"
           }
@@ -1647,7 +1368,6 @@ function renderBooking(
       `;
     }
   }
-
 
   return `
 
@@ -1659,17 +1379,13 @@ function renderBooking(
 
           <div class="booking-vehicle">
 
-            ${escapeHtml(
-              vehicleName
-            )}
+            ${escapeHtml(vehicleName)}
 
           </div>
 
           <div class="booking-ref">
 
-            Booking #${escapeHtml(
-              bookingRef
-            )}
+            Booking #${escapeHtml(bookingRef)}
 
           </div>
 
@@ -1680,9 +1396,7 @@ function renderBooking(
           class="status-pill ${statusClass}"
         >
 
-          ${escapeHtml(
-            displayStatus
-          )}
+          ${escapeHtml(displayStatus)}
 
         </span>
 
@@ -1698,9 +1412,7 @@ function renderBooking(
           </span>
 
           <strong>
-            ${escapeHtml(
-              formatDate(pickup)
-            )}
+            ${escapeHtml(formatDate(pickup))}
           </strong>
 
         </div>
@@ -1713,9 +1425,7 @@ function renderBooking(
           </span>
 
           <strong>
-            ${escapeHtml(
-              formatDate(drop)
-            )}
+            ${escapeHtml(formatDate(drop))}
           </strong>
 
         </div>
@@ -1731,11 +1441,11 @@ function renderBooking(
                 let dStr = booking.duration || "";
                 if (!dStr.includes("hr")) {
                   const d = Math.max(1, Number(booking.days) || 1);
-                  const h = Math.max(1, Number(booking.hours) || (d * 24));
+                  const h = Math.max(1, Number(booking.hours) || d * 24);
                   return `${d} Day${d > 1 ? "s" : ""} (${h} hrs)`;
                 }
                 return dStr;
-              })()
+              })(),
             )}
           </strong>
         </div>
@@ -1748,9 +1458,7 @@ function renderBooking(
           </span>
 
           <strong>
-            ${escapeHtml(
-              formatINR(amount)
-            )}
+            ${escapeHtml(formatINR(amount))}
           </strong>
 
         </div>
@@ -1781,7 +1489,9 @@ function renderBooking(
       <div class="booking-actions" style="margin-top: 12px; display: flex; gap: 10px; align-items: center; justify-content: flex-end;">
         ${paymentButton}
         ${
-          status !== "cancelled" && status !== "rejected" && status !== "completed"
+          status !== "cancelled" &&
+          status !== "rejected" &&
+          status !== "completed"
             ? `<button type="button" class="btn-cancel-booking" data-booking-id="${escapeHtml(booking.bookingId || booking.bookingNumber || booking.id || "")}" style="background: rgba(239, 71, 111, 0.12); color: #ef476f; border: 1px solid rgba(239, 71, 111, 0.3); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 700; cursor: pointer;">Cancel Booking</button>`
             : ""
         }
@@ -1792,196 +1502,116 @@ function renderBooking(
   `;
 }
 
-
 /* ============================================================
    DOCUMENT UPLOAD
    ============================================================ */
 
-function initDocumentUpload(
-  user,
-  config
-) {
+function initDocumentUpload(user, config) {
+  const input = $(config.inputId);
 
-  const input =
-    $(config.inputId);
+  const button = $(config.buttonId);
 
-  const button =
-    $(config.buttonId);
+  const preview = $(config.previewId);
 
-  const preview =
-    $(config.previewId);
+  const status = $(config.statusId);
 
-  const status =
-    $(config.statusId);
-
-
-  if (
-    !input ||
-    !button ||
-    !preview ||
-    !status
-  ) {
-
-    console.error(
-      "Document upload elements missing:",
-      config
-    );
+  if (!input || !button || !preview || !status) {
+    console.error("Document upload elements missing:", config);
 
     return;
   }
 
+  let selectedFile = null;
 
-  let selectedFile =
-    null;
+  input.addEventListener("change", () => {
+    selectedFile = null;
 
+    button.disabled = true;
 
-  input.addEventListener(
-    "change",
-    () => {
+    status.textContent = "";
 
-      selectedFile =
-        null;
+    status.className = "form-status";
 
-      button.disabled =
-        true;
+    const file = input.files?.[0] || input._capturedFile;
 
-      status.textContent =
-        "";
+    if (!file) {
+      return;
+    }
 
-      status.className =
-        "form-status";
-
-
-      const file =
-        input.files?.[0];
-
-
-      if (!file) {
-        return;
-      }
-
-
-      /* ======================================================
+    /* ======================================================
          TYPE CHECK
          ====================================================== */
 
-      if (
-        !ALLOWED_TYPES.includes(
-          file.type
-        )
-      ) {
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      status.textContent = "Only JPG, PNG or WEBP files are allowed.";
 
-        status.textContent =
-          "Only JPG, PNG or WEBP files are allowed.";
+      status.className = "form-status error";
 
-        status.className =
-          "form-status error";
+      input.value = "";
+      delete input._capturedFile;
 
-        input.value =
-          "";
+      return;
+    }
 
-        return;
-      }
-
-
-      /* ======================================================
+    /* ======================================================
          SIZE CHECK
          ====================================================== */
 
-      if (
-        file.size >
-        MAX_FILE_BYTES
-      ) {
+    if (file.size > MAX_FILE_BYTES) {
+      status.textContent = "File is too large. Maximum size is 5MB.";
 
-        status.textContent =
-          "File is too large. Maximum size is 5MB.";
+      status.className = "form-status error";
 
-        status.className =
-          "form-status error";
+      input.value = "";
+      delete input._capturedFile;
 
-        input.value =
-          "";
+      return;
+    }
 
-        return;
-      }
-
-
-      /* ======================================================
+    /* ======================================================
          PREVIEW SELECTED FILE
          ====================================================== */
 
-      selectedFile =
-        file;
+    selectedFile = file;
 
+    if (preview.dataset.objectUrl) {
+      URL.revokeObjectURL(preview.dataset.objectUrl);
 
-      if (
-        preview.dataset.objectUrl
-      ) {
-
-        URL.revokeObjectURL(
-          preview.dataset.objectUrl
-        );
-
-        delete preview.dataset.objectUrl;
-      }
-
-
-      const objectUrl =
-        URL.createObjectURL(
-          file
-        );
-
-
-      preview.dataset.objectUrl =
-        objectUrl;
-
-      preview.src =
-        objectUrl;
-
-      preview.hidden =
-        false;
-
-
-      button.disabled =
-        false;
-
-
-      status.textContent =
-        file.name;
-
-      status.className =
-        "form-status";
+      delete preview.dataset.objectUrl;
     }
-  );
 
+    const objectUrl = URL.createObjectURL(file);
+
+    preview.dataset.objectUrl = objectUrl;
+
+    preview.src = objectUrl;
+
+    preview.hidden = false;
+
+    button.disabled = false;
+
+    status.textContent = file.name;
+
+    status.className = "form-status";
+  });
 
   /* ==========================================================
      UPLOAD BUTTON
      ========================================================== */
 
-  button.addEventListener(
-    "click",
-    async () => {
+  button.addEventListener("click", async () => {
+    if (!selectedFile) {
+      return;
+    }
 
-      if (!selectedFile) {
-        return;
-      }
+    button.disabled = true;
 
+    status.textContent = "Uploading...";
 
-      button.disabled =
-        true;
+    status.className = "form-status";
 
-
-      status.textContent =
-        "Uploading...";
-
-      status.className =
-        "form-status";
-
-
-      try {
-
-        /*
+    try {
+      /*
            IMPORTANT:
 
            We are NOT using Firebase Storage anymore.
@@ -1993,21 +1623,15 @@ function initDocumentUpload(
              aadhar path -> aadhar_doc
         */
 
-        const result =
-          await uploadDocumentToServer(
-            user,
-            selectedFile,
-            config.serverCategory
-          );
+      const result = await uploadDocumentToServer(
+        user,
+        selectedFile,
+        config.serverCategory,
+      );
 
+      console.log("Media server upload:", result);
 
-        console.log(
-          "Media server upload:",
-          result
-        );
-
-
-        /*
+      /*
            Server returns:
 
            {
@@ -2022,54 +1646,44 @@ function initDocumentUpload(
            }
         */
 
-        const mediaUrl =
-          result.url;
+      const mediaUrl = result.url;
 
+      if (!mediaUrl) {
+        throw new Error(
+          "Upload succeeded but the server did not return a file URL.",
+        );
+      }
 
-        if (!mediaUrl) {
-          throw new Error(
-            "Upload succeeded but the server did not return a file URL."
-          );
-        }
+      /* Save document in MySQL database */
+      const fieldName = config.urlField.includes("Front")
+        ? "FrontMediaId"
+        : "BackMediaId";
+      const docType = config.statusField.replace("Status", "");
+      await api.post("/verification/submit", {
+        [`${docType}${fieldName}`]: result.mediaId || result.id || mediaUrl,
+      });
 
-
-        /* Save document in MySQL database */
-        const fieldName = config.urlField.includes("Front") ? "FrontMediaId" : "BackMediaId";
-        const docType = config.statusField.replace("Status", "");
-        await api.post("/verification/submit", {
-          [`${docType}${fieldName}`]: result.mediaId || result.id || mediaUrl
-        });
-
-
-        /* ====================================================
+      /* ====================================================
            UPDATE STATUS
            ==================================================== */
 
-        setStatusPill(
-          config.pillId,
-          "pending"
-        );
+      setStatusPill(config.pillId, "pending");
 
+      status.textContent =
+        "Uploaded successfully. Waiting for admin verification.";
 
-        status.textContent =
-          "Uploaded successfully. Waiting for admin verification.";
+      status.className = "form-status success";
 
-        status.className =
-          "form-status success";
-
-
-        /* ====================================================
+      /* ====================================================
            CLEAR SELECTED FILE
            ==================================================== */
 
-        selectedFile =
-          null;
+      selectedFile = null;
 
-        input.value =
-          "";
+      input.value = "";
+      delete input._capturedFile;
 
-
-        /*
+      /*
            Keep the uploaded preview visible.
 
            The current preview is already showing the
@@ -2077,84 +1691,280 @@ function initDocumentUpload(
            it again immediately.
         */
 
-        button.disabled =
-          true;
+      button.disabled = true;
+    } catch (error) {
+      console.error("Document upload error:", error);
 
+      status.textContent = error?.message || "Upload failed. Please try again.";
 
-      } catch (error) {
+      status.className = "form-status error";
 
-        console.error(
-          "Document upload error:",
-          error
-        );
-
-
-        status.textContent =
-          error?.message ||
-          "Upload failed. Please try again.";
-
-        status.className =
-          "form-status error";
-
-
-        button.disabled =
-          false;
-      }
-
+      button.disabled = false;
     }
-  );
+  });
 }
 
+/* ============================================================
+   REAL-TIME DOCUMENT CAMERA CAPTURE
+   ============================================================ */
+
+let docCameraStream = null;
+let currentFacingMode = "environment";
+let activeCameraTargetInputId = null;
+let currentDocCapturedBlob = null;
+
+function initDocumentCameraModal() {
+  const modal = $("docCameraModal");
+  if (!modal) return;
+
+  const video = $("docCameraVideo");
+  const canvas = $("docCameraCanvas");
+  const snapshotImg = $("docCameraSnapshot");
+  const closeBtn = $("closeDocCameraModal");
+  const switchBtn = $("docCameraSwitchBtn");
+  const shutterBtn = $("docCameraShutterBtn");
+  const retakeBtn = $("docCameraRetakeBtn");
+  const useBtn = $("docCameraUseBtn");
+  const liveActions = $("docCameraActionsLive");
+  const previewActions = $("docCameraActionsPreview");
+  const statusMsg = $("docCameraStatusMsg");
+  const modalTitle = $("docCameraModalTitle");
+  const guideOverlay = $("docCameraGuideOverlay");
+
+  const stopStream = () => {
+    if (docCameraStream) {
+      docCameraStream.getTracks().forEach((track) => track.stop());
+      docCameraStream = null;
+    }
+    if (video) {
+      video.srcObject = null;
+    }
+  };
+
+  const closeModal = () => {
+    stopStream();
+    modal.hidden = true;
+    modal.setAttribute("hidden", "");
+    modal.style.setProperty("display", "none", "important");
+    currentDocCapturedBlob = null;
+    activeCameraTargetInputId = null;
+    if (snapshotImg) {
+      snapshotImg.hidden = true;
+      snapshotImg.src = "";
+    }
+    if (statusMsg) {
+      statusMsg.hidden = true;
+      statusMsg.innerHTML = "";
+    }
+  };
+
+  if (closeBtn) closeBtn.addEventListener("click", closeModal);
+  modal.addEventListener("click", (e) => {
+    if (
+      e.target === modal ||
+      e.target.classList.contains("doc-camera-modal__backdrop")
+    ) {
+      closeModal();
+    }
+  });
+
+  const startCamera = async () => {
+    stopStream();
+    if (statusMsg) {
+      statusMsg.hidden = true;
+      statusMsg.innerHTML = "";
+    }
+    if (snapshotImg) {
+      snapshotImg.hidden = true;
+      snapshotImg.src = "";
+    }
+    if (video) video.hidden = false;
+    if (guideOverlay) guideOverlay.hidden = false;
+    if (liveActions) liveActions.hidden = false;
+    if (previewActions) previewActions.hidden = true;
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      if (statusMsg) {
+        statusMsg.hidden = false;
+        statusMsg.innerHTML = `
+          <p style="color:#ff6b6b;font-weight:700;">Camera Not Supported</p>
+          <p style="font-size:0.82rem;color:#cbd5e1;">Your browser or connection does not support live camera access. Please use the "Choose File" option to upload or take a photo.</p>
+        `;
+      }
+      return;
+    }
+
+    try {
+      const constraints = {
+        video: {
+          facingMode: { ideal: currentFacingMode },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      };
+      docCameraStream = await navigator.mediaDevices.getUserMedia(constraints);
+      if (video) {
+        video.srcObject = docCameraStream;
+        await video.play();
+      }
+    } catch (err) {
+      console.warn(
+        "Camera with facingMode " + currentFacingMode + " failed:",
+        err,
+      );
+      try {
+        docCameraStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+        if (video) {
+          video.srcObject = docCameraStream;
+          await video.play();
+        }
+      } catch (fallbackErr) {
+        console.error("Camera access failed:", fallbackErr);
+        if (statusMsg) {
+          statusMsg.hidden = false;
+          statusMsg.innerHTML = `
+            <p style="color:#ff6b6b;font-weight:700;font-size:1rem;">Camera Permission Required</p>
+            <p style="font-size:0.82rem;color:#cbd5e1;line-height:1.5;">Please allow camera access in your browser or device settings, or select a file directly.</p>
+          `;
+        }
+      }
+    }
+  };
+
+  if (switchBtn) {
+    switchBtn.addEventListener("click", async () => {
+      currentFacingMode =
+        currentFacingMode === "environment" ? "user" : "environment";
+      await startCamera();
+    });
+  }
+
+  if (shutterBtn) {
+    shutterBtn.addEventListener("click", () => {
+      if (!video || !video.videoWidth || !canvas) return;
+
+      const w = video.videoWidth;
+      const h = video.videoHeight;
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, w, h);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) return;
+          currentDocCapturedBlob = blob;
+          const url = URL.createObjectURL(blob);
+          if (snapshotImg) {
+            snapshotImg.src = url;
+            snapshotImg.hidden = false;
+          }
+          if (video) video.hidden = true;
+          if (guideOverlay) guideOverlay.hidden = true;
+          if (liveActions) liveActions.hidden = true;
+          if (previewActions) previewActions.hidden = false;
+          stopStream();
+        },
+        "image/jpeg",
+        0.92,
+      );
+    });
+  }
+
+  if (retakeBtn) {
+    retakeBtn.addEventListener("click", () => {
+      currentDocCapturedBlob = null;
+      startCamera();
+    });
+  }
+
+  if (useBtn) {
+    useBtn.addEventListener("click", () => {
+      if (!currentDocCapturedBlob || !activeCameraTargetInputId) {
+        closeModal();
+        return;
+      }
+
+      const targetInput = $(activeCameraTargetInputId);
+      if (!targetInput) {
+        closeModal();
+        return;
+      }
+
+      const cleanDocName = activeCameraTargetInputId.replace("File", "");
+      const fileName = `${cleanDocName}_camera_${Date.now()}.jpg`;
+      const file = new File([currentDocCapturedBlob], fileName, {
+        type: "image/jpeg",
+        lastModified: Date.now(),
+      });
+
+      targetInput._capturedFile = file;
+
+      try {
+        if (typeof DataTransfer !== "undefined") {
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          targetInput.files = dt.files;
+        }
+      } catch (dtErr) {
+        console.warn("DataTransfer assignment not supported:", dtErr);
+      }
+
+      targetInput.dispatchEvent(new Event("change", { bubbles: true }));
+      closeModal();
+    });
+  }
+
+  document.querySelectorAll(".doc-btn-camera").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      const targetId = btn.dataset.targetInput;
+      const docTitle = btn.dataset.docTitle || "Document Photo";
+      if (!targetId) return;
+
+      activeCameraTargetInputId = targetId;
+      if (modalTitle) modalTitle.textContent = `Capture ${docTitle}`;
+
+      modal.hidden = false;
+      modal.removeAttribute("hidden");
+      modal.style.setProperty("display", "flex", "important");
+
+      startCamera();
+    });
+  });
+}
 
 /* ============================================================
    LOGOUT
    ============================================================ */
 
 function initLogout() {
-
-  const button =
-    $("logoutBtn");
-
+  const button = $("logoutBtn");
 
   if (!button) {
     return;
   }
 
+  button.addEventListener("click", async (event) => {
+    event.preventDefault();
 
-  button.addEventListener(
-    "click",
-    async event => {
-
-      event.preventDefault();
-
-
-      if (
-        !confirm(
-          "Are you sure you want to logout?"
-        )
-      ) {
-        return;
-      }
-
-
-      try {
-        await logout();
-      } catch (error) {
-
-        console.error(
-          "Logout error:",
-          error
-        );
-
-        alert(
-          "Could not logout. Please try again."
-        );
-      }
-
+    if (!confirm("Are you sure you want to logout?")) {
+      return;
     }
-  );
-}
 
+    try {
+      await logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+
+      alert("Could not logout. Please try again.");
+    }
+  });
+}
 
 /* ============================================================
    AUTH INITIALIZATION
@@ -2169,7 +1979,10 @@ async function initProfileAuth() {
   }
 
   const user = getCurrentUser();
-  console.log("KRUIZLY auth state:", user ? { uid: user.id || user.uid, email: user.email } : "NOT LOGGED IN");
+  console.log(
+    "KRUIZLY auth state:",
+    user ? { uid: user.id || user.uid, email: user.email } : "NOT LOGGED IN",
+  );
 
   try {
     initTabs();
@@ -2180,17 +1993,72 @@ async function initProfileAuth() {
     loadMyListings(user);
 
     [
-      { inputId: "licenseFrontFile", buttonId: "licenseFrontUploadBtn", previewId: "licenseFrontPreview", statusId: "licenseFrontUploadStatus", pillId: "licenseStatusPill", serverCategory: "license_doc", urlField: "licenseFrontURL", statusField: "licenseStatus" },
-      { inputId: "licenseBackFile", buttonId: "licenseBackUploadBtn", previewId: "licenseBackPreview", statusId: "licenseBackUploadStatus", pillId: "licenseStatusPill", serverCategory: "license_doc", urlField: "licenseBackURL", statusField: "licenseStatus" }
+      {
+        inputId: "licenseFrontFile",
+        buttonId: "licenseFrontUploadBtn",
+        previewId: "licenseFrontPreview",
+        statusId: "licenseFrontUploadStatus",
+        pillId: "licenseStatusPill",
+        serverCategory: "license_doc",
+        urlField: "licenseFrontURL",
+        statusField: "licenseStatus",
+      },
+      {
+        inputId: "licenseBackFile",
+        buttonId: "licenseBackUploadBtn",
+        previewId: "licenseBackPreview",
+        statusId: "licenseBackUploadStatus",
+        pillId: "licenseStatusPill",
+        serverCategory: "license_doc",
+        urlField: "licenseBackURL",
+        statusField: "licenseStatus",
+      },
     ].forEach((config) => initDocumentUpload(user, config));
 
     [
-      { inputId: "aadharFrontFile", buttonId: "aadharFrontUploadBtn", previewId: "aadharFrontPreview", statusId: "aadharFrontUploadStatus", pillId: "aadharStatusPill", serverCategory: "aadhar_doc", urlField: "aadharFrontURL", statusField: "aadharStatus" },
-      { inputId: "aadharBackFile", buttonId: "aadharBackUploadBtn", previewId: "aadharBackPreview", statusId: "aadharBackUploadStatus", pillId: "aadharStatusPill", serverCategory: "aadhar_doc", urlField: "aadharBackURL", statusField: "aadharStatus" },
-      { inputId: "panFrontFile", buttonId: "panFrontUploadBtn", previewId: "panFrontPreview", statusId: "panFrontUploadStatus", pillId: "panStatusPill", serverCategory: "pan_doc", urlField: "panFrontURL", statusField: "panStatus" },
-      { inputId: "panBackFile", buttonId: "panBackUploadBtn", previewId: "panBackPreview", statusId: "panBackUploadStatus", pillId: "panStatusPill", serverCategory: "pan_doc", urlField: "panBackURL", statusField: "panStatus" }
+      {
+        inputId: "aadharFrontFile",
+        buttonId: "aadharFrontUploadBtn",
+        previewId: "aadharFrontPreview",
+        statusId: "aadharFrontUploadStatus",
+        pillId: "aadharStatusPill",
+        serverCategory: "aadhar_doc",
+        urlField: "aadharFrontURL",
+        statusField: "aadharStatus",
+      },
+      {
+        inputId: "aadharBackFile",
+        buttonId: "aadharBackUploadBtn",
+        previewId: "aadharBackPreview",
+        statusId: "aadharBackUploadStatus",
+        pillId: "aadharStatusPill",
+        serverCategory: "aadhar_doc",
+        urlField: "aadharBackURL",
+        statusField: "aadharStatus",
+      },
+      {
+        inputId: "panFrontFile",
+        buttonId: "panFrontUploadBtn",
+        previewId: "panFrontPreview",
+        statusId: "panFrontUploadStatus",
+        pillId: "panStatusPill",
+        serverCategory: "pan_doc",
+        urlField: "panFrontURL",
+        statusField: "panStatus",
+      },
+      {
+        inputId: "panBackFile",
+        buttonId: "panBackUploadBtn",
+        previewId: "panBackPreview",
+        statusId: "panBackUploadStatus",
+        pillId: "panStatusPill",
+        serverCategory: "pan_doc",
+        urlField: "panBackURL",
+        statusField: "panStatus",
+      },
     ].forEach((config) => initDocumentUpload(user, config));
 
+    initDocumentCameraModal();
     initMediaManager(user);
     initLogout();
   } catch (error) {
@@ -2250,7 +2118,8 @@ function initMediaManager(user) {
     }
 
     if (previewName) previewName.textContent = file.name;
-    if (previewSize) previewSize.textContent = `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+    if (previewSize)
+      previewSize.textContent = `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
     if (previewBox) previewBox.hidden = false;
     uploadBtn.disabled = false;
     uploadBtn.textContent = "Upload";
@@ -2310,7 +2179,13 @@ async function loadUserMedia(user) {
 
   try {
     const data = await api.get("/media/my-media");
-    const items = Array.isArray(data) ? data : (Array.isArray(data.files) ? data.files : (Array.isArray(data.items) ? data.items : []));
+    const items = Array.isArray(data)
+      ? data
+      : Array.isArray(data.files)
+        ? data.files
+        : Array.isArray(data.items)
+          ? data.items
+          : [];
 
     if (!items.length) {
       if (emptyEl) emptyEl.hidden = false;
@@ -2321,19 +2196,23 @@ async function loadUserMedia(user) {
     if (emptyEl) emptyEl.hidden = true;
     if (errorEl) errorEl.hidden = true;
 
-    gridEl.innerHTML = items.map((item) => {
-      const isVideo = item.mimeType?.startsWith("video/") || item.mediaType === "video";
-      const fileName = item.originalName || "Uploaded Media";
-      const dateFormatted = formatDate(item.createdAt || item.uploadedAt);
-      const mediaId = item.mediaId || item.id;
-      const fileUrl = item.url || `/api/media/file.php?id=${encodeURIComponent(mediaId)}`;
+    gridEl.innerHTML = items
+      .map((item) => {
+        const isVideo =
+          item.mimeType?.startsWith("video/") || item.mediaType === "video";
+        const fileName = item.originalName || "Uploaded Media";
+        const dateFormatted = formatDate(item.createdAt || item.uploadedAt);
+        const mediaId = item.mediaId || item.id;
+        const fileUrl =
+          item.url || `/api/media/file.php?id=${encodeURIComponent(mediaId)}`;
 
-      return `
+        return `
         <div class="media-card" style="position:relative;border-radius:14px;overflow:hidden;background:rgba(255,255,255,0.035);border:1px solid var(--kr-border);display:flex;flex-direction:column;">
           <div style="width:100%;aspect-ratio:4/3;background:rgba(0,0,0,0.5);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;">
-            ${isVideo
-              ? `<video src="${escapeHtml(fileUrl)}" controls style="width:100%;height:100%;object-fit:cover;"></video>`
-              : `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(fileName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" />`
+            ${
+              isVideo
+                ? `<video src="${escapeHtml(fileUrl)}" controls style="width:100%;height:100%;object-fit:cover;"></video>`
+                : `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(fileName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" />`
             }
             <button type="button" class="btn-delete-media" data-media-id="${escapeHtml(mediaId)}" title="Delete Media" style="position:absolute;top:8px;right:8px;width:30px;height:30px;background:rgba(239,71,111,0.9);color:white;border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.5);font-size:16px;font-weight:bold;z-index:2;transition:transform 0.15s ease;">×</button>
           </div>
@@ -2343,7 +2222,8 @@ async function loadUserMedia(user) {
           </div>
         </div>
       `;
-    }).join("");
+      })
+      .join("");
 
     // Wire delete buttons
     gridEl.querySelectorAll(".btn-delete-media").forEach((btn) => {
@@ -2351,7 +2231,8 @@ async function loadUserMedia(user) {
         e.stopPropagation();
         const id = btn.dataset.mediaId;
         if (!id) return;
-        if (!confirm("Are you sure you want to delete this media file?")) return;
+        if (!confirm("Are you sure you want to delete this media file?"))
+          return;
         btn.disabled = true;
         try {
           await api.delete("/media/delete", { id: id });
@@ -2363,7 +2244,6 @@ async function loadUserMedia(user) {
         }
       });
     });
-
   } catch (err) {
     console.warn("Could not load user media list:", err.message);
     if (emptyEl) emptyEl.hidden = false;
