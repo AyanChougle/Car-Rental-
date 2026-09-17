@@ -340,8 +340,6 @@ if ($method === 'GET') {
             $monthRev = max(28000.00, $dbMonthRevenue);
         } else {
             $monthRev = $dbMonthRevenue;
-        } else {
-            $monthRev = $dbMonthRevenue;
         }
 
         $monthlyRevenue[$monthStart] = $monthRev;
