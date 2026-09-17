@@ -5,8 +5,8 @@
    ============================================================ */
 
 import { auth } from "./firebase-init.js";
-import { checkAuth, getCurrentUser, logout } from "./auth.js?v=20260907-v2";
-import { api } from "./kruizly-api.js?v=20260907-v5";
+import { checkAuth, getCurrentUser, logout } from "./auth.js?v=20260917-v1";
+import { api } from "./kruizly-api.js?v=20260917-v1";
 import "./nav-helper.js";
 import { formatBookingNumber } from "./booking-reference.js";
 
@@ -1349,6 +1349,8 @@ function initUserCancellationModal() {
   const reasonSelect = $("cancelReasonSelect");
 
   if (!modal || !confirmBtn) return;
+  if (modal.dataset.initialized === "true") return;
+  modal.dataset.initialized = "true";
 
   const closeModal = () => {
     modal.hidden = true;
@@ -1377,7 +1379,7 @@ function initUserCancellationModal() {
     confirmBtn.textContent = "Cancelling...";
 
     try {
-      await api.post("/bookings/cancel", {
+      const res = await api.post("/bookings/cancel", {
         id: bookingId,
         bookingId: bookingId,
         bookingNumber: bookingId,
@@ -1385,11 +1387,11 @@ function initUserCancellationModal() {
         cancellationReason: reason
       });
 
-      alert("Booking cancelled successfully! Your refund has been processed automatically.");
+      alert(res?.message || "Booking cancelled successfully! Your refund has been processed automatically.");
       closeModal();
 
       const user = getCurrentUser();
-  currentUser = user;
+      currentUser = user;
       if (user) {
         loadBookings(user.id || user.uid);
       }

@@ -26,23 +26,41 @@ $user = Auth::requireAuth();
 $isStaff = in_array($user['role'] ?? '', ['admin', 'manager'], true);
 
 // Fetch booking matching booking_id, booking_number, or primary key id
+$cleanId = trim(ltrim($bookingId, '#'));
 $booking = Database::fetchOne(
     "SELECT * FROM bookings 
      WHERE booking_id = ? 
         OR booking_number = ? 
         OR id = ? 
+        OR booking_id = ? 
+        OR booking_number = ? 
+        OR UPPER(COALESCE(booking_id, '')) = UPPER(?) 
+        OR UPPER(COALESCE(booking_number, '')) = UPPER(?) 
         OR UPPER(COALESCE(booking_id, '')) = UPPER(?) 
         OR UPPER(COALESCE(booking_number, '')) = UPPER(?) 
      LIMIT 1",
-    [$bookingId, $bookingId, is_numeric($bookingId) ? (int)$bookingId : 0, $bookingId, $bookingId]
+    [$bookingId, $bookingId, is_numeric($bookingId) ? (int)$bookingId : 0, $cleanId, $cleanId, $bookingId, $bookingId, $cleanId, $cleanId]
 );
 
 if (!$booking) {
-    sendErrorResponse("Booking '$bookingId' not found.", 404);
+    sendErrorResponse("Booking '$bookingId' not found.", 400);
 }
 
 if (!$isStaff && ($booking['firebase_uid'] ?? '') !== ($user['firebase_uid'] ?? '')) {
     sendErrorResponse('You do not have permission to cancel this booking.', 403);
+}
+
+$bid = $booking['booking_id'] ?: ($booking['booking_number'] ?: (string)$booking['id']);
+$bNum = $booking['booking_number'] ?? '';
+
+// Idempotent: return success if already cancelled
+if (in_array(strtolower($booking['status'] ?? ''), ['cancelled', 'rejected'], true) || strtolower($booking['payment_status'] ?? '') === 'refunded') {
+    sendJsonResponse([
+        'success' => true,
+        'message' => "Booking {$bid} is already cancelled and marked as refunded.",
+        'alreadyCancelled' => true,
+        'refundAmount' => (float)($booking['payment_amount_paid'] ?? $booking['advance_amount'] ?? $booking['final_amount'] ?? 0.0)
+    ]);
 }
 
 // Auto-heal table columns outside transaction to prevent implicit commit

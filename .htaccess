@@ -10,6 +10,12 @@
     SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
     RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 
+    # API Rewrite Rules for Parameterized & Legacy REST Endpoints
+    RewriteRule ^api/bookings/([^/]+)/cancel/?$ api/bookings/cancel.php?id=$1 [QSA,L]
+    RewriteRule ^bookings/([^/]+)/cancel/?$ api/bookings/cancel.php?id=$1 [QSA,L]
+    RewriteRule ^api/bookings/cancel/?$ api/bookings/cancel.php [QSA,L]
+    RewriteRule ^bookings/cancel/?$ api/bookings/cancel.php [QSA,L]
+
     # Clean URLs for HTML pages
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
