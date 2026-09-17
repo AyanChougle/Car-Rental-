@@ -22,8 +22,19 @@ const myListingsSection = document.getElementById("myListingsSection");
 const myListingsWrap = document.getElementById("myListingsWrap");
 
 const MAX_HOST_PHOTOS = 6;
-const MAX_HOST_PHOTO_BYTES = 10 * 1024 * 1024;
-const HOST_PHOTO_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_PARTNER_EXTS = [
+  "jpg", "jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "svg", "avif", "heic", "heif",
+  "zip", "zipx", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "tar.gz", "tar.bz2", "tar.xz",
+  "pdf", "doc", "docx"
+];
+const HOST_PHOTO_TYPES = new Set([
+  "image/jpeg", "image/pjpeg", "image/png", "image/x-png", "image/webp", "image/gif",
+  "image/bmp", "image/x-ms-bmp", "image/x-bmp", "image/tiff", "image/x-tiff",
+  "image/svg+xml", "image/svg", "image/avif", "image/heic", "image/heic-sequence",
+  "image/heif", "image/heif-sequence",
+  "application/zip", "application/x-zip-compressed", "application/x-zip",
+  "application/x-7z-compressed", "application/vnd.rar", "application/x-tar", "application/gzip"
+]);
 let hostPhotoPreviewUrls = [];
 let currentUser = null;
 
@@ -313,12 +324,18 @@ if (form) {
       return;
     }
 
-    const invalidPhoto = photoFiles.find(
-      (file) => !HOST_PHOTO_TYPES.has(file.type) || file.size > MAX_HOST_PHOTO_BYTES
-    );
+    const invalidPhoto = photoFiles.find((file) => {
+      if (file.size > MAX_HOST_PHOTO_BYTES) return true;
+      const name = (file.name || "").toLowerCase();
+      if (name.endsWith(".tar.gz") || name.endsWith(".tar.bz2") || name.endsWith(".tar.xz")) return false;
+      const ext = name.split(".").pop();
+      if (ALLOWED_PARTNER_EXTS.includes(ext)) return false;
+      if (file.type && (HOST_PHOTO_TYPES.has(file.type) || file.type.startsWith("image/") || file.type === "application/octet-stream")) return false;
+      return true;
+    });
 
     if (invalidPhoto) {
-      showError("Each vehicle photo must be JPG, PNG, or WebP and 10 MB or smaller.");
+      showError("Supported formats: JPG, PNG, WEBP, GIF, BMP, TIFF, SVG, AVIF, HEIC, ZIP, RAR, 7Z, TAR, GZ, BZ2, XZ, PDF (up to 10 MB).");
       return;
     }
 

@@ -683,15 +683,25 @@ function initialiseExecutivePickupModal() {
       return;
     }
 
-    const invalidFile = files.find(
-      (file) =>
-        !["image/jpeg", "image/png", "image/webp"].includes(file.type) ||
-        file.size > 10 * 1024 * 1024
-    );
+    const ALLOWED_UPLOAD_EXTS = [
+      "jpg", "jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "svg", "avif", "heic", "heif",
+      "zip", "zipx", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "tar.gz", "tar.bz2", "tar.xz",
+      "pdf", "doc", "docx"
+    ];
+
+    const invalidFile = files.find((file) => {
+      if (file.size > 10 * 1024 * 1024) return true;
+      const name = (file.name || "").toLowerCase();
+      if (name.endsWith(".tar.gz") || name.endsWith(".tar.bz2") || name.endsWith(".tar.xz")) return false;
+      const ext = name.split(".").pop();
+      if (ALLOWED_UPLOAD_EXTS.includes(ext)) return false;
+      if (file.type && (file.type.startsWith("image/") || file.type.includes("zip") || file.type.includes("tar") || file.type.includes("compressed") || file.type === "application/pdf" || file.type === "application/octet-stream")) return false;
+      return true;
+    });
 
     if (invalidFile) {
       if (status) {
-        status.textContent = "Use JPG, PNG, or WebP images up to 10 MB each.";
+        status.textContent = "Supported formats: JPG, PNG, WEBP, GIF, BMP, TIFF, SVG, AVIF, HEIC, ZIP, RAR, 7Z, TAR, GZ, BZ2, XZ, PDF (up to 10 MB).";
         status.style.color = "#ef476f";
       }
       return;

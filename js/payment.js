@@ -48,11 +48,43 @@ const MEDIA_API_URL =
 const PAYMENT_SCREENSHOT_MAX_SIZE =
   5 * 1024 * 1024;
 
-const ALLOWED_SCREENSHOT_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
+const ALLOWED_PAYMENT_EXTENSIONS = [
+  "jpg", "jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "svg", "avif", "heic", "heif",
+  "zip", "zipx", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "tar.gz", "tar.bz2", "tar.xz",
+  "pdf", "doc", "docx"
 ];
+
+const ALLOWED_SCREENSHOT_TYPES = [
+  "image/jpeg", "image/pjpeg", "image/png", "image/x-png", "image/webp", "image/gif",
+  "image/bmp", "image/x-ms-bmp", "image/x-bmp", "image/tiff", "image/x-tiff",
+  "image/svg+xml", "image/svg", "image/avif", "image/heic", "image/heic-sequence",
+  "image/heif", "image/heif-sequence",
+  "application/zip", "application/x-zip-compressed", "application/x-zip", "multipart/x-zip",
+  "application/x-zipx", "application/x-7z-compressed", "application/x-7z",
+  "application/vnd.rar", "application/x-rar-compressed", "application/x-rar",
+  "application/x-tar", "application/tar", "application/gzip", "application/x-gzip",
+  "application/x-compressed-tar", "application/x-tgz",
+  "application/x-bzip2", "application/x-bzip", "application/bzip2",
+  "application/x-xz", "application/octet-stream", "binary/octet-stream",
+  "application/pdf", "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+];
+
+function isAllowedPaymentFile(file) {
+  if (!file) return false;
+  const name = (file.name || "").toLowerCase();
+  if (name.endsWith(".tar.gz") || name.endsWith(".tar.bz2") || name.endsWith(".tar.xz")) {
+    return true;
+  }
+  const ext = name.split(".").pop();
+  if (ALLOWED_PAYMENT_EXTENSIONS.includes(ext)) {
+    return true;
+  }
+  if (file.type && ALLOWED_SCREENSHOT_TYPES.includes(file.type)) {
+    return true;
+  }
+  return false;
+}
 
 
 // ============================================================
@@ -669,11 +701,11 @@ function initialiseScreenshotPreview() {
       return;
     }
 
-    if (!ALLOWED_SCREENSHOT_TYPES.includes(file.type)) {
+    if (!isAllowedPaymentFile(file)) {
       input.value = "";
       if (dropzoneTitle) dropzoneTitle.textContent = "Click or drag screenshot here";
       if (preview) {
-        preview.innerHTML = `<div class="form-status form-status--error">Please select a valid JPG, PNG, or WEBP image.</div>`;
+        preview.innerHTML = `<div class="form-status form-status--error">Supported formats: JPG, PNG, WEBP, GIF, BMP, TIFF, SVG, AVIF, HEIC, ZIP, RAR, 7Z, TAR, GZ, BZ2, XZ, PDF.</div>`;
       }
       return;
     }
@@ -1247,13 +1279,9 @@ async function submitPayment(
   // FILE TYPE
   // ----------------------------------------------------------
 
-  if (
-    !ALLOWED_SCREENSHOT_TYPES.includes(
-      file.type
-    )
-  ) {
+  if (!isAllowedPaymentFile(file)) {
     setStatus(
-      "Please upload a JPG, PNG, or WebP screenshot.",
+      "Supported formats: JPG, PNG, WEBP, GIF, BMP, TIFF, SVG, AVIF, HEIC, ZIP, RAR, 7Z, TAR, GZ, BZ2, XZ, PDF.",
       "form-status--error"
     );
 

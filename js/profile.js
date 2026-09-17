@@ -38,7 +38,101 @@ const MEDIA_SERVER_URL = window.__KRUIZLY_API_URL__
 
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ALLOWED_EXTENSIONS = [
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "bmp",
+  "tif",
+  "tiff",
+  "svg",
+  "avif",
+  "heic",
+  "heif",
+  "zip",
+  "zipx",
+  "7z",
+  "rar",
+  "tar",
+  "gz",
+  "tgz",
+  "bz2",
+  "xz",
+  "tar.gz",
+  "tar.bz2",
+  "tar.xz",
+  "pdf",
+  "doc",
+  "docx",
+];
+
+const ALLOWED_TYPES = [
+  "image/jpeg",
+  "image/pjpeg",
+  "image/png",
+  "image/x-png",
+  "image/webp",
+  "image/gif",
+  "image/bmp",
+  "image/x-ms-bmp",
+  "image/x-bmp",
+  "image/tiff",
+  "image/x-tiff",
+  "image/svg+xml",
+  "image/svg",
+  "image/avif",
+  "image/heic",
+  "image/heic-sequence",
+  "image/heif",
+  "image/heif-sequence",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/x-zip",
+  "multipart/x-zip",
+  "application/x-zipx",
+  "application/x-7z-compressed",
+  "application/x-7z",
+  "application/vnd.rar",
+  "application/x-rar-compressed",
+  "application/x-rar",
+  "application/x-tar",
+  "application/tar",
+  "application/gzip",
+  "application/x-gzip",
+  "application/x-compressed-tar",
+  "application/x-tgz",
+  "application/x-bzip2",
+  "application/x-bzip",
+  "application/bzip2",
+  "application/x-xz",
+  "application/octet-stream",
+  "binary/octet-stream",
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+
+function isAllowedUploadFile(file) {
+  if (!file) return false;
+  const name = (file.name || "").toLowerCase();
+  if (
+    name.endsWith(".tar.gz") ||
+    name.endsWith(".tar.bz2") ||
+    name.endsWith(".tar.xz")
+  ) {
+    return true;
+  }
+  const ext = name.split(".").pop();
+  if (ALLOWED_EXTENSIONS.includes(ext)) {
+    return true;
+  }
+  if (file.type && ALLOWED_TYPES.includes(file.type)) {
+    return true;
+  }
+  return false;
+}
 
 /* ============================================================
    HELPERS
@@ -1542,8 +1636,9 @@ function initDocumentUpload(user, config) {
          TYPE CHECK
          ====================================================== */
 
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      status.textContent = "Only JPG, PNG or WEBP files are allowed.";
+    if (!isAllowedUploadFile(file)) {
+      status.textContent =
+        "Supported formats: JPG, PNG, WEBP, GIF, BMP, TIFF, SVG, AVIF, HEIC, ZIP, RAR, 7Z, TAR, GZ, BZ2, XZ, PDF.";
 
       status.className = "form-status error";
 

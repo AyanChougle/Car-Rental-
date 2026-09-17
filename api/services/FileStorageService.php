@@ -12,14 +12,58 @@ require_once __DIR__ . '/../config/database.php';
 
 class FileStorageService {
     private const ALLOWED_EXTENSIONS = [
-        'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg', 'pdf', 'doc', 'docx'
+        // Images requested: .jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff,.svg,.avif,.heic,.heif
+        'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tif', 'tiff', 'svg', 'avif', 'heic', 'heif',
+        // Archives requested: .zip,.zipx,.7z,.rar,.tar,.gz,.tgz,.bz2,.xz,.tar.gz,.tar.bz2,.tar.xz
+        'zip', 'zipx', '7z', 'rar', 'tar', 'gz', 'tgz', 'bz2', 'xz', 'tar.gz', 'tar.bz2', 'tar.xz',
+        // Documents
+        'pdf', 'doc', 'docx'
     ];
 
     private const ALLOWED_MIME_TYPES = [
-        'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml',
+        // Images
+        'image/jpeg', 'image/pjpeg', 'image/png', 'image/x-png', 'image/webp', 'image/gif',
+        'image/bmp', 'image/x-ms-bmp', 'image/x-bmp', 'image/tiff', 'image/x-tiff',
+        'image/svg+xml', 'image/svg', 'image/avif', 'image/heic', 'image/heic-sequence',
+        'image/heif', 'image/heif-sequence',
+        // Archives / Compressed
+        'application/zip', 'application/x-zip-compressed', 'application/x-zip', 'multipart/x-zip',
+        'application/x-zipx', 'application/x-7z-compressed', 'application/x-7z',
+        'application/vnd.rar', 'application/x-rar-compressed', 'application/x-rar',
+        'application/x-tar', 'application/tar', 'application/gzip', 'application/x-gzip',
+        'application/x-compressed-tar', 'application/x-tgz',
+        'application/x-bzip2', 'application/x-bzip', 'application/bzip2',
+        'application/x-xz', 'application/octet-stream', 'binary/octet-stream',
+        // Documents
         'application/pdf', 'application/msword',
         'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     ];
+
+    public static function getMimeFromExtension(string $ext): string {
+        return match(strtolower($ext)) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png' => 'image/png',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'bmp' => 'image/bmp',
+            'tif', 'tiff' => 'image/tiff',
+            'svg' => 'image/svg+xml',
+            'avif' => 'image/avif',
+            'heic' => 'image/heic',
+            'heif' => 'image/heif',
+            'zip', 'zipx' => 'application/zip',
+            '7z' => 'application/x-7z-compressed',
+            'rar' => 'application/vnd.rar',
+            'tar' => 'application/x-tar',
+            'gz', 'tgz', 'tar.gz' => 'application/gzip',
+            'bz2', 'tar.bz2' => 'application/x-bzip2',
+            'xz', 'tar.xz' => 'application/x-xz',
+            'pdf' => 'application/pdf',
+            'doc' => 'application/msword',
+            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            default => 'application/octet-stream'
+        };
+    }
 
     /**
      * Uploads and stores a file in Hostinger server filesystem
@@ -34,7 +78,13 @@ class FileStorageService {
         }
 
         $origName = basename($file['name']);
-        $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+        $lowerName = strtolower($origName);
+        $ext = '';
+        if (preg_match('/\.tar\.(gz|bz2|xz)$/i', $lowerName, $m)) {
+            $ext = 'tar.' . strtolower($m[1]);
+        } else {
+            $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+        }
 
         if (!in_array($ext, self::ALLOWED_EXTENSIONS, true)) {
             throw new Exception("File extension '.$ext' is not allowed for security reasons.");
@@ -44,7 +94,11 @@ class FileStorageService {
         $mimeType = $finfo->file($file['tmp_name']);
 
         if (!in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
-            throw new Exception("Invalid MIME type '$mimeType'.");
+            if ($mimeType === 'application/octet-stream' || $mimeType === 'binary/octet-stream' || empty($mimeType)) {
+                $mimeType = self::getMimeFromExtension($ext);
+            } else {
+                throw new Exception("Invalid MIME type '$mimeType'.");
+            }
         }
 
         // Subfolder routing
@@ -181,16 +235,13 @@ class FileStorageService {
                 if ($cand && file_exists($cand) && !is_dir($cand)) {
                     $filePath = $cand;
                     $originalName = basename($cand);
-                    $ext = strtolower(pathinfo($cand, PATHINFO_EXTENSION));
-                    $mimeType = match($ext) {
-                        'jpg', 'jpeg' => 'image/jpeg',
-                        'png' => 'image/png',
-                        'webp' => 'image/webp',
-                        'gif' => 'image/gif',
-                        'svg' => 'image/svg+xml',
-                        'pdf' => 'application/pdf',
-                        default => 'application/octet-stream'
-                    };
+                    $lowerCand = strtolower(basename($cand));
+                    if (preg_match('/\.tar\.(gz|bz2|xz)$/i', $lowerCand, $m)) {
+                        $ext = 'tar.' . strtolower($m[1]);
+                    } else {
+                        $ext = strtolower(pathinfo($cand, PATHINFO_EXTENSION));
+                    }
+                    $mimeType = self::getMimeFromExtension($ext);
                     break;
                 }
             }
