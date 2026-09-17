@@ -1750,11 +1750,16 @@ function initDocumentCameraModal() {
     activeCameraTargetInputId = null;
     if (snapshotImg) {
       snapshotImg.hidden = true;
+      snapshotImg.style.setProperty("display", "none", "important");
       snapshotImg.src = "";
     }
     if (statusMsg) {
       statusMsg.hidden = true;
+      statusMsg.style.setProperty("display", "none", "important");
       statusMsg.innerHTML = "";
+    }
+    if (video) {
+      video.style.removeProperty("display");
     }
   };
 
@@ -1837,16 +1842,30 @@ function initDocumentCameraModal() {
     stopStream();
     if (statusMsg) {
       statusMsg.hidden = true;
+      statusMsg.style.setProperty("display", "none", "important");
       statusMsg.innerHTML = "";
     }
     if (snapshotImg) {
       snapshotImg.hidden = true;
+      snapshotImg.style.setProperty("display", "none", "important");
       snapshotImg.src = "";
     }
-    if (video) video.hidden = false;
-    if (guideOverlay) guideOverlay.hidden = false;
-    if (liveActions) liveActions.hidden = false;
-    if (previewActions) previewActions.hidden = true;
+    if (video) {
+      video.hidden = false;
+      video.style.setProperty("display", "block", "important");
+    }
+    if (guideOverlay) {
+      guideOverlay.hidden = false;
+      guideOverlay.style.setProperty("display", "flex", "important");
+    }
+    if (liveActions) {
+      liveActions.hidden = false;
+      liveActions.style.setProperty("display", "flex", "important");
+    }
+    if (previewActions) {
+      previewActions.hidden = true;
+      previewActions.style.setProperty("display", "none", "important");
+    }
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       renderCameraError(
@@ -1943,11 +1962,24 @@ function initDocumentCameraModal() {
           if (snapshotImg) {
             snapshotImg.src = url;
             snapshotImg.hidden = false;
+            snapshotImg.style.setProperty("display", "block", "important");
           }
-          if (video) video.hidden = true;
-          if (guideOverlay) guideOverlay.hidden = true;
-          if (liveActions) liveActions.hidden = true;
-          if (previewActions) previewActions.hidden = false;
+          if (video) {
+            video.hidden = true;
+            video.style.setProperty("display", "none", "important");
+          }
+          if (guideOverlay) {
+            guideOverlay.hidden = true;
+            guideOverlay.style.setProperty("display", "none", "important");
+          }
+          if (liveActions) {
+            liveActions.hidden = true;
+            liveActions.style.setProperty("display", "none", "important");
+          }
+          if (previewActions) {
+            previewActions.hidden = false;
+            previewActions.style.setProperty("display", "flex", "important");
+          }
           stopStream();
         },
         "image/jpeg",
@@ -1959,6 +1991,11 @@ function initDocumentCameraModal() {
   if (retakeBtn) {
     retakeBtn.addEventListener("click", () => {
       currentDocCapturedBlob = null;
+      if (snapshotImg) {
+        snapshotImg.hidden = true;
+        snapshotImg.style.setProperty("display", "none", "important");
+        snapshotImg.src = "";
+      }
       startCamera();
     });
   }

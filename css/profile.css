@@ -1016,59 +1016,87 @@ body header.site-header {
   position: relative !important;
   width: 100% !important;
   background: #000000 !important;
-  aspect-ratio: 4 / 3 !important;
-  max-height: 380px !important;
+  height: 380px !important;
+  max-height: 52vh !important;
   overflow: hidden !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  display: block !important;
 }
 
-.doc-camera-video,
-.doc-camera-snapshot {
+.doc-camera-video {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
   display: block !important;
 }
 
+.doc-camera-snapshot {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  background: #05080e !important;
+  display: block !important;
+}
+
+/* Force hidden elements to never display */
+.doc-camera-video[hidden],
+.doc-camera-snapshot[hidden],
+.doc-camera-guide[hidden],
+.doc-camera-status-msg[hidden],
+.doc-camera-actions-live[hidden],
+.doc-camera-actions-preview[hidden] {
+  display: none !important;
+}
+
 .doc-camera-guide {
   position: absolute !important;
-  inset: 10% 8% !important;
-  border: 2px dashed rgba(72, 215, 255, 0.65) !important;
-  border-radius: 12px !important;
+  top: 10% !important;
+  left: 6% !important;
+  right: 6% !important;
+  bottom: 10% !important;
+  border: 2px solid rgba(72, 215, 255, 0.45) !important;
+  border-radius: 14px !important;
   pointer-events: none !important;
-  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.4) !important;
   display: flex !important;
   flex-direction: column !important;
   justify-content: flex-end !important;
   align-items: center !important;
   padding-bottom: 12px !important;
+  box-sizing: border-box !important;
+  z-index: 5 !important;
 }
 
 .doc-camera-guide-text {
   background: rgba(5, 7, 12, 0.8) !important;
-  color: #e2e8f0 !important;
-  font-size: 0.72rem !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  color: #ffffff !important;
+  font-size: 0.74rem !important;
   font-weight: 600 !important;
-  padding: 5px 12px !important;
-  border-radius: 6px !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  padding: 6px 14px !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(72, 215, 255, 0.3) !important;
   letter-spacing: 0.02em !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
 }
 
 .doc-camera-guide-corner {
   position: absolute !important;
-  width: 18px !important;
-  height: 18px !important;
+  width: 22px !important;
+  height: 22px !important;
   border-color: #48d7ff !important;
   border-style: solid !important;
 }
 
-.doc-camera-guide-corner.tl { top: -2px; left: -2px; border-width: 3px 0 0 3px; border-top-left-radius: 12px; }
-.doc-camera-guide-corner.tr { top: -2px; right: -2px; border-width: 3px 3px 0 0; border-top-right-radius: 12px; }
-.doc-camera-guide-corner.bl { bottom: -2px; left: -2px; border-width: 0 0 3px 3px; border-bottom-left-radius: 12px; }
-.doc-camera-guide-corner.br { bottom: -2px; right: -2px; border-width: 0 3px 3px 0; border-bottom-right-radius: 12px; }
+.doc-camera-guide-corner.tl { top: -2px; left: -2px; border-width: 3.5px 0 0 3.5px; border-top-left-radius: 14px; }
+.doc-camera-guide-corner.tr { top: -2px; right: -2px; border-width: 3.5px 3.5px 0 0; border-top-right-radius: 14px; }
+.doc-camera-guide-corner.bl { bottom: -2px; left: -2px; border-width: 0 0 3.5px 3.5px; border-bottom-left-radius: 14px; }
+.doc-camera-guide-corner.br { bottom: -2px; right: -2px; border-width: 0 3.5px 3.5px 0; border-bottom-right-radius: 14px; }
 
 .doc-camera-status-msg {
   position: absolute !important;
@@ -1093,15 +1121,17 @@ body header.site-header {
 }
 
 .doc-camera-modal__footer {
-  padding: 16px 20px !important;
+  padding: 18px 20px !important;
   background: #090d14 !important;
   border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  position: relative !important;
 }
 
 .doc-camera-actions-live {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
+  width: 100% !important;
 }
 
 .doc-camera-btn-flip {
@@ -1109,8 +1139,8 @@ body header.site-header {
   border: 1px solid rgba(255, 255, 255, 0.15) !important;
   color: #ffffff !important;
   border-radius: 50% !important;
-  width: 44px !important;
-  height: 44px !important;
+  width: 46px !important;
+  height: 46px !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -1127,29 +1157,29 @@ body header.site-header {
 }
 
 .doc-camera-btn-shutter {
-  width: 64px !important;
-  height: 64px !important;
+  width: 68px !important;
+  height: 68px !important;
   border-radius: 50% !important;
   background: transparent !important;
   border: 4px solid #ffffff !important;
-  padding: 4px !important;
+  padding: 5px !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  box-shadow: 0 0 16px rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.35) !important;
   box-sizing: border-box !important;
 }
 
 .doc-camera-btn-shutter:hover {
   border-color: #48d7ff !important;
-  box-shadow: 0 0 22px rgba(72, 215, 255, 0.65) !important;
-  transform: scale(1.05) !important;
+  box-shadow: 0 0 24px rgba(72, 215, 255, 0.7) !important;
+  transform: scale(1.06) !important;
 }
 
 .doc-camera-btn-shutter:active {
-  transform: scale(0.95) !important;
+  transform: scale(0.94) !important;
 }
 
 .doc-camera-shutter-inner {
@@ -1179,7 +1209,7 @@ body header.site-header {
   align-items: center !important;
   justify-content: center !important;
   gap: 8px !important;
-  padding: 12px 16px !important;
+  padding: 12px 18px !important;
   font-weight: 700 !important;
   font-size: 0.85rem !important;
   text-transform: uppercase !important;
@@ -1212,6 +1242,26 @@ body header.site-header {
   background: #38c8f0 !important;
   box-shadow: 0 6px 20px rgba(72, 215, 255, 0.6) !important;
   transform: translateY(-1px) !important;
+}
+
+@media (max-width: 600px) {
+  .doc-camera-modal {
+    padding: 10px !important;
+  }
+  .doc-camera-modal__card {
+    border-radius: 16px !important;
+    width: 100% !important;
+  }
+  .doc-camera-viewfinder {
+    height: 320px !important;
+  }
+  .doc-camera-modal__footer {
+    padding: 14px 16px !important;
+  }
+  .doc-camera-btn-shutter {
+    width: 62px !important;
+    height: 62px !important;
+  }
 }
 
 /* =========================================================
