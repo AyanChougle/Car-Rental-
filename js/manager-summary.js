@@ -3101,6 +3101,8 @@ async function initManagerSummary() {
           loadManagerData();
         }
       });
+    }
+
     if (typeof window !== "undefined") {
       window.loadManagerSummaryData = loadManagerData;
     }
