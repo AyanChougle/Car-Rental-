@@ -1650,12 +1650,34 @@ function renderDashboard() {
       ? [...activeFleetsRoster, ...OTHER_CATALOG_FLEETS]
       : [...activeFleetsRoster];
 
+  const activeCount = activeFleetsRoster.length;
+
+  // 1. Dynamic Tab 2 button label: Fleet Performance (N Fleets)
+  const tabFleetLabel =
+    document.getElementById("mgrTabFleetLabel") ||
+    document.querySelector('button[data-mgr-tab="fleet"] span');
+  if (tabFleetLabel) {
+    tabFleetLabel.textContent = `Fleet Performance (${activeCount} Fleets)`;
+  }
+
+  // 2. Dynamic Fleet Header Title
   const fleetHeaderTitle = document.getElementById("mgrFleetHeaderTitle");
   if (fleetHeaderTitle) {
     fleetHeaderTitle.textContent =
       fleetScope === "all"
         ? `All Fleet Performance (${currentScopeRoster.length} Vehicles)`
-        : `Active Fleet Performance (${activeFleetsRoster.length} Fleets)`;
+        : `Active Fleet Performance (${activeCount} Fleets)`;
+  }
+
+  // 3. Dynamic Operations Tab Titles
+  const mgrOpsHeaderTitle = document.getElementById("mgrOpsHeaderTitle");
+  if (mgrOpsHeaderTitle) {
+    mgrOpsHeaderTitle.textContent = `Operations & ${activeCount} Fleets`;
+  }
+
+  const mgrOpsFleetGridTitle = document.getElementById("mgrOpsFleetGridTitle");
+  if (mgrOpsFleetGridTitle) {
+    mgrOpsFleetGridTitle.textContent = `Kruizly ${activeCount} Fleets Roster & Utilization`;
   }
 
   // Initialize with selected fleet roster

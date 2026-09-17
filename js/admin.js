@@ -1047,7 +1047,7 @@ function renderAdminActiveFleetRoster(activeRegs, allVehicles) {
         alert("Error resetting active fleet: " + err.message);
       } finally {
         resetBtn.disabled = false;
-        resetBtn.textContent = "Reset to Default 7 Fleets";
+        resetBtn.textContent = "Reset to Default Fleet Roster";
       }
     });
   }
