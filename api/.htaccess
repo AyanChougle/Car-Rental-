@@ -33,8 +33,8 @@
 
     # Bookings
     RewriteRule ^bookings/my-bookings/?$ bookings/my-bookings.php [L,QSA]
-    RewriteRule ^bookings/cancel/?$ bookings/cancel.php [L,QSA]
-    RewriteRule ^bookings/([^/]+)/cancel/?$ bookings/cancel.php?id=$1 [L,QSA]
+    RewriteRule ^bookings/cancel(?:\.php)?/?$ bookings/cancel.php [L,QSA]
+    RewriteRule ^bookings/([^/]+)/cancel(?:\.php)?/?$ bookings/cancel.php?id=$1 [L,QSA]
     RewriteRule ^bookings/([^/]+)/?$ bookings/detail.php?id=$1 [L,QSA]
     RewriteRule ^bookings/?$ bookings/index.php [L,QSA]
 

@@ -19,6 +19,12 @@ if (!$bookingId) {
 }
 
 if (!$bookingId) {
+    if (preg_match('#bookings/([^/]+)/cancel#i', $_SERVER['REQUEST_URI'] ?? '', $m)) {
+        $bookingId = trim(urldecode($m[1]));
+    }
+}
+
+if (!$bookingId) {
     sendErrorResponse('Booking ID is required.', 400);
 }
 
