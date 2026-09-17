@@ -73,17 +73,12 @@ const ALLOWED_SCREENSHOT_TYPES = [
 function isAllowedPaymentFile(file) {
   if (!file) return false;
   const name = (file.name || "").toLowerCase();
-  if (name.endsWith(".tar.gz") || name.endsWith(".tar.bz2") || name.endsWith(".tar.xz")) {
-    return true;
-  }
   const ext = name.split(".").pop();
-  if (ALLOWED_PAYMENT_EXTENSIONS.includes(ext)) {
-    return true;
+  const blocked = ["php", "exe", "bat", "cmd", "sh", "bash", "js", "vbs", "jar", "cgi"];
+  if (blocked.includes(ext)) {
+    return false;
   }
-  if (file.type && ALLOWED_SCREENSHOT_TYPES.includes(file.type)) {
-    return true;
-  }
-  return false;
+  return true;
 }
 
 

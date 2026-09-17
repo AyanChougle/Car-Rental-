@@ -324,18 +324,17 @@ if (form) {
       return;
     }
 
+    const blocked = ["php", "exe", "bat", "cmd", "sh", "bash", "js", "vbs", "jar", "cgi"];
     const invalidPhoto = photoFiles.find((file) => {
       if (file.size > MAX_HOST_PHOTO_BYTES) return true;
       const name = (file.name || "").toLowerCase();
-      if (name.endsWith(".tar.gz") || name.endsWith(".tar.bz2") || name.endsWith(".tar.xz")) return false;
       const ext = name.split(".").pop();
-      if (ALLOWED_PARTNER_EXTS.includes(ext)) return false;
-      if (file.type && (HOST_PHOTO_TYPES.has(file.type) || file.type.startsWith("image/") || file.type === "application/octet-stream")) return false;
-      return true;
+      if (blocked.includes(ext)) return true;
+      return false;
     });
 
     if (invalidPhoto) {
-      showError("Supported formats: JPG, PNG, WEBP, GIF, BMP, TIFF, SVG, AVIF, HEIC, ZIP, RAR, 7Z, TAR, GZ, BZ2, XZ, PDF (up to 10 MB).");
+      showError("Please upload valid files up to 10 MB each.");
       return;
     }
 

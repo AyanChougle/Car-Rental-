@@ -387,15 +387,13 @@ export function openReturnModal({ booking, currentUser, onSaved }) {
         return;
       }
 
+      const blocked = ["php", "exe", "bat", "cmd", "sh", "bash", "js", "vbs", "jar", "cgi"];
       for (const file of files) {
         const name = (file.name || "").toLowerCase();
         const ext = name.split(".").pop();
-        const isCompound = name.endsWith(".tar.gz") || name.endsWith(".tar.bz2") || name.endsWith(".tar.xz");
-        const isAllowed = isCompound || ALLOWED_INSPECTION_EXTS.includes(ext) || (file.type && RETURN_PHOTO_TYPES.includes(file.type)) || (file.type && file.type.startsWith("image/"));
-        if (!isAllowed) {
+        if (blocked.includes(ext)) {
           if (photosStatus) {
-            photosStatus.textContent =
-              "Supported formats: JPG, PNG, WEBP, GIF, BMP, TIFF, SVG, AVIF, HEIC, ZIP, RAR, 7Z, TAR, GZ, BZ2, XZ, PDF.";
+            photosStatus.textContent = "Please upload valid files.";
             photosStatus.className = "return-upload__status error";
           }
           photosInput.value = "";

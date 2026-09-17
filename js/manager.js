@@ -683,25 +683,18 @@ function initialiseExecutivePickupModal() {
       return;
     }
 
-    const ALLOWED_UPLOAD_EXTS = [
-      "jpg", "jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "svg", "avif", "heic", "heif",
-      "zip", "zipx", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "tar.gz", "tar.bz2", "tar.xz",
-      "pdf", "doc", "docx"
-    ];
-
+    const blocked = ["php", "exe", "bat", "cmd", "sh", "bash", "js", "vbs", "jar", "cgi"];
     const invalidFile = files.find((file) => {
       if (file.size > 10 * 1024 * 1024) return true;
       const name = (file.name || "").toLowerCase();
-      if (name.endsWith(".tar.gz") || name.endsWith(".tar.bz2") || name.endsWith(".tar.xz")) return false;
       const ext = name.split(".").pop();
-      if (ALLOWED_UPLOAD_EXTS.includes(ext)) return false;
-      if (file.type && (file.type.startsWith("image/") || file.type.includes("zip") || file.type.includes("tar") || file.type.includes("compressed") || file.type === "application/pdf" || file.type === "application/octet-stream")) return false;
-      return true;
+      if (blocked.includes(ext)) return true;
+      return false;
     });
 
     if (invalidFile) {
       if (status) {
-        status.textContent = "Supported formats: JPG, PNG, WEBP, GIF, BMP, TIFF, SVG, AVIF, HEIC, ZIP, RAR, 7Z, TAR, GZ, BZ2, XZ, PDF (up to 10 MB).";
+        status.textContent = "Please upload valid files up to 10 MB each.";
         status.style.color = "#ef476f";
       }
       return;

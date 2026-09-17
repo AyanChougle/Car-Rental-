@@ -11,56 +11,41 @@ require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/database.php';
 
 class FileStorageService {
-    private const ALLOWED_EXTENSIONS = [
-        // Images requested: .jpg,.jpeg,.png,.gif,.webp,.bmp,.tif,.tiff,.svg,.avif,.heic,.heif
-        'jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'tif', 'tiff', 'svg', 'avif', 'heic', 'heif',
-        // Archives requested: .zip,.zipx,.7z,.rar,.tar,.gz,.tgz,.bz2,.xz,.tar.gz,.tar.bz2,.tar.xz
-        'zip', 'zipx', '7z', 'rar', 'tar', 'gz', 'tgz', 'bz2', 'xz', 'tar.gz', 'tar.bz2', 'tar.xz',
-        // Documents
-        'pdf', 'doc', 'docx'
-    ];
-
-    private const ALLOWED_MIME_TYPES = [
-        // Images
-        'image/jpeg', 'image/pjpeg', 'image/png', 'image/x-png', 'image/webp', 'image/gif',
-        'image/bmp', 'image/x-ms-bmp', 'image/x-bmp', 'image/tiff', 'image/x-tiff',
-        'image/svg+xml', 'image/svg', 'image/avif', 'image/heic', 'image/heic-sequence',
-        'image/heif', 'image/heif-sequence',
-        // Archives / Compressed
-        'application/zip', 'application/x-zip-compressed', 'application/x-zip', 'multipart/x-zip',
-        'application/x-zipx', 'application/x-7z-compressed', 'application/x-7z',
-        'application/vnd.rar', 'application/x-rar-compressed', 'application/x-rar',
-        'application/x-tar', 'application/tar', 'application/gzip', 'application/x-gzip',
-        'application/x-compressed-tar', 'application/x-tgz',
-        'application/x-bzip2', 'application/x-bzip', 'application/bzip2',
-        'application/x-xz', 'application/octet-stream', 'binary/octet-stream',
-        // Documents
-        'application/pdf', 'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    // Blocked executable/script extensions for server security
+    private const BLOCKED_EXTENSIONS = [
+        'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phar', 'phps',
+        'exe', 'bat', 'cmd', 'sh', 'bash', 'com', 'dll', 'vbs', 'vbe', 'js', 'jse',
+        'wsf', 'wsh', 'scr', 'cpl', 'jar', 'jsp', 'asp', 'aspx', 'cgi', 'pl', 'py'
     ];
 
     public static function getMimeFromExtension(string $ext): string {
         return match(strtolower($ext)) {
-            'jpg', 'jpeg' => 'image/jpeg',
+            'jpg', 'jpeg', 'jpe', 'jfif', 'jfi', 'jif' => 'image/jpeg',
             'png' => 'image/png',
             'gif' => 'image/gif',
             'webp' => 'image/webp',
-            'bmp' => 'image/bmp',
+            'bmp', 'dib' => 'image/bmp',
             'tif', 'tiff' => 'image/tiff',
-            'svg' => 'image/svg+xml',
-            'avif' => 'image/avif',
-            'heic' => 'image/heic',
-            'heif' => 'image/heif',
-            'zip', 'zipx' => 'application/zip',
-            '7z' => 'application/x-7z-compressed',
-            'rar' => 'application/vnd.rar',
+            'svg', 'svgz' => 'image/svg+xml',
+            'avif', 'avis' => 'image/avif',
+            'heic', 'heif', 'hif', 'hvic', 'heics', 'heifs' => 'image/heic',
+            'raw', 'cr2', 'cr3', 'nef', 'arw', 'dng', 'rw2', 'orf', 'pef' => 'image/x-dcraw',
+            'zip', 'zipx', 'z' => 'application/zip',
+            '7z', 's7z' => 'application/x-7z-compressed',
+            'rar', 'rev' => 'application/vnd.rar',
             'tar' => 'application/x-tar',
-            'gz', 'tgz', 'tar.gz' => 'application/gzip',
-            'bz2', 'tar.bz2' => 'application/x-bzip2',
-            'xz', 'tar.xz' => 'application/x-xz',
+            'gz', 'gzip', 'tgz', 'tar.gz' => 'application/gzip',
+            'bz2', 'bzip2', 'tbz2', 'tbz', 'tar.bz2' => 'application/x-bzip2',
+            'xz', 'txz', 'tar.xz' => 'application/x-xz',
+            'zst', 'zstd', 'tar.zst' => 'application/zstd',
             'pdf' => 'application/pdf',
-            'doc' => 'application/msword',
-            'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'doc', 'dot', 'rtf' => 'application/msword',
+            'docx', 'dotx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls', 'xlt', 'csv' => 'application/vnd.ms-excel',
+            'xlsx', 'xltx' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'ppt', 'pot' => 'application/vnd.ms-powerpoint',
+            'pptx', 'potx' => 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'txt', 'text' => 'text/plain',
             default => 'application/octet-stream'
         };
     }
@@ -80,25 +65,29 @@ class FileStorageService {
         $origName = basename($file['name']);
         $lowerName = strtolower($origName);
         $ext = '';
-        if (preg_match('/\.tar\.(gz|bz2|xz)$/i', $lowerName, $m)) {
+        if (preg_match('/\.tar\.(gz|bz2|xz|zst)$/i', $lowerName, $m)) {
             $ext = 'tar.' . strtolower($m[1]);
         } else {
             $ext = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
         }
 
-        if (!in_array($ext, self::ALLOWED_EXTENSIONS, true)) {
-            throw new Exception("File extension '.$ext' is not allowed for security reasons.");
+        // Security check: Never allow server execution scripts
+        $singleExt = strtolower(pathinfo($origName, PATHINFO_EXTENSION));
+        if (in_array($singleExt, self::BLOCKED_EXTENSIONS, true) || in_array($ext, self::BLOCKED_EXTENSIONS, true)) {
+            throw new Exception("File type '.$ext' is restricted for security.");
         }
 
         $finfo = new finfo(FILEINFO_MIME_TYPE);
-        $mimeType = $finfo->file($file['tmp_name']);
+        $mimeType = $finfo->file($file['tmp_name']) ?: '';
 
-        if (!in_array($mimeType, self::ALLOWED_MIME_TYPES, true)) {
-            if ($mimeType === 'application/octet-stream' || $mimeType === 'binary/octet-stream' || empty($mimeType)) {
-                $mimeType = self::getMimeFromExtension($ext);
-            } else {
-                throw new Exception("Invalid MIME type '$mimeType'.");
-            }
+        // Disallow PHP / executable MIME types
+        if (str_contains($mimeType, 'php') || str_contains($mimeType, 'executable') || str_contains($mimeType, 'x-msdownload')) {
+            throw new Exception("Invalid file content type '$mimeType'.");
+        }
+
+        // Resolve canonical MIME from extension if generic or empty
+        if (empty($mimeType) || $mimeType === 'application/octet-stream' || $mimeType === 'binary/octet-stream') {
+            $mimeType = self::getMimeFromExtension($ext);
         }
 
         // Subfolder routing
