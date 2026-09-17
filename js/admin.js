@@ -8673,11 +8673,11 @@ function openAdminDayBookingsModal(dateStr) {
           <div class="day-schedule-item cal-agenda-card--${escapeHtml(b.badgeCategory)}">
             <!-- Header: Status + ID + Amount -->
             <div class="day-schedule-header">
-              <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+              <div class="day-schedule-header-left">
                 <span class="cal-status-tag cal-status-tag--${escapeHtml(b.badgeCategory)}">${statusLabel}</span>
-                <span style="font-family:monospace; font-weight:700; color:var(--kr-cyan); font-size:0.9rem;">#${escapeHtml(b.id)}</span>
+                <span class="day-schedule-bid">#${escapeHtml(b.id)}</span>
               </div>
-              <div style="font-size: 1.15rem; font-weight: 800; color: #ffffff;">
+              <div class="day-schedule-amount">
                 ₹${Number(b.totalAmount).toLocaleString("en-IN")}
               </div>
             </div>
@@ -8685,58 +8685,61 @@ function openAdminDayBookingsModal(dateStr) {
             <!-- Details Grid: Customer, Vehicle, Timeline, Payment -->
             <div class="day-schedule-grid">
               <!-- Customer Info -->
-              <div style="background: rgba(0,0,0,0.25); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="font-size: 0.75rem; color: var(--kr-text-secondary); text-transform: uppercase; margin-bottom: 4px;">Customer Details</div>
-                <strong style="color: #ffffff; font-size: 0.95rem; display:block; margin-bottom: 4px;">${escapeHtml(b.userName)}</strong>
-                ${b.userPhone ? `<div style="font-size: 0.82rem; margin-bottom: 2px;"><a href="tel:${escapeHtml(b.userPhone)}" style="color:var(--kr-cyan); text-decoration:none; display:inline-flex; align-items:center; gap:4px;"><i class="ri-phone-fill"></i> ${escapeHtml(b.userPhone)}</a></div>` : ""}
-                ${b.userEmail ? `<div style="font-size: 0.8rem;"><a href="mailto:${escapeHtml(b.userEmail)}" style="color:#a5d8ff; text-decoration:none; display:inline-flex; align-items:center; gap:4px;"><i class="ri-mail-fill"></i> ${escapeHtml(b.userEmail)}</a></div>` : ""}
+              <div class="day-schedule-box">
+                <span class="day-schedule-box-label">Customer Details</span>
+                <strong class="day-schedule-box-title">${escapeHtml(b.userName)}</strong>
+                ${b.userPhone ? `<div class="day-schedule-box-sub"><a href="tel:${escapeHtml(b.userPhone)}">📞 ${escapeHtml(b.userPhone)}</a></div>` : ""}
+                ${b.userEmail ? `<div class="day-schedule-box-sub"><a href="mailto:${escapeHtml(b.userEmail)}">✉️ ${escapeHtml(b.userEmail)}</a></div>` : ""}
               </div>
 
               <!-- Vehicle Info -->
-              <div style="background: rgba(0,0,0,0.25); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="font-size: 0.75rem; color: var(--kr-text-secondary); text-transform: uppercase; margin-bottom: 4px;">Vehicle Assigned</div>
-                <strong style="color: #ffffff; font-size: 0.95rem; display:block; margin-bottom: 4px;">${escapeHtml(b.carName)}</strong>
-                <div style="display:inline-block; font-family:monospace; background:rgba(79, 215, 255, 0.12); color:#4fd7ff; padding:2px 8px; border-radius:6px; font-size:0.8rem; border:1px solid rgba(79, 215, 255, 0.3);">
+              <div class="day-schedule-box">
+                <span class="day-schedule-box-label">Vehicle Assigned</span>
+                <strong class="day-schedule-box-title">${escapeHtml(b.carName)}</strong>
+                <div class="day-schedule-reg-badge">
                   ${escapeHtml(b.carReg || "Registration Pending")}
                 </div>
               </div>
 
               <!-- Trip Timeline -->
-              <div style="background: rgba(0,0,0,0.25); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="font-size: 0.75rem; color: var(--kr-text-secondary); text-transform: uppercase; margin-bottom: 4px;">Trip Dates & Times</div>
-                <div style="font-size: 0.82rem; color: #ffffff; margin-bottom: 4px;">
+              <div class="day-schedule-box">
+                <span class="day-schedule-box-label">Trip Dates & Times</span>
+                <div class="day-schedule-box-sub">
                   <span style="color:#06d6a0; font-weight:700;">Pickup:</span> ${formatCalDateTime(b.pickupDate)}
                 </div>
-                <div style="font-size: 0.82rem; color: #ffffff;">
+                <div class="day-schedule-box-sub">
                   <span style="color:#ffd166; font-weight:700;">Return:</span> ${formatCalDateTime(b.dropDate)}
                 </div>
               </div>
 
               <!-- Payment & Booking State -->
-              <div style="background: rgba(0,0,0,0.25); padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.05);">
-                <div style="font-size: 0.75rem; color: var(--kr-text-secondary); text-transform: uppercase; margin-bottom: 4px;">Payment & Notes</div>
-                <div style="font-size: 0.82rem; color: #ffffff; margin-bottom: 3px;">
-                  <span style="color:var(--kr-text-secondary);">Status:</span> <strong>${escapeHtml(payStatus)}</strong>
+              <div class="day-schedule-box">
+                <span class="day-schedule-box-label">Payment & Notes</span>
+                <div class="day-schedule-box-sub">
+                  <span style="color:rgba(255,255,255,0.45);">Status:</span> <strong style="color:#fff;">${escapeHtml(payStatus)}</strong>
                 </div>
-                <div style="font-size: 0.8rem; color: var(--kr-text-muted);">
+                <div class="day-schedule-box-sub" style="font-size: 0.78rem; color: #94a3b8;">
                   ${escapeHtml(payMethod)} ${payRef ? `· Ref: ${escapeHtml(payRef)}` : ""}
                 </div>
-                ${b.notes ? `<div style="font-size: 0.78rem; color: #ffd166; margin-top:3px;">Note: ${escapeHtml(b.notes)}</div>` : ""}
+                ${b.notes ? `<div style="font-size: 0.76rem; color: #ffd166; margin-top:2px;">Note: ${escapeHtml(b.notes)}</div>` : ""}
               </div>
             </div>
 
             <!-- Action Toolbar for this Booking -->
             <div class="day-schedule-actions">
-              <button type="button" class="btn btn-outline btn-sm day-modal-edit-btn" data-bid="${escapeHtml(b.id)}" style="padding: 6px 12px; font-size: 0.82rem; display:inline-flex; align-items:center; gap:5px;">
-                <i class="ri-edit-line"></i> Edit Booking
+              <button type="button" class="day-modal-btn day-modal-btn-edit day-modal-edit-btn" data-bid="${escapeHtml(b.id)}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                <span>Edit Booking</span>
               </button>
-              <button type="button" class="btn btn-primary btn-sm day-modal-inv-btn" data-bid="${escapeHtml(b.id)}" style="padding: 6px 12px; font-size: 0.82rem; display:inline-flex; align-items:center; gap:5px;">
-                <i class="ri-file-text-line"></i> Invoice
+              <button type="button" class="day-modal-btn day-modal-btn-invoice day-modal-inv-btn" data-bid="${escapeHtml(b.id)}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                <span>Invoice</span>
               </button>
-              <button type="button" class="btn btn-dark btn-sm day-modal-receipt-btn" data-bid="${escapeHtml(b.id)}" style="padding: 6px 12px; font-size: 0.82rem; display:inline-flex; align-items:center; gap:5px;">
-                <i class="ri-eye-line"></i> Receipt
+              <button type="button" class="day-modal-btn day-modal-btn-receipt day-modal-receipt-btn" data-bid="${escapeHtml(b.id)}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                <span>Receipt</span>
               </button>
-              </div>
+            </div>
           </div>
         `;
       });
