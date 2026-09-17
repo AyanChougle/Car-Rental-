@@ -907,6 +907,10 @@ async function loadAllAdminData() {
     updateBookingStats();
     updateRevenueStats();
   }
+
+  if (typeof populateAdminVehicleDropdowns === "function") {
+    populateAdminVehicleDropdowns();
+  }
 }
 
 // ============================================================================
@@ -922,6 +926,26 @@ const DEFAULT_7_ACTIVE_FLEETS = [
   { id: 7, carId: "CRP-009", regNo: "MH02FU6808", brand: "Mahindra", model: "XUV 700", year: 2026, category: "suv", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 5500, priceHour: 229, hub: "Gavson Business Park, Ghansoli", ownerName: "Saif Feroz Shaikh", acquisitionType: "Partner", acquisitionDate: "2026-08-01", available: 1, status: "available", is_active_fleet: 1 }
 ];
 const DEFAULT_ACTIVE_REGS = DEFAULT_7_ACTIVE_FLEETS.map(f => f.regNo.toUpperCase());
+
+let adminFleetVehicles = [];
+
+function getEffectiveFleetVehicles() {
+  if (Array.isArray(adminFleetVehicles) && adminFleetVehicles.length > 0) {
+    return adminFleetVehicles;
+  }
+  if (typeof getMasterCatalogVehicles === "function") {
+    const master = getMasterCatalogVehicles();
+    if (Array.isArray(master) && master.length > 0) {
+      adminFleetVehicles = master;
+      return master;
+    }
+  }
+  if (Array.isArray(DEFAULT_7_ACTIVE_FLEETS) && DEFAULT_7_ACTIVE_FLEETS.length > 0) {
+    adminFleetVehicles = [...DEFAULT_7_ACTIVE_FLEETS];
+    return adminFleetVehicles;
+  }
+  return [];
+}
 
 function normalizeActivePlate(plate) {
   const p = String(plate || "").trim().toUpperCase();
@@ -1086,6 +1110,13 @@ async function loadFleetManagement() {
         });
       }
     });
+
+    if (vehicles.length > 0) {
+      adminFleetVehicles = vehicles;
+      if (typeof populateAdminVehicleDropdowns === "function") {
+        populateAdminVehicleDropdowns();
+      }
+    }
 
     // Check localStorage for active fleet overrides
     let storedActiveRegs = null;
@@ -7958,7 +7989,7 @@ let adminCalViewMode = "grid"; // "grid" | "agenda"
 let adminCalSearchQuery = "";
 let adminCalStatusFilter = "all";
 let adminCalVehicleFilter = "all";
-let adminFleetVehicles = [];
+if (!adminFleetVehicles || !adminFleetVehicles.length) adminFleetVehicles = getEffectiveFleetVehicles();
 let activeEditingBooking = null;
 let activeDayScheduleDate = "";
 
@@ -8289,19 +8320,26 @@ export async function loadAdminCalendar() {
       });
     }
 
-    if (vehiclesRes.status === "fulfilled" && vehiclesRes.value && Array.isArray(vehiclesRes.value.vehicles)) {
+    if (vehiclesRes.status === "fulfilled" && vehiclesRes.value && Array.isArray(vehiclesRes.value.vehicles) && vehiclesRes.value.vehicles.length > 0) {
       const rawV = vehiclesRes.value.vehicles;
       const seenV = new Set();
-      adminFleetVehicles = [];
+      const loaded = [];
       rawV.forEach((v) => {
         const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase();
         const carId = String(v.carId || v.car_id || v.id || "").trim().toUpperCase();
         const key = (reg && reg !== "TBD") ? reg : carId;
         if (key && !seenV.has(key)) {
           seenV.add(key);
-          adminFleetVehicles.push(v);
+          loaded.push(v);
         }
       });
+      if (loaded.length > 0) {
+        adminFleetVehicles = loaded;
+      }
+    }
+
+    if (!adminFleetVehicles || adminFleetVehicles.length === 0) {
+      adminFleetVehicles = getEffectiveFleetVehicles();
     }
 
     populateAdminVehicleDropdowns();
@@ -8312,29 +8350,56 @@ export async function loadAdminCalendar() {
   }
 }
 
-function populateAdminVehicleDropdowns() {
+function populateAdminVehicleDropdowns(extraSelectedVehicle = null) {
   const addSelect = $("addBkVehicleSelect");
   const editSelect = $("editBkVehicleSelect");
   const calVehFilter = $("adminCalVehicleFilter");
   
+  const vehicles = getEffectiveFleetVehicles();
+
   let optionsHtml = `<option value="">-- Choose Fleet Vehicle --</option>`;
   let filterOptionsHtml = `<option value="all">All Vehicles (Fleet)</option>`;
 
-  if (adminFleetVehicles && adminFleetVehicles.length > 0) {
-    adminFleetVehicles.forEach((v) => {
+  const seenKeys = new Set();
+
+  if (vehicles && vehicles.length > 0) {
+    vehicles.forEach((v) => {
       const name = `${v.brand || ""} ${v.model || ""}`.trim() || v.name || "Car";
-      const reg = v.reg_no || v.regNo || v.id || "";
-      const price = v.price_per_day || v.price || "";
-      optionsHtml += `<option value="${escapeHtml(reg)}">${escapeHtml(name)} (${escapeHtml(reg)}) ${price ? "- ₹" + price + "/day" : ""}</option>`;
-      filterOptionsHtml += `<option value="${escapeHtml(reg || name)}">${escapeHtml(name)} (${escapeHtml(reg)})</option>`;
+      const reg = String(v.regNo || v.reg_no || v.id || "").trim();
+      const key = reg.toUpperCase().replace(/\s+/g, "");
+      if (key && !seenKeys.has(key)) {
+        seenKeys.add(key);
+        const price = v.priceDay || v.price_day || v.price_per_day || v.price || "";
+        optionsHtml += `<option value="${escapeHtml(reg)}">${escapeHtml(name)} (${escapeHtml(reg)}) ${price ? "- ₹" + price + "/day" : ""}</option>`;
+        filterOptionsHtml += `<option value="${escapeHtml(reg)}">${escapeHtml(name)} (${escapeHtml(reg)})</option>`;
+      }
     });
   }
 
-  if (addSelect) addSelect.innerHTML = optionsHtml;
-  if (editSelect) editSelect.innerHTML = optionsHtml;
+  // Preserve any assigned vehicle that might not be in the current fleet roster
+  if (extraSelectedVehicle) {
+    const extraReg = String(extraSelectedVehicle.reg || extraSelectedVehicle.carReg || "").trim();
+    const extraName = String(extraSelectedVehicle.name || extraSelectedVehicle.carName || "Assigned Vehicle").trim();
+    const extraKey = extraReg.toUpperCase().replace(/\s+/g, "");
+    if (extraReg && !seenKeys.has(extraKey)) {
+      optionsHtml += `<option value="${escapeHtml(extraReg)}">${escapeHtml(extraName)} (${escapeHtml(extraReg)})</option>`;
+    }
+  }
+
+  if (addSelect) {
+    const prev = addSelect.value;
+    addSelect.innerHTML = optionsHtml;
+    if (prev) addSelect.value = prev;
+  }
+  if (editSelect) {
+    const prev = editSelect.value;
+    editSelect.innerHTML = optionsHtml;
+    if (prev) editSelect.value = prev;
+  }
   if (calVehFilter) {
+    const prev = calVehFilter.value;
     calVehFilter.innerHTML = filterOptionsHtml;
-    calVehFilter.value = adminCalVehicleFilter;
+    calVehFilter.value = prev || adminCalVehicleFilter || "all";
   }
 }
 
@@ -8971,12 +9036,12 @@ function openAdminEditBookingModal(booking) {
   if (!booking) return;
   activeEditingBooking = booking;
 
-  populateAdminVehicleDropdowns();
-
   const rawId = booking.id || booking.bookingId || booking.bookingNumber || "";
   const cleanId = rawId.startsWith("#") ? rawId.slice(1) : rawId;
   const id = cleanId;
   const norm = normalizeCalendarBooking(booking);
+
+  populateAdminVehicleDropdowns({ reg: norm.carReg, name: norm.carName });
 
   const titleEl = $("adminEditBookingTitle");
   if (titleEl) titleEl.textContent = `Edit Booking #${cleanId}`;
@@ -8994,7 +9059,43 @@ function openAdminEditBookingModal(booking) {
   if (emailInput) emailInput.value = norm.userEmail;
 
   const vehicleSelect = $("editBkVehicleSelect");
-  if (vehicleSelect) vehicleSelect.value = norm.carReg || "";
+  if (vehicleSelect) {
+    const targetReg = String(norm.carReg || "").trim();
+    const targetKey = targetReg.toUpperCase().replace(/\s+/g, "");
+    let matched = false;
+
+    if (targetKey) {
+      for (let i = 0; i < vehicleSelect.options.length; i++) {
+        const opt = vehicleSelect.options[i];
+        const optValKey = String(opt.value || "").toUpperCase().replace(/\s+/g, "");
+        if (optValKey === targetKey || (targetKey.length >= 6 && optValKey.includes(targetKey)) || (optValKey.length >= 6 && targetKey.includes(optValKey))) {
+          vehicleSelect.selectedIndex = i;
+          matched = true;
+          break;
+        }
+      }
+    }
+
+    if (!matched && norm.carName && norm.carName !== "Vehicle") {
+      const nameKey = String(norm.carName).toUpperCase().replace(/\s+/g, "");
+      for (let i = 0; i < vehicleSelect.options.length; i++) {
+        const opt = vehicleSelect.options[i];
+        const optTextKey = String(opt.textContent || "").toUpperCase().replace(/\s+/g, "");
+        if (optTextKey.includes(nameKey) || (nameKey.length >= 4 && nameKey.includes(optTextKey))) {
+          vehicleSelect.selectedIndex = i;
+          matched = true;
+          break;
+        }
+      }
+    }
+
+    if (!matched && (targetReg || (norm.carName && norm.carName !== "Vehicle"))) {
+      const optVal = targetReg || norm.carName;
+      const optText = `${norm.carName || "Vehicle"} (${targetReg || "Assigned"})`;
+      const opt = new Option(optText, optVal, true, true);
+      vehicleSelect.add(opt);
+    }
+  }
 
   const pickupInput = $("editBkPickupDate");
   if (pickupInput && norm.pickupDate) pickupInput.value = formatInputDateTime(norm.pickupDate);
@@ -9051,6 +9152,7 @@ async function handleAdminSaveEditBooking(e) {
       hideModal("adminEditBookingModal");
       await loadAdminCalendar();
       if (typeof loadBookings === "function") loadBookings();
+      if (typeof loadKpiStats === "function") loadKpiStats();
     } else {
       alert("Could not update booking: " + (res?.message || "Unknown error"));
     }
@@ -9082,6 +9184,7 @@ async function handleAdminCancelBookingAction() {
       hideModal("adminEditBookingModal");
       await loadAdminCalendar();
       if (typeof loadBookings === "function") loadBookings();
+      if (typeof loadKpiStats === "function") loadKpiStats();
     } else {
       alert("Could not cancel booking: " + (res?.message || "Unknown error"));
     }
@@ -9107,6 +9210,7 @@ async function handleAdminDeleteBookingAction() {
       hideModal("adminEditBookingModal");
       renderAdminCalendarView();
       if (typeof loadBookings === "function") loadBookings();
+      if (typeof loadKpiStats === "function") loadKpiStats();
       alert(`Booking #${id.slice(0, 8)} has been permanently deleted.`);
     } else {
       alert("Could not delete booking: " + (res?.message || "Unknown error"));
