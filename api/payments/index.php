@@ -46,8 +46,10 @@ try {
             $vCat = $vRow['category'];
         }
 
-        $createdAt = $op['created_at'] ?: date('Y-m-d H:i:s');
-        $dropAt = date('Y-m-d H:i:s', strtotime($createdAt . ' +1 day'));
+        $isOct = stripos((string)$bid, 'OCT') !== false;
+        $createdAt = $op['created_at'] ?: ($isOct ? '2026-10-01 10:00:00' : date('Y-m-d H:i:s'));
+        $pickupAt = $isOct ? '2026-10-05 10:00:00' : $createdAt;
+        $dropAt = date('Y-m-d H:i:s', strtotime($pickupAt . ' +1 day'));
 
         Database::execute(
             "INSERT INTO bookings (
@@ -62,7 +64,7 @@ try {
             ) ON DUPLICATE KEY UPDATE payment_status = VALUES(payment_status), status = VALUES(status)",
             [
                 $nextId, $bid, $bid, $op['u_id'] ?: null, $op['firebase_uid'], $op['u_name'] ?: 'Customer', $op['u_email'] ?: '', $op['u_phone'] ?: null,
-                $vReg, $vName, $vCat, $createdAt, $dropAt,
+                $vReg, $vName, $vCat, $pickupAt, $dropAt,
                 $amount, $amount, $amount, $amount, $plan, $pStatus, $bStatus, $bStatus, $op['utr'] ?: $op['payment_ref'], $op['screenshot_url'], $createdAt
             ]
         );

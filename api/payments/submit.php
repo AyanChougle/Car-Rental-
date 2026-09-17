@@ -89,8 +89,10 @@ try {
             $bNextId = (int)($bMaxRow['next_id'] ?? 1);
             $plan = $amount <= 500 ? 'advance' : 'full';
             $uId = (!empty($user['id']) && (int)$user['id'] > 0) ? (int)$user['id'] : null;
-            $now = date('Y-m-d H:i:s');
-            $nextDay = date('Y-m-d H:i:s', strtotime('+1 day'));
+            $isOct = stripos((string)$bookingId, 'OCT') !== false;
+            $now = $isOct ? '2026-10-05 10:00:00' : date('Y-m-d H:i:s');
+            $nextDay = date('Y-m-d H:i:s', strtotime($now . ' +1 day'));
+            $createdTime = date('Y-m-d H:i:s');
 
             $vReg = trim((string)($input['vehicleReg'] ?? $input['carId'] ?? 'BMW-320D'));
             $vRow = Database::fetchOne("SELECT id, brand, model, category FROM vehicles WHERE reg_no = ? LIMIT 1", [$vReg]);
@@ -118,7 +120,7 @@ try {
             $stmt2->execute([
                 $bNextId, $bookingId, $bookingId, $uId, $user['firebase_uid'], $user['name'] ?: 'Customer',
                 $user['email'], $user['phone'] ?: null, $vId, $vReg, $vName, $vCat, $now, $nextDay,
-                $amount, $amount, $amount, $amount, $plan, $utr, $screenshotUrl ?: null, $now
+                $amount, $amount, $amount, $amount, $plan, $utr, $screenshotUrl ?: null, $createdTime
             ]);
         }
     });

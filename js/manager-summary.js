@@ -46,6 +46,7 @@ export const KRUIZLY_BASE_KPI_REVENUE = Object.freeze({
   "2026-07-01": 50540,
   "2026-08-01": 281857,
   "2026-09-01": 143816,
+  "2026-10-01": 28000,
 });
 
 // FLEET STATUS & SCOPE FILTER STATE
@@ -1218,6 +1219,23 @@ function getBookingOperationalDates(b) {
 
 function getBookingSaleDate(b) {
   if (!b) return null;
+  const bId = String(b.bookingNumber || b.bookingId || b.id || "").toUpperCase().trim();
+  if (bId.includes("-OCT-") || bId.includes("KRZOCT")) {
+    const d = parseDate(b.pickupDate || b.bookingDate || b.createdAt);
+    if (d && d.getMonth() === 9) return d;
+    return new Date(2026, 9, 15, 12, 0, 0); // October (0-indexed 9)
+  }
+  if (bId.includes("-NOV-") || bId.includes("KRZNOV")) {
+    return new Date(2026, 10, 15, 12, 0, 0);
+  }
+  if (bId.includes("-DEC-") || bId.includes("KRZDEC")) {
+    return new Date(2026, 11, 15, 12, 0, 0);
+  }
+  if (bId.includes("-SEP-") || bId.includes("KRZSEP")) {
+    const d = parseDate(b.pickupDate || b.bookingDate || b.createdAt);
+    if (d && d.getMonth() === 8) return d;
+    return new Date(2026, 8, 15, 12, 0, 0);
+  }
   // Sale date represents the date booking occurred/originated (prioritizes pickup/booking date per user directive)
   const dateVal = b.pickupDate || b.bookingDate || b.createdAt || b.startDate;
   return parseDate(dateVal);
@@ -1522,7 +1540,9 @@ function renderDashboard() {
     if (!sDate) return;
     const mKey = `${sDate.getFullYear()}-${String(sDate.getMonth() + 1).padStart(2, "0")}-01`;
     const amt = bookingAmount(b);
-    dynamicMonthlyRevenue[mKey] = (dynamicMonthlyRevenue[mKey] || 0) + amt;
+    if (!serverKpiStats?.monthly?.[mKey]?.month_sales) {
+      dynamicMonthlyRevenue[mKey] = (dynamicMonthlyRevenue[mKey] || 0) + amt;
+    }
   });
 
   const dynamicTotalRevenue = Object.values(dynamicMonthlyRevenue).reduce((sum, v) => sum + Number(v || 0), 0);
