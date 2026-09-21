@@ -18,7 +18,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 
 import { api } from "./kruizly-api.js?v=20260917-v1";
-import { initDynamicNav } from "./nav-helper.js?v=20260908-v5";
+import { initDynamicNav } from "./nav-helper.js?v=20260921-v2";
 
 // ============================================================
 // STATE & STORAGE
@@ -337,18 +337,24 @@ function wirePasswordToggles() {
     const btn = box.querySelector(".toggle-password");
     if (!btn || !input) return;
 
-    btn.setAttribute("aria-pressed", "false");
-    btn.setAttribute("aria-label", "Show password");
-    btn.textContent = "show";
+    btn.setAttribute("aria-pressed", input.type === "text" ? "true" : "false");
+    btn.setAttribute("aria-label", input.type === "text" ? "Hide password" : "Show password");
+    btn.textContent = input.type === "text" ? "hide" : "show";
+
+    // Avoid duplicate listeners
+    if (btn.dataset.wiredToggle === "true") return;
+    btn.dataset.wiredToggle = "true";
 
     btn.addEventListener("click", (e) => {
       e.preventDefault();
-      const isHidden = input.type === "password";
-      input.type = isHidden ? "text" : "password";
+      e.stopPropagation();
+      const isHidden = input.type === "password" || input.getAttribute("type") === "password";
+      const nextType = isHidden ? "text" : "password";
+      input.type = nextType;
+      input.setAttribute("type", nextType);
       btn.textContent = isHidden ? "hide" : "show";
       btn.setAttribute("aria-pressed", String(isHidden));
       btn.setAttribute("aria-label", isHidden ? "Hide password" : "Show password");
-      input.focus({ preventScroll: true });
     });
   });
 }

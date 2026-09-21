@@ -103,4 +103,24 @@
 
   // Enhance selects helper (no-op: native selects are styled natively via glass CSS)
   window.enhanceKruizlySelects = () => {};
+
+  // Global Password Visibility Toggle
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.toggle-password');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+
+    const box = btn.closest('.password-box') || btn.parentElement;
+    const input = box ? box.querySelector('input') : null;
+    if (!input) return;
+
+    const isPassword = input.type === 'password' || input.getAttribute('type') === 'password';
+    const newType = isPassword ? 'text' : 'password';
+    input.type = newType;
+    input.setAttribute('type', newType);
+    btn.textContent = isPassword ? 'hide' : 'show';
+    btn.setAttribute('aria-pressed', String(isPassword));
+    btn.setAttribute('aria-label', isPassword ? 'Hide password' : 'Show password');
+  });
 })();

@@ -2,7 +2,7 @@
 import { auth } from "./firebase-init.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.17.0/firebase-auth.js";
 import { api } from "./kruizly-api.js?v=20260917-v1";
-import { isAdminUser, getStoredUser } from "./auth.js?v=20260908-v5";
+import { isAdminUser, getStoredUser } from "./auth.js?v=20260921-v2";
 
 export function initDynamicNav() {
   const currentPath = window.location.pathname.split("/").pop() || "index.html";

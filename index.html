@@ -698,10 +698,30 @@
           pEl.min = nowStr;
           dEl.min = nowStr;
         }
+
+        // Instant Bulletproof Password Visibility Toggle
+        document.addEventListener("click", (e) => {
+          const btn = e.target.closest(".toggle-password");
+          if (!btn) return;
+          e.preventDefault();
+          e.stopPropagation();
+
+          const box = btn.closest(".password-box");
+          const input = box ? box.querySelector("input") : null;
+          if (!input) return;
+
+          const isPassword = input.type === "password" || input.getAttribute("type") === "password";
+          const newType = isPassword ? "text" : "password";
+          input.type = newType;
+          input.setAttribute("type", newType);
+          btn.textContent = isPassword ? "hide" : "show";
+          btn.setAttribute("aria-pressed", String(isPassword));
+          btn.setAttribute("aria-label", isPassword ? "Hide password" : "Show password");
+        });
       })();
     </script>
-    <script type="module" src="js/auth.js?v=20260917-v1"></script>
-    <script src="js/glass-ui.js?v=20260917-v1"></script>
-    <script src="js/kruizly-motion.js?v=20260917-v1"></script>
+    <script type="module" src="js/auth.js?v=20260921-v2"></script>
+    <script src="js/glass-ui.js?v=20260921-v2"></script>
+    <script src="js/kruizly-motion.js?v=20260921-v2"></script>
   </body>
 </html>

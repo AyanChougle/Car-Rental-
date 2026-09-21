@@ -3321,21 +3321,25 @@ input.flatpickr-input:focus,
   transform: translateY(-50%) !important;
   background: transparent !important;
   border: none !important;
-  color: rgba(255, 255, 255, 0.7) !important;
+  color: rgba(255, 255, 255, 0.75) !important;
   font-size: 0.7rem !important;
   font-weight: 800 !important;
   letter-spacing: 0.12em !important;
   text-transform: uppercase !important;
-  padding: 4px !important;
+  padding: 6px 8px !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
   box-shadow: none !important;
+  z-index: 10 !important;
+  pointer-events: auto !important;
+  user-select: none !important;
+  touch-action: manipulation !important;
 }
 
 .toggle-password:hover,
 .toggle-password:focus {
-  color: #ffffff !important;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.8) !important;
+  color: #4fd7ff !important;
+  text-shadow: 0 0 10px rgba(79, 215, 255, 0.6) !important;
 }
 
 .auth-options {
