@@ -111,6 +111,12 @@ try {
         }
     });
 
+    // Automated KPI metrics sync into MySQL kpi_metrics table
+    try {
+        require_once __DIR__ . '/../services/KpiService.php';
+        KpiService::syncMetrics();
+    } catch (Throwable $_) {}
+
     sendJsonResponse([
         'success' => true,
         'message' => "Payment successfully marked as " . ($action === 'approve' ? 'Approved & Confirmed' : 'Rejected') . "."

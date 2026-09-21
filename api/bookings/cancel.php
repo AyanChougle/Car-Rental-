@@ -132,6 +132,12 @@ try {
         )->execute([$bid, $bNum]);
     });
 
+    // Automated KPI metrics sync into MySQL kpi_metrics table
+    try {
+        require_once __DIR__ . '/../services/KpiService.php';
+        KpiService::syncMetrics();
+    } catch (Throwable $_) {}
+
     sendJsonResponse([
         'success' => true,
         'message' => "Booking {$bid} cancelled. Status marked as Refunded and fleet inventory released.",
