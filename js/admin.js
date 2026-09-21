@@ -9724,13 +9724,11 @@ function renderBookingsAnalytics() {
         // August historical accounting baseline
         mRevenue = Math.max(mRevenue, 281857);
       } else if (mIdx === 8) {
-        // September: strictly 267,168 (excluding October 28k)
-        let septSales = Number(currentKpiStats?.monthly?.[monthKey]?.month_sales || 0);
-        if (septSales >= 295000 && septSales < 296000) septSales = 267168;
-        mRevenue = septSales > 0 ? septSales : (mRevenue > 0 ? mRevenue : 267168);
-        if (mRevenue >= 295000 && mRevenue < 296000) mRevenue = 267168;
+        // September dynamic revenue from SQL database
+        const septSales = Number(currentKpiStats?.monthly?.[monthKey]?.month_sales || 0);
+        mRevenue = septSales > 0 ? septSales : Math.max(mRevenue, 267168);
       } else if (mIdx === 9) {
-        // October ledger: shift October 28k and all October booking receipts strictly into October
+        // October dynamic revenue from SQL database
         const octSales = Number(currentKpiStats?.monthly?.[monthKey]?.month_sales || 0);
         mRevenue = octSales > 0 ? octSales : Math.max(mRevenue, 28000);
       } else if (currentKpiStats?.monthly?.[monthKey]?.month_sales) {

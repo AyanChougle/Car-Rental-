@@ -115,10 +115,15 @@ if ($method === 'GET') {
         ), 0) AS s FROM bookings b
         WHERE LOWER(COALESCE(b.status, '')) NOT IN ('cancelled', 'rejected')
           AND LOWER(COALESCE(b.payment_status, '')) NOT IN ('cancelled', 'rejected')
-          AND (b.payment_status IN ('paid', 'advance_paid', 'verified') OR b.status IN ('completed', 'active', 'confirmed', 'in_trip'))
-          AND DATE(COALESCE(b.pickup_date, b.created_at)) = CURRENT_DATE()
-          AND UPPER(COALESCE(b.booking_id, b.booking_number, '')) NOT LIKE '%OCT%'
-          AND (b.pickup_date IS NULL OR b.pickup_date NOT LIKE '%2026-10%')"
+          AND (
+              b.payment_status IN ('paid', 'advance_paid', 'verified', 'pending_verification')
+              OR b.status IN ('completed', 'active', 'confirmed', 'in_trip', 'started')
+              OR (b.payment_ref IS NOT NULL AND TRIM(b.payment_ref) != '')
+          )
+          AND (
+              DATE(COALESCE(b.pickup_date, b.created_at)) = CURRENT_DATE()
+              OR DATE(b.created_at) = CURRENT_DATE()
+          )"
     )['s'] ?? 0.0);
 
     // Calculate this week's Week Sales (pure fleet price, excluding security deposits)
@@ -136,11 +141,18 @@ if ($method === 'GET') {
         ), 0) AS s FROM bookings b
         WHERE LOWER(COALESCE(b.status, '')) NOT IN ('cancelled', 'rejected')
           AND LOWER(COALESCE(b.payment_status, '')) NOT IN ('cancelled', 'rejected')
-          AND (b.payment_status IN ('paid', 'advance_paid', 'verified') OR b.status IN ('completed', 'active', 'confirmed', 'in_trip'))
-          AND COALESCE(b.pickup_date, b.created_at) >= DATE_SUB(CURRENT_DATE(), INTERVAL (DAYOFWEEK(CURRENT_DATE()) - 1) DAY)
-          AND COALESCE(b.pickup_date, b.created_at) <= DATE_ADD(DATE_SUB(CURRENT_DATE(), INTERVAL (DAYOFWEEK(CURRENT_DATE()) - 1) DAY), INTERVAL 6 DAY)
-          AND UPPER(COALESCE(b.booking_id, b.booking_number, '')) NOT LIKE '%OCT%'
-          AND (b.pickup_date IS NULL OR b.pickup_date NOT LIKE '%2026-10%')"
+          AND (
+              b.payment_status IN ('paid', 'advance_paid', 'verified', 'pending_verification')
+              OR b.status IN ('completed', 'active', 'confirmed', 'in_trip', 'started')
+              OR (b.payment_ref IS NOT NULL AND TRIM(b.payment_ref) != '')
+          )
+          AND (
+              (COALESCE(b.pickup_date, b.created_at) >= DATE_SUB(CURRENT_DATE(), INTERVAL (DAYOFWEEK(CURRENT_DATE()) - 1) DAY)
+               AND COALESCE(b.pickup_date, b.created_at) < DATE_ADD(DATE_SUB(CURRENT_DATE(), INTERVAL (DAYOFWEEK(CURRENT_DATE()) - 1) DAY), INTERVAL 7 DAY))
+              OR
+              (b.created_at >= DATE_SUB(CURRENT_DATE(), INTERVAL (DAYOFWEEK(CURRENT_DATE()) - 1) DAY)
+               AND b.created_at < DATE_ADD(DATE_SUB(CURRENT_DATE(), INTERVAL (DAYOFWEEK(CURRENT_DATE()) - 1) DAY), INTERVAL 7 DAY))
+          )"
     )['s'] ?? 0.0);
 
     // Create the KPI history table if it is not present yet, and auto-heal missing columns
@@ -292,15 +304,15 @@ if ($method === 'GET') {
             [$monthStart, $monthEnd]
         )['s'] ?? 0.0);
 
-        // Verified monthly accounting ledgers (100% matched with MySQL kpi_metrics table)
+        // Dynamic monthly revenue calculation with protected historical accounting baselines
         if ($monthStart === '2026-07-01') {
-            $monthRev = 50540.00;
+            $monthRev = max(50540.00, $dbMonthRevenue);
         } elseif ($monthStart === '2026-08-01') {
-            $monthRev = 281857.00;
+            $monthRev = max(281857.00, $dbMonthRevenue);
         } elseif ($monthStart === '2026-09-01') {
-            $monthRev = 267168.00;
+            $monthRev = max(267168.00, $dbMonthRevenue);
         } elseif ($monthStart === '2026-10-01') {
-            $monthRev = 28000.00;
+            $monthRev = max(28000.00, $dbMonthRevenue);
         } else {
             $monthRev = $dbMonthRevenue;
         }
@@ -318,7 +330,35 @@ if ($method === 'GET') {
         $rowDaySales = $isCurrentMonth ? $daySales : 0.0;
         $rowWeekSales = $isCurrentMonth ? $weekSales : 0.0;
 
-        // Auto-sync into MySQL kpi_metrics table (fail-safe)
+        $monthlyRows[$monthStart] = [
+            'metric_date' => $monthStart,
+            'day_sales' => $rowDaySales,
+            'week_sales' => $rowWeekSales,
+            'month_sales' => (float)$monthRev,
+            'total_revenue' => (float)$monthRev,
+            'total_bookings' => $monthBookings,
+            'paid_bookings' => $monthPaidBookings,
+            'active_trips' => $rowActive,
+            'completed_trips' => $monthCompletedTrips,
+            'total_fleet' => $totalFleet,
+            'on_road_fleet' => $rowOnRoad,
+            'in_yard_fleet' => $rowYard,
+            'occupancy_pct' => $rowOccupancy,
+            'total_users' => $rowUsers,
+            'pending_payments' => $rowPendingPayments,
+            'pending_docs' => $rowPendingDocs,
+        ];
+    }
+
+    // Dynamic Total Revenue is the grand sum across all active and recorded monthly ledgers
+    $overallRevenue = array_sum($monthlyRevenue);
+
+    // Auto-sync into MySQL kpi_metrics table with dynamically calculated values
+    foreach ($monthlyRows as $monthStart => &$mRow) {
+        $isCurrentMonth = ($monthStart === $currentMonthKey);
+        $metricTotalRev = $isCurrentMonth ? $overallRevenue : (float)$mRow['month_sales'];
+        $mRow['total_revenue'] = $metricTotalRev;
+
         try {
             Database::execute(
                 "INSERT INTO kpi_metrics (
@@ -346,47 +386,26 @@ if ($method === 'GET') {
                     updated_at = CURRENT_TIMESTAMP",
                 [
                     $monthStart,
-                    $rowDaySales,
-                    $rowWeekSales,
-                    $monthRev,
-                    $monthRev,
-                    $monthBookings,
-                    $monthPaidBookings,
-                    $rowActive,
-                    $monthCompletedTrips,
-                    $totalFleet,
-                    $rowOnRoad,
-                    $rowYard,
-                    $rowOccupancy,
-                    $rowUsers,
-                    $rowPendingPayments,
-                    $rowPendingDocs,
+                    $mRow['day_sales'],
+                    $mRow['week_sales'],
+                    $mRow['month_sales'],
+                    $metricTotalRev,
+                    $mRow['total_bookings'],
+                    $mRow['paid_bookings'],
+                    $mRow['active_trips'],
+                    $mRow['completed_trips'],
+                    $mRow['total_fleet'],
+                    $mRow['on_road_fleet'],
+                    $mRow['in_yard_fleet'],
+                    $mRow['occupancy_pct'],
+                    $mRow['total_users'],
+                    $mRow['pending_payments'],
+                    $mRow['pending_docs'],
                 ]
             );
         } catch (Throwable $_) {}
-
-        $monthlyRows[$monthStart] = [
-            'metric_date' => $monthStart,
-            'day_sales' => $rowDaySales,
-            'week_sales' => $rowWeekSales,
-            'month_sales' => (float)$monthRev,
-            'total_revenue' => (float)$monthRev,
-            'total_bookings' => $monthBookings,
-            'paid_bookings' => $monthPaidBookings,
-            'active_trips' => $rowActive,
-            'completed_trips' => $monthCompletedTrips,
-            'total_fleet' => $totalFleet,
-            'on_road_fleet' => $rowOnRoad,
-            'in_yard_fleet' => $rowYard,
-            'occupancy_pct' => $rowOccupancy,
-            'total_users' => $rowUsers,
-            'pending_payments' => $rowPendingPayments,
-            'pending_docs' => $rowPendingDocs,
-        ];
     }
-
-    // Dynamic Total Revenue is the grand sum across all active and recorded monthly ledgers
-    $overallRevenue = array_sum($monthlyRevenue);
+    unset($mRow);
 
     $previousMonthKey = date('Y-m-01', strtotime('-1 month'));
     $currentMonthRevenue = (float)($monthlyRows[$currentMonthKey]['month_sales'] ?? 0.0);

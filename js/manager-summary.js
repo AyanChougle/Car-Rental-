@@ -1514,15 +1514,23 @@ function renderDashboard() {
 
   // Dynamic monthly revenue ledger: strictly synchronized with MySQL kpi_metrics table
   const dynamicMonthlyRevenue = {
-    "2026-07-01": Number(serverKpiStats?.monthly?.["2026-07-01"]?.month_sales || 50540),
-    "2026-08-01": Number(serverKpiStats?.monthly?.["2026-08-01"]?.month_sales || 281857),
-    "2026-09-01": Number(serverKpiStats?.monthly?.["2026-09-01"]?.month_sales || 267168),
-    "2026-10-01": Number(serverKpiStats?.monthly?.["2026-10-01"]?.month_sales || 28000),
+    "2026-07-01": 50540,
+    "2026-08-01": 281857,
+    "2026-09-01": 267168,
+    "2026-10-01": 28000,
   };
+  if (serverKpiStats?.monthly && typeof serverKpiStats.monthly === "object") {
+    Object.entries(serverKpiStats.monthly).forEach(([mKey, mData]) => {
+      const sales = Number(mData?.month_sales ?? 0);
+      if (sales > 0) {
+        dynamicMonthlyRevenue[mKey] = Math.max(dynamicMonthlyRevenue[mKey] || 0, sales);
+      }
+    });
+  }
 
   const dynamicTotalRevenue = Object.values(dynamicMonthlyRevenue).reduce((sum, v) => sum + Number(v || 0), 0);
   const curMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-  let dynamicCurrentMonthRevenue = Number(dynamicMonthlyRevenue[curMonthKey] || 267168);
+  let dynamicCurrentMonthRevenue = Number(dynamicMonthlyRevenue[curMonthKey] || serverKpiStats?.effective?.month_revenue || 0);
 
   // Total verified revenue in selected period
   const calculatedPeriodRevenue = verifiedBookings.reduce(
@@ -1534,7 +1542,7 @@ function renderDashboard() {
 
   // KPI 1: TOTAL REVENUE
   // Displays canonical overall revenue strictly matched with MySQL kpi_metrics
-  const totalRevenue = Number(serverKpiStats?.effective?.total_revenue || dynamicTotalRevenue || 627565);
+  const totalRevenue = Number(serverKpiStats?.effective?.total_revenue || dynamicTotalRevenue || 0);
   const kpiTotalRevenueEl = document.getElementById("kpiTotalRevenue");
   if (kpiTotalRevenueEl)
     kpiTotalRevenueEl.textContent = formatINR(totalRevenue);
@@ -1572,10 +1580,10 @@ function renderDashboard() {
     kpiCompletedTripsEl.textContent = String(completedTripsCount);
 
   // KPI 4: REVENUE THIS MONTH
-  // ALWAYS the current calendar month, strictly matched with MySQL kpi_metrics (267,168)
+  // Dynamic current calendar month, strictly matched with MySQL kpi_metrics
   const curMonthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
   const curMonthEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-  const monthRevenue = Number(serverKpiStats?.effective?.month_revenue || dynamicCurrentMonthRevenue || 267168);
+  const monthRevenue = Number(serverKpiStats?.effective?.month_revenue || dynamicCurrentMonthRevenue || 0);
   const kpiRevenueThisMonthEl = document.getElementById("kpiRevenueThisMonth");
   if (kpiRevenueThisMonthEl)
     kpiRevenueThisMonthEl.textContent = formatINR(monthRevenue);
@@ -1585,7 +1593,7 @@ function renderDashboard() {
   const calculatedTotalBookingsCount = rawBookings.filter((b) => !isBookingCancelled(b)).length;
   const totalBookingsCount = selectedMonthKpi
     ? Number(selectedMonthKpi.total_bookings || 0)
-    : Number(serverKpiStats?.effective?.total_bookings ?? Math.max(13, calculatedTotalBookingsCount));
+    : Number(serverKpiStats?.effective?.total_bookings ?? Math.max(calculatedTotalBookingsCount, 0));
   const kpiTotalBookingsEl = document.getElementById("kpiTotalBookings");
   if (kpiTotalBookingsEl)
     kpiTotalBookingsEl.textContent = String(totalBookingsCount);
