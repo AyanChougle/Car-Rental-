@@ -82,68 +82,96 @@ export function matchBookingToFleet(b) {
   // 1. Direct ID / registration / carId match on active roster
   for (const f of activeFleetsRoster) {
     const fId = f.id;
-    const fReg = String(f.regNo || "").toUpperCase().replace(/[\s\-_]/g, "");
-    const fCarId = String(f.carId || "").toUpperCase().trim();
+    const fReg = String(f.regNo || "")
+      .toUpperCase()
+      .replace(/[\s\-_]/g, "");
+    const fCarId = String(f.carId || "")
+      .toUpperCase()
+      .trim();
 
     if (vehIdRaw && fId && String(vehIdRaw) === String(fId)) {
-      return f.regNo || f.carId || (`VEH-${f.id}`);
+      return f.regNo || f.carId || `VEH-${f.id}`;
     }
     if (carIdRaw && fCarId && carIdRaw === fCarId) {
-      return f.regNo || f.carId || (`VEH-${f.id}`);
+      return f.regNo || f.carId || `VEH-${f.id}`;
     }
     if (regRaw && fReg) {
       if (regRaw === fReg || regRaw.includes(fReg) || fReg.includes(regRaw)) {
-        return f.regNo || f.carId || (`VEH-${f.id}`);
+        return f.regNo || f.carId || `VEH-${f.id}`;
       }
-      const rSimp = regRaw.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
-      const fSimp = fReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+      const rSimp = regRaw
+        .replace(/[CG]/g, "C")
+        .replace(/[UY]/g, "U")
+        .replace(/[FL]/g, "F");
+      const fSimp = fReg
+        .replace(/[CG]/g, "C")
+        .replace(/[UY]/g, "U")
+        .replace(/[FL]/g, "F");
       if (rSimp === fSimp || rSimp.includes(fSimp) || fSimp.includes(rSimp)) {
-        return f.regNo || f.carId || (`VEH-${f.id}`);
+        return f.regNo || f.carId || `VEH-${f.id}`;
       }
     }
   }
 
   // 2. Keyword match on car name & fleet details within active roster
   for (const f of activeFleetsRoster) {
-    const fModel = String(f.model || "").toUpperCase().trim();
-    const fBrand = String(f.brand || "").toUpperCase().trim();
+    const fModel = String(f.model || "")
+      .toUpperCase()
+      .trim();
+    const fBrand = String(f.brand || "")
+      .toUpperCase()
+      .trim();
     if (fModel && nameRaw.includes(fModel)) {
-      return f.regNo || f.carId || (`VEH-${f.id}`);
+      return f.regNo || f.carId || `VEH-${f.id}`;
     }
     if (fBrand && fBrand.length >= 3 && nameRaw.includes(fBrand)) {
-      return f.regNo || f.carId || (`VEH-${f.id}`);
+      return f.regNo || f.carId || `VEH-${f.id}`;
     }
   }
 
   // 3. Fallback matching across all catalog vehicles from database
   for (const f of rawVehicles) {
     const fId = f.id;
-    const fReg = String(f.regNo || f.reg_no || "").toUpperCase().replace(/[\s\-_]/g, "");
-    const fCarId = String(f.carId || f.car_id || "").toUpperCase().trim();
-    const fModel = String(f.model || "").toUpperCase().trim();
-    const fBrand = String(f.brand || "").toUpperCase().trim();
+    const fReg = String(f.regNo || f.reg_no || "")
+      .toUpperCase()
+      .replace(/[\s\-_]/g, "");
+    const fCarId = String(f.carId || f.car_id || "")
+      .toUpperCase()
+      .trim();
+    const fModel = String(f.model || "")
+      .toUpperCase()
+      .trim();
+    const fBrand = String(f.brand || "")
+      .toUpperCase()
+      .trim();
 
     if (vehIdRaw && fId && String(vehIdRaw) === String(fId)) {
-      return f.regNo || f.carId || (`VEH-${f.id}`);
+      return f.regNo || f.carId || `VEH-${f.id}`;
     }
     if (carIdRaw && fCarId && carIdRaw === fCarId) {
-      return f.regNo || f.carId || (`VEH-${f.id}`);
+      return f.regNo || f.carId || `VEH-${f.id}`;
     }
     if (regRaw && fReg) {
       if (regRaw === fReg || regRaw.includes(fReg) || fReg.includes(regRaw)) {
-        return f.regNo || f.carId || (`VEH-${f.id}`);
+        return f.regNo || f.carId || `VEH-${f.id}`;
       }
-      const rSimp = regRaw.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
-      const fSimp = fReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+      const rSimp = regRaw
+        .replace(/[CG]/g, "C")
+        .replace(/[UY]/g, "U")
+        .replace(/[FL]/g, "F");
+      const fSimp = fReg
+        .replace(/[CG]/g, "C")
+        .replace(/[UY]/g, "U")
+        .replace(/[FL]/g, "F");
       if (rSimp === fSimp || rSimp.includes(fSimp) || fSimp.includes(rSimp)) {
-        return f.regNo || f.carId || (`VEH-${f.id}`);
+        return f.regNo || f.carId || `VEH-${f.id}`;
       }
     }
     if (fModel && nameRaw.includes(fModel)) {
-      return f.regNo || f.carId || (`VEH-${f.id}`);
+      return f.regNo || f.carId || `VEH-${f.id}`;
     }
     if (fBrand && fBrand.length >= 3 && nameRaw.includes(fBrand)) {
-      return f.regNo || f.carId || (`VEH-${f.id}`);
+      return f.regNo || f.carId || `VEH-${f.id}`;
     }
   }
 
@@ -151,7 +179,8 @@ export function matchBookingToFleet(b) {
 }
 
 export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
-  if (!vehicleOrReg || !Array.isArray(bookings) || bookings.length === 0) return false;
+  if (!vehicleOrReg || !Array.isArray(bookings) || bookings.length === 0)
+    return false;
 
   let targetReg = "";
   let targetCarId = "";
@@ -159,12 +188,25 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
   let targetBrand = "";
 
   if (typeof vehicleOrReg === "string") {
-    targetReg = vehicleOrReg.trim().toUpperCase().replace(/[\s\-_]/g, "");
+    targetReg = vehicleOrReg
+      .trim()
+      .toUpperCase()
+      .replace(/[\s\-_]/g, "");
   } else if (typeof vehicleOrReg === "object" && vehicleOrReg !== null) {
-    targetReg = String(vehicleOrReg.regNo || vehicleOrReg.reg_no || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
-    targetCarId = String(vehicleOrReg.carId || vehicleOrReg.car_id || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
-    targetModel = String(vehicleOrReg.model || "").trim().toUpperCase();
-    targetBrand = String(vehicleOrReg.brand || "").trim().toUpperCase();
+    targetReg = String(vehicleOrReg.regNo || vehicleOrReg.reg_no || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[\s\-_]/g, "");
+    targetCarId = String(vehicleOrReg.carId || vehicleOrReg.car_id || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[\s\-_]/g, "");
+    targetModel = String(vehicleOrReg.model || "")
+      .trim()
+      .toUpperCase();
+    targetBrand = String(vehicleOrReg.brand || "")
+      .trim()
+      .toUpperCase();
   }
 
   // Safety check: if no registration, carId, or model, cannot match
@@ -175,13 +217,24 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
   return bookings.some((b) => {
     if (isBookingCancelled(b)) return false;
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (bStat === "completed" || bStat === "cancelled" || bStat === "rejected") return false;
+    if (bStat === "completed" || bStat === "cancelled" || bStat === "rejected")
+      return false;
 
-    const bReg = String(b.vehicleReg || b.regNo || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
-    const bCarId = String(b.carId || b.car_id || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
-    const bName = String(b.vehicleName || b.carName || "").trim().toUpperCase();
+    const bReg = String(b.vehicleReg || b.regNo || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[\s\-_]/g, "");
+    const bCarId = String(b.carId || b.car_id || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[\s\-_]/g, "");
+    const bName = String(b.vehicleName || b.carName || "")
+      .trim()
+      .toUpperCase();
     const matched = matchBookingToFleet(b);
-    const matchedClean = matched ? matched.toUpperCase().replace(/[\s\-_]/g, "") : "";
+    const matchedClean = matched
+      ? matched.toUpperCase().replace(/[\s\-_]/g, "")
+      : "";
 
     let isTargetCar = false;
 
@@ -189,13 +242,22 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
     if (targetReg) {
       if (
         (matchedClean && matchedClean === targetReg) ||
-        (bReg && (bReg === targetReg || bReg.includes(targetReg) || targetReg.includes(bReg)))
+        (bReg &&
+          (bReg === targetReg ||
+            bReg.includes(targetReg) ||
+            targetReg.includes(bReg)))
       ) {
         isTargetCar = true;
       }
       if (!isTargetCar && bReg) {
-        const rSimp = bReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
-        const tSimp = targetReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+        const rSimp = bReg
+          .replace(/[CG]/g, "C")
+          .replace(/[UY]/g, "U")
+          .replace(/[FL]/g, "F");
+        const tSimp = targetReg
+          .replace(/[CG]/g, "C")
+          .replace(/[UY]/g, "U")
+          .replace(/[FL]/g, "F");
         if (rSimp === tSimp || rSimp.includes(tSimp) || tSimp.includes(rSimp)) {
           isTargetCar = true;
         }
@@ -242,7 +304,7 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
       const { start, end } = getBookingOperationalDates(b);
       if (start && end) {
         const startMs = start.getTime();
-        const endMs = end.getTime() + (2 * 60 * 60 * 1000); // 2 hours grace period
+        const endMs = end.getTime() + 2 * 60 * 60 * 1000; // 2 hours grace period
         if (nowMs >= startMs && nowMs <= endMs) {
           return true;
         }
@@ -261,42 +323,81 @@ export function getFleetLiveStatusInfo(vehicleOrReg, bookings = rawBookings) {
   let targetModel = "";
 
   if (typeof vehicleOrReg === "string") {
-    targetReg = vehicleOrReg.trim().toUpperCase().replace(/[\s\-_]/g, "");
+    targetReg = vehicleOrReg
+      .trim()
+      .toUpperCase()
+      .replace(/[\s\-_]/g, "");
   } else if (typeof vehicleOrReg === "object" && vehicleOrReg !== null) {
-    targetReg = String(vehicleOrReg.regNo || vehicleOrReg.reg_no || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
-    targetCarId = String(vehicleOrReg.carId || vehicleOrReg.car_id || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
-    targetModel = String(vehicleOrReg.model || "").trim().toUpperCase();
+    targetReg = String(vehicleOrReg.regNo || vehicleOrReg.reg_no || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[\s\-_]/g, "");
+    targetCarId = String(vehicleOrReg.carId || vehicleOrReg.car_id || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[\s\-_]/g, "");
+    targetModel = String(vehicleOrReg.model || "")
+      .trim()
+      .toUpperCase();
   }
 
   const todayStartMs = new Date().setHours(0, 0, 0, 0);
 
   const carBookings = bookings.filter((b) => {
     if (isBookingCancelled(b)) return false;
-    const bReg = String(b.vehicleReg || b.regNo || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
-    const bCarId = String(b.carId || b.car_id || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
-    const bName = String(b.vehicleName || b.carName || "").trim().toUpperCase();
+    const bReg = String(b.vehicleReg || b.regNo || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[\s\-_]/g, "");
+    const bCarId = String(b.carId || b.car_id || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[\s\-_]/g, "");
+    const bName = String(b.vehicleName || b.carName || "")
+      .trim()
+      .toUpperCase();
     const matched = matchBookingToFleet(b);
-    const matchedClean = matched ? matched.toUpperCase().replace(/[\s\-_]/g, "") : "";
+    const matchedClean = matched
+      ? matched.toUpperCase().replace(/[\s\-_]/g, "")
+      : "";
 
     if (targetReg) {
       if (
         (matchedClean && matchedClean === targetReg) ||
-        (bReg && (bReg === targetReg || bReg.includes(targetReg) || targetReg.includes(bReg)))
+        (bReg &&
+          (bReg === targetReg ||
+            bReg.includes(targetReg) ||
+            targetReg.includes(bReg)))
       ) {
         return true;
       }
       if (bReg) {
-        const rSimp = bReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
-        const tSimp = targetReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+        const rSimp = bReg
+          .replace(/[CG]/g, "C")
+          .replace(/[UY]/g, "U")
+          .replace(/[FL]/g, "F");
+        const tSimp = targetReg
+          .replace(/[CG]/g, "C")
+          .replace(/[UY]/g, "U")
+          .replace(/[FL]/g, "F");
         if (rSimp === tSimp || rSimp.includes(tSimp) || tSimp.includes(rSimp)) {
           return true;
         }
       }
     }
-    if (targetCarId && bCarId && (bCarId === targetCarId || bCarId.includes(targetCarId))) {
+    if (
+      targetCarId &&
+      bCarId &&
+      (bCarId === targetCarId || bCarId.includes(targetCarId))
+    ) {
       return true;
     }
-    if (targetModel && targetModel.length >= 3 && bName && bName.includes(targetModel)) {
+    if (
+      targetModel &&
+      targetModel.length >= 3 &&
+      bName &&
+      bName.includes(targetModel)
+    ) {
       return true;
     }
     return false;
@@ -308,7 +409,9 @@ export function getFleetLiveStatusInfo(vehicleOrReg, bookings = rawBookings) {
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
     if (bStat === "completed") return false;
     const { end } = getBookingOperationalDates(b);
-    return end && end.getTime() >= todayStartMs && (bStat === "active" || isOnTrip);
+    return (
+      end && end.getTime() >= todayStartMs && (bStat === "active" || isOnTrip)
+    );
   });
 
   const pickupBooking = carBookings.find((b) => {
@@ -375,7 +478,9 @@ function parseDate(value) {
   if (!str || str === "—") return null;
 
   // Support DD/MM/YYYY or DD-MM-YYYY
-  const dmyMatch = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/i);
+  const dmyMatch = str.match(
+    /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[\sT]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/i,
+  );
   if (dmyMatch) {
     const day = parseInt(dmyMatch[1], 10);
     const month = parseInt(dmyMatch[2], 10) - 1;
@@ -416,7 +521,9 @@ function getBookingSaleDate(b) {
   const pDate = parseDate(b.pickupDate || b.bookingDate);
   if (pDate) return pDate;
 
-  const bId = String(b.bookingNumber || b.bookingId || b.id || "").toUpperCase().trim();
+  const bId = String(b.bookingNumber || b.bookingId || b.id || "")
+    .toUpperCase()
+    .trim();
   if (bId.includes("-OCT-") || bId.includes("KRZOCT") || bId.includes("OCT")) {
     return new Date(2026, 9, 15, 12, 0, 0); // October (0-indexed 9)
   }
@@ -448,9 +555,26 @@ function isVerifiedRevenue(b) {
   if (isBookingCancelled(b)) return false;
   const pStat = String(b.paymentStatus || "").toLowerCase();
   const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-  if (pStat === "paid" || pStat === "advance_paid" || pStat === "verified") return true;
-  if (["confirmed", "active", "completed", "in_progress", "on_trip"].includes(bStat) && pStat !== "failed" && pStat !== "refunded") return true;
-  if ((b.paymentRef || b.paymentScreenshotUrl || Number(b.paymentAmountPaid) > 0 || Number(b.advanceAmount) > 0) && pStat !== "failed" && pStat !== "rejected" && pStat !== "refunded") return true;
+  if (pStat === "paid" || pStat === "advance_paid" || pStat === "verified")
+    return true;
+  if (
+    ["confirmed", "active", "completed", "in_progress", "on_trip"].includes(
+      bStat,
+    ) &&
+    pStat !== "failed" &&
+    pStat !== "refunded"
+  )
+    return true;
+  if (
+    (b.paymentRef ||
+      b.paymentScreenshotUrl ||
+      Number(b.paymentAmountPaid) > 0 ||
+      Number(b.advanceAmount) > 0) &&
+    pStat !== "failed" &&
+    pStat !== "rejected" &&
+    pStat !== "refunded"
+  )
+    return true;
   return false;
 }
 
@@ -458,10 +582,14 @@ function bookingAmount(b) {
   if (!b) return 0;
   const pStat = String(b.paymentStatus || "").toLowerCase();
   if (pStat === "advance_paid") {
-    return Number(b.advanceAmount || b.paymentAmountPaid || b.paymentAmount || 500);
+    return Number(
+      b.advanceAmount || b.paymentAmountPaid || b.paymentAmount || 500,
+    );
   }
   const deposit = Number(b.securityDeposit ?? b.security_deposit ?? 0);
-  const total = Number(b.finalAmount ?? b.totalAmount ?? b.amount ?? b.paymentAmountPaid ?? 0);
+  const total = Number(
+    b.finalAmount ?? b.totalAmount ?? b.amount ?? b.paymentAmountPaid ?? 0,
+  );
   const base = Number(b.baseAmount ?? b.base_amount ?? 0);
   const discount = Number(b.couponDiscount ?? b.coupon_discount ?? 0);
 
@@ -487,7 +615,6 @@ function bookingDays(b) {
   return 1;
 }
 
-
 /**
  * Daily date proration helper:
  * Distributes pure rental revenue (excluding refundable security deposit)
@@ -499,7 +626,7 @@ export function prorateBookingForWindow(b, windowStart, windowEnd) {
   if (!start) return { matchedDays: 0, proratedRevenue: 0 };
 
   const totalDays = bookingDays(b);
-  const dailyRate = totalDays > 0 ? (netRental / totalDays) : 0;
+  const dailyRate = totalDays > 0 ? netRental / totalDays : 0;
 
   // If no filter window is specified (all time), return full amount and full days
   if (!windowStart || !windowEnd) {
@@ -511,12 +638,28 @@ export function prorateBookingForWindow(b, windowStart, windowEnd) {
   const sDay = start.getDate();
   const sDateOnly = new Date(sYear, sMonth, sDay, 0, 0, 0, 0).getTime();
 
-  const wStart = new Date(windowStart.getFullYear(), windowStart.getMonth(), windowStart.getDate(), 0, 0, 0, 0).getTime();
-  const wEnd = new Date(windowEnd.getFullYear(), windowEnd.getMonth(), windowEnd.getDate(), 23, 59, 59, 999).getTime();
+  const wStart = new Date(
+    windowStart.getFullYear(),
+    windowStart.getMonth(),
+    windowStart.getDate(),
+    0,
+    0,
+    0,
+    0,
+  ).getTime();
+  const wEnd = new Date(
+    windowEnd.getFullYear(),
+    windowEnd.getMonth(),
+    windowEnd.getDate(),
+    23,
+    59,
+    59,
+    999,
+  ).getTime();
 
   let matchedDays = 0;
   for (let i = 0; i < totalDays; i++) {
-    const curDay = sDateOnly + (i * 86400000);
+    const curDay = sDateOnly + i * 86400000;
     if (curDay >= wStart && curDay <= wEnd) {
       matchedDays++;
     }
@@ -733,7 +876,15 @@ function renderDashboard() {
   function exactMonthKey(from, to) {
     if (!from || !to) return null;
     const key = `${from.getFullYear()}-${String(from.getMonth() + 1).padStart(2, "0")}-01`;
-    const monthEnd = new Date(from.getFullYear(), from.getMonth() + 1, 0, 23, 59, 59, 999);
+    const monthEnd = new Date(
+      from.getFullYear(),
+      from.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
     return to.getTime() === monthEnd.getTime() ? key : null;
   }
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
@@ -745,7 +896,9 @@ function renderDashboard() {
       : activeQuickFilter === "last_month"
         ? previousMonthKey
         : exactMonthKey(filterFromDate, filterToDate);
-  const selectedMonthKpi = selectedMonthKey ? monthlyKpis[selectedMonthKey] : null;
+  const selectedMonthKpi = selectedMonthKey
+    ? monthlyKpis[selectedMonthKey]
+    : null;
 
   // Dynamic monthly revenue ledger: strictly synchronized with MySQL kpi_metrics table
   // Dynamic monthly revenue ledger: strictly derived from SQL data with operational daily proration
@@ -760,36 +913,56 @@ function renderDashboard() {
   }
 
   // Also compute dynamically from live bookings using date proration if server stats not yet loaded
-  if (Object.keys(dynamicMonthlyRevenue).length === 0 && verifiedBookings.length > 0) {
+  if (
+    Object.keys(dynamicMonthlyRevenue).length === 0 &&
+    verifiedBookings.length > 0
+  ) {
     verifiedBookings.forEach((b) => {
       const { start } = getBookingOperationalDates(b);
       if (!start) return;
       const totalDays = bookingDays(b);
       const net = bookingAmount(b);
-      const dailyRate = totalDays > 0 ? (net / totalDays) : 0;
-      const sDate = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+      const dailyRate = totalDays > 0 ? net / totalDays : 0;
+      const sDate = new Date(
+        start.getFullYear(),
+        start.getMonth(),
+        start.getDate(),
+      ).getTime();
       for (let i = 0; i < totalDays; i++) {
-        const curDay = new Date(sDate + (i * 86400000));
+        const curDay = new Date(sDate + i * 86400000);
         const mKey = `${curDay.getFullYear()}-${String(curDay.getMonth() + 1).padStart(2, "0")}-01`;
-        dynamicMonthlyRevenue[mKey] = (dynamicMonthlyRevenue[mKey] || 0) + dailyRate;
+        dynamicMonthlyRevenue[mKey] =
+          (dynamicMonthlyRevenue[mKey] || 0) + dailyRate;
       }
     });
     Object.keys(dynamicMonthlyRevenue).forEach((mKey) => {
-      dynamicMonthlyRevenue[mKey] = Math.round(dynamicMonthlyRevenue[mKey] * 100) / 100;
+      dynamicMonthlyRevenue[mKey] =
+        Math.round(dynamicMonthlyRevenue[mKey] * 100) / 100;
     });
   }
 
-  const dynamicTotalRevenue = Object.values(dynamicMonthlyRevenue).reduce((sum, v) => sum + Number(v || 0), 0);
+  const dynamicTotalRevenue = Object.values(dynamicMonthlyRevenue).reduce(
+    (sum, v) => sum + Number(v || 0),
+    0,
+  );
   const curMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-  let dynamicCurrentMonthRevenue = Number(dynamicMonthlyRevenue[curMonthKey] || serverKpiStats?.effective?.month_revenue || 0);
+  let dynamicCurrentMonthRevenue = Number(
+    dynamicMonthlyRevenue[curMonthKey] ||
+      serverKpiStats?.effective?.month_revenue ||
+      0,
+  );
 
   // Total verified revenue in selected period
   const calculatedPeriodRevenue = verifiedBookings.reduce(
-    (sum, b) => sum + bookingAmount(b), 0,
+    (sum, b) => sum + bookingAmount(b),
+    0,
   );
-  const periodRevenue = selectedMonthKey && dynamicMonthlyRevenue[selectedMonthKey] !== undefined
-    ? Number(dynamicMonthlyRevenue[selectedMonthKey])
-    : (selectedMonthKey ? Number(dynamicMonthlyRevenue[selectedMonthKey] || 0) : calculatedPeriodRevenue);
+  const periodRevenue =
+    selectedMonthKey && dynamicMonthlyRevenue[selectedMonthKey] !== undefined
+      ? Number(dynamicMonthlyRevenue[selectedMonthKey])
+      : selectedMonthKey
+        ? Number(dynamicMonthlyRevenue[selectedMonthKey] || 0)
+        : calculatedPeriodRevenue;
 
   // KPI 1: TOTAL REVENUE
   // User: "total revenue is total amount of the whole revenue"
@@ -797,8 +970,10 @@ function renderDashboard() {
     .filter((b) => isVerifiedRevenue(b))
     .reduce((sum, b) => sum + bookingAmount(b), 0);
   const totalRevenue = isAllTime
-    ? (allVerifiedRevenue || dynamicTotalRevenue)
-    : (selectedMonthKey ? periodRevenue : (allVerifiedRevenue || dynamicTotalRevenue));
+    ? allVerifiedRevenue || dynamicTotalRevenue
+    : selectedMonthKey
+      ? periodRevenue
+      : allVerifiedRevenue || dynamicTotalRevenue;
   const kpiTotalRevenueEl = document.getElementById("kpiTotalRevenue");
   if (kpiTotalRevenueEl)
     kpiTotalRevenueEl.textContent = formatINR(totalRevenue);
@@ -817,7 +992,10 @@ function renderDashboard() {
   // KPI 2: ACTIVE TRIPS (Auto-fetches the live on-road count)
   const activeTripsCount = selectedMonthKpi
     ? Number(selectedMonthKpi.active_trips || 0)
-    : Math.max(onTripFleetCount, Number(serverKpiStats?.effective?.active_trips || 0));
+    : Math.max(
+        onTripFleetCount,
+        Number(serverKpiStats?.effective?.active_trips || 0),
+      );
   const kpiActiveTripsEl = document.getElementById("kpiActiveTrips");
   if (kpiActiveTripsEl) kpiActiveTripsEl.textContent = String(activeTripsCount);
 
@@ -830,44 +1008,83 @@ function renderDashboard() {
   }).length;
   const completedTripsCount = selectedMonthKpi
     ? Number(selectedMonthKpi.completed_trips || 0)
-    : Number(serverKpiStats?.effective?.completed_trips ?? calculatedCompletedTripsCount);
+    : Number(
+        serverKpiStats?.effective?.completed_trips ??
+          calculatedCompletedTripsCount,
+      );
   const kpiCompletedTripsEl = document.getElementById("kpiCompletedTrips");
   if (kpiCompletedTripsEl)
     kpiCompletedTripsEl.textContent = String(completedTripsCount);
 
   // KPI 4: REVENUE THIS MONTH
   // Dynamic current calendar month, strictly matched with MySQL kpi_metrics
-  const curMonthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  const curMonthEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-  const monthRevenue = Number(serverKpiStats?.effective?.month_revenue || dynamicCurrentMonthRevenue || 0);
+  const curMonthStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    1,
+    0,
+    0,
+    0,
+    0,
+  );
+  const curMonthEnd = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
+  const monthRevenue = Number(
+    serverKpiStats?.effective?.month_revenue || dynamicCurrentMonthRevenue || 0,
+  );
   const kpiRevenueThisMonthEl = document.getElementById("kpiRevenueThisMonth");
   if (kpiRevenueThisMonthEl)
     kpiRevenueThisMonthEl.textContent = formatINR(monthRevenue);
 
   // KPI 5: TOTAL BOOKINGS
   // User requirement: "total bookings give overall booking till date"
-  const calculatedTotalBookingsCount = rawBookings.filter((b) => !isBookingCancelled(b)).length;
+  const calculatedTotalBookingsCount = rawBookings.filter(
+    (b) => !isBookingCancelled(b),
+  ).length;
   const totalBookingsCount = selectedMonthKpi
     ? Number(selectedMonthKpi.total_bookings || 0)
-    : Number(serverKpiStats?.effective?.total_bookings ?? Math.max(calculatedTotalBookingsCount, 0));
+    : Number(
+        serverKpiStats?.effective?.total_bookings ??
+          Math.max(calculatedTotalBookingsCount, 0),
+      );
   const kpiTotalBookingsEl = document.getElementById("kpiTotalBookings");
   if (kpiTotalBookingsEl)
     kpiTotalBookingsEl.textContent = String(totalBookingsCount);
 
-
   // KPI 6: AVERAGE OCCUPANCY (%)
   // Formula: currently on-trip fleet count / total active fleet count * 100 (strictly clamped to <= 100%)
   const activeFleetCount = activeFleetsRoster.length || 7;
-  const safeOnTripCount = Math.min(activeFleetCount, Math.max(0, onTripFleetCount));
+  const safeOnTripCount = Math.min(
+    activeFleetCount,
+    Math.max(0, onTripFleetCount),
+  );
   const calculatedOccupancyPct = activeFleetCount
-    ? Math.min(100, Math.max(0, Math.round((safeOnTripCount / activeFleetCount) * 100)))
+    ? Math.min(
+        100,
+        Math.max(0, Math.round((safeOnTripCount / activeFleetCount) * 100)),
+      )
     : 0;
   const occupancyPct = selectedMonthKpi
     ? Math.min(100, Math.max(0, Number(selectedMonthKpi.occupancy_pct || 0)))
-    : Math.min(100, Math.max(0, Number(serverKpiStats?.effective?.fleet_utilization ?? calculatedOccupancyPct)));
+    : Math.min(
+        100,
+        Math.max(
+          0,
+          Number(
+            serverKpiStats?.effective?.fleet_utilization ??
+              calculatedOccupancyPct,
+          ),
+        ),
+      );
   const kpiAvgOccupancyEl = document.getElementById("kpiAvgOccupancy");
   if (kpiAvgOccupancyEl) kpiAvgOccupancyEl.textContent = `${occupancyPct}%`;
-
 
   let periodDays = 30;
   if (filterFromDate && filterToDate) {
@@ -943,7 +1160,7 @@ function renderDashboard() {
   // Initialize with selected fleet roster
   const vehicleStatsMap = new Map();
   currentScopeRoster.forEach((f) => {
-    const key = f.identifier || f.regNo || f.carId || (`VEH-${f.id}`);
+    const key = f.identifier || f.regNo || f.carId || `VEH-${f.id}`;
     const entry = {
       carName: `${f.brand} ${f.model}`,
       regNo: f.regNo || "",
@@ -1054,50 +1271,129 @@ function renderDashboard() {
   // but only count bookings whose sale date falls within the filter range too.
   // ============================================================
 
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-  const todayEnd   = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  const todayStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    0,
+    0,
+    0,
+    0,
+  );
+  const todayEnd = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
 
   const dayOfWeek = now.getDay();
-  const sunOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dayOfWeek, 0, 0, 0, 0);
-  const satOfWeek = new Date(now.getFullYear(), now.getMonth(), now.getDate() + (6 - dayOfWeek), 23, 59, 59, 999);
+  const sunOfWeek = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - dayOfWeek,
+    0,
+    0,
+    0,
+    0,
+  );
+  const satOfWeek = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + (6 - dayOfWeek),
+    23,
+    59,
+    59,
+    999,
+  );
 
-  const monthStart1 = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-  const monthEndNow = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+  const monthStart1 = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    1,
+    0,
+    0,
+    0,
+    0,
+  );
+  const monthEndNow = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    23,
+    59,
+    59,
+    999,
+  );
 
   // Helper: clamp window to filter range if a filter is active
   function inWindow(sDate, wStart, wEnd) {
     if (!sDate) return false;
-    const lo = (filterFromDate && filterFromDate > wStart) ? filterFromDate : wStart;
-    const hi = (filterToDate   && filterToDate   < wEnd)   ? filterToDate   : wEnd;
+    const lo =
+      filterFromDate && filterFromDate > wStart ? filterFromDate : wStart;
+    const hi = filterToDate && filterToDate < wEnd ? filterToDate : wEnd;
     return sDate >= lo && sDate <= hi;
   }
 
   // 1. Day Sales (Prorated daily rental revenue without security deposit for today)
   let daySales = 0;
   const dayWindowStart = isSingleDay ? filterFromDate : todayStart;
-  const dayWindowEnd   = isSingleDay ? filterToDate : todayEnd;
+  const dayWindowEnd = isSingleDay ? filterToDate : todayEnd;
 
   verifiedBookings.forEach((b) => {
-    const { proratedRevenue } = prorateBookingForWindow(b, dayWindowStart, dayWindowEnd);
+    const { proratedRevenue } = prorateBookingForWindow(
+      b,
+      dayWindowStart,
+      dayWindowEnd,
+    );
     daySales += proratedRevenue;
   });
   daySales = Math.round(daySales * 100) / 100;
-  if (daySales === 0 && (!filterFromDate || isBookingInPeriod({ pickupDate: now }, filterFromDate, filterToDate))) {
-    daySales = Number(serverKpiStats?.effective?.day_sales || serverKpiStats?.live?.day_sales || 0);
+  if (
+    daySales === 0 &&
+    (!filterFromDate ||
+      isBookingInPeriod({ pickupDate: now }, filterFromDate, filterToDate))
+  ) {
+    daySales = Number(
+      serverKpiStats?.effective?.day_sales ||
+        serverKpiStats?.live?.day_sales ||
+        0,
+    );
   }
 
   // 2. Week Sales (Sunday to Saturday prorated daily rental revenue without security deposit)
   let weekSales = 0;
-  const weekWindowStart = (activeQuickFilter === "this_week" && filterFromDate) ? filterFromDate : sunOfWeek;
-  const weekWindowEnd   = (activeQuickFilter === "this_week" && filterToDate) ? filterToDate : satOfWeek;
+  const weekWindowStart =
+    activeQuickFilter === "this_week" && filterFromDate
+      ? filterFromDate
+      : sunOfWeek;
+  const weekWindowEnd =
+    activeQuickFilter === "this_week" && filterToDate
+      ? filterToDate
+      : satOfWeek;
 
   verifiedBookings.forEach((b) => {
-    const { proratedRevenue } = prorateBookingForWindow(b, weekWindowStart, weekWindowEnd);
+    const { proratedRevenue } = prorateBookingForWindow(
+      b,
+      weekWindowStart,
+      weekWindowEnd,
+    );
     weekSales += proratedRevenue;
   });
   weekSales = Math.round(weekSales * 100) / 100;
-  if (weekSales === 0 && (!filterFromDate || isBookingInPeriod({ pickupDate: now }, filterFromDate, filterToDate))) {
-    weekSales = Number(serverKpiStats?.effective?.week_sales || serverKpiStats?.live?.week_sales || 0);
+  if (
+    weekSales === 0 &&
+    (!filterFromDate ||
+      isBookingInPeriod({ pickupDate: now }, filterFromDate, filterToDate))
+  ) {
+    weekSales = Number(
+      serverKpiStats?.effective?.week_sales ||
+        serverKpiStats?.live?.week_sales ||
+        0,
+    );
   }
 
   // 3. Month Sales (1st of month to today)
@@ -1120,7 +1416,8 @@ function renderDashboard() {
   document.getElementById("salesMonth") &&
     (document.getElementById("salesMonth").textContent = formatINR(monthSales));
   document.getElementById("salesOverall") &&
-    (document.getElementById("salesOverall").textContent = formatINR(overallSales));
+    (document.getElementById("salesOverall").textContent =
+      formatINR(overallSales));
 
   // Final KPI sync: ensures all card elements reflect dynamic values
   const totalEl = document.getElementById("kpiTotalRevenue");
@@ -1164,7 +1461,10 @@ function renderDashboard() {
     : 0;
 
   // Grand totals across 7 active Kruizly fleets + any partner/external fleet bookings
-  const grandTotalBookings = Math.max(fleetTotalBookings + unmappedCount, totalBookingsCount);
+  const grandTotalBookings = Math.max(
+    fleetTotalBookings + unmappedCount,
+    totalBookingsCount,
+  );
   const grandTotalDays = fleetTotalDays + unmappedDays;
   const grandTotalRevenue = fleetTotalRevenue + unmappedRevenue;
   const grandAvgRevenue = grandTotalBookings
@@ -1175,8 +1475,8 @@ function renderDashboard() {
   const effectiveFleetRevenue = isAllTime
     ? totalRevenue
     : selectedMonthKey && dynamicMonthlyRevenue[selectedMonthKey] !== undefined
-    ? Number(dynamicMonthlyRevenue[selectedMonthKey])
-    : (periodRevenue || totalRevenue);
+      ? Number(dynamicMonthlyRevenue[selectedMonthKey])
+      : periodRevenue || totalRevenue;
   const effectiveFleetAvg = grandTotalBookings
     ? Math.round(effectiveFleetRevenue / grandTotalBookings)
     : 0;
@@ -1323,7 +1623,10 @@ function renderDashboard() {
         </tr>`
           : "";
 
-      const reconciledLedgerDiff = Math.max(0, effectiveFleetRevenue - grandTotalRevenue);
+      const reconciledLedgerDiff = Math.max(
+        0,
+        effectiveFleetRevenue - grandTotalRevenue,
+      );
       const ledgerHtml =
         reconciledLedgerDiff > 0 && fleetStatusFilter === "all"
           ? `
@@ -1497,7 +1800,6 @@ function renderDashboard() {
       })
       .join("");
   }
-
 }
 
 // ============================================================================
@@ -1514,8 +1816,13 @@ function computeOtherFleetStats(rawBookings, periodDays) {
   // Use live DB vehicles, excluding active fleet reg numbers and carIds
   const activeKeys = new Set();
   activeFleetsRoster.forEach((f) => {
-    const reg = String(f.regNo || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
-    const carId = String(f.carId || "").trim().toUpperCase();
+    const reg = String(f.regNo || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[\s\-_]/g, "");
+    const carId = String(f.carId || "")
+      .trim()
+      .toUpperCase();
     const id = String(f.id || "").trim();
     if (reg) activeKeys.add(reg);
     if (carId) activeKeys.add(carId);
@@ -1527,8 +1834,13 @@ function computeOtherFleetStats(rawBookings, periodDays) {
   if (rawVehicles.length > 0) {
     catalogFleets = rawVehicles
       .filter((v) => {
-        const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
-        const carId = String(v.carId || v.car_id || "").trim().toUpperCase();
+        const reg = String(v.regNo || v.reg_no || "")
+          .trim()
+          .toUpperCase()
+          .replace(/[\s\-_]/g, "");
+        const carId = String(v.carId || v.car_id || "")
+          .trim()
+          .toUpperCase();
         const id = String(v.id || "").trim();
         // Exclude active fleet vehicles by reg, carId, or id
         if (reg && activeKeys.has(reg)) return false;
@@ -1564,7 +1876,9 @@ function computeOtherFleetStats(rawBookings, periodDays) {
 
     const carBookings = verified.filter((b) => {
       const bName = String(b.vehicleName || b.carName || "").toLowerCase();
-      const bReg = String(b.vehicleReg || b.regNo || "").toLowerCase().replace(/[\s\-_]/g, "");
+      const bReg = String(b.vehicleReg || b.regNo || "")
+        .toLowerCase()
+        .replace(/[\s\-_]/g, "");
       const carRegClean = regLower.replace(/[\s\-_]/g, "");
 
       // Exact reg number match wins
@@ -1574,7 +1888,9 @@ function computeOtherFleetStats(rawBookings, periodDays) {
       if (bName && car.model && bName.includes(car.model.toLowerCase())) {
         // Don't attribute this booking to a catalog car if it matches an active fleet
         for (const af of activeFleetsRoster) {
-          const afReg = String(af.regNo || "").toLowerCase().replace(/[\s\-_]/g, "");
+          const afReg = String(af.regNo || "")
+            .toLowerCase()
+            .replace(/[\s\-_]/g, "");
           if (bReg && afReg && bReg === afReg) return false;
         }
         return true;
@@ -1587,10 +1903,7 @@ function computeOtherFleetStats(rawBookings, periodDays) {
       (sum, b) => sum + (Number(b.days) || 1),
       0,
     );
-    const revenue = carBookings.reduce(
-      (sum, b) => sum + bookingAmount(b),
-      0,
-    );
+    const revenue = carBookings.reduce((sum, b) => sum + bookingAmount(b), 0);
     const avgRevenue = bookingsCount ? Math.round(revenue / bookingsCount) : 0;
     const carOccupancy = periodDays
       ? Math.min(100, Math.round((bookedDays / periodDays) * 100))
@@ -1608,7 +1921,6 @@ function computeOtherFleetStats(rawBookings, periodDays) {
     };
   });
 }
-
 
 function renderOtherFleetTablePage(page = 1) {
   const tbody = document.getElementById("mgrOtherFleetTableBody");
@@ -1825,7 +2137,7 @@ function renderBookingsTablePage(page = 1) {
         <td style="color:#06d6a0; font-weight:700;">${Math.max(1, Number(b.days) || 1)} Days</td>
         <td style="white-space:nowrap;">
           <strong style="color:#ffffff;">${formatINR(amt)}</strong>
-          ${Number(b.securityDeposit || b.security_deposit || 0) > 0 ? `<small style="color:var(--sub);font-size:10.5px;display:block;margin-top:2px;">Total: ${formatINR(Number(b.finalAmount ?? b.totalAmount ?? (amt + Number(b.securityDeposit || b.security_deposit || 0))))} (₹${Number(b.securityDeposit || b.security_deposit || 0)} dep)</small>` : `<small style="color:var(--sub);font-size:10.5px;display:block;margin-top:2px;">Total: ${formatINR(Number(b.finalAmount ?? b.totalAmount ?? amt))}</small>`}
+          ${Number(b.securityDeposit || b.security_deposit || 0) > 0 ? `<small style="color:var(--sub);font-size:10.5px;display:block;margin-top:2px;">Total: ${formatINR(Number(b.finalAmount ?? b.totalAmount ?? amt + Number(b.securityDeposit || b.security_deposit || 0)))} (₹${Number(b.securityDeposit || b.security_deposit || 0)} dep)</small>` : `<small style="color:var(--sub);font-size:10.5px;display:block;margin-top:2px;">Total: ${formatINR(Number(b.finalAmount ?? b.totalAmount ?? amt))}</small>`}
         </td>
         <td><span class="badge" style="${badgeStyle} padding:3px 8px; border-radius:6px; font-size:11px; font-weight:700;">${escapeHtml(bStat)}</span></td>
       </tr>`;
@@ -1943,9 +2255,13 @@ async function loadManagerData() {
       const seenVeh = new Set();
       rawVehicles = [];
       loadedVeh.forEach((v) => {
-        const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase();
-        const carId = String(v.carId || v.car_id || v.id || "").trim().toUpperCase();
-        const key = (reg && reg !== "TBD") ? reg : carId;
+        const reg = String(v.regNo || v.reg_no || "")
+          .trim()
+          .toUpperCase();
+        const carId = String(v.carId || v.car_id || v.id || "")
+          .trim()
+          .toUpperCase();
+        const key = reg && reg !== "TBD" ? reg : carId;
         if (key && !seenVeh.has(key)) {
           seenVeh.add(key);
           rawVehicles.push(v);
@@ -1967,8 +2283,12 @@ async function loadManagerData() {
 
     // Filter out dummy ZIP placeholder cars, but keep valid active fleets identified by carId or regNo
     const validServerFleets = serverFleets.filter((f) => {
-      const reg = String(f.regNo || f.reg_no || "").trim().toUpperCase();
-      const carId = String(f.carId || f.car_id || f.id || "").trim().toUpperCase();
+      const reg = String(f.regNo || f.reg_no || "")
+        .trim()
+        .toUpperCase();
+      const carId = String(f.carId || f.car_id || f.id || "")
+        .trim()
+        .toUpperCase();
       if (!reg && !carId) return false;
       if (reg && (reg.startsWith("ZIP") || reg.includes("ZIP"))) return false;
       return true;
@@ -1977,17 +2297,35 @@ async function loadManagerData() {
     // Build dynamic active fleet roster from server response
     if (validServerFleets.length > 0) {
       activeFleetsRoster = validServerFleets.map((sf) => {
-        const sCarId = String(sf.carId || sf.car_id || "").toUpperCase().trim();
-        const sRegNorm = String(sf.regNo || sf.reg_no || "").toUpperCase().replace(/[\s\-_]/g, "");
+        const sCarId = String(sf.carId || sf.car_id || "")
+          .toUpperCase()
+          .trim();
+        const sRegNorm = String(sf.regNo || sf.reg_no || "")
+          .toUpperCase()
+          .replace(/[\s\-_]/g, "");
 
-        const cMatch = [...ACTIVE_7_FLEETS, ...OTHER_CATALOG_FLEETS, ...rawVehicles].find((cf) => {
-          const cCarId = String(cf.carId || cf.car_id || cf.id || "").toUpperCase().trim();
+        const cMatch = [
+          ...ACTIVE_7_FLEETS,
+          ...OTHER_CATALOG_FLEETS,
+          ...rawVehicles,
+        ].find((cf) => {
+          const cCarId = String(cf.carId || cf.car_id || cf.id || "")
+            .toUpperCase()
+            .trim();
           if (cCarId && sCarId && cCarId === sCarId) return true;
-          const cRegNorm = String(cf.regNo || cf.reg_no || "").toUpperCase().replace(/[\s\-_]/g, "");
+          const cRegNorm = String(cf.regNo || cf.reg_no || "")
+            .toUpperCase()
+            .replace(/[\s\-_]/g, "");
           if (cRegNorm && sRegNorm) {
             if (cRegNorm === sRegNorm) return true;
-            const cSimp = cRegNorm.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
-            const sSimp = sRegNorm.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+            const cSimp = cRegNorm
+              .replace(/[CG]/g, "C")
+              .replace(/[UY]/g, "U")
+              .replace(/[FL]/g, "F");
+            const sSimp = sRegNorm
+              .replace(/[CG]/g, "C")
+              .replace(/[UY]/g, "U")
+              .replace(/[FL]/g, "F");
             return cSimp === sSimp;
           }
           return false;
@@ -2003,16 +2341,32 @@ async function loadManagerData() {
           year: sf.year || cMatch?.year || 2026,
           category: sf.category || cMatch?.category || "Economy",
           transmission: sf.transmission || cMatch?.transmission || "Manual",
-          fuelType: sf.fuel || sf.fuelType || cMatch?.fuel || cMatch?.fuelType || "Petrol",
+          fuelType:
+            sf.fuel ||
+            sf.fuelType ||
+            cMatch?.fuel ||
+            cMatch?.fuelType ||
+            "Petrol",
           seats: Number(sf.seats || cMatch?.seats || 5),
           hub: sf.hub || cMatch?.hub || "Gavson Business Park, Ghansoli",
-          acquisitionType: sf.acquisitionType || sf.acquisition_type || cMatch?.acquisitionType || "Partner",
+          acquisitionType:
+            sf.acquisitionType ||
+            sf.acquisition_type ||
+            cMatch?.acquisitionType ||
+            "Partner",
           ownerName: sf.ownerName || sf.owner_name || cMatch?.ownerName || "",
-          acquisitionDate: sf.acquisitionDate || sf.acquisition_date || cMatch?.acquisitionDate || "",
-          image: sf.imageUrl || sf.image || cMatch?.image || cMatch?.imageUrl || "",
-          priceDay: Number(sf.priceDay || sf.price_day || cMatch?.priceDay || 0),
+          acquisitionDate:
+            sf.acquisitionDate ||
+            sf.acquisition_date ||
+            cMatch?.acquisitionDate ||
+            "",
+          image:
+            sf.imageUrl || sf.image || cMatch?.image || cMatch?.imageUrl || "",
+          priceDay: Number(
+            sf.priceDay || sf.price_day || cMatch?.priceDay || 0,
+          ),
           available: sf.available !== undefined ? Number(sf.available) : 1,
-          status: sf.status || "available"
+          status: sf.status || "available",
         };
       });
     } else {
@@ -2026,14 +2380,14 @@ async function loadManagerData() {
         : Array.isArray(res.data)
           ? res.data
           : [];
-      
+
       // Strictly deduplicate by unique booking identifier
       const seenBk = new Set();
       rawBookings = [];
       loaded.forEach((b) => {
-        const idStr = String(
-          b.bookingNumber || b.bookingId || b.id || "",
-        ).toUpperCase().trim();
+        const idStr = String(b.bookingNumber || b.bookingId || b.id || "")
+          .toUpperCase()
+          .trim();
         if (idStr && !seenBk.has(idStr)) {
           seenBk.add(idStr);
           rawBookings.push(b);
@@ -2043,7 +2397,9 @@ async function loadManagerData() {
 
     // Only use offline fallback bookings if database returned 0 bookings (offline/demo mode)
     if (rawBookings.length === 0) {
-      console.warn("No bookings returned from Hostinger SQL API, loading offline baseline cache");
+      console.warn(
+        "No bookings returned from Hostinger SQL API, loading offline baseline cache",
+      );
       rawBookings = [...DEFAULT_SEPTEMBER_BOOKINGS];
     }
   } catch (err) {
@@ -2124,7 +2480,7 @@ function initExportExcel() {
               typeof b.return_inspection === "string"
                 ? JSON.parse(b.return_inspection)
                 : b.return_inspection;
-          } catch (err) { }
+          } catch (err) {}
         }
         const startOdo =
           b["Start Odometer (KM)"] ??
@@ -2144,11 +2500,11 @@ function initExportExcel() {
           "";
         const dist =
           b["Distance Driven (KM)"] !== undefined &&
-            b["Distance Driven (KM)"] !== ""
+          b["Distance Driven (KM)"] !== ""
             ? b["Distance Driven (KM)"]
             : Number(endOdo) &&
-              Number(startOdo) &&
-              Number(endOdo) >= Number(startOdo)
+                Number(startOdo) &&
+                Number(endOdo) >= Number(startOdo)
               ? Number(endOdo) - Number(startOdo)
               : "";
         const startFastag =
@@ -2171,8 +2527,8 @@ function initExportExcel() {
           b["FASTag Used (₹)"] !== undefined && b["FASTag Used (₹)"] !== ""
             ? b["FASTag Used (₹)"]
             : Number(startFastag) &&
-              Number(returnFastag) &&
-              Number(startFastag) >= Number(returnFastag)
+                Number(returnFastag) &&
+                Number(startFastag) >= Number(returnFastag)
               ? Number(startFastag) - Number(returnFastag)
               : "";
 
@@ -2350,7 +2706,10 @@ async function initManagerSummary() {
 
     // Auto-fetch data from website and database every 20 seconds
     setInterval(() => {
-      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "visible"
+      ) {
         loadManagerData();
       }
     }, 20000);
