@@ -95,12 +95,14 @@ if ($method === 'GET') {
         }
         $img = (is_array($gallery) && !empty($gallery[0])) ? $gallery[0] : 'assets/fleet/' . $v['brand'] . ' ' . $v['model'] . '.png';
 
-        $displayReg = ($rawReg !== '' && $rawReg !== 'TBD') ? $rawReg : ($cleanCarId !== '' ? $cleanCarId : 'CAT-' . $id);
+        $isSynthetic = (bool)preg_match('/^MH04KR01\d{2}$/i', $rawReg);
+        $effectiveReg = ($rawReg !== '' && $rawReg !== 'TBD' && !$isSynthetic) ? $rawReg : '';
+        $displayReg = $effectiveReg !== '' ? $effectiveReg : ($cleanCarId !== '' ? $cleanCarId : 'CAT-' . $id);
 
         $item = [
             'id' => $v['id'],
             'carId' => $v['car_id'] ?? null,
-            'regNo' => $displayReg,
+            'regNo' => $effectiveReg,
             'brand' => $v['brand'],
             'model' => $v['model'],
             'year' => (int)$v['year'],

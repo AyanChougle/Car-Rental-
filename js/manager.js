@@ -503,7 +503,7 @@ function openExecutivePickupModal(booking) {
 
   if (title) {
     title.textContent =
-      `Pickup � ${booking.vehicleName || "Vehicle"} (#${formatBookingNumber(booking)})`;
+      `Pickup  ${booking.vehicleName || "Vehicle"} (#${formatBookingNumber(booking)})`;
   }
 
   if (notes) notes.value = booking.pickupNotes || "";

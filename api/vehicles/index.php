@@ -50,10 +50,14 @@ if ($method === 'GET') {
         if (!empty($v['gallery'])) {
             $gallery = is_string($v['gallery']) ? json_decode($v['gallery'], true) : $v['gallery'];
         }
+        $rawReg = trim((string)($v['reg_no'] ?? ''));
+        $isSynthetic = (bool)preg_match('/^MH04KR01\d{2}$/i', $rawReg);
+        $effectiveReg = ($rawReg !== '' && $rawReg !== 'TBD' && !$isSynthetic) ? $rawReg : '';
+
         return [
             'id' => $v['id'],
             'carId' => $v['car_id'] ?? null,
-            'regNo' => $v['reg_no'],
+            'regNo' => $effectiveReg,
             'brand' => $v['brand'],
             'model' => $v['model'],
             'year' => (int)$v['year'],

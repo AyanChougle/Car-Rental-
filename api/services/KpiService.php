@@ -156,7 +156,8 @@ class KpiService
                 $weekEndTs = strtotime($weekEndStr);
 
                 for ($i = 0; $i < $totalDays; $i++) {
-                    $curTs = $startTs + ($i * 86400);
+                    $curTs = strtotime("+{$i} days", $startTs);
+                    $curDate = date('Y-m-d', $curTs);
                     $curMonth = date('Y-m-01', $curTs);
 
                     $knownMonths[$curMonth] = true;
@@ -175,12 +176,12 @@ class KpiService
                     }
 
                     // Check Today
-                    if ($curTs === $todayTs) {
+                    if ($curDate === $todayStr) {
                         $daySales += $dailyRate;
                     }
 
                     // Check Week
-                    if ($curTs >= $weekStartTs && $curTs <= $weekEndTs) {
+                    if ($curDate >= $weekStartStr && $curDate <= $weekEndStr) {
                         $weekSales += $dailyRate;
                     }
                 }

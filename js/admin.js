@@ -916,16 +916,16 @@ async function loadAllAdminData() {
 // ============================================================================
 // CANONICAL 7 ACTIVE FLEETS & MASTER CATALOG FALLBACK
 // ============================================================================
-const DEFAULT_7_ACTIVE_FLEETS = [
-  { id: 1, carId: "CRP-002", regNo: "MH03EL1025", brand: "Suzuki", model: "Fronx", year: 2026, category: "compact-suv", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 3500, priceHour: 146, hub: "Gavson Business Park, Ghansoli", ownerName: "Aditi Lotankar", acquisitionType: "Partner", acquisitionDate: "2026-07-20", available: 1, status: "available", is_active_fleet: 1 },
-  { id: 2, carId: "CRP-003", regNo: "MH05GJ4711", brand: "Suzuki", model: "Ertiga", year: 2026, category: "mpv", transmission: "Manual", fuel: "Petrol + CNG", seats: 7, priceDay: 4000, priceHour: 167, hub: "Gavson Business Park, Ghansoli", ownerName: "Viren Gupta", acquisitionType: "Partner", acquisitionDate: "2026-07-24", available: 1, status: "available", is_active_fleet: 1 },
-  { id: 3, carId: "CRP-005", regNo: "MH48GJ4153", brand: "Toyota", model: "Glanza", year: 2026, category: "hatchback", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3000, priceHour: 125, hub: "Gavson Business Park, Ghansoli", ownerName: "Ajay Vishwakarma", acquisitionType: "Partner", acquisitionDate: "2026-07-29", available: 1, status: "available", is_active_fleet: 1 },
-  { id: 4, carId: "CRP-006", regNo: "MH04MU1178", brand: "Toyota", model: "Glanza", year: 2026, category: "hatchback", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3000, priceHour: 125, hub: "Gavson Business Park, Ghansoli", ownerName: "Kundan Singh", acquisitionType: "Partner", acquisitionDate: "2026-08-04", available: 1, status: "available", is_active_fleet: 1 },
-  { id: 5, carId: "CRP-007", regNo: "MH05FV3454", brand: "Tata", model: "Punch", year: 2026, category: "compact-suv", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3000, priceHour: 125, hub: "Gavson Business Park, Ghansoli", ownerName: "Tai Phad", acquisitionType: "Partner", acquisitionDate: "2026-08-13", available: 1, status: "available", is_active_fleet: 1 },
-  { id: 6, carId: "CRP-008", regNo: "MH43CU1632", brand: "Suzuki", model: "Fronx", year: 2026, category: "compact-suv", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3200, priceHour: 133, hub: "Gavson Business Park, Ghansoli", ownerName: "Amol Gole", acquisitionType: "Partner", acquisitionDate: "2026-08-19", available: 1, status: "available", is_active_fleet: 1 },
-  { id: 7, carId: "CRP-009", regNo: "MH02FU6808", brand: "Mahindra", model: "XUV 700", year: 2026, category: "suv", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 5500, priceHour: 229, hub: "Gavson Business Park, Ghansoli", ownerName: "Saif Feroz Shaikh", acquisitionType: "Partner", acquisitionDate: "2026-08-01", available: 1, status: "available", is_active_fleet: 1 }
+const DEFAULT_7_ACTIVE_FLEETS = [];
+const DEFAULT_ACTIVE_REGS = [
+  "MH03EL1025",
+  "MH05GJ4711",
+  "MH48GJ4153",
+  "MH04MU1178",
+  "MH05FV3454",
+  "MH43CU1632",
+  "MH02FU6808"
 ];
-const DEFAULT_ACTIVE_REGS = DEFAULT_7_ACTIVE_FLEETS.map(f => f.regNo.toUpperCase());
 
 let adminFleetVehicles = [];
 
@@ -939,10 +939,6 @@ function getEffectiveFleetVehicles() {
       adminFleetVehicles = master;
       return master;
     }
-  }
-  if (Array.isArray(DEFAULT_7_ACTIVE_FLEETS) && DEFAULT_7_ACTIVE_FLEETS.length > 0) {
-    adminFleetVehicles = [...DEFAULT_7_ACTIVE_FLEETS];
-    return adminFleetVehicles;
   }
   return [];
 }
@@ -959,31 +955,19 @@ function normalizeActivePlate(plate) {
 
 function getMasterCatalogVehicles() {
   const catalog = Array.isArray(window.fleetVehicles) ? window.fleetVehicles : [];
-  const vehicles = [...DEFAULT_7_ACTIVE_FLEETS];
+  const vehicles = [];
 
   catalog.forEach((c, idx) => {
-    const brand = String(c.brand || "").toLowerCase();
-    const model = String(c.model || "").toLowerCase();
-    const fuel = String(c.fuel || "").toLowerCase();
-    const trans = String(c.transmission || "").toLowerCase();
-
-    const isErtigaCNG = brand.includes("suzuki") && model.includes("ertiga") && fuel.includes("cng");
-    const isFronxCNG = brand.includes("suzuki") && model.includes("fronx") && fuel.includes("cng");
-    const isFronxAuto = brand.includes("suzuki") && model.includes("fronx") && trans.includes("auto");
-    const isGlanza = brand.includes("toyota") && model.includes("glanza");
-    const isPunchCNG = brand.includes("tata") && model.includes("punch") && fuel.includes("cng");
-    const isXUV700 = brand.includes("mahindra") && (model.includes("700") || model.includes("7xo"));
-
-    if (isErtigaCNG || isFronxCNG || isFronxAuto || isGlanza || isPunchCNG || isXUV700) {
-      return;
+    let regNo = c.regNo || c.reg_no || "";
+    if (/^MH04KR01\d{2}$/i.test(regNo)) {
+      regNo = "";
     }
-
-    const regNo = c.regNo || ("MH04KR" + String(100 + idx + 1).padStart(4, "0"));
-    const carId = c.id || ("CAT-" + String(idx + 1).padStart(3, "0"));
+    const carId = c.id || c.carId || c.car_id || ("CAT-" + String(idx + 1).padStart(3, "0"));
     vehicles.push({
       id: 10 + idx,
       carId,
       regNo,
+      rawReg: regNo,
       brand: c.brand,
       model: c.model,
       year: c.year || 2025,
@@ -1094,19 +1078,22 @@ async function loadFleetManagement() {
     const seenVeh = new Set();
     let vehicles = [];
     rawVehicles.forEach((v) => {
-      const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase();
+      let reg = String(v.regNo || v.reg_no || "").trim().toUpperCase();
+      if (/^MH04KR01\d{2}$/i.test(reg)) {
+        reg = "";
+      }
       const carId = String(v.carId || v.car_id || "").trim().toUpperCase();
       const id = String(v.id || "").trim();
       const key = (reg && reg !== "TBD") ? reg : (carId || id);
       if (key && !seenVeh.has(key)) {
         seenVeh.add(key);
-        const effectiveReg = (reg && reg !== "TBD") ? reg : (carId || ("CAT-" + id));
+        const effectiveReg = (reg && reg !== "TBD") ? reg : "";
         vehicles.push({
           ...v,
-          rawReg: reg,
+          rawReg: effectiveReg,
           regNo: effectiveReg,
           carId: carId || v.carId || null,
-          identifier: effectiveReg
+          identifier: effectiveReg || carId || id
         });
       }
     });
@@ -1189,8 +1176,7 @@ async function loadFleetManagement() {
                     <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.category || "Economy")}</small>
                   </td>
                   <td style="padding:12px;font-family:monospace;font-weight:700;color:#ffffff;">
-                    ${escapeHtml(vehicle.rawReg || vehicle.regNo)}
-                    ${!vehicle.rawReg ? '<span style="font-size:10px;color:var(--sub);margin-left:4px;font-weight:normal;">(Catalog)</span>' : ''}
+                    ${(vehicle.rawReg && vehicle.rawReg !== "TBD") ? escapeHtml(vehicle.rawReg) : '<span style="color:var(--sub);font-weight:normal;font-style:italic;font-family:sans-serif;">—</span>'}
                   </td>
                   <td style="padding:12px;">
                     <span style="color:#ffffff;font-weight:600;">${escapeHtml(vehicle.ownerName || "Kruizly Fleet")}</span>
@@ -9721,7 +9707,7 @@ function renderBookingsAnalytics() {
         return bStat === "cancelled" || bStat === "rejected" || pStat === "cancelled" || pStat === "rejected";
       });
 
-      // Gross Value: total booking value for non-cancelled bookings in the month
+      // Gross Value: total rental revenue without security deposit for non-cancelled bookings in the month
       let mRevenue = mBookings
         .filter(b => {
           const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
@@ -9729,29 +9715,22 @@ function renderBookingsAnalytics() {
           return bStat !== "cancelled" && bStat !== "rejected" && pStat !== "cancelled" && pStat !== "rejected";
         })
         .reduce((sum, b) => {
-          const amt = Number(b.finalAmount || b.totalAmount || b.paymentAmountPaid || b.baseAmount || 0);
+          const total = Number(b.finalAmount ?? b.totalAmount ?? b.amount ?? b.paymentAmountPaid ?? 0);
+          const dep = Number(b.securityDeposit ?? b.security_deposit ?? 0);
+          const base = Number(b.baseAmount ?? b.base_amount ?? 0);
+          const disc = Number(b.couponDiscount ?? b.coupon_discount ?? 0);
+          let amt = 0;
+          if (total > 0 && dep > 0) amt = Math.max(0, total - dep);
+          else if (base > 0) amt = Math.max(0, base - disc);
+          else amt = Math.max(0, total - dep);
           return sum + (Number.isFinite(amt) ? amt : 0);
         }, 0);
 
       const monthPadded = String(mIdx + 1).padStart(2, "0");
       const monthKey = `${targetYear}-${monthPadded}-01`;
 
-      if (mIdx === 6) {
-        // July historical accounting baseline
-        mRevenue = Math.max(mRevenue, 50540);
-      } else if (mIdx === 7) {
-        // August historical accounting baseline
-        mRevenue = Math.max(mRevenue, 281857);
-      } else if (mIdx === 8) {
-        // September dynamic revenue from SQL database
-        const septSales = Number(currentKpiStats?.monthly?.[monthKey]?.month_sales || 0);
-        mRevenue = septSales > 0 ? septSales : Math.max(mRevenue, 267168);
-      } else if (mIdx === 9) {
-        // October dynamic revenue from SQL database
-        const octSales = Number(currentKpiStats?.monthly?.[monthKey]?.month_sales || 0);
-        mRevenue = octSales > 0 ? octSales : Math.max(mRevenue, 28000);
-      } else if (currentKpiStats?.monthly?.[monthKey]?.month_sales) {
-        mRevenue = Math.max(mRevenue, Number(currentKpiStats.monthly[monthKey].month_sales));
+      if (currentKpiStats?.monthly?.[monthKey]?.month_sales !== undefined) {
+        mRevenue = Number(currentKpiStats.monthly[monthKey].month_sales);
       }
 
       return `

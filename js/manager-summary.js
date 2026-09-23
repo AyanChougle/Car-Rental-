@@ -748,18 +748,34 @@ function renderDashboard() {
   const selectedMonthKpi = selectedMonthKey ? monthlyKpis[selectedMonthKey] : null;
 
   // Dynamic monthly revenue ledger: strictly synchronized with MySQL kpi_metrics table
-  const dynamicMonthlyRevenue = {
-    "2026-07-01": 50540,
-    "2026-08-01": 281857,
-    "2026-09-01": 267168,
-    "2026-10-01": 28000,
-  };
+  // Dynamic monthly revenue ledger: strictly derived from SQL data with operational daily proration
+  const dynamicMonthlyRevenue = {};
   if (serverKpiStats?.monthly && typeof serverKpiStats.monthly === "object") {
     Object.entries(serverKpiStats.monthly).forEach(([mKey, mData]) => {
       const sales = Number(mData?.month_sales ?? 0);
       if (sales > 0) {
-        dynamicMonthlyRevenue[mKey] = Math.max(dynamicMonthlyRevenue[mKey] || 0, sales);
+        dynamicMonthlyRevenue[mKey] = sales;
       }
+    });
+  }
+
+  // Also compute dynamically from live bookings using date proration if server stats not yet loaded
+  if (Object.keys(dynamicMonthlyRevenue).length === 0 && verifiedBookings.length > 0) {
+    verifiedBookings.forEach((b) => {
+      const { start } = getBookingOperationalDates(b);
+      if (!start) return;
+      const totalDays = bookingDays(b);
+      const net = bookingAmount(b);
+      const dailyRate = totalDays > 0 ? (net / totalDays) : 0;
+      const sDate = new Date(start.getFullYear(), start.getMonth(), start.getDate()).getTime();
+      for (let i = 0; i < totalDays; i++) {
+        const curDay = new Date(sDate + (i * 86400000));
+        const mKey = `${curDay.getFullYear()}-${String(curDay.getMonth() + 1).padStart(2, "0")}-01`;
+        dynamicMonthlyRevenue[mKey] = (dynamicMonthlyRevenue[mKey] || 0) + dailyRate;
+      }
+    });
+    Object.keys(dynamicMonthlyRevenue).forEach((mKey) => {
+      dynamicMonthlyRevenue[mKey] = Math.round(dynamicMonthlyRevenue[mKey] * 100) / 100;
     });
   }
 
@@ -835,14 +851,15 @@ function renderDashboard() {
 
 
   // KPI 6: AVERAGE OCCUPANCY (%)
-  // Formula: currently on-trip fleet count / total active fleet count * 100
+  // Formula: currently on-trip fleet count / total active fleet count * 100 (strictly clamped to <= 100%)
   const activeFleetCount = activeFleetsRoster.length || 7;
+  const safeOnTripCount = Math.min(activeFleetCount, Math.max(0, onTripFleetCount));
   const calculatedOccupancyPct = activeFleetCount
-    ? Math.round((onTripFleetCount / activeFleetCount) * 100)
+    ? Math.min(100, Math.max(0, Math.round((safeOnTripCount / activeFleetCount) * 100)))
     : 0;
   const occupancyPct = selectedMonthKpi
-    ? Number(selectedMonthKpi.occupancy_pct || 0)
-    : Number(serverKpiStats?.effective?.fleet_utilization ?? calculatedOccupancyPct);
+    ? Math.min(100, Math.max(0, Number(selectedMonthKpi.occupancy_pct || 0)))
+    : Math.min(100, Math.max(0, Number(serverKpiStats?.effective?.fleet_utilization ?? calculatedOccupancyPct)));
   const kpiAvgOccupancyEl = document.getElementById("kpiAvgOccupancy");
   if (kpiAvgOccupancyEl) kpiAvgOccupancyEl.textContent = `${occupancyPct}%`;
 
@@ -1043,45 +1060,30 @@ function renderDashboard() {
     return sDate >= lo && sDate <= hi;
   }
 
-  // 1. Day Sales
+  // 1. Day Sales (Prorated daily rental revenue without security deposit for today)
   let daySales = 0;
-  const isSingleDay =
-    filterFromDate &&
-    filterToDate &&
-    filterFromDate.getFullYear() === filterToDate.getFullYear() &&
-    filterFromDate.getMonth() === filterToDate.getMonth() &&
-    filterFromDate.getDate() === filterToDate.getDate();
+  const dayWindowStart = isSingleDay ? filterFromDate : todayStart;
+  const dayWindowEnd   = isSingleDay ? filterToDate : todayEnd;
 
-  if (isSingleDay) {
-    daySales = rawBookings
-      .filter((b) => isVerifiedRevenue(b) && isBookingInPeriod(b, filterFromDate, filterToDate))
-      .reduce((sum, b) => sum + bookingAmount(b), 0);
-  } else {
-    daySales = rawBookings
-      .filter((b) => {
-        if (!isVerifiedRevenue(b)) return false;
-        return inWindow(getBookingSaleDate(b), todayStart, todayEnd);
-      })
-      .reduce((sum, b) => sum + bookingAmount(b), 0);
-  }
+  verifiedBookings.forEach((b) => {
+    const { proratedRevenue } = prorateBookingForWindow(b, dayWindowStart, dayWindowEnd);
+    daySales += proratedRevenue;
+  });
+  daySales = Math.round(daySales * 100) / 100;
   if (daySales === 0 && (!filterFromDate || isBookingInPeriod({ pickupDate: now }, filterFromDate, filterToDate))) {
     daySales = Number(serverKpiStats?.effective?.day_sales || serverKpiStats?.live?.day_sales || 0);
   }
 
-  // 2. Week Sales (Sunday to Saturday)
+  // 2. Week Sales (Sunday to Saturday prorated daily rental revenue without security deposit)
   let weekSales = 0;
-  if (activeQuickFilter === "this_week") {
-    weekSales = rawBookings
-      .filter((b) => isVerifiedRevenue(b) && isBookingInPeriod(b, filterFromDate, filterToDate))
-      .reduce((sum, b) => sum + bookingAmount(b), 0);
-  } else {
-    weekSales = rawBookings
-      .filter((b) => {
-        if (!isVerifiedRevenue(b)) return false;
-        return inWindow(getBookingSaleDate(b), sunOfWeek, satOfWeek);
-      })
-      .reduce((sum, b) => sum + bookingAmount(b), 0);
-  }
+  const weekWindowStart = (activeQuickFilter === "this_week" && filterFromDate) ? filterFromDate : sunOfWeek;
+  const weekWindowEnd   = (activeQuickFilter === "this_week" && filterToDate) ? filterToDate : satOfWeek;
+
+  verifiedBookings.forEach((b) => {
+    const { proratedRevenue } = prorateBookingForWindow(b, weekWindowStart, weekWindowEnd);
+    weekSales += proratedRevenue;
+  });
+  weekSales = Math.round(weekSales * 100) / 100;
   if (weekSales === 0 && (!filterFromDate || isBookingInPeriod({ pickupDate: now }, filterFromDate, filterToDate))) {
     weekSales = Number(serverKpiStats?.effective?.week_sales || serverKpiStats?.live?.week_sales || 0);
   }
