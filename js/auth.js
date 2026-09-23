@@ -347,7 +347,7 @@ function wirePasswordToggles() {
 
     btn.addEventListener("click", (e) => {
       e.preventDefault();
-      e.stopPropagation();
+      e.stopImmediatePropagation();
       const isHidden = input.type === "password" || input.getAttribute("type") === "password";
       const nextType = isHidden ? "text" : "password";
       input.type = nextType;

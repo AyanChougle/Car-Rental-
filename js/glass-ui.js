@@ -109,7 +109,7 @@
     const btn = e.target.closest('.toggle-password');
     if (!btn) return;
     e.preventDefault();
-    e.stopPropagation();
+    e.stopImmediatePropagation();
 
     const box = btn.closest('.password-box') || btn.parentElement;
     const input = box ? box.querySelector('input') : null;

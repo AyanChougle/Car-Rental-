@@ -507,7 +507,7 @@ function applyKpiStats() {
 
   const utilizationRate = $("statUtilizationRate");
   if (utilizationRate) {
-    const rate = totFleetNum > 0 ? Math.round((onRoadNum / totFleetNum) * 100) : 0;
+    const rate = totFleetNum > 0 ? Math.min(100, Math.max(0, Math.round((onRoadNum / totFleetNum) * 100))) : 0;
     utilizationRate.textContent = `${rate}%`;
   }
 
@@ -6799,9 +6799,28 @@ function updateRevenueStats() {
         booking.paymentStatus === "advance_paid"
     );
 
-  // Canonical KPI ledger baselines
-  const totalRevenue = 50540 + 281857 + 267168 + 28000; // 627,565
-  const monthlyRevenue = 267168;
+  // Dynamic KPI calculations strictly derived from MySQL database
+  const effKpi = currentKpiStats?.effective || currentKpiStats?.live;
+
+  // Calculate live pure rental revenue excluding security deposits
+  const calculatedTotalRevenue = bookingsData.reduce((sum, b) => {
+    const s = String(b.status || "").toLowerCase();
+    const p = String(b.paymentStatus || "").toLowerCase();
+    if (s === "cancelled" || s === "rejected" || p === "cancelled" || p === "rejected") return sum;
+    if (p === "advance_paid") return sum + Number(b.advanceAmount || 500);
+    const dep = Number(b.securityDeposit || b.security_deposit || 0);
+    const tot = Number(b.finalAmount || b.totalAmount || 0);
+    const base = Number(b.baseAmount || 0);
+    const disc = Number(b.couponDiscount || 0);
+    let net = 0;
+    if (tot > 0 && dep > 0) net = Math.max(0, tot - dep);
+    else if (base > 0) net = Math.max(0, base - disc);
+    else net = Math.max(0, tot - dep);
+    return sum + net;
+  }, 0);
+
+  const totalRevenue = effKpi?.total_revenue !== undefined ? Number(effKpi.total_revenue) : calculatedTotalRevenue;
+  const monthlyRevenue = effKpi?.month_revenue !== undefined ? Number(effKpi.month_revenue) : (effKpi?.total_revenue || calculatedTotalRevenue);
 
   const pendingPayments =
     bookingsData.filter(
@@ -6810,11 +6829,11 @@ function updateRevenueStats() {
         (booking.paymentRef && booking.paymentStatus !== "paid" && booking.paymentStatus !== "advance_paid" && booking.paymentStatus !== "rejected")
     ).length;
 
-  // Keep the average aligned with the verified revenue cards.
+  // Keep the average aligned with verified revenue and paid bookings
   const average =
     paid.length
       ? Math.round((totalRevenue / paid.length) * 100) / 100
-      : 0;
+      : (effKpi?.avg_booking ? Number(effKpi.avg_booking) : 0);
 
   const totalRevenueEl = $("statTotalRevenue");
   if (totalRevenueEl) {
@@ -6828,12 +6847,12 @@ function updateRevenueStats() {
 
   const pendingEl = $("statPendingPayments");
   if (pendingEl) {
-    pendingEl.textContent = pendingPayments;
+    pendingEl.textContent = effKpi?.pending_payments !== undefined ? effKpi.pending_payments : pendingPayments;
   }
 
   const paidBookingsEl = $("statPaidBookings");
   if (paidBookingsEl) {
-    paidBookingsEl.textContent = paid.length;
+    paidBookingsEl.textContent = effKpi?.paid_bookings !== undefined ? effKpi.paid_bookings : paid.length;
   }
 
   const averageEl = $("statAvgBooking");
@@ -6841,14 +6860,14 @@ function updateRevenueStats() {
     averageEl.textContent = formatINR(average);
   }
 
-  // Fallback Fleet KPIs: ensures fleet cards never stay at 0
+  // Dynamic Fleet KPIs derived from SQL
   const totalFleetEl = $("statTotalFleet");
   const onRoadFleetEl = $("statOnRoadFleet");
   const activeRentalsEl = $("statActiveRentals");
   const availableFleetEl = $("statAvailableFleet");
   const utilizationEl = $("statUtilizationRate");
 
-  const totFleetNum = 7;
+  const totFleetNum = Math.max(1, Number(effKpi?.total_fleet || effKpi?.fleet_count || (Array.isArray(vehiclesData) && vehiclesData.length ? vehiclesData.length : 39)));
   const nowMs = Date.now();
   const onRoadCount = bookingsData.filter((b) => {
     const s = String(b.status || "").toLowerCase();
@@ -6862,9 +6881,9 @@ function updateRevenueStats() {
     return false;
   }).length;
 
-  const onRoadNum = Math.min(totFleetNum, onRoadCount);
+  const onRoadNum = Math.min(totFleetNum, effKpi?.on_road_fleet !== undefined ? Number(effKpi.on_road_fleet) : onRoadCount);
   const yardNum = Math.max(0, totFleetNum - onRoadNum);
-  const rate = Math.round((onRoadNum / totFleetNum) * 100);
+  const rate = totFleetNum > 0 ? Math.min(100, Math.max(0, Math.round((onRoadNum / totFleetNum) * 100))) : 0;
 
   if (totalFleetEl) totalFleetEl.textContent = String(totFleetNum);
   if (onRoadFleetEl) onRoadFleetEl.textContent = String(onRoadNum);

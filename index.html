@@ -704,7 +704,7 @@
           const btn = e.target.closest(".toggle-password");
           if (!btn) return;
           e.preventDefault();
-          e.stopPropagation();
+          e.stopImmediatePropagation();
 
           const box = btn.closest(".password-box");
           const input = box ? box.querySelector("input") : null;
@@ -720,8 +720,8 @@
         });
       })();
     </script>
-    <script type="module" src="js/auth.js?v=20260921-v2"></script>
-    <script src="js/glass-ui.js?v=20260921-v2"></script>
+    <script type="module" src="js/auth.js?v=20260923-v1"></script>
+    <script src="js/glass-ui.js?v=20260923-v1"></script>
     <script src="js/kruizly-motion.js?v=20260921-v2"></script>
   </body>
 </html>

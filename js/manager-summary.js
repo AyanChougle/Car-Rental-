@@ -42,798 +42,16 @@ let serverKpiStats = null;
  * September 2026 initial verified baseline: 143,816
  * Subsequent bookings and months are auto-fetched and computed dynamically from MySQL database.
  */
-export const KRUIZLY_BASE_KPI_REVENUE = Object.freeze({
-  "2026-07-01": 50540,
-  "2026-08-01": 281857,
-  "2026-09-01": 267168,
-  "2026-10-01": 28000,
-});
+export const KRUIZLY_BASE_KPI_REVENUE = Object.freeze({});
 
 // FLEET STATUS & SCOPE FILTER STATE
 let fleetStatusFilter = "all"; // "all" | "on_trip" | "in_yard" | "scheduled_pickup" | "scheduled_return"
-let fleetScope = "active"; // "active" (7) | "all" (38)
+let fleetScope = "active"; // "active" | "all"
 
-/**
- * Kruizly Standardized 7 Fleet Master
- */
-export const ACTIVE_7_FLEETS = [
-  {
-    carId: "CRP-002",
-    regNo: "MH03EL1025",
-    brand: "Suzuki",
-    model: "Fronx",
-    year: 2026,
-    category: "Compact SUV",
-    transmission: "Automatic",
-    fuel: "Petrol",
-    seats: 5,
-    hub: "Gavson Business Park, Ghansoli",
-    acquisitionType: "Partner",
-    ownerName: "Aditi Lotankar",
-    acquisitionDate: "2026-07-20",
-    image: "assets/fleet/Suzuki Fronx.png",
-    priceDay: 2700,
-  },
-  {
-    carId: "CRP-003",
-    regNo: "MH05GJ4711",
-    brand: "Suzuki",
-    model: "Ertiga",
-    year: 2026,
-    category: "MPV",
-    transmission: "Manual",
-    fuel: "Petrol + CNG",
-    seats: 7,
-    hub: "Gavson Business Park, Ghansoli",
-    acquisitionType: "Partner",
-    ownerName: "Viren Gupta",
-    acquisitionDate: "2026-07-24",
-    image: "assets/fleet/Suzuki Ertiga.png",
-    priceDay: 3300,
-  },
-  {
-    carId: "CRP-005",
-    regNo: "MH48GJ4153",
-    brand: "Toyota",
-    model: "Glanza",
-    year: 2026,
-    category: "Hatchback",
-    transmission: "Manual",
-    fuel: "Petrol + CNG",
-    seats: 5,
-    hub: "Gavson Business Park, Ghansoli",
-    acquisitionType: "Partner",
-    ownerName: "Ajay Vishwakarma",
-    acquisitionDate: "2026-07-29",
-    image: "assets/fleet/Toyota Glanza.png",
-    priceDay: 2600,
-  },
-  {
-    carId: "CRP-006",
-    regNo: "MH04MU1178",
-    brand: "Toyota",
-    model: "Glanza",
-    year: 2026,
-    category: "Hatchback",
-    transmission: "Manual",
-    fuel: "Petrol + CNG",
-    seats: 5,
-    hub: "Gavson Business Park, Ghansoli",
-    acquisitionType: "Partner",
-    ownerName: "Kundan Singh",
-    acquisitionDate: "2026-08-04",
-    image: "assets/fleet/Toyota Glanza.png",
-    priceDay: 2600,
-  },
-  {
-    carId: "CRP-007",
-    regNo: "MH05FV3454",
-    brand: "Tata",
-    model: "Punch",
-    year: 2026,
-    category: "Compact SUV",
-    transmission: "Manual",
-    fuel: "Petrol + CNG",
-    seats: 5,
-    hub: "Gavson Business Park, Ghansoli",
-    acquisitionType: "Partner",
-    ownerName: "Tai Phad",
-    acquisitionDate: "2026-08-13",
-    image: "assets/fleet/Tata Punch.png",
-    priceDay: 2700,
-  },
-  {
-    carId: "CRP-008",
-    regNo: "MH43CU1632",
-    brand: "Suzuki",
-    model: "Fronx",
-    year: 2026,
-    category: "Compact SUV",
-    transmission: "Manual",
-    fuel: "Petrol + CNG",
-    seats: 5,
-    hub: "Gavson Business Park, Ghansoli",
-    acquisitionType: "Partner",
-    ownerName: "Amol Gole",
-    acquisitionDate: "2026-08-19",
-    image: "assets/fleet/Suzuki Fronx.png",
-    priceDay: 2600,
-  },
-  {
-    carId: "CRP-009",
-    regNo: "MH02FU6808",
-    brand: "Mahindra",
-    model: "XUV 700",
-    year: 2026,
-    category: "SUV",
-    transmission: "Automatic",
-    fuel: "Petrol",
-    seats: 5,
-    hub: "Gavson Business Park, Ghansoli",
-    acquisitionType: "Partner",
-    ownerName: "Saif Feroz Shaikh",
-    acquisitionDate: "2026-08-01",
-    image: "assets/fleet/Mahindra XUV 700.png",
-    priceDay: 5500,
-  },
-];
-
-export const DEFAULT_SEPTEMBER_BOOKINGS = [
-  {
-    id: "KRZ-SEP-001",
-    bookingId: "KRZ-SEP-001",
-    bookingNumber: "KRZ-SEP-001",
-    userName: "Roshan More",
-    userEmail: "roshanmo@kruizly.com",
-    userPhone: "7507323988",
-    vehicleReg: "MH48CJ4153",
-    vehicleName: "Toyota Glanza",
-    pickupDate: "2026-09-03T09:00:00",
-    dropDate: "2026-09-16T21:00:00",
-    days: 16,
-    totalAmount: 40000,
-    finalAmount: 40000,
-    paymentAmountPaid: 40000,
-    paymentStatus: "paid",
-    status: "completed",
-    bookingStatus: "completed",
-    source: "Meta",
-  },
-  {
-    id: "KRZ-SEP-002",
-    bookingId: "KRZ-SEP-002",
-    bookingNumber: "KRZ-SEP-002",
-    userName: "Vivek Anant Hatkamkar",
-    userEmail: "vivekhatk@kruizly.com",
-    userPhone: "8355912195",
-    vehicleReg: "MH04MU1178",
-    vehicleName: "Toyota Glanza",
-    pickupDate: "2026-09-03T10:00:00",
-    dropDate: "2026-09-10T20:00:00",
-    days: 10,
-    totalAmount: 25200,
-    finalAmount: 25200,
-    paymentAmountPaid: 25200,
-    paymentStatus: "paid",
-    status: "completed",
-    bookingStatus: "completed",
-    source: "Meta",
-  },
-  {
-    id: "KRZ-SEP-003",
-    bookingId: "KRZ-SEP-003",
-    bookingNumber: "KRZ-SEP-003",
-    userName: "Arun Ahuja",
-    userEmail: "arun69ahu@gmail.com",
-    userPhone: "7030914115",
-    vehicleReg: "MH03EL1025",
-    vehicleName: "Suzuki Fronx Auto",
-    pickupDate: "2026-08-30T08:00:00",
-    dropDate: "2026-09-03T20:00:00",
-    days: 3,
-    totalAmount: 7020,
-    finalAmount: 7020,
-    paymentAmountPaid: 7020,
-    paymentStatus: "paid",
-    status: "completed",
-    bookingStatus: "completed",
-    source: "Meta",
-  },
-  {
-    id: "KRZ-SEP-004",
-    bookingId: "KRZ-SEP-004",
-    bookingNumber: "KRZ-SEP-004",
-    userName: "Akash Sarkar",
-    userEmail: "aakki7077@gmail.com",
-    userPhone: "8777355520",
-    vehicleReg: "MH43CY1632",
-    vehicleName: "Suzuki Fronx",
-    pickupDate: "2026-09-06T09:00:00",
-    dropDate: "2026-09-07T20:00:00",
-    days: 1,
-    totalAmount: 2500,
-    finalAmount: 2500,
-    paymentAmountPaid: 2500,
-    paymentStatus: "paid",
-    status: "completed",
-    bookingStatus: "completed",
-    source: "Meta",
-  },
-  {
-    id: "KRZ-SEP-005",
-    bookingId: "KRZ-SEP-005",
-    bookingNumber: "KRZ-SEP-005",
-    userName: "Kunal Vichave",
-    userEmail: "kunalvich@gmail.com",
-    userPhone: "7387961727",
-    vehicleReg: "MH05FV3454",
-    vehicleName: "Tata Punch",
-    pickupDate: "2026-09-05T08:00:00",
-    dropDate: "2026-09-06T20:00:00",
-    days: 2,
-    totalAmount: 3896,
-    finalAmount: 3896,
-    paymentAmountPaid: 3896,
-    paymentStatus: "paid",
-    status: "completed",
-    bookingStatus: "completed",
-    source: "Google",
-  },
-  {
-    id: "KRZ-SEP-006",
-    bookingId: "KRZ-SEP-006",
-    bookingNumber: "KRZ-SEP-006",
-    userName: "Dipesh Bhoir",
-    userEmail: "dipeshbhoir@gmail.com",
-    userPhone: "9527788995",
-    vehicleReg: "MH05GJ4711",
-    vehicleName: "Suzuki Ertiga",
-    pickupDate: "2026-09-07T09:00:00",
-    dropDate: "2026-09-08T21:00:00",
-    days: 1,
-    totalAmount: 3300,
-    finalAmount: 3300,
-    paymentAmountPaid: 3300,
-    paymentStatus: "paid",
-    status: "completed",
-    bookingStatus: "completed",
-    source: "Google",
-  },
-  {
-    id: "KRZ-SEP-007",
-    bookingId: "KRZ-SEP-007",
-    bookingNumber: "KRZ-SEP-007",
-    userName: "Krishna Velega",
-    userEmail: "krishnavelega@gmail.com",
-    userPhone: "9063281666",
-    vehicleReg: "MH05GJ4711",
-    vehicleName: "Suzuki Ertiga",
-    pickupDate: "2026-09-05T09:00:00",
-    dropDate: "2026-09-06T20:00:00",
-    days: 1,
-    totalAmount: 3300,
-    finalAmount: 3300,
-    paymentAmountPaid: 3300,
-    paymentStatus: "paid",
-    status: "completed",
-    bookingStatus: "completed",
-    source: "Rentrip",
-  },
-  {
-    id: "KRZ-SEP-008",
-    bookingId: "KRZ-SEP-008",
-    bookingNumber: "KRZ-SEP-008",
-    userName: "Rushikesh Shimpi",
-    userEmail: "rushikesh@gmail.com",
-    userPhone: "9324855850",
-    vehicleReg: "MH05GJ4711",
-    vehicleName: "Suzuki Ertiga",
-    pickupDate: "2026-09-03T09:00:00",
-    dropDate: "2026-09-04T20:00:00",
-    days: 1,
-    totalAmount: 3300,
-    finalAmount: 3300,
-    paymentAmountPaid: 3300,
-    paymentStatus: "paid",
-    status: "completed",
-    bookingStatus: "completed",
-    source: "Meta",
-  },
-  {
-    id: "KRZ-SEP-009",
-    bookingId: "KRZ-SEP-009",
-    bookingNumber: "KRZ-SEP-009",
-    userName: "Shaikh Sarfaraz",
-    userEmail: "Sarshaikh@gmail.com",
-    userPhone: "8928073455",
-    vehicleReg: "MH43CY1632",
-    vehicleName: "Suzuki Fronx",
-    pickupDate: "2026-09-01T09:00:00",
-    dropDate: "2026-09-03T20:00:00",
-    days: 2,
-    totalAmount: 5100,
-    finalAmount: 5100,
-    paymentAmountPaid: 5100,
-    paymentStatus: "paid",
-    status: "completed",
-    bookingStatus: "completed",
-    source: "Meta",
-  },
-  {
-    id: "KRZ-SEP-010",
-    bookingId: "KRZ-SEP-010",
-    bookingNumber: "KRZ-SEP-010",
-    userName: "Shaikh Sarfaraz",
-    userEmail: "Sarshaikh@gmail.com",
-    userPhone: "8928073455",
-    vehicleReg: "MH43CY1632",
-    vehicleName: "Suzuki Fronx",
-    pickupDate: "2026-09-04T09:00:00",
-    dropDate: "2026-09-06T20:00:00",
-    days: 2,
-    totalAmount: 5200,
-    finalAmount: 5200,
-    paymentAmountPaid: 5200,
-    paymentStatus: "paid",
-    status: "completed",
-    bookingStatus: "completed",
-    source: "Meta",
-  },
-];
-
-// ============================================================================
-// 31 OTHER CATALOG FLEETS (Extended Occupancy & Performance)
-// ============================================================================
-export const OTHER_CATALOG_FLEETS = [
-  {
-    id: "krz-01",
-    carId: "CAT-001",
-    regNo: "MH04KR1001",
-    brand: "BMW",
-    model: "520D",
-    year: 2017,
-    category: "Luxury",
-    transmission: "Automatic",
-    fuelType: "Diesel",
-    seats: 5,
-    priceDay: 18000,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-02",
-    carId: "CAT-002",
-    regNo: "MH04KR1002",
-    brand: "Mahindra",
-    model: "7XO",
-    year: 2026,
-    category: "SUV",
-    transmission: "AMT",
-    fuelType: "Diesel",
-    seats: 7,
-    priceDay: 9000,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-03",
-    carId: "CAT-003",
-    regNo: "MH04KR1003",
-    brand: "Tata",
-    model: "Altroz",
-    year: 2024,
-    category: "Hatchback",
-    transmission: "Manual",
-    fuelType: "Petrol",
-    seats: 5,
-    priceDay: 2600,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-04",
-    carId: "CAT-004",
-    regNo: "MH04KR1004",
-    brand: "Tata",
-    model: "Altroz",
-    year: 2024,
-    category: "Hatchback",
-    transmission: "Manual",
-    fuelType: "Petrol + CNG",
-    seats: 5,
-    priceDay: 2600,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-05",
-    carId: "CAT-005",
-    regNo: "MH04KR1005",
-    brand: "Hyundai",
-    model: "Aura",
-    year: 2024,
-    category: "Sedan",
-    transmission: "AMT",
-    fuelType: "Petrol",
-    seats: 5,
-    priceDay: 2600,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-06",
-    carId: "CAT-006",
-    regNo: "MH04KR1006",
-    brand: "Hyundai",
-    model: "Aura",
-    year: 2025,
-    category: "Sedan",
-    transmission: "Manual",
-    fuelType: "Petrol + CNG",
-    seats: 5,
-    priceDay: 2600,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-07",
-    carId: "CAT-007",
-    regNo: "MH04KR1007",
-    brand: "Maruti Suzuki",
-    model: "Baleno",
-    year: 2025,
-    category: "Hatchback",
-    transmission: "Manual",
-    fuelType: "Petrol + CNG",
-    seats: 5,
-    priceDay: 2500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-08",
-    carId: "CAT-008",
-    regNo: "MH04KR1008",
-    brand: "Maruti Suzuki",
-    model: "Brezza",
-    year: 2025,
-    category: "SUV",
-    transmission: "Manual",
-    fuelType: "Petrol + CNG",
-    seats: 5,
-    priceDay: 3500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-09",
-    carId: "CAT-009",
-    regNo: "MH04KR1009",
-    brand: "Maruti Suzuki",
-    model: "Brezza",
-    year: 2018,
-    category: "SUV",
-    transmission: "Manual",
-    fuelType: "Diesel",
-    seats: 5,
-    priceDay: 4000,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-10",
-    carId: "CAT-010",
-    regNo: "MH04KR1010",
-    brand: "Kia",
-    model: "Carens",
-    year: 2025,
-    category: "MPV",
-    transmission: "Manual",
-    fuelType: "Diesel",
-    seats: 7,
-    priceDay: 4500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-11",
-    carId: "CAT-011",
-    regNo: "MH04KR1011",
-    brand: "Jeep",
-    model: "Compass",
-    year: 2020,
-    category: "SUV",
-    transmission: "Manual",
-    fuelType: "Diesel",
-    seats: 5,
-    priceDay: 5500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-12",
-    carId: "CAT-012",
-    regNo: "MH04KR1012",
-    brand: "Hyundai",
-    model: "Creta",
-    year: 2024,
-    category: "SUV",
-    transmission: "Manual",
-    fuelType: "Diesel",
-    seats: 5,
-    priceDay: 4500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-13",
-    carId: "CAT-013",
-    regNo: "MH04KR1013",
-    brand: "Maruti Suzuki",
-    model: "Dzire",
-    year: 2025,
-    category: "Sedan",
-    transmission: "Manual",
-    fuelType: "Petrol + CNG",
-    seats: 5,
-    priceDay: 2600,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-15",
-    carId: "CAT-015",
-    regNo: "MH04KR1015",
-    brand: "Hyundai",
-    model: "Exter",
-    year: 2025,
-    category: "SUV",
-    transmission: "AMT",
-    fuelType: "Petrol",
-    seats: 5,
-    priceDay: 3500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-16",
-    carId: "CAT-016",
-    regNo: "MH04KR1016",
-    brand: "Hyundai",
-    model: "Exter",
-    year: 2025,
-    category: "SUV",
-    transmission: "Manual",
-    fuelType: "Petrol + CNG",
-    seats: 5,
-    priceDay: 2800,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-20",
-    carId: "CAT-020",
-    regNo: "MH04KR1020",
-    brand: "Maruti Suzuki",
-    model: "Grand Vitara",
-    year: 2025,
-    category: "SUV",
-    transmission: "Manual",
-    fuelType: "Diesel",
-    seats: 5,
-    priceDay: 4000,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-21",
-    carId: "CAT-021",
-    regNo: "MH04KR1021",
-    brand: "Hyundai",
-    model: "i20",
-    year: 2025,
-    category: "Hatchback",
-    transmission: "Manual",
-    fuelType: "Petrol",
-    seats: 5,
-    priceDay: 2600,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-22",
-    carId: "CAT-022",
-    regNo: "MH04KR1022",
-    brand: "Hyundai",
-    model: "i20",
-    year: 2018,
-    category: "Hatchback",
-    transmission: "Manual",
-    fuelType: "Diesel",
-    seats: 5,
-    priceDay: 3000,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-23",
-    carId: "CAT-023",
-    regNo: "MH04KR1023",
-    brand: "Maruti Suzuki",
-    model: "Ignis",
-    year: 2024,
-    category: "Hatchback",
-    transmission: "Manual",
-    fuelType: "Petrol + CNG",
-    seats: 5,
-    priceDay: 2500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-24",
-    carId: "CAT-024",
-    regNo: "MH04KR1024",
-    brand: "Toyota",
-    model: "Innova Crysta",
-    year: 2017,
-    category: "MPV",
-    transmission: "Manual",
-    fuelType: "Diesel",
-    seats: 7,
-    priceDay: 5500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-25",
-    carId: "CAT-025",
-    regNo: "MH04KR1025",
-    brand: "Toyota",
-    model: "Innova Crysta",
-    year: 2018,
-    category: "MPV",
-    transmission: "Automatic",
-    fuelType: "Diesel",
-    seats: 7,
-    priceDay: 6000,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-26",
-    carId: "CAT-026",
-    regNo: "MH04KR1026",
-    brand: "Tata",
-    model: "Nexon",
-    year: 2025,
-    category: "SUV",
-    transmission: "Manual",
-    fuelType: "Petrol + CNG",
-    seats: 5,
-    priceDay: 3000,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-28",
-    carId: "CAT-028",
-    regNo: "MH04KR1028",
-    brand: "Tata",
-    model: "Safari",
-    year: 2024,
-    category: "SUV",
-    transmission: "Automatic",
-    fuelType: "Diesel",
-    seats: 7,
-    priceDay: 9000,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-29",
-    carId: "CAT-029",
-    regNo: "MH04KR1029",
-    brand: "Mahindra",
-    model: "Scorpio N",
-    year: 2025,
-    category: "SUV",
-    transmission: "Manual",
-    fuelType: "Diesel",
-    seats: 7,
-    priceDay: 6000,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-30",
-    carId: "CAT-030",
-    regNo: "MH04KR1030",
-    brand: "Maruti Suzuki",
-    model: "Swift",
-    year: 2025,
-    category: "Hatchback",
-    transmission: "Manual",
-    fuelType: "Petrol + CNG",
-    seats: 5,
-    priceDay: 2500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-31",
-    carId: "CAT-031",
-    regNo: "MH04KR1031",
-    brand: "Maruti Suzuki",
-    model: "Swift",
-    year: 2021,
-    category: "Hatchback",
-    transmission: "AMT",
-    fuelType: "Petrol",
-    seats: 5,
-    priceDay: 2500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-32",
-    carId: "CAT-032",
-    regNo: "MH04KR1032",
-    brand: "Mahindra",
-    model: "Thar",
-    year: 2025,
-    category: "SUV",
-    transmission: "Manual",
-    fuelType: "Diesel",
-    seats: 4,
-    priceDay: 5500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-33",
-    carId: "CAT-033",
-    regNo: "MH04KR1033",
-    brand: "Mahindra",
-    model: "Thar",
-    year: 2024,
-    category: "SUV",
-    transmission: "Automatic",
-    fuelType: "Diesel",
-    seats: 4,
-    priceDay: 5500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-34",
-    carId: "CAT-034",
-    regNo: "MH04KR1034",
-    brand: "Mahindra",
-    model: "Thar Roxx",
-    year: 2025,
-    category: "SUV",
-    transmission: "Automatic",
-    fuelType: "Diesel",
-    seats: 5,
-    priceDay: 7000,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-35",
-    carId: "CAT-035",
-    regNo: "MH04KR1035",
-    brand: "Maruti Suzuki",
-    model: "WagonR",
-    year: 2023,
-    category: "Hatchback",
-    transmission: "Manual",
-    fuelType: "Petrol + CNG",
-    seats: 5,
-    priceDay: 2300,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-36",
-    carId: "CAT-036",
-    regNo: "MH04KR1036",
-    brand: "Maruti Suzuki",
-    model: "XL6",
-    year: 2023,
-    category: "MPV",
-    transmission: "Manual",
-    fuelType: "Petrol + CNG",
-    seats: 7,
-    priceDay: 3500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-  {
-    id: "krz-37",
-    carId: "CAT-037",
-    regNo: "MH04KR1037",
-    brand: "Mahindra",
-    model: "XUV500",
-    year: 2022,
-    category: "SUV",
-    transmission: "Manual",
-    fuelType: "Diesel",
-    seats: 7,
-    priceDay: 4500,
-    hub: "Gavson Business Park, Ghansoli",
-  },
-];
+// Clean dynamic exports (all fleet and booking data is loaded 100% dynamically from MySQL database)
+export const ACTIVE_7_FLEETS = [];
+export const DEFAULT_SEPTEMBER_BOOKINGS = [];
+export const OTHER_CATALOG_FLEETS = [];
 
 let otherFleetTablePage = 1;
 const OTHER_FLEET_TABLE_PAGE_SIZE = 8;
@@ -841,12 +59,14 @@ const OTHER_FLEET_TABLE_PAGE_SIZE = 8;
 let otherFleetGridPage = 1;
 const OTHER_FLEET_GRID_PAGE_SIZE = 6;
 
-let activeFleetsRoster = [...ACTIVE_7_FLEETS];
+let activeFleetsRoster = [];
 
 /**
  * Robustly matches any booking to one of the active fleet vehicles
  */
 export function matchBookingToFleet(b) {
+  if (!b) return null;
+
   const regRaw = String(b.vehicleReg || b.regNo || "")
     .trim()
     .toUpperCase()
@@ -857,99 +77,73 @@ export function matchBookingToFleet(b) {
   const carIdRaw = String(b.carId || b.car_id || "")
     .trim()
     .toUpperCase();
+  const vehIdRaw = b.vehicleId || b.vehicle_id || b.car_id || b.carId || null;
 
-  // 1. Direct registration / carId match
-  if (regRaw || carIdRaw) {
-    for (const f of activeFleetsRoster) {
-      const fReg = f.regNo.toUpperCase().replace(/[\s\-_]/g, "");
-      const fCarId = String(f.carId || "").toUpperCase().trim();
-
-      if (carIdRaw && fCarId && carIdRaw === fCarId) {
-        return f.regNo;
-      }
-      if (regRaw) {
-        if (regRaw === fReg || regRaw.includes(fReg) || fReg.includes(regRaw)) {
-          return f.regNo;
-        }
-        // Normalize common letter variations between user typed and RTO format
-        const rSimp = regRaw.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
-        const fSimp = fReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
-        if (rSimp === fSimp || rSimp.includes(fSimp) || fSimp.includes(rSimp)) {
-          return f.regNo;
-        }
-      }
-    }
-  }
-
-  // Helper to find reg from activeFleetsRoster by carId or model
-  const findRosterReg = (carId, modelKeyword) => {
-    const found = activeFleetsRoster.find(
-      (f) => (carId && f.carId === carId) || (modelKeyword && f.model.toUpperCase().includes(modelKeyword))
-    );
-    return found ? found.regNo : null;
-  };
-
-  // 2. Keyword match on car name & fleet details
-  if (
-    nameRaw.includes("700") ||
-    nameRaw.includes("XUV 700") ||
-    nameRaw.includes("XUV700")
-  ) {
-    return findRosterReg("CRP-009", "700") || "MH02FU6808";
-  }
-  if (nameRaw.includes("ERTIGA")) {
-    return findRosterReg("CRP-003", "ERTIGA") || "MH05GJ4711";
-  }
-  if (nameRaw.includes("PUNCH")) {
-    return findRosterReg("CRP-007", "PUNCH") || "MH05FV3454";
-  }
-  if (nameRaw.includes("GLANZA")) {
-    if (
-      regRaw.includes("1178") ||
-      nameRaw.includes("KUNDAN") ||
-      nameRaw.includes("VIVEK")
-    ) {
-      return findRosterReg("CRP-006", "1178") || "MH04MU1178";
-    }
-    return findRosterReg("CRP-005", "4153") || "MH48GJ4153";
-  }
-  if (nameRaw.includes("FRONX")) {
-    if (
-      nameRaw.includes("AUTO") ||
-      regRaw.includes("1025") ||
-      nameRaw.includes("ARUN")
-    ) {
-      return findRosterReg("CRP-002", "1025") || "MH03EL1025";
-    }
-    return findRosterReg("CRP-008", "1632") || "MH43CU1632";
-  }
-
-  // 3. Fallback matching across active roster
+  // 1. Direct ID / registration / carId match on active roster
   for (const f of activeFleetsRoster) {
-    if (
-      nameRaw &&
-      (nameRaw.includes(f.model.toUpperCase()) ||
-        nameRaw.includes(f.brand.toUpperCase()))
-    ) {
-      return f.regNo;
+    const fId = f.id;
+    const fReg = String(f.regNo || "").toUpperCase().replace(/[\s\-_]/g, "");
+    const fCarId = String(f.carId || "").toUpperCase().trim();
+
+    if (vehIdRaw && fId && String(vehIdRaw) === String(fId)) {
+      return f.regNo || f.carId || (`VEH-${f.id}`);
+    }
+    if (carIdRaw && fCarId && carIdRaw === fCarId) {
+      return f.regNo || f.carId || (`VEH-${f.id}`);
+    }
+    if (regRaw && fReg) {
+      if (regRaw === fReg || regRaw.includes(fReg) || fReg.includes(regRaw)) {
+        return f.regNo || f.carId || (`VEH-${f.id}`);
+      }
+      const rSimp = regRaw.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+      const fSimp = fReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+      if (rSimp === fSimp || rSimp.includes(fSimp) || fSimp.includes(rSimp)) {
+        return f.regNo || f.carId || (`VEH-${f.id}`);
+      }
     }
   }
 
-  // 4. Fallback matching across other catalog fleets
-  for (const f of OTHER_CATALOG_FLEETS) {
-    const fReg = f.regNo.toUpperCase().replace(/[\s\-_]/g, "");
-    if (
-      regRaw &&
-      (regRaw === fReg || regRaw.includes(fReg) || fReg.includes(regRaw))
-    ) {
-      return f.regNo;
+  // 2. Keyword match on car name & fleet details within active roster
+  for (const f of activeFleetsRoster) {
+    const fModel = String(f.model || "").toUpperCase().trim();
+    const fBrand = String(f.brand || "").toUpperCase().trim();
+    if (fModel && nameRaw.includes(fModel)) {
+      return f.regNo || f.carId || (`VEH-${f.id}`);
     }
-    if (
-      nameRaw &&
-      (nameRaw.includes(f.model.toUpperCase()) ||
-        nameRaw.includes(f.brand.toUpperCase()))
-    ) {
-      return f.regNo;
+    if (fBrand && fBrand.length >= 3 && nameRaw.includes(fBrand)) {
+      return f.regNo || f.carId || (`VEH-${f.id}`);
+    }
+  }
+
+  // 3. Fallback matching across all catalog vehicles from database
+  for (const f of rawVehicles) {
+    const fId = f.id;
+    const fReg = String(f.regNo || f.reg_no || "").toUpperCase().replace(/[\s\-_]/g, "");
+    const fCarId = String(f.carId || f.car_id || "").toUpperCase().trim();
+    const fModel = String(f.model || "").toUpperCase().trim();
+    const fBrand = String(f.brand || "").toUpperCase().trim();
+
+    if (vehIdRaw && fId && String(vehIdRaw) === String(fId)) {
+      return f.regNo || f.carId || (`VEH-${f.id}`);
+    }
+    if (carIdRaw && fCarId && carIdRaw === fCarId) {
+      return f.regNo || f.carId || (`VEH-${f.id}`);
+    }
+    if (regRaw && fReg) {
+      if (regRaw === fReg || regRaw.includes(fReg) || fReg.includes(regRaw)) {
+        return f.regNo || f.carId || (`VEH-${f.id}`);
+      }
+      const rSimp = regRaw.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+      const fSimp = fReg.replace(/[CG]/g, "C").replace(/[UY]/g, "U").replace(/[FL]/g, "F");
+      if (rSimp === fSimp || rSimp.includes(fSimp) || fSimp.includes(rSimp)) {
+        return f.regNo || f.carId || (`VEH-${f.id}`);
+      }
+    }
+    if (fModel && nameRaw.includes(fModel)) {
+      return f.regNo || f.carId || (`VEH-${f.id}`);
+    }
+    if (fBrand && fBrand.length >= 3 && nameRaw.includes(fBrand)) {
+      return f.regNo || f.carId || (`VEH-${f.id}`);
     }
   }
 
@@ -1291,6 +485,47 @@ function bookingDays(b) {
     return Math.max(1, diffDays);
   }
   return 1;
+}
+
+
+/**
+ * Daily date proration helper:
+ * Distributes pure rental revenue (excluding refundable security deposit)
+ * and booked days strictly across evaluation windows based on operational rental days.
+ */
+export function prorateBookingForWindow(b, windowStart, windowEnd) {
+  const netRental = bookingAmount(b);
+  const { start } = getBookingOperationalDates(b);
+  if (!start) return { matchedDays: 0, proratedRevenue: 0 };
+
+  const totalDays = bookingDays(b);
+  const dailyRate = totalDays > 0 ? (netRental / totalDays) : 0;
+
+  // If no filter window is specified (all time), return full amount and full days
+  if (!windowStart || !windowEnd) {
+    return { matchedDays: totalDays, proratedRevenue: netRental };
+  }
+
+  const sYear = start.getFullYear();
+  const sMonth = start.getMonth();
+  const sDay = start.getDate();
+  const sDateOnly = new Date(sYear, sMonth, sDay, 0, 0, 0, 0).getTime();
+
+  const wStart = new Date(windowStart.getFullYear(), windowStart.getMonth(), windowStart.getDate(), 0, 0, 0, 0).getTime();
+  const wEnd = new Date(windowEnd.getFullYear(), windowEnd.getMonth(), windowEnd.getDate(), 23, 59, 59, 999).getTime();
+
+  let matchedDays = 0;
+  for (let i = 0; i < totalDays; i++) {
+    const curDay = sDateOnly + (i * 86400000);
+    if (curDay >= wStart && curDay <= wEnd) {
+      matchedDays++;
+    }
+  }
+
+  return {
+    matchedDays,
+    proratedRevenue: Math.round(dailyRate * matchedDays * 100) / 100,
+  };
 }
 
 function isBookingActive(b, refNow, fromDate, toDate) {
