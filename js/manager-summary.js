@@ -965,15 +965,25 @@ function renderDashboard() {
         : calculatedPeriodRevenue;
 
   // KPI 1: TOTAL REVENUE
-  // User: "total revenue is total amount of the whole revenue"
+  // User: "total revenue is total amount of the whole revenue counted from aug sep oct and on going till date"
   const allVerifiedRevenue = rawBookings
     .filter((b) => isVerifiedRevenue(b))
     .reduce((sum, b) => sum + bookingAmount(b), 0);
+
+  const grandCumulativeRevenue = Math.max(
+    Number(serverKpiStats?.live?.total_revenue || 0),
+    Number(dynamicTotalRevenue || 0),
+    allVerifiedRevenue,
+  );
+
   const totalRevenue = isAllTime
-    ? allVerifiedRevenue || dynamicTotalRevenue
+    ? grandCumulativeRevenue
     : selectedMonthKey
       ? periodRevenue
-      : allVerifiedRevenue || dynamicTotalRevenue;
+      : (filterFromDate || filterToDate)
+        ? calculatedPeriodRevenue
+        : grandCumulativeRevenue;
+
   const kpiTotalRevenueEl = document.getElementById("kpiTotalRevenue");
   if (kpiTotalRevenueEl)
     kpiTotalRevenueEl.textContent = formatINR(totalRevenue);
@@ -1413,8 +1423,8 @@ function renderDashboard() {
   // 3. Month Sales (dynamically derived)
   const monthSales = monthRevenue;
 
-  // 4. Overall Sales (dynamically derived)
-  const overallSales = totalRevenue;
+  // 4. Overall Sales (grand total of whole cumulative company ledger)
+  const overallSales = grandCumulativeRevenue;
 
   document.getElementById("salesDay") &&
     (document.getElementById("salesDay").textContent = formatINR(daySales));
@@ -1434,7 +1444,7 @@ function renderDashboard() {
   if (totalEl) totalEl.textContent = formatINR(totalRevenue);
   if (monthEl) monthEl.textContent = formatINR(monthRevenue);
   if (salesMonthEl) salesMonthEl.textContent = formatINR(monthRevenue);
-  if (salesOverallEl) salesOverallEl.textContent = formatINR(totalRevenue);
+  if (salesOverallEl) salesOverallEl.textContent = formatINR(overallSales);
 
   // FLEET TABLE SORTING
   const sortMode = fleetSortSelect ? fleetSortSelect.value : "revenue";
