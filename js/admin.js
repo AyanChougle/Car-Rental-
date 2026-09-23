@@ -6358,7 +6358,7 @@ function initialisePaymentModal() {
           const isAdvancePayment = activePaymentBooking.paymentPlan === "advance";
           const targetBookingId = activePaymentBooking.id || activePaymentBooking.bookingId;
 
-          await api.post(`/payments/${targetBookingId}/verify`, {
+          const verifyRes = await api.post(`/payments/${targetBookingId}/verify`, {
             action: "approve",
             bookingId: targetBookingId
           });
@@ -6401,6 +6401,21 @@ function initialisePaymentModal() {
           renderPaymentsTable();
 
           updateRevenueStats();
+
+          const notif = verifyRes?.notification;
+          if (notif) {
+            let msg = "✅ Payment approved and booking confirmed!";
+            if (notif.email_sent) {
+              msg += `\n✉️ Official confirmation email sent to ${notif.customer_email || 'client'}.`;
+            }
+            if (notif.whatsapp_url) {
+              if (confirm(msg + "\n\nWould you like to open WhatsApp to send the confirmation message to the client now?")) {
+                window.open(notif.whatsapp_url, "_blank");
+              }
+            } else {
+              alert(msg);
+            }
+          }
 
         } catch (error) {
           console.error(
@@ -6598,6 +6613,42 @@ async function openPaymentModal(
             )}
           </strong>
         </div>
+
+        ${(() => {
+          const pStr = booking.pickupDate || booking.pickup_date || '';
+          const dStr = booking.dropDate || booking.drop_date || '';
+          const pFmt = pStr ? formatDateTime(pStr) : '—';
+          const dFmt = dStr ? formatDateTime(dStr) : '—';
+          let durText = '';
+          if (pStr && dStr) {
+            const pT = new Date(pStr).getTime();
+            const dT = new Date(dStr).getTime();
+            if (dT > pT) {
+              const diffHrs = Math.max(1, Math.ceil((dT - pT) / (1000 * 3600)));
+              const days = Math.floor(diffHrs / 24);
+              const rem = diffHrs % 24;
+              if (days > 0 && rem > 0) durText = `${days} Day${days > 1 ? 's' : ''} ${rem} Hr${rem > 1 ? 's' : ''} (${diffHrs} hrs total)`;
+              else if (days > 0) durText = `${days} Day${days > 1 ? 's' : ''} (${diffHrs} hrs)`;
+              else durText = `${diffHrs} Hour${diffHrs > 1 ? 's' : ''}`;
+            }
+          }
+          return `
+          <div class="booking-summary__row">
+            <span>Pickup Date &amp; Time</span>
+            <strong style="color: #4fd7ff;">${escapeHtml(pFmt)}</strong>
+          </div>
+          <div class="booking-summary__row">
+            <span>Drop Date &amp; Time</span>
+            <strong style="color: #4fd7ff;">${escapeHtml(dFmt)}</strong>
+          </div>
+          ${durText ? `
+          <div class="booking-summary__row">
+            <span>Rental Duration</span>
+            <strong style="color: #facc15;">${escapeHtml(durText)}</strong>
+          </div>
+          ` : ''}
+          `;
+        })()}
 
         ${(() => {
           const paidAmt = Number(booking.amount ?? booking.advanceAmount ?? booking.advance_amount ?? booking.tokenAmount ?? booking.token_amount ?? booking.paymentAmount ?? booking.amountPaid ?? 0);
@@ -9091,6 +9142,76 @@ function openAdminEditBookingModal(booking) {
   const amountInput = $("editBkTotalAmount");
   if (amountInput) amountInput.value = norm.totalAmount || 0;
 
+  // Live rental duration calculator in edit modal
+  const updateModalDuration = () => {
+    const pVal = pickupInput?.value;
+    const rVal = returnInput?.value;
+    const durBadge = $("editBkDurationRow");
+    const durTextEl = $("editBkDurationText");
+    const timeSummaryEl = $("editBkTimeSummary");
+    if (pVal && rVal) {
+      const pT = new Date(pVal).getTime();
+      const rT = new Date(rVal).getTime();
+      if (rT > pT) {
+        const diffHrs = Math.max(1, Math.ceil((rT - pT) / (1000 * 3600)));
+        const days = Math.floor(diffHrs / 24);
+        const remHrs = diffHrs % 24;
+        let dStr = '';
+        if (days > 0 && remHrs > 0) dStr = `${days} Day${days > 1 ? 's' : ''} ${remHrs} Hr${remHrs > 1 ? 's' : ''} (${diffHrs} hrs total)`;
+        else if (days > 0) dStr = `${days} Day${days > 1 ? 's' : ''} (${diffHrs} hrs)`;
+        else dStr = `${diffHrs} Hour${diffHrs > 1 ? 's' : ''}`;
+
+        if (durTextEl) durTextEl.textContent = dStr;
+        if (timeSummaryEl) timeSummaryEl.textContent = `${formatDateTime(pVal)} ➔ ${formatDateTime(rVal)}`;
+        if (durBadge) durBadge.style.display = 'flex';
+      }
+    }
+  };
+
+  pickupInput?.removeEventListener("input", updateModalDuration);
+  pickupInput?.addEventListener("input", updateModalDuration);
+  returnInput?.removeEventListener("input", updateModalDuration);
+  returnInput?.addEventListener("input", updateModalDuration);
+  updateModalDuration();
+
+  // WhatsApp Approval Confirmation Link
+  const waBtn = $("adminWhatsAppBookingBtn");
+  if (waBtn) {
+    const pDateFmt = norm.pickupDate ? formatDateTime(norm.pickupDate) : '—';
+    const dDateFmt = norm.dropDate ? formatDateTime(norm.dropDate) : '—';
+    const cleanPhone = String(norm.customerPhone || norm.phone || '').replace(/[^0-9]/g, '');
+    const phoneWithCountry = cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone;
+
+    const pT = norm.pickupDate ? new Date(norm.pickupDate).getTime() : 0;
+    const rT = norm.dropDate ? new Date(norm.dropDate).getTime() : 0;
+    let durStr = '1 Day (24 hrs)';
+    if (rT > pT) {
+      const diffHrs = Math.max(1, Math.ceil((rT - pT) / (1000 * 3600)));
+      const days = Math.floor(diffHrs / 24);
+      const remHrs = diffHrs % 24;
+      if (days > 0 && remHrs > 0) durStr = `${days} Day${days > 1 ? 's' : ''} ${remHrs} Hr${remHrs > 1 ? 's' : ''} (${diffHrs} hrs total)`;
+      else if (days > 0) durStr = `${days} Day${days > 1 ? 's' : ''} (${diffHrs} hrs)`;
+      else durStr = `${diffHrs} Hour${diffHrs > 1 ? 's' : ''}`;
+    }
+
+    const waMsg = encodeURIComponent(
+      `🎉 *KRUIZLY BOOKING APPROVED & CONFIRMED!*\n\n` +
+      `Dear *${norm.customerName || 'Valued Customer'}*,\n` +
+      `Your rental reservation has been officially approved! 🚗💨\n\n` +
+      `📋 *Booking ID:* #${norm.bookingNumber || norm.id}\n` +
+      `🚘 *Vehicle:* ${norm.carName || 'Vehicle'} (${norm.vehicleReg || 'Assigned'})\n` +
+      `📅 *Pickup Date & Time:* ${pDateFmt}\n` +
+      `📅 *Drop Date & Time:* ${dDateFmt}\n` +
+      `⏱️ *Duration:* ${durStr}\n` +
+      `💰 *Total Amount:* ₹${norm.totalAmount || 0}\n` +
+      `✅ *Status:* Confirmed & Approved\n\n` +
+      `📍 *Pickup:* Gavson Business Park, Ghansoli, Navi Mumbai\n` +
+      `Please carry your original Driving License & Aadhaar Card.\n\n` +
+      `Need help? Call +91 91671 64547. Thank you for choosing KRUIZLY!`
+    );
+    waBtn.href = `https://wa.me/${phoneWithCountry || '919167164547'}?text=${waMsg}`;
+  }
+
   showModal("adminEditBookingModal");
 }
 
@@ -9124,7 +9245,8 @@ async function handleAdminSaveEditBooking(e) {
       dropDate: dropDate,
       status: status,
       bookingStatus: status,
-      totalAmount: totalAmount
+      totalAmount: totalAmount,
+      sendApprovalNotification: (status === "confirmed")
     };
 
     const res = await api.put(`/bookings/detail.php?id=${encodeURIComponent(id)}`, payload);
@@ -9133,6 +9255,21 @@ async function handleAdminSaveEditBooking(e) {
       await loadAdminCalendar();
       if (typeof loadBookings === "function") loadBookings();
       if (typeof loadKpiStats === "function") loadKpiStats();
+
+      const notif = res?.notification;
+      if (status === "confirmed" && notif) {
+        let msg = "✅ Booking saved and confirmed!";
+        if (notif.email_sent) {
+          msg += `\n✉️ Confirmation email sent to ${notif.customer_email || email || 'client'}.`;
+        }
+        if (notif.whatsapp_url) {
+          if (confirm(msg + "\n\nWould you like to open WhatsApp to send the confirmation message to the client now?")) {
+            window.open(notif.whatsapp_url, "_blank");
+          }
+        } else {
+          alert(msg);
+        }
+      }
     } else {
       alert("Could not update booking: " + (res?.message || "Unknown error"));
     }

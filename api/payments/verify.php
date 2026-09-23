@@ -117,9 +117,21 @@ try {
         KpiService::syncMetrics();
     } catch (Throwable $_) {}
 
+    // Dispatch approval email & generate WhatsApp confirmation text
+    $notificationResult = null;
+    if ($action === 'approve') {
+        try {
+            require_once __DIR__ . '/../services/BookingNotificationService.php';
+            $notificationResult = BookingNotificationService::sendBookingApprovalNotification($id);
+        } catch (Throwable $t) {
+            error_log("[Approval Notification Error] " . $t->getMessage());
+        }
+    }
+
     sendJsonResponse([
         'success' => true,
-        'message' => "Payment successfully marked as " . ($action === 'approve' ? 'Approved & Confirmed' : 'Rejected') . "."
+        'message' => "Payment successfully marked as " . ($action === 'approve' ? 'Approved & Confirmed' : 'Rejected') . ".",
+        'notification' => $notificationResult
     ]);
 } catch (Exception $e) {
     error_log("[Payment Verify Error] " . $e->getMessage());

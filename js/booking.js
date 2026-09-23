@@ -386,9 +386,16 @@ async function initBooking(vehicle) {
 
     const dayCount = Math.max(1, Number(days) || 1);
     const hourCount = Math.max(1, Number(hours) || (dayCount * 24));
-    const dayLabel = dayCount === 1 ? "1 Day" : `${dayCount} Days`;
-    const hrLabel = `${hourCount} hrs`;
-    const formattedDuration = `${dayLabel} (${hrLabel})`;
+    const fullDays = Math.floor(hourCount / 24);
+    const remHours = hourCount % 24;
+    let formattedDuration = "";
+    if (fullDays > 0 && remHours > 0) {
+      formattedDuration = `${fullDays} Day${fullDays > 1 ? "s" : ""} ${remHours} Hr${remHours > 1 ? "s" : ""} (${hourCount} hrs)`;
+    } else if (fullDays > 0) {
+      formattedDuration = `${fullDays} Day${fullDays > 1 ? "s" : ""} (${hourCount} hrs)`;
+    } else {
+      formattedDuration = `${hourCount} Hr${hourCount > 1 ? "s" : ""}`;
+    }
 
     let html =
       '<div class="booking-totals__header"><span>PRICE BREAKDOWN</span><span>Duration: ' +
@@ -396,12 +403,8 @@ async function initBooking(vehicle) {
       "</span></div>";
     html +=
       '<div class="booking-total-row"><span>Rental Charges (' +
-      dayCount +
-      " day" +
-      (dayCount > 1 ? "s" : "") +
-      " (" +
-      hrLabel +
-      "))</span><strong>₹" +
+      formattedDuration +
+      ")</span><strong>₹" +
       formatCurrency(rentalTotal) +
       "</strong></div>";
 

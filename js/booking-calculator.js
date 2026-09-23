@@ -136,16 +136,28 @@ export function calculateDuration(pickup, drop) {
   const durationHours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)));
   // Days based on 24hr chunks
   const durationDays = Math.max(1, Math.ceil(durationHours / 24));
+  const fullDays = Math.floor(durationHours / 24);
+  const remainingHours = durationHours % 24;
 
-  const dayLabel = durationDays === 1 ? "1 Day" : `${durationDays} Days`;
-  const hrLabel = `${durationHours} ${durationHours === 1 ? "hr" : "hrs"}`;
-  const formattedDuration = `${dayLabel} (${hrLabel})`;
+  let daysAndHoursText = "";
+  if (fullDays > 0 && remainingHours > 0) {
+    daysAndHoursText = `${fullDays} Day${fullDays > 1 ? "s" : ""} ${remainingHours} Hr${remainingHours > 1 ? "s" : ""} (${durationHours} hrs)`;
+  } else if (fullDays > 0) {
+    daysAndHoursText = `${fullDays} Day${fullDays > 1 ? "s" : ""} (${durationHours} hrs)`;
+  } else {
+    daysAndHoursText = `${durationHours} Hr${durationHours > 1 ? "s" : ""}`;
+  }
+
+  const formattedDuration = daysAndHoursText;
 
   return {
     valid: true,
     durationMs,
     durationHours,
     durationDays,
+    fullDays,
+    remainingHours,
+    daysAndHoursText,
     formattedDuration,
     pickupDate: pDate,
     dropDate: dDate

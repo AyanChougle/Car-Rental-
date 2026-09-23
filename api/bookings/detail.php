@@ -341,7 +341,22 @@ if ($method === 'PUT' || $method === 'POST') {
         KpiService::syncMetrics();
     } catch (Throwable $_) {}
 
-    sendJsonResponse(['success' => true, 'message' => 'Booking updated successfully.']);
+    // Dispatch approval email & WhatsApp notification when booking status is confirmed
+    $notificationResult = null;
+    if ($newStatus === 'confirmed' || !empty($input['sendApprovalNotification'])) {
+        try {
+            require_once __DIR__ . '/../services/BookingNotificationService.php';
+            $notificationResult = BookingNotificationService::sendBookingApprovalNotification($bookingId);
+        } catch (Throwable $t) {
+            error_log("[Approval Notification Warning] " . $t->getMessage());
+        }
+    }
+
+    sendJsonResponse([
+        'success' => true,
+        'message' => 'Booking updated successfully.',
+        'notification' => $notificationResult
+    ]);
 }
 
 if ($method === 'DELETE') {
