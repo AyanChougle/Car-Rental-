@@ -789,11 +789,16 @@ function renderDashboard() {
   );
   const periodRevenue = selectedMonthKey && dynamicMonthlyRevenue[selectedMonthKey] !== undefined
     ? Number(dynamicMonthlyRevenue[selectedMonthKey])
-    : (selectedMonthKey ? Number(dynamicMonthlyRevenue[selectedMonthKey] || 0) : dynamicTotalRevenue);
+    : (selectedMonthKey ? Number(dynamicMonthlyRevenue[selectedMonthKey] || 0) : calculatedPeriodRevenue);
 
   // KPI 1: TOTAL REVENUE
-  // Displays canonical overall revenue strictly matched with MySQL kpi_metrics
-  const totalRevenue = Number(serverKpiStats?.effective?.total_revenue || dynamicTotalRevenue || 0);
+  // User: "total revenue is total amount of the whole revenue"
+  const allVerifiedRevenue = rawBookings
+    .filter((b) => isVerifiedRevenue(b))
+    .reduce((sum, b) => sum + bookingAmount(b), 0);
+  const totalRevenue = isAllTime
+    ? (allVerifiedRevenue || dynamicTotalRevenue)
+    : (selectedMonthKey ? periodRevenue : (allVerifiedRevenue || dynamicTotalRevenue));
   const kpiTotalRevenueEl = document.getElementById("kpiTotalRevenue");
   if (kpiTotalRevenueEl)
     kpiTotalRevenueEl.textContent = formatINR(totalRevenue);
@@ -938,9 +943,12 @@ function renderDashboard() {
   // Initialize with selected fleet roster
   const vehicleStatsMap = new Map();
   currentScopeRoster.forEach((f) => {
-    vehicleStatsMap.set(f.regNo, {
+    const key = f.identifier || f.regNo || f.carId || (`VEH-${f.id}`);
+    const entry = {
       carName: `${f.brand} ${f.model}`,
-      regNo: f.regNo,
+      regNo: f.regNo || "",
+      carId: f.carId || "",
+      identifier: key,
       brand: f.brand,
       model: f.model,
       category: f.category || "Car",
@@ -950,7 +958,11 @@ function renderDashboard() {
       bookedDays: 0,
       revenue: 0,
       bookingDatesList: [],
-    });
+    };
+    if (f.regNo) vehicleStatsMap.set(f.regNo, entry);
+    if (f.carId) vehicleStatsMap.set(f.carId, entry);
+    if (f.id) vehicleStatsMap.set(String(f.id), entry);
+    vehicleStatsMap.set(key, entry);
   });
 
   let unmappedRevenue = 0;
@@ -998,7 +1010,7 @@ function renderDashboard() {
     }
   }
 
-  const fleetList = Array.from(vehicleStatsMap.values());
+  const fleetList = Array.from(new Set(vehicleStatsMap.values()));
 
   // KPI 8: PER FLEET REVENUE % (Top vehicle share)
   let topVehicle = null;
@@ -1499,12 +1511,16 @@ function computeOtherFleetStats(rawBookings, periodDays) {
     return s !== "cancelled" && s !== "rejected";
   });
 
-  // Use live DB vehicles, excluding the 7 active fleet reg numbers
-  const activeRegNos = new Set(
-    activeFleetsRoster.map((f) =>
-      String(f.regNo || "").trim().toUpperCase().replace(/[\s\-_]/g, "")
-    )
-  );
+  // Use live DB vehicles, excluding active fleet reg numbers and carIds
+  const activeKeys = new Set();
+  activeFleetsRoster.forEach((f) => {
+    const reg = String(f.regNo || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
+    const carId = String(f.carId || "").trim().toUpperCase();
+    const id = String(f.id || "").trim();
+    if (reg) activeKeys.add(reg);
+    if (carId) activeKeys.add(carId);
+    if (id) activeKeys.add(id);
+  });
 
   // Build the catalog fleet list from DB rawVehicles, falling back to hardcoded list only if DB is empty
   let catalogFleets;
@@ -1512,8 +1528,12 @@ function computeOtherFleetStats(rawBookings, periodDays) {
     catalogFleets = rawVehicles
       .filter((v) => {
         const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase().replace(/[\s\-_]/g, "");
-        // Exclude active 7 fleet vehicles
-        if (reg && activeRegNos.has(reg)) return false;
+        const carId = String(v.carId || v.car_id || "").trim().toUpperCase();
+        const id = String(v.id || "").trim();
+        // Exclude active fleet vehicles by reg, carId, or id
+        if (reg && activeKeys.has(reg)) return false;
+        if (carId && activeKeys.has(carId)) return false;
+        if (id && activeKeys.has(id)) return false;
         // Exclude removed/inactive
         const status = String(v.status || "").toLowerCase();
         if (status === "removed") return false;
@@ -1945,12 +1965,13 @@ async function loadManagerData() {
           : [];
     }
 
-    // STRICT VALIDATION: Filter out any dummy WP / ZIP registration cars
+    // Filter out dummy ZIP placeholder cars, but keep valid active fleets identified by carId or regNo
     const validServerFleets = serverFleets.filter((f) => {
-      const reg = String(f.regNo || f.reg_no || "")
-        .trim()
-        .toUpperCase();
-      return reg && !reg.startsWith("ZIP") && !reg.includes("ZIP");
+      const reg = String(f.regNo || f.reg_no || "").trim().toUpperCase();
+      const carId = String(f.carId || f.car_id || f.id || "").trim().toUpperCase();
+      if (!reg && !carId) return false;
+      if (reg && (reg.startsWith("ZIP") || reg.includes("ZIP"))) return false;
+      return true;
     });
 
     // Build dynamic active fleet roster from server response

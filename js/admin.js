@@ -6853,7 +6853,10 @@ function updateRevenueStats() {
   const availableFleetEl = $("statAvailableFleet");
   const utilizationEl = $("statUtilizationRate");
 
-  const totFleetNum = Math.max(1, Number(effKpi?.total_fleet || effKpi?.fleet_count || (Array.isArray(vehiclesData) && vehiclesData.length ? vehiclesData.length : 39)));
+  const fleetList = (Array.isArray(adminFleetVehicles) && adminFleetVehicles.length)
+    ? adminFleetVehicles
+    : (typeof getEffectiveFleetVehicles === "function" ? getEffectiveFleetVehicles() : []);
+  const totFleetNum = Math.max(1, Number(effKpi?.total_fleet || effKpi?.fleet_count || (fleetList.length ? fleetList.length : 39)));
   const nowMs = Date.now();
   const onRoadCount = bookingsData.filter((b) => {
     const s = String(b.status || "").toLowerCase();
