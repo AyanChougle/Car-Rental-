@@ -180,6 +180,85 @@ function formatDate(value) {
   });
 }
 
+function safeParseDate(value) {
+  if (!value && value !== 0) return null;
+  if (value instanceof Date) return isNaN(value.getTime()) ? null : value;
+  if (typeof value === "number") {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof value === "string") {
+    let s = value.trim();
+    if (!s || s === "—" || s === "-") return null;
+    s = s.replace(/(\d+)(st|nd|rd|th)\b/gi, "$1");
+    const ymd = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(.*)$/);
+    if (ymd) {
+      const year = parseInt(ymd[1], 10);
+      const month = parseInt(ymd[2], 10) - 1;
+      const day = parseInt(ymd[3], 10);
+      let hour = 0, min = 0, sec = 0;
+      const rest = (ymd[4] || "").trim();
+      const timeMatch = rest.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i);
+      if (timeMatch) {
+        hour = parseInt(timeMatch[1], 10);
+        min = parseInt(timeMatch[2], 10);
+        sec = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+        if (timeMatch[4]) {
+          const meridiem = timeMatch[4].toLowerCase();
+          if (meridiem === "pm" && hour < 12) hour += 12;
+          if (meridiem === "am" && hour === 12) hour = 0;
+        }
+      }
+      const d = new Date(year, month, day, hour, min, sec);
+      if (!isNaN(d.getTime())) return d;
+    }
+    const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(.*)$/);
+    if (dmy) {
+      const p1 = parseInt(dmy[1], 10);
+      const p2 = parseInt(dmy[2], 10);
+      const year = parseInt(dmy[3], 10);
+      let day = p1, month = p2 - 1;
+      if (p1 <= 12 && p2 > 12) {
+        month = p1 - 1;
+        day = p2;
+      }
+      let hour = 0, min = 0, sec = 0;
+      const rest = (dmy[4] || "").trim();
+      const timeMatch = rest.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i);
+      if (timeMatch) {
+        hour = parseInt(timeMatch[1], 10);
+        min = parseInt(timeMatch[2], 10);
+        sec = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+        if (timeMatch[4]) {
+          const meridiem = timeMatch[4].toLowerCase();
+          if (meridiem === "pm" && hour < 12) hour += 12;
+          if (meridiem === "am" && hour === 12) hour = 0;
+        }
+      }
+      const d = new Date(year, month, day, hour, min, sec);
+      if (!isNaN(d.getTime())) return d;
+    }
+    const standard = new Date(s);
+    if (!isNaN(standard.getTime())) return standard;
+  }
+  return null;
+}
+
+function formatDateTime(value) {
+  const date = safeParseDate(value);
+  if (!date) {
+    return "—";
+  }
+  return date.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
 function getBookingDateValue(booking) {
   /*
    * IMPORTANT:
@@ -3876,13 +3955,13 @@ function renderBookingsTable(
                     margin-bottom:4px;
                   "
                 >
-                  Pickup Date
+                  Pickup Date &amp; Time
                 </span>
 
-                ${formatDate(
+                <strong style="color: #fff;">${formatDateTime(
                   booking.pickupDate ||
                     booking.bookingDate
-                )}
+                )}</strong>
               </div>
 
               <!-- RETURN -->
@@ -3907,13 +3986,13 @@ function renderBookingsTable(
                     margin-bottom:4px;
                   "
                 >
-                  Return Date
+                  Return Date &amp; Time
                 </span>
 
-                ${formatDate(
+                <strong style="color: #fff;">${formatDateTime(
                   booking.dropDate ||
                     booking.returnDate
-                )}
+                )}</strong>
               </div>
 
               <!-- PAYMENT -->
@@ -8192,8 +8271,9 @@ function formatCalDateTime(d) {
   });
 }
 
-function formatInputDateTime(d) {
-  if (!d || isNaN(d.getTime())) return "";
+function formatInputDateTime(val) {
+  const d = safeParseDate(val);
+  if (!d) return "";
   const pad = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
@@ -9144,15 +9224,17 @@ function openAdminEditBookingModal(booking) {
 
   // Live rental duration calculator in edit modal
   const updateModalDuration = () => {
-    const pVal = pickupInput?.value;
-    const rVal = returnInput?.value;
+    const pVal = pickupInput?.value || norm?.pickupDate;
+    const rVal = returnInput?.value || norm?.dropDate;
     const durBadge = $("editBkDurationRow");
     const durTextEl = $("editBkDurationText");
     const timeSummaryEl = $("editBkTimeSummary");
     if (pVal && rVal) {
-      const pT = new Date(pVal).getTime();
-      const rT = new Date(rVal).getTime();
-      if (rT > pT) {
+      const pD = safeParseDate(pVal);
+      const rD = safeParseDate(rVal);
+      const pT = pD ? pD.getTime() : 0;
+      const rT = rD ? rD.getTime() : 0;
+      if (pT > 0 && rT > pT) {
         const diffHrs = Math.max(1, Math.ceil((rT - pT) / (1000 * 3600)));
         const days = Math.floor(diffHrs / 24);
         const remHrs = diffHrs % 24;
@@ -9162,16 +9244,24 @@ function openAdminEditBookingModal(booking) {
         else dStr = `${diffHrs} Hour${diffHrs > 1 ? 's' : ''}`;
 
         if (durTextEl) durTextEl.textContent = dStr;
-        if (timeSummaryEl) timeSummaryEl.textContent = `${formatDateTime(pVal)} ➔ ${formatDateTime(rVal)}`;
+        if (timeSummaryEl) timeSummaryEl.textContent = `${formatDateTime(pD || pVal)} ➔ ${formatDateTime(rD || rVal)}`;
         if (durBadge) durBadge.style.display = 'flex';
+        return;
       }
+    }
+    if (durTextEl && (norm.raw?.duration || norm.duration)) {
+      durTextEl.textContent = norm.raw?.duration || norm.duration;
     }
   };
 
   pickupInput?.removeEventListener("input", updateModalDuration);
   pickupInput?.addEventListener("input", updateModalDuration);
+  pickupInput?.removeEventListener("change", updateModalDuration);
+  pickupInput?.addEventListener("change", updateModalDuration);
   returnInput?.removeEventListener("input", updateModalDuration);
   returnInput?.addEventListener("input", updateModalDuration);
+  returnInput?.removeEventListener("change", updateModalDuration);
+  returnInput?.addEventListener("change", updateModalDuration);
   updateModalDuration();
 
   // WhatsApp Approval Confirmation Link
@@ -9182,10 +9272,12 @@ function openAdminEditBookingModal(booking) {
     const cleanPhone = String(norm.customerPhone || norm.phone || '').replace(/[^0-9]/g, '');
     const phoneWithCountry = cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone;
 
-    const pT = norm.pickupDate ? new Date(norm.pickupDate).getTime() : 0;
-    const rT = norm.dropDate ? new Date(norm.dropDate).getTime() : 0;
+    const pD = safeParseDate(norm.pickupDate);
+    const rD = safeParseDate(norm.dropDate);
+    const pT = pD ? pD.getTime() : 0;
+    const rT = rD ? rD.getTime() : 0;
     let durStr = '1 Day (24 hrs)';
-    if (rT > pT) {
+    if (pT > 0 && rT > pT) {
       const diffHrs = Math.max(1, Math.ceil((rT - pT) / (1000 * 3600)));
       const days = Math.floor(diffHrs / 24);
       const remHrs = diffHrs % 24;

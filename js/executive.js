@@ -55,19 +55,163 @@ function formatMoney(num) {
   return `₹${Math.round(val).toLocaleString("en-IN")}`;
 }
 
+function parseExecDate(val) {
+  if (!val && val !== 0) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (typeof val === "number") {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof val === "string") {
+    let s = val.trim();
+    if (!s || s === "—" || s === "-") return null;
+    s = s.replace(/(\d+)(st|nd|rd|th)\b/gi, "$1");
+    const ymd = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(.*)$/);
+    if (ymd) {
+      const year = parseInt(ymd[1], 10);
+      const month = parseInt(ymd[2], 10) - 1;
+      const day = parseInt(ymd[3], 10);
+      let hour = 0, min = 0, sec = 0;
+      const rest = (ymd[4] || "").trim();
+      const timeMatch = rest.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i);
+      if (timeMatch) {
+        hour = parseInt(timeMatch[1], 10);
+        min = parseInt(timeMatch[2], 10);
+        sec = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+        if (timeMatch[4]) {
+          const meridiem = timeMatch[4].toLowerCase();
+          if (meridiem === "pm" && hour < 12) hour += 12;
+          if (meridiem === "am" && hour === 12) hour = 0;
+        }
+      }
+      const d = new Date(year, month, day, hour, min, sec);
+      if (!isNaN(d.getTime())) return d;
+    }
+    const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(.*)$/);
+    if (dmy) {
+      const p1 = parseInt(dmy[1], 10);
+      const p2 = parseInt(dmy[2], 10);
+      const year = parseInt(dmy[3], 10);
+      let day = p1, month = p2 - 1;
+      if (p1 <= 12 && p2 > 12) {
+        month = p1 - 1;
+        day = p2;
+      }
+      let hour = 0, min = 0, sec = 0;
+      const rest = (dmy[4] || "").trim();
+      const timeMatch = rest.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i);
+      if (timeMatch) {
+        hour = parseInt(timeMatch[1], 10);
+        min = parseInt(timeMatch[2], 10);
+        sec = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
+        if (timeMatch[4]) {
+          const meridiem = timeMatch[4].toLowerCase();
+          if (meridiem === "pm" && hour < 12) hour += 12;
+          if (meridiem === "am" && hour === 12) hour = 0;
+        }
+      }
+      const d = new Date(year, month, day, hour, min, sec);
+      if (!isNaN(d.getTime())) return d;
+    }
+    const standard = new Date(s);
+    if (!isNaN(standard.getTime())) return standard;
+  }
+  return null;
+}
+
 function formatReadableDate(dateStr) {
   if (!dateStr) return "—";
+  const d = parseExecDate(dateStr);
+  if (!d) return String(dateStr);
   try {
-    const d = new Date(dateStr);
-    if (Number.isNaN(d.getTime())) return dateStr;
     return new Intl.DateTimeFormat("en-IN", {
       day: "2-digit",
       month: "short",
       year: "numeric"
     }).format(d);
   } catch {
-    return dateStr;
+    return String(dateStr);
   }
+}
+
+function formatReadableTime(dateStr) {
+  if (!dateStr) return "";
+  const d = parseExecDate(dateStr);
+  if (!d) return "";
+  try {
+    return new Intl.DateTimeFormat("en-IN", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    }).format(d);
+  } catch {
+    return "";
+  }
+}
+
+function formatReadableDateTime(dateStr) {
+  if (!dateStr) return "—";
+  const d = parseExecDate(dateStr);
+  if (!d) return String(dateStr);
+  try {
+    return new Intl.DateTimeFormat("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true
+    }).format(d);
+  } catch {
+    return String(dateStr);
+  }
+}
+
+function formatBookingDuration(b) {
+  const pStr = b?.pickupDate || b?.pickup_date || "";
+  const dStr = b?.dropDate || b?.drop_date || "";
+  const pD = parseExecDate(pStr);
+  const dD = parseExecDate(dStr);
+  if (pD && dD) {
+    const pT = pD.getTime();
+    const dT = dD.getTime();
+    if (dT > pT) {
+      const diffHrs = Math.max(1, Math.ceil((dT - pT) / (1000 * 3600)));
+      const days = Math.floor(diffHrs / 24);
+      const rem = diffHrs % 24;
+      if (days > 0 && rem > 0) return `${days} Day${days > 1 ? "s" : ""} ${rem} Hr${rem > 1 ? "s" : ""} (${diffHrs} hrs total)`;
+      if (days > 0) return `${days} Day${days > 1 ? "s" : ""} (${diffHrs} hrs total)`;
+      return `${diffHrs} Hour${diffHrs > 1 ? "s" : ""}`;
+    }
+  }
+  if (b?.duration) return String(b.duration);
+  if (b?.days) return `${b.days} Day${b.days > 1 ? "s" : ""}${b.hours ? ` ${b.hours} Hr(s)` : ""}`;
+  return "—";
+}
+
+function getWhatsAppBookingUrl(b) {
+  const cleanPhone = String(b?.userPhone || b?.phone || "").replace(/[^0-9]/g, "");
+  const phoneWithCountry = cleanPhone.length === 10 ? "91" + cleanPhone : cleanPhone;
+  const pDateFmt = formatReadableDateTime(b?.pickupDate || b?.pickup_date);
+  const dDateFmt = formatReadableDateTime(b?.dropDate || b?.drop_date);
+  const durStr = formatBookingDuration(b);
+
+  const waMsg = encodeURIComponent(
+    `🎉 *KRUIZLY BOOKING APPROVED & CONFIRMED!*\n\n` +
+    `Dear *${b?.userName || "Valued Customer"}*,\n` +
+    `Your rental reservation has been officially approved! 🚗💨\n\n` +
+    `📋 *Booking ID:* #${formatBookingNumber(b)}\n` +
+    `🚘 *Vehicle:* ${b?.vehicleName || "Vehicle"} (${b?.vehicleReg || "Assigned"})\n` +
+    `📅 *Pickup Date & Time:* ${pDateFmt}\n` +
+    `📅 *Drop Date & Time:* ${dDateFmt}\n` +
+    `⏱️ *Duration:* ${durStr}\n` +
+    `💰 *Total Amount:* ${formatMoney(b?.finalAmount || b?.totalAmount || 0)}\n` +
+    `✅ *Status:* Confirmed & Approved\n\n` +
+    `📍 *Pickup:* Gavson Business Park, Ghansoli, Navi Mumbai\n` +
+    `Please carry your original Driving License & Aadhaar Card.\n\n` +
+    `Need help? Call +91 91671 64547. Thank you for choosing KRUIZLY!`
+  );
+  return `https://wa.me/${phoneWithCountry || "919167164547"}?text=${waMsg}`;
 }
 
 // State
@@ -529,7 +673,10 @@ function renderBookingsTable() {
 
               return `
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13.5px;">
-                  <td style="padding: 12px 10px; color: var(--sub); white-space: nowrap;">${escapeHtml(formatReadableDate(b.pickupDate || b.createdAt))}</td>
+                  <td style="padding: 12px 10px; white-space: nowrap;">
+                    <strong style="color: #fff;">${escapeHtml(formatReadableDate(b.pickupDate || b.createdAt))}</strong>
+                    ${formatReadableTime(b.pickupDate || b.createdAt) ? `<br/><small style="color: #4fd7ff; font-weight: 600;">${escapeHtml(formatReadableTime(b.pickupDate || b.createdAt))}</small>` : ""}
+                  </td>
                   <td style="padding: 12px 10px; font-family: monospace; font-weight: 700; color: var(--accent); white-space: nowrap;">#${escapeHtml(formatBookingNumber(b))}</td>
                   <td style="padding: 12px 10px;">
                     <strong style="color: #fff;">${escapeHtml(b.userName || "Customer")}</strong><br/>
@@ -630,11 +777,25 @@ async function handleApproveBooking(bookingId) {
   if (!confirm("Approve and confirm this booking reservation?")) return;
 
   try {
-    await api.put(`/bookings/${encodeURIComponent(bookingId)}`, {
+    const res = await api.put(`/bookings/${encodeURIComponent(bookingId)}`, {
       status: "confirmed",
-      bookingStatus: "confirmed"
+      bookingStatus: "confirmed",
+      sendApprovalNotification: true
     });
-    alert("Booking approved successfully.");
+
+    const notif = res?.notification;
+    let msg = "✅ Booking approved and confirmed successfully.";
+    if (notif?.email_sent) {
+      msg += `\n✉️ Official confirmation email sent to ${notif.customer_email || "client"}.`;
+    }
+    if (notif?.whatsapp_url) {
+      if (confirm(msg + "\n\nWould you like to open WhatsApp to send the confirmation message to the client now?")) {
+        window.open(notif.whatsapp_url, "_blank");
+      }
+    } else {
+      alert(msg);
+    }
+
     await loadAllExecutiveData();
   } catch (err) {
     alert(`Failed to approve booking: ${err.message}`);
@@ -1083,6 +1244,10 @@ function openPaymentModal(payment) {
     screenshotImg = `<div style="padding: 20px; text-align: center; color: var(--sub); border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;">No screenshot receipt attached.</div>`;
   }
 
+  const relBooking = allBookings.find(
+    (bk) => bk.id === payment.bookingId || bk.bookingNumber === payment.bookingNumber || bk.bookingId === payment.bookingId
+  );
+
   if (body) {
     body.innerHTML = `
       <div class="manager-modal-details-list">
@@ -1097,6 +1262,14 @@ function openPaymentModal(payment) {
           <span class="manager-modal-detail-label">Vehicle</span>
           <div class="manager-modal-detail-val">
             <strong>${escapeHtml(payment.vehicleName || "Vehicle")}</strong>
+          </div>
+        </div>
+        <div class="manager-modal-detail-row">
+          <span class="manager-modal-detail-label">Schedule &amp; Duration</span>
+          <div class="manager-modal-detail-val">
+            <div style="color: #4fd7ff;"><strong>Pickup:</strong> ${escapeHtml(formatReadableDateTime(relBooking?.pickupDate || payment.pickupDate))}</div>
+            <div style="color: #4fd7ff;"><strong>Drop:</strong> ${escapeHtml(formatReadableDateTime(relBooking?.dropDate || payment.dropDate))}</div>
+            <div style="color: #facc15; font-weight: 700; margin-top: 3px;"><strong>Duration:</strong> ${escapeHtml(formatBookingDuration(relBooking || payment))}</div>
           </div>
         </div>
         <div class="manager-modal-detail-row">
@@ -1141,11 +1314,24 @@ async function handleApprovePayment() {
   btn.textContent = "Approving...";
 
   try {
-    await api.post(`/payments/${encodeURIComponent(activePaymentItem.id || activePaymentItem.bookingId)}/verify`, {
+    const res = await api.post(`/payments/${encodeURIComponent(activePaymentItem.id || activePaymentItem.bookingId)}/verify`, {
       action: "approve",
       status: "verified"
     });
-    alert("Payment verified and booking confirmed successfully!");
+
+    const notif = res?.notification;
+    let msg = "✅ Payment verified and booking confirmed successfully!";
+    if (notif?.email_sent) {
+      msg += `\n✉️ Official confirmation email sent to ${notif.customer_email || "client"}.`;
+    }
+    if (notif?.whatsapp_url) {
+      if (confirm(msg + "\n\nWould you like to open WhatsApp to send the confirmation message to the client now?")) {
+        window.open(notif.whatsapp_url, "_blank");
+      }
+    } else {
+      alert(msg);
+    }
+
     closePaymentModal();
     await loadAllExecutiveData();
   } catch (err) {
@@ -1624,7 +1810,13 @@ function openBookingDetailModal(b) {
     body.innerHTML = `
       <div style="display: grid; gap: 12px; font-size: 13.5px;">
         <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px;">
-          <strong style="color: var(--accent); display: block; margin-bottom: 6px;">Customer Information</strong>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <strong style="color: var(--accent);">Customer Information</strong>
+            <a href="${escapeHtml(getWhatsAppBookingUrl(b))}" target="_blank" rel="noopener noreferrer" style="border: 1px solid #25d366; color: #25d366; padding: 4px 10px; border-radius: 6px; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1 8 8v.5z"></path></svg>
+              WhatsApp Confirmation
+            </a>
+          </div>
           <div><strong>Name:</strong> ${escapeHtml(b.userName || "Customer")}</div>
           <div><strong>Phone:</strong> <a href="tel:${escapeHtml(b.userPhone || '')}" style="color:#4fd7ff;">${escapeHtml(b.userPhone || "Not provided")}</a></div>
           <div><strong>Email:</strong> ${escapeHtml(b.userEmail || "Not provided")}</div>
@@ -1633,8 +1825,9 @@ function openBookingDetailModal(b) {
         <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px;">
           <strong style="color: var(--accent); display: block; margin-bottom: 6px;">Trip Schedule &amp; Location</strong>
           <div><strong>Vehicle:</strong> ${escapeHtml(b.vehicleName)} (${escapeHtml(b.vehicleReg || "—")})</div>
-          <div><strong>Pickup Date:</strong> ${escapeHtml(formatReadableDate(b.pickupDate))}</div>
-          <div><strong>Drop Date:</strong> ${escapeHtml(formatReadableDate(b.dropDate))}</div>
+          <div><strong>Pickup Date &amp; Time:</strong> <strong style="color: #4fd7ff;">${escapeHtml(formatReadableDateTime(b.pickupDate))}</strong></div>
+          <div><strong>Drop Date &amp; Time:</strong> <strong style="color: #4fd7ff;">${escapeHtml(formatReadableDateTime(b.dropDate))}</strong></div>
+          <div><strong>Rental Duration:</strong> <strong style="color: #facc15;">${escapeHtml(formatBookingDuration(b))}</strong></div>
           <div><strong>Location:</strong> ${escapeHtml(b.location || "Ghansoli, Navi Mumbai")}</div>
         </div>
 
