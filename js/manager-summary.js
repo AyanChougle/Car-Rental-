@@ -1340,6 +1340,13 @@ function renderDashboard() {
 
   // 1. Day Sales (Prorated daily rental revenue without security deposit for today)
   let daySales = 0;
+  const isSingleDay = Boolean(
+    filterFromDate &&
+    filterToDate &&
+    filterFromDate.getFullYear() === filterToDate.getFullYear() &&
+    filterFromDate.getMonth() === filterToDate.getMonth() &&
+    filterFromDate.getDate() === filterToDate.getDate()
+  );
   const dayWindowStart = isSingleDay ? filterFromDate : todayStart;
   const dayWindowEnd = isSingleDay ? filterToDate : todayEnd;
 

@@ -200,14 +200,36 @@ class KpiService
             $weekSales = round($weekSales, 2);
             $overallRevenue = round($overallRevenue, 2);
 
-            // 4. Construct monthly row details
+            // 4. Read existing records from kpi_metrics table so historical months (July 50,540, August 281,857, etc.) are never downgraded
+            $existingMetrics = [];
+            try {
+                $rows = Database::fetchAll("SELECT * FROM kpi_metrics ORDER BY metric_date ASC");
+                foreach ($rows as $r) {
+                    $mKey = date('Y-m-01', strtotime((string)$r['metric_date']));
+                    $existingMetrics[$mKey] = $r;
+                    $knownMonths[$mKey] = true;
+                }
+            } catch (Throwable $_) {}
+
+            ksort($knownMonths);
+
             $monthlyRows = [];
             foreach (array_keys($knownMonths) as $monthStart) {
                 $monthEnd = date('Y-m-t', strtotime($monthStart));
-                $mRev = round((float)($monthlyRevenue[$monthStart] ?? 0.0), 2);
-                $mBookingsCount = isset($monthlyBookings[$monthStart]) ? count($monthlyBookings[$monthStart]) : 0;
-                $mPaidCount = isset($monthlyPaidBookings[$monthStart]) ? count($monthlyPaidBookings[$monthStart]) : 0;
-                $mCompletedCount = (int)($monthlyCompletedTrips[$monthStart] ?? 0);
+                $calcRev = round((float)($monthlyRevenue[$monthStart] ?? 0.0), 2);
+                $existing = $existingMetrics[$monthStart] ?? null;
+                $existingRev = isset($existing['month_sales']) ? (float)$existing['month_sales'] : 0.0;
+                $mRev = max($calcRev, $existingRev);
+
+                $mBookingsCount = isset($monthlyBookings[$monthStart])
+                    ? count($monthlyBookings[$monthStart])
+                    : (int)($existing['total_bookings'] ?? 0);
+                $mPaidCount = isset($monthlyPaidBookings[$monthStart])
+                    ? count($monthlyPaidBookings[$monthStart])
+                    : (int)($existing['paid_bookings'] ?? 0);
+                $mCompletedCount = isset($monthlyCompletedTrips[$monthStart])
+                    ? (int)$monthlyCompletedTrips[$monthStart]
+                    : (int)($existing['completed_trips'] ?? 0);
 
                 $monthUsers = (int)(Database::fetchOne(
                     "SELECT COUNT(DISTINCT firebase_uid) AS c
@@ -217,13 +239,13 @@ class KpiService
                 )['c'] ?? 0);
 
                 $isCurrentMonth = ($monthStart === $currentMonthKey);
-                $rowOnRoad = $isCurrentMonth ? $onRoadFleet : 0;
+                $rowOnRoad = $isCurrentMonth ? $onRoadFleet : (int)($existing['on_road_fleet'] ?? 0);
                 $rowYard = max(0, $totalFleet - $rowOnRoad);
                 $rowOccupancy = $totalFleet > 0 ? min(100, round(($rowOnRoad / $totalFleet) * 100, 2)) : 0;
-                $rowActive = $isCurrentMonth ? $onRoadFleet : 0;
+                $rowActive = $isCurrentMonth ? $onRoadFleet : (int)($existing['active_trips'] ?? 0);
                 $rowPendingPayments = $isCurrentMonth ? $pendingPayments : 0;
                 $rowPendingDocs = $isCurrentMonth ? $pendingDocs : 0;
-                $rowUsers = $isCurrentMonth ? $totalUsers : $monthUsers;
+                $rowUsers = $isCurrentMonth ? $totalUsers : ($monthUsers ?: (int)($existing['total_users'] ?? $totalUsers));
                 $rowDaySales = $isCurrentMonth ? $daySales : 0.0;
                 $rowWeekSales = $isCurrentMonth ? $weekSales : 0.0;
 
@@ -232,7 +254,7 @@ class KpiService
                     'day_sales' => $rowDaySales,
                     'week_sales' => $rowWeekSales,
                     'month_sales' => $mRev,
-                    'total_revenue' => $isCurrentMonth ? $overallRevenue : $mRev,
+                    'total_revenue' => $mRev,
                     'total_bookings' => $mBookingsCount,
                     'paid_bookings' => $mPaidCount,
                     'active_trips' => $rowActive,
@@ -245,8 +267,24 @@ class KpiService
                     'pending_payments' => $rowPendingPayments,
                     'pending_docs' => $rowPendingDocs,
                 ];
+            }
 
-                // Persist into MySQL kpi_metrics table
+            // Total Whole Revenue: sum of all monthly revenue across company ledger (July + Aug + Sep + Oct + ongoing till date)
+            $grandTotalRevenue = 0.0;
+            foreach ($monthlyRows as $mKey => $r) {
+                $grandTotalRevenue += (float)$r['month_sales'];
+            }
+            $grandTotalRevenue = round($grandTotalRevenue, 2);
+
+            // Update total_revenue for current and subsequent months to reflect cumulative whole revenue
+            foreach (array_keys($monthlyRows) as $mKey) {
+                if ($mKey >= $currentMonthKey) {
+                    $monthlyRows[$mKey]['total_revenue'] = $grandTotalRevenue;
+                }
+            }
+
+            // Persist into MySQL kpi_metrics table
+            foreach ($monthlyRows as $monthStart => $row) {
                 try {
                     Database::execute(
                         "INSERT INTO kpi_metrics (
@@ -274,21 +312,21 @@ class KpiService
                             updated_at = CURRENT_TIMESTAMP",
                         [
                             $monthStart,
-                            $rowDaySales,
-                            $rowWeekSales,
-                            $mRev,
-                            $isCurrentMonth ? $overallRevenue : $mRev,
-                            $mBookingsCount,
-                            $mPaidCount,
-                            $rowActive,
-                            $mCompletedCount,
+                            $row['day_sales'],
+                            $row['week_sales'],
+                            $row['month_sales'],
+                            $row['total_revenue'],
+                            $row['total_bookings'],
+                            $row['paid_bookings'],
+                            $row['active_trips'],
+                            $row['completed_trips'],
                             $totalFleet,
-                            $rowOnRoad,
-                            $rowYard,
-                            $rowOccupancy,
-                            $rowUsers,
-                            $rowPendingPayments,
-                            $rowPendingDocs,
+                            $row['on_road_fleet'],
+                            $row['in_yard_fleet'],
+                            $row['occupancy_pct'],
+                            $row['total_users'],
+                            $row['pending_payments'],
+                            $row['pending_docs'],
                         ]
                     );
                 } catch (Throwable $_) {}
@@ -306,7 +344,7 @@ class KpiService
                 'pending_payments' => $pendingPayments,
                 'day_sales' => $daySales,
                 'week_sales' => $weekSales,
-                'total_revenue' => $overallRevenue,
+                'total_revenue' => $grandTotalRevenue,
                 'month_revenue' => $currentMonthRevenue,
                 'last_month_revenue' => $lastMonthRevenue,
                 'paid_bookings' => $paidBookingsCount,
