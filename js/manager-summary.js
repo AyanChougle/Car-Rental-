@@ -1368,17 +1368,14 @@ function renderDashboard() {
     );
     daySales += proratedRevenue;
   });
-  daySales = Math.round(daySales * 100) / 100;
-  if (
-    daySales === 0 &&
-    (!filterFromDate ||
-      isBookingInPeriod({ pickupDate: now }, filterFromDate, filterToDate))
-  ) {
-    daySales = Number(
-      serverKpiStats?.effective?.day_sales ||
-        serverKpiStats?.live?.day_sales ||
-        0,
-    );
+  const isDefaultView = isAllTime || (!filterFromDate && !filterToDate);
+  const serverDaySales = Number(
+    serverKpiStats?.effective?.day_sales ??
+    serverKpiStats?.live?.day_sales ??
+    0
+  );
+  if ((isDefaultView || activeQuickFilter === "today") && serverDaySales > 0) {
+    daySales = serverDaySales;
   }
 
   // 2. Week Sales (Sunday to Saturday prorated daily rental revenue without security deposit)
@@ -1401,27 +1398,26 @@ function renderDashboard() {
     weekSales += proratedRevenue;
   });
   weekSales = Math.round(weekSales * 100) / 100;
-  if (
-    weekSales === 0 &&
-    (!filterFromDate ||
-      isBookingInPeriod({ pickupDate: now }, filterFromDate, filterToDate))
-  ) {
-    weekSales = Number(
-      serverKpiStats?.effective?.week_sales ||
-        serverKpiStats?.live?.week_sales ||
-        0,
-    );
+  const serverWeekSales = Number(
+    serverKpiStats?.effective?.week_sales ??
+    serverKpiStats?.live?.week_sales ??
+    0
+  );
+  if ((isDefaultView || activeQuickFilter === "this_week") && serverWeekSales > 0) {
+    weekSales = serverWeekSales;
   }
 
   // 3. Month Sales (1st of month to today)
-  const calculatedMonthSales = rawBookings
-    .filter((b) => {
-      if (!isVerifiedRevenue(b)) return false;
-      return inWindow(getBookingSaleDate(b), monthStart1, monthEndNow);
-    })
-    .reduce((sum, b) => sum + bookingAmount(b), 0);
-  // 3. Month Sales (dynamically derived)
-  const monthSales = monthRevenue;
+  const serverMonthSales = Number(
+    selectedMonthKpi?.month_sales ??
+    serverKpiStats?.effective?.month_revenue ??
+    serverKpiStats?.live?.month_revenue ??
+    serverKpiStats?.effective?.month_sales ??
+    0
+  );
+  const monthSales = ((isDefaultView || activeQuickFilter === "this_month") && serverMonthSales > 0)
+    ? serverMonthSales
+    : monthRevenue;
 
   // 4. Overall Sales (grand total of whole cumulative company ledger)
   const overallSales = grandCumulativeRevenue;
@@ -2249,7 +2245,7 @@ async function loadManagerData() {
         api.get("/bookings"),
         api.get("/vehicles"),
         api.get("/vehicles/active-fleet.php?_t=" + Date.now()),
-        api.get("/admin/stats"),
+        api.get("/admin/stats?_t=" + Date.now()),
       ]);
 
     if (

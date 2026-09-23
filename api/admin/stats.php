@@ -21,7 +21,7 @@ if ($method === 'GET') {
         $user = Auth::optionalAuth();
 
         require_once __DIR__ . '/../services/KpiService.php';
-        $syncData = KpiService::syncMetrics();
+        $syncData = KpiService::getMetrics();
 
         $liveStats = $syncData['live'] ?? [];
         $monthlyRows = $syncData['monthly'] ?? [];

@@ -438,7 +438,7 @@ let currentKpiStats = null;
 
 async function loadKpiStats() {
   try {
-    const res = await api.get("/admin/stats");
+    const res = await api.get("/admin/stats?_t=" + Date.now());
     if (res && res.data) {
       currentKpiStats = res.data;
       applyKpiStats();

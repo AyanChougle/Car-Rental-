@@ -16,6 +16,104 @@ require_once __DIR__ . '/../config/database.php';
 class KpiService
 {
     /**
+     * Reads KPI metrics directly from the MySQL kpi_metrics table.
+     * When manual edits are made in phpMyAdmin, this immediately reflects them.
+     * If kpi_metrics is empty, it initializes the table via syncMetrics().
+     */
+    public static function getMetrics(): array
+    {
+        try {
+            self::ensureSchema();
+
+            $rows = Database::fetchAll("SELECT * FROM kpi_metrics ORDER BY metric_date ASC");
+            if (empty($rows)) {
+                return self::syncMetrics();
+            }
+
+            $currentMonthKey = date('Y-m-01');
+            $previousMonthKey = date('Y-m-01', strtotime('-1 month'));
+
+            $monthlyRows = [];
+            $maxTotalRevenue = 0.0;
+            $sumMonthSales = 0.0;
+
+            foreach ($rows as $r) {
+                $mKey = date('Y-m-01', strtotime((string)$r['metric_date']));
+                $monthlyRows[$mKey] = $r;
+                $mRev = (float)($r['month_sales'] ?? 0);
+                $tRev = (float)($r['total_revenue'] ?? 0);
+                $sumMonthSales += $mRev;
+                if ($tRev > $maxTotalRevenue) {
+                    $maxTotalRevenue = $tRev;
+                }
+            }
+
+            $maxTotalRevenue = max($maxTotalRevenue, round($sumMonthSales, 2));
+
+            // Select current month row, or latest available month row
+            $currentMonthRow = $monthlyRows[$currentMonthKey] ?? null;
+            if (!$currentMonthRow && !empty($monthlyRows)) {
+                $keys = array_keys($monthlyRows);
+                $latestKey = end($keys);
+                $currentMonthRow = $monthlyRows[$latestKey];
+            }
+
+            $previousMonthRow = $monthlyRows[$previousMonthKey] ?? [];
+
+            $totalUsers = (int)($currentMonthRow['total_users'] ?? 0);
+            if ($totalUsers === 0) {
+                $totalUsers = (int)(Database::fetchOne("SELECT COUNT(DISTINCT firebase_uid) AS c FROM users")['c'] ?? 0);
+            }
+
+            $totalFleet = (int)($currentMonthRow['total_fleet'] ?? 0);
+            if ($totalFleet === 0) {
+                $totalFleet = (int)(Database::fetchOne("SELECT COUNT(*) AS c FROM vehicles WHERE status != 'removed'")['c'] ?? 39);
+            }
+
+            $onRoadFleet = (int)($currentMonthRow['on_road_fleet'] ?? 0);
+            $inYardFleet = (int)($currentMonthRow['in_yard_fleet'] ?? max(0, $totalFleet - $onRoadFleet));
+            $occupancyPct = (float)($currentMonthRow['occupancy_pct'] ?? 0.0);
+            $paidBookings = (int)($currentMonthRow['paid_bookings'] ?? 0);
+            $avgBooking = $paidBookings > 0 ? round($maxTotalRevenue / $paidBookings, 2) : 0.0;
+
+            $liveStats = [
+                'total_users' => $totalUsers,
+                'total_bookings' => (int)($currentMonthRow['total_bookings'] ?? 0),
+                'pending_docs' => (int)($currentMonthRow['pending_docs'] ?? 0),
+                'pending_payments' => (int)($currentMonthRow['pending_payments'] ?? 0),
+                'day_sales' => (float)($currentMonthRow['day_sales'] ?? 0.0),
+                'week_sales' => (float)($currentMonthRow['week_sales'] ?? 0.0),
+                'total_revenue' => $maxTotalRevenue,
+                'month_revenue' => (float)($currentMonthRow['month_sales'] ?? 0.0),
+                'last_month_revenue' => (float)($previousMonthRow['month_sales'] ?? 0.0),
+                'paid_bookings' => $paidBookings,
+                'avg_booking' => $avgBooking,
+                'active_trips' => (int)($currentMonthRow['active_trips'] ?? $onRoadFleet),
+                'completed_trips' => (int)($currentMonthRow['completed_trips'] ?? 0),
+                'total_fleet' => $totalFleet,
+                'fleet_count' => $totalFleet,
+                'on_road_fleet' => $onRoadFleet,
+                'active_rentals' => $onRoadFleet,
+                'available_fleet' => $inYardFleet,
+                'available_in_yard' => $inYardFleet,
+                'fleet_utilization' => $occupancyPct,
+                'occupancy_pct' => $occupancyPct,
+            ];
+
+            return [
+                'live' => $liveStats,
+                'monthly' => $monthlyRows,
+                'reporting_month' => $currentMonthKey,
+                'previous_month' => $previousMonthKey,
+                'revenue_ledger' => array_map(fn($r) => (float)($r['month_sales'] ?? 0), $monthlyRows),
+            ];
+        } catch (Throwable $e) {
+            error_log("[KpiService::getMetrics Exception] " . $e->getMessage());
+            return self::syncMetrics();
+        }
+    }
+
+    /**
      * Recalculates all KPI metrics dynamically from MySQL and updates `kpi_metrics` table.
      * 
      * @return array Array containing 'live', 'monthly', 'revenue_ledger', etc.
@@ -294,19 +392,19 @@ class KpiService
                             total_users, pending_payments, pending_docs
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         ON DUPLICATE KEY UPDATE
-                            day_sales = VALUES(day_sales),
-                            week_sales = VALUES(week_sales),
-                            month_sales = VALUES(month_sales),
-                            total_revenue = VALUES(total_revenue),
-                            total_bookings = VALUES(total_bookings),
-                            paid_bookings = VALUES(paid_bookings),
+                            day_sales = GREATEST(VALUES(day_sales), day_sales),
+                            week_sales = GREATEST(VALUES(week_sales), week_sales),
+                            month_sales = GREATEST(VALUES(month_sales), month_sales),
+                            total_revenue = GREATEST(VALUES(total_revenue), total_revenue),
+                            total_bookings = GREATEST(VALUES(total_bookings), total_bookings),
+                            paid_bookings = GREATEST(VALUES(paid_bookings), paid_bookings),
                             active_trips = VALUES(active_trips),
-                            completed_trips = VALUES(completed_trips),
+                            completed_trips = GREATEST(VALUES(completed_trips), completed_trips),
                             total_fleet = VALUES(total_fleet),
                             on_road_fleet = VALUES(on_road_fleet),
                             in_yard_fleet = VALUES(in_yard_fleet),
                             occupancy_pct = VALUES(occupancy_pct),
-                            total_users = VALUES(total_users),
+                            total_users = GREATEST(VALUES(total_users), total_users),
                             pending_payments = VALUES(pending_payments),
                             pending_docs = VALUES(pending_docs),
                             updated_at = CURRENT_TIMESTAMP",
