@@ -980,7 +980,7 @@ function renderDashboard() {
     ? grandCumulativeRevenue
     : selectedMonthKey
       ? periodRevenue
-      : (filterFromDate || filterToDate)
+      : filterFromDate || filterToDate
         ? calculatedPeriodRevenue
         : grandCumulativeRevenue;
 
@@ -1355,7 +1355,7 @@ function renderDashboard() {
     filterToDate &&
     filterFromDate.getFullYear() === filterToDate.getFullYear() &&
     filterFromDate.getMonth() === filterToDate.getMonth() &&
-    filterFromDate.getDate() === filterToDate.getDate()
+    filterFromDate.getDate() === filterToDate.getDate(),
   );
   const dayWindowStart = isSingleDay ? filterFromDate : todayStart;
   const dayWindowEnd = isSingleDay ? filterToDate : todayEnd;
@@ -1371,8 +1371,8 @@ function renderDashboard() {
   const isDefaultView = isAllTime || (!filterFromDate && !filterToDate);
   const serverDaySales = Number(
     serverKpiStats?.effective?.day_sales ??
-    serverKpiStats?.live?.day_sales ??
-    0
+      serverKpiStats?.live?.day_sales ??
+      0,
   );
   if ((isDefaultView || activeQuickFilter === "today") && serverDaySales > 0) {
     daySales = serverDaySales;
@@ -1400,24 +1400,29 @@ function renderDashboard() {
   weekSales = Math.round(weekSales * 100) / 100;
   const serverWeekSales = Number(
     serverKpiStats?.effective?.week_sales ??
-    serverKpiStats?.live?.week_sales ??
-    0
+      serverKpiStats?.live?.week_sales ??
+      0,
   );
-  if ((isDefaultView || activeQuickFilter === "this_week") && serverWeekSales > 0) {
+  if (
+    (isDefaultView || activeQuickFilter === "this_week") &&
+    serverWeekSales > 0
+  ) {
     weekSales = serverWeekSales;
   }
 
   // 3. Month Sales (1st of month to today)
   const serverMonthSales = Number(
     selectedMonthKpi?.month_sales ??
-    serverKpiStats?.effective?.month_revenue ??
-    serverKpiStats?.live?.month_revenue ??
-    serverKpiStats?.effective?.month_sales ??
-    0
+      serverKpiStats?.effective?.month_revenue ??
+      serverKpiStats?.live?.month_revenue ??
+      serverKpiStats?.effective?.month_sales ??
+      0,
   );
-  const monthSales = ((isDefaultView || activeQuickFilter === "this_month") && serverMonthSales > 0)
-    ? serverMonthSales
-    : monthRevenue;
+  const monthSales =
+    (isDefaultView || activeQuickFilter === "this_month") &&
+    serverMonthSales > 0
+      ? serverMonthSales
+      : monthRevenue;
 
   // 4. Overall Sales (grand total of whole cumulative company ledger)
   const overallSales = grandCumulativeRevenue;

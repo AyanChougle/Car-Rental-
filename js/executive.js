@@ -505,11 +505,6 @@ async function loadAllExecutiveData() {
   }
 }
 
-function parseExecDate(val) {
-  if (!val) return null;
-  const d = new Date(val);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
 
 function isSameExecDay(d1, d2) {
   if (!d1 || !d2) return false;
