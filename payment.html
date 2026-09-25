@@ -269,6 +269,38 @@
             </p>
 
 
+            <!-- PAYMENT PLAN SELECTOR -->
+            <div class="checkout-plan-picker" id="paymentPlanPicker" style="margin-bottom: 22px;">
+              <span class="checkout-label" style="display:block; margin-bottom:8px; font-weight:700; color:var(--kz-sub,#7b8798); text-transform:uppercase; font-size:0.75rem; letter-spacing:0.8px;">Choose Payment Option</span>
+
+              <!-- Notice when advance token is already paid -->
+              <div id="advanceAlreadyPaidNotice" style="display:none; margin-bottom:14px; padding:12px 14px; background:rgba(6,214,160,0.1); border:1px solid rgba(6,214,160,0.3); border-radius:10px; font-size:0.85rem; color:#06d6a0;">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle; margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Advance token of <strong id="noticeAdvancePaid">₹500</strong> has already been confirmed. Pay your remaining balance of <strong id="noticeRemainingDue">₹0</strong> below.
+              </div>
+
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px;" id="paymentPlanOptionsGroup">
+                <label class="payment-plan-card active" id="planAdvanceCard" style="display:flex; flex-direction:column; padding:14px; border:2px solid #00d2ff; border-radius:12px; cursor:pointer; background:rgba(0,210,255,0.06); transition:all 0.2s ease;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <strong style="color:#fff; font-size:0.95rem;">Advance Token</strong>
+                    <input type="radio" name="paymentPlanChoice" value="advance" id="radioPlanAdvance" checked style="accent-color:#00d2ff; transform:scale(1.2);">
+                  </div>
+                  <div style="font-size:1.25rem; font-weight:800; color:#00d2ff;" id="planAdvanceAmountLabel">₹500</div>
+                  <small style="color:var(--kz-sub,#7b8798); font-size:0.78rem; margin-top:4px;">Lock reservation now, pay balance at pickup</small>
+                </label>
+
+                <label class="payment-plan-card" id="planFullCard" style="display:flex; flex-direction:column; padding:14px; border:2px solid rgba(255,255,255,0.1); border-radius:12px; cursor:pointer; background:rgba(255,255,255,0.03); transition:all 0.2s ease;">
+                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                    <strong style="color:#fff; font-size:0.95rem;" id="planFullTitle">Pay Full Amount</strong>
+                    <input type="radio" name="paymentPlanChoice" value="full" id="radioPlanFull" style="accent-color:#00d2ff; transform:scale(1.2);">
+                  </div>
+                  <div style="font-size:1.25rem; font-weight:800; color:#06d6a0;" id="planFullAmountLabel">₹0</div>
+                  <small style="color:var(--kz-sub,#7b8798); font-size:0.78rem; margin-top:4px;" id="planFullSubtitle">Pay 100% rental now and avoid waiting at pickup</small>
+                </label>
+              </div>
+            </div>
+
+
             <!-- PAYMENT TABS -->
 
             <div class="payment-tabs">
@@ -659,7 +691,7 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <script type="module" src="js/payment.js?v=20260917-v6"></script>
+  <script type="module" src="js/payment.js?v=20260925-v1"></script>
 
   <script src="js/glass-ui.js?v=20260917-v1"></script>
   <script src="js/kruizly-motion.js?v=20260917-v1"></script>

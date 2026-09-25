@@ -31,19 +31,21 @@ const STATUS_COPY = {
 };
 
 function paymentStatusLabel(booking) {
+  const adv = Number(booking.advanceAmount || booking.paymentAmountPaid || booking.paymentAmount || 500);
+  const rem = Number(booking.remainingBalance !== undefined && booking.remainingBalance !== null ? booking.remainingBalance : 0);
   switch (booking.paymentStatus) {
     case "paid":
-      return `Paid � ${booking.paymentRef || ""}`;
+      return `Fully Paid • ${booking.paymentRef || "Verified"}`;
     case "advance_paid":
-      return `?${formatCurrency(booking.paymentAmountPaid || booking.paymentAmount || 500)} token paid � ?${formatCurrency(booking.remainingBalance || 0)} due at pickup`;
+      return `₹${formatCurrency(adv)} token paid • ${rem > 0 ? `₹${formatCurrency(rem)} balance remaining` : "Fully Settled"}`;
     case "pay_at_pickup":
       return "Pay at pickup";
     case "pending_verification":
-      return `Verifying payment � ${booking.paymentRef || ""}`;
+      return `Verifying payment • ${booking.paymentRef || "Under review"}`;
     case "refunded":
-      return `Refunded � Booking cancelled`;
+      return `Refunded • Booking cancelled`;
     case "rejected":
-      return `Payment rejected${booking.paymentRejectionReason ? ` � ${booking.paymentRejectionReason}` : ""}. Please resubmit.`;
+      return `Payment rejected${booking.paymentRejectionReason ? ` • ${booking.paymentRejectionReason}` : ""}. Please resubmit.`;
     default:
       return "Unpaid";
   }
@@ -58,7 +60,6 @@ function bookingCard(b, isLive) {
     className: "",
   };
 
-  const isPending = b.status === "pending_payment";
   const vehicleName = b.vehicleName || "KRUIZLY Rental Vehicle";
   const vehicleCategory = b.vehicleCategory || "Sedan";
 
@@ -67,14 +68,37 @@ function bookingCard(b, isLive) {
   const dur = calculateDuration(b.pickupDate, b.dropDate);
   const durationFormatted = dur.valid ? dur.daysAndHoursText : (b.duration || "—");
 
+  const totalAmount = Number(b.totalAmount ?? b.finalAmount ?? b.amount ?? 0);
+  const advAmount = Number(b.advanceAmount ?? (b.paymentPlan === "advance" ? 500 : 0));
+  const remBalance = Number(
+    b.remainingBalance !== undefined && b.remainingBalance !== null
+      ? b.remainingBalance
+      : (b.paymentPlan === "advance" ? Math.max(0, totalAmount - (advAmount > 0 ? advAmount : 500)) : 0)
+  );
+
+  const isFullPlan = b.paymentPlan === "full";
+  const isAdvancePlan = b.paymentPlan === "advance";
+  const isPaid = b.paymentStatus === "paid" || (isFullPlan && (b.paymentStatus === "verified" || b.paymentStatus === "confirmed"));
+  const isFullyPaid = isPaid || (b.paymentStatus === "advance_paid" && remBalance <= 0);
+  const isPendingVerification = b.paymentStatus === "pending_verification";
+
+  let amountDue = totalAmount;
+  if ((b.paymentStatus === "advance_paid" || advAmount > 0) && remBalance > 0) {
+    amountDue = remBalance;
+  } else if (remBalance > 0) {
+    amountDue = remBalance;
+  }
+
+  const bId = b.bookingNumber || b.bookingId || b.id || "";
+
   const waText = encodeURIComponent(
     `🎉 *KRUIZLY BOOKING CONFIRMATION*\n\n` +
-    `Booking ID: #${b.bookingNumber || b.bookingId || b.id}\n` +
+    `Booking ID: #${bId}\n` +
     `Vehicle: ${vehicleName} (${vehicleCategory})\n` +
     `Pickup Date & Time: ${pickupFormatted}\n` +
     `Drop Date & Time: ${dropFormatted}\n` +
     `Duration: ${durationFormatted}\n` +
-    `Total Amount: ₹${formatCurrency(b.totalAmount || b.finalAmount || 0)}\n` +
+    `Total Amount: ₹${formatCurrency(totalAmount)}\n` +
     `Status: ${statusInfo.label}\n\n` +
     `Kindly confirm my booking schedule. Thank you!`
   );
@@ -87,19 +111,43 @@ function bookingCard(b, isLive) {
     </a>
   `;
 
-  let actionsHtml = "";
-  if (isPending) {
-    actionsHtml = `
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center;">
-        <button class="btn btn-primary booking-pay-btn" data-id="${escapeHtml(b.id || b.bookingId)}">Complete Payment</button>
-        <button class="btn btn-outline booking-cancel-btn" data-id="${escapeHtml(b.id || b.bookingId)}">Cancel Booking</button>
-        ${whatsappBtnHtml}
-      </div>
+  let payBtnHtml = "";
+  if (isPendingVerification) {
+    payBtnHtml = `
+      <span class="status-pill pending" style="padding:7px 14px;border-radius:8px;font-size:0.85rem;font-weight:700;background:rgba(250,204,21,0.15);color:#facc15;border:1px solid rgba(250,204,21,0.3);display:inline-flex;align-items:center;gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        Payment Under Review
+      </span>
     `;
-  } else if (isLive && b.status !== "cancelled") {
+  } else if (isFullyPaid) {
+    payBtnHtml = `
+      <span class="status-pill verified" style="padding:7px 14px;border-radius:8px;font-size:0.85rem;font-weight:700;background:rgba(6,214,160,0.15);color:#06d6a0;border:1px solid rgba(6,214,160,0.3);display:inline-flex;align-items:center;gap:6px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        ✓ 100% Fully Paid
+      </span>
+    `;
+  } else if (b.status !== "cancelled" && b.status !== "rejected" && b.status !== "completed") {
+    const isBalancePayment = (b.paymentStatus === "advance_paid" || advAmount > 0) && remBalance > 0;
+    const btnLabel = b.paymentStatus === "rejected"
+      ? `Resubmit Payment (₹${formatCurrency(amountDue)})`
+      : (isBalancePayment
+          ? `Pay Remaining Balance (₹${formatCurrency(amountDue)})`
+          : `Pay Full Amount (₹${formatCurrency(amountDue)})`);
+
+    payBtnHtml = `
+      <a href="payment.html?booking=${encodeURIComponent(bId)}&plan=full" class="btn btn-primary" style="background:linear-gradient(135deg, #00d2ff, #0055ff);color:#fff;font-weight:700;padding:8px 16px;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;box-shadow:0 4px 14px rgba(0,122,255,0.35);">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        ${btnLabel}
+      </a>
+    `;
+  }
+
+  let actionsHtml = "";
+  if (b.status !== "cancelled" && b.status !== "rejected" && b.status !== "completed") {
     actionsHtml = `
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;align-items:center;">
-        <button class="btn btn-outline booking-cancel-btn" data-id="${escapeHtml(b.id || b.bookingId)}" style="border-color:#ef476f;color:#ef476f;">Cancel Booking</button>
+        ${payBtnHtml}
+        <button class="btn btn-outline booking-cancel-btn" data-id="${escapeHtml(bId)}" style="border-color:#ef476f;color:#ef476f;">Cancel Booking</button>
         ${whatsappBtnHtml}
       </div>
     `;
@@ -115,7 +163,7 @@ function bookingCard(b, isLive) {
     <div class="booking-item-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px;">
         <div>
-          <span style="font-size:0.8rem;color:var(--kz-sub,#7b8798);text-transform:uppercase;letter-spacing:1px;font-weight:700;">Booking #${escapeHtml(b.bookingNumber || b.bookingId || b.id)}</span>
+          <span style="font-size:0.8rem;color:var(--kz-sub,#7b8798);text-transform:uppercase;letter-spacing:1px;font-weight:700;">Booking #${escapeHtml(bId)}</span>
           <h3 style="margin:4px 0 0;font-size:1.2rem;color:#fff;">${escapeHtml(vehicleName)} <span style="font-size:0.85rem;color:var(--kz-cyan,#4fd7ff);font-weight:normal;">(${escapeHtml(vehicleCategory)})</span></h3>
         </div>
         <span class="status-pill ${statusInfo.className}">${escapeHtml(statusInfo.label)}</span>
@@ -125,7 +173,15 @@ function bookingCard(b, isLive) {
         <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">PICKUP DATE &amp; TIME</strong> ${escapeHtml(pickupFormatted)}</div>
         <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">DROP DATE &amp; TIME</strong> ${escapeHtml(dropFormatted)}</div>
         <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">RENTAL DURATION</strong> <span style="color:#facc15;font-weight:700;">${escapeHtml(durationFormatted)}</span></div>
-        <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">TOTAL AMOUNT</strong> ₹${formatCurrency(b.totalAmount || b.finalAmount || 0)}</div>
+        <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">TOTAL AMOUNT</strong> ₹${formatCurrency(totalAmount)}</div>
+        ${
+          isAdvancePlan
+            ? `
+              <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">TOKEN PAID</strong> <span style="color:#06d6a0;font-weight:700;">₹${formatCurrency(advAmount || 500)}</span></div>
+              <div><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">REMAINING DUE</strong> <span style="color:${remBalance > 0 ? '#ef476f' : '#06d6a0'};font-weight:700;">${remBalance > 0 ? `₹${formatCurrency(remBalance)}` : '₹0 (Fully Paid)'}</span></div>
+            `
+            : ""
+        }
         <div style="grid-column: 1 / -1;"><strong style="color:var(--kz-sub,#7b8798);display:block;font-size:0.75rem;">PAYMENT STATUS</strong> ${paymentStatusLabel(b)}</div>
       </div>
 

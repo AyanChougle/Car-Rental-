@@ -2639,13 +2639,13 @@ function initExportExcel() {
       alert("Failed to export Excel: " + err.message);
     } finally {
       btn.disabled = false;
-      btn.innerHTML = oldHtml;
+      btn.innerHTML = oldHtml;      
     }
   });
-}
+}   
 
 function initEventListeners() {
-  initTabNavigation();
+  initTabNavigation();      
   initExportExcel();
   initFleetFilterEvents();
 

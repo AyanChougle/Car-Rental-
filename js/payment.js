@@ -284,6 +284,12 @@ const screenshotPreview =
 let activeMethod =
   "upi";
 
+let currentBooking = null;
+let currentPaymentPlan = "advance";
+let currentPaymentAmount = 0;
+let totalBookingAmount = 0;
+let isAdvancePaidVerified = false;
+
 
 // ============================================================
 // UPI URI
@@ -490,7 +496,7 @@ function initialisePaymentTabs() {
 function openUPIApp(appOrUri) {
   const upiId = PAYMENT_CONFIG?.upi?.id || "svcmerc00314092@svcbank";
   const payeeName = PAYMENT_CONFIG?.upi?.payeeName || "KRUIZLY";
-  const safeAmount = Number(paymentAmount || 0).toFixed(2);
+  const safeAmount = Number(currentPaymentAmount || 0).toFixed(2);
   const transactionNote = `KRUIZLY Booking ${String(formatBookingNumber(bookingId))}`;
 
   const query = `pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${safeAmount}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
@@ -910,9 +916,6 @@ function displayBooking(
   const totalAmount = Number(booking.totalAmount ?? booking.finalAmount ?? booking.rentalTotal ?? 0);
   const couponDiscount = Number(booking.couponDiscount || 0);
   const couponCode = booking.couponCode;
-  const paymentPlan = booking.paymentPlan || "advance";
-  const paymentAmount = Number(booking.paymentAmount ?? (paymentPlan === "advance" ? Math.min(500, totalAmount) : totalAmount));
-  const remainingBalance = Math.max(0, totalAmount - paymentAmount);
 
   if ($("paymentTotalRental")) {
     $("paymentTotalRental").textContent = `₹${formatCurrency(totalAmount)}`;
@@ -931,26 +934,202 @@ function displayBooking(
       $("paymentCouponRow").style.display = "none";
     }
   }
+}
 
-  if ($("paymentAmount")) {
-    $("paymentAmount").textContent = `₹${formatCurrency(paymentAmount)}`;
+// ============================================================
+// PAYMENT PLAN SWITCHER & UI SYNC
+// ============================================================
+
+function setupPaymentPlanPicker(booking, totalAmount, isAdvancePaid, advPaid, remBal) {
+  const planPicker = $("paymentPlanPicker");
+  const advanceCard = $("planAdvanceCard");
+  const fullCard = $("planFullCard");
+  const radioAdvance = $("radioPlanAdvance");
+  const radioFull = $("radioPlanFull");
+  const planAdvanceAmountLabel = $("planAdvanceAmountLabel");
+  const planFullAmountLabel = $("planFullAmountLabel");
+  const planFullTitle = $("planFullTitle");
+  const planFullSubtitle = $("planFullSubtitle");
+  const alreadyPaidNotice = $("advanceAlreadyPaidNotice");
+  const noticeAdvancePaid = $("noticeAdvancePaid");
+  const noticeRemainingDue = $("noticeRemainingDue");
+
+  if (!planPicker) return;
+
+  planPicker.style.display = "";
+
+  const fullAmountToPay = isAdvancePaid && remBal > 0 ? remBal : totalAmount;
+
+  if (planAdvanceAmountLabel) {
+    planAdvanceAmountLabel.textContent = `₹${formatCurrency(Math.min(500, totalAmount))}`;
+  }
+  if (planFullAmountLabel) {
+    planFullAmountLabel.textContent = `₹${formatCurrency(fullAmountToPay)}`;
   }
 
+  if (isAdvancePaid) {
+    // Advance token is already confirmed
+    if (alreadyPaidNotice) {
+      alreadyPaidNotice.style.display = "block";
+      if (noticeAdvancePaid) noticeAdvancePaid.textContent = `₹${formatCurrency(advPaid || 500)}`;
+      if (noticeRemainingDue) noticeRemainingDue.textContent = `₹${formatCurrency(remBal)}`;
+    }
+    if (advanceCard) {
+      advanceCard.style.opacity = "0.5";
+      advanceCard.style.cursor = "not-allowed";
+      if (advanceCard.querySelector("strong")) {
+        advanceCard.querySelector("strong").textContent = "Advance Token (Paid)";
+      }
+    }
+    if (planFullTitle) {
+      planFullTitle.textContent = "Pay Remaining Balance";
+    }
+    if (planFullSubtitle) {
+      planFullSubtitle.textContent = `Pay remaining ₹${formatCurrency(remBal)} to complete 100% full payment`;
+    }
+  } else {
+    if (alreadyPaidNotice) {
+      alreadyPaidNotice.style.display = "none";
+    }
+    if (planFullTitle) {
+      planFullTitle.textContent = "Pay Full Amount";
+    }
+    if (planFullSubtitle) {
+      planFullSubtitle.textContent = "Pay 100% rental now and avoid waiting at pickup";
+    }
+  }
+
+  // Card click listeners
+  if (advanceCard && !isAdvancePaid) {
+    advanceCard.onclick = (e) => {
+      e.preventDefault();
+      if (radioAdvance) radioAdvance.checked = true;
+      updatePaymentPlan("advance");
+    };
+  }
+
+  if (fullCard) {
+    fullCard.onclick = (e) => {
+      e.preventDefault();
+      if (radioFull) radioFull.checked = true;
+      updatePaymentPlan("full");
+    };
+  }
+
+  if (radioAdvance && !isAdvancePaid) {
+    radioAdvance.onchange = () => {
+      if (radioAdvance.checked) updatePaymentPlan("advance");
+    };
+  }
+
+  if (radioFull) {
+    radioFull.onchange = () => {
+      if (radioFull.checked) updatePaymentPlan("full");
+    };
+  }
+}
+
+function updatePaymentPlan(newPlan) {
+  currentPaymentPlan = newPlan;
+
+  const total = totalBookingAmount || Number(currentBooking?.totalAmount ?? currentBooking?.finalAmount ?? 0);
+  const advPaid = Number(currentBooking?.advanceAmount || (isAdvancePaidVerified ? 500 : 0));
+  const remBal = Number(
+    currentBooking?.remainingBalance !== undefined && currentBooking?.remainingBalance !== null
+      ? currentBooking.remainingBalance
+      : Math.max(0, total - advPaid)
+  );
+
+  if (newPlan === "full") {
+    currentPaymentAmount = (isAdvancePaidVerified && remBal > 0) ? remBal : total;
+  } else {
+    currentPaymentAmount = Math.min(500, total);
+  }
+
+  // Update card styles
+  const advanceCard = $("planAdvanceCard");
+  const fullCard = $("planFullCard");
+  const radioAdvance = $("radioPlanAdvance");
+  const radioFull = $("radioPlanFull");
+
+  if (advanceCard && fullCard) {
+    if (newPlan === "full") {
+      advanceCard.classList.remove("active");
+      advanceCard.style.borderColor = "rgba(255, 255, 255, 0.1)";
+      advanceCard.style.background = "rgba(255, 255, 255, 0.03)";
+      if (radioAdvance) radioAdvance.checked = false;
+
+      fullCard.classList.add("active");
+      fullCard.style.borderColor = "#00d2ff";
+      fullCard.style.background = "rgba(0, 210, 255, 0.08)";
+      if (radioFull) radioFull.checked = true;
+    } else {
+      fullCard.classList.remove("active");
+      fullCard.style.borderColor = "rgba(255, 255, 255, 0.1)";
+      fullCard.style.background = "rgba(255, 255, 255, 0.03)";
+      if (radioFull) radioFull.checked = false;
+
+      advanceCard.classList.add("active");
+      advanceCard.style.borderColor = "#00d2ff";
+      advanceCard.style.background = "rgba(0, 210, 255, 0.08)";
+      if (radioAdvance) radioAdvance.checked = true;
+    }
+  }
+
+  // Update payment amounts in UI
+  if ($("paymentAmount")) {
+    $("paymentAmount").textContent = `₹${formatCurrency(currentPaymentAmount)}`;
+  }
+  if ($("upiAmount")) {
+    $("upiAmount").textContent = `₹${formatCurrency(currentPaymentAmount)}`;
+  }
+
+  // Remaining balance row
+  const remainingCalculated = Math.max(0, total - (newPlan === "full" ? total : currentPaymentAmount));
   if ($("paymentRemainingRow")) {
-    if (paymentPlan === "advance") {
+    if (newPlan === "advance" && !isAdvancePaidVerified) {
       $("paymentRemainingRow").style.display = "flex";
       if ($("paymentRemaining")) {
-        $("paymentRemaining").textContent = `₹${formatCurrency(remainingBalance)}`;
+        $("paymentRemaining").textContent = `₹${formatCurrency(remainingCalculated)}`;
       }
     } else {
       $("paymentRemainingRow").style.display = "none";
     }
   }
 
+  // Note
   if ($("paymentPlanNote")) {
-    $("paymentPlanNote").textContent = paymentPlan === "advance"
-      ? `Token booking fee to lock reservation. Balance of ₹${formatCurrency(remainingBalance)} due at vehicle handover.`
-      : "100% full rental payment.";
+    if (newPlan === "full") {
+      $("paymentPlanNote").textContent = isAdvancePaidVerified
+        ? `Paying remaining balance of ₹${formatCurrency(currentPaymentAmount)} to complete full rental payment.`
+        : "Paying 100% full rental payment today.";
+    } else {
+      $("paymentPlanNote").textContent = `Token booking fee of ₹${formatCurrency(currentPaymentAmount)} to lock reservation. Balance of ₹${formatCurrency(remainingCalculated)} due at vehicle handover.`;
+    }
+  }
+
+  // UPI configuration & QR code
+  const upiId = PAYMENT_CONFIG?.upi?.id || "";
+  if (upiIdElement) {
+    upiIdElement.textContent = upiId || "UPI ID not configured";
+  }
+
+  const upiUri = buildUpiUri(currentPaymentAmount, bookingId);
+  if (currentPaymentAmount > 0 && upiId) {
+    generateQRCode(upiUri);
+  } else if (qrContainer) {
+    qrContainer.innerHTML = `
+      <div style="padding:20px;text-align:center;color:#111;font-size:13px;">
+        Payment amount unavailable.
+      </div>
+    `;
+  }
+
+  initialiseUPIButtons(upiUri);
+
+  if (currentBooking) {
+    currentBooking.paymentPlan = newPlan;
+    currentBooking.paymentAmount = currentPaymentAmount;
   }
 }
 
@@ -958,42 +1137,23 @@ function displayBooking(
 // INITIALISE PAYMENT UI
 // ============================================================
 
-async function initialisePaymentUI(
-  booking
-) {
-  console.log(
-    "Initialising payment UI..."
-  );
+async function initialisePaymentUI(booking) {
+  console.log("Initialising payment UI...", booking);
 
+  currentBooking = booking;
 
-  displayBooking(
-    booking
-  );
+  displayBooking(booking);
+  await loadVehicleImage(booking);
 
-
-  await loadVehicleImage(
-    booking
-  );
-
-
-  // ----------------------------------------------------------
-  // TOTAL
-  // ----------------------------------------------------------
-
-  let totalAmount =
-    Number(
-      booking.totalAmount ??
-      booking.amount ??
-      0
-    );
-
-  let paymentAmount = Number(
-    booking.paymentAmount ??
-    (booking.paymentPlan === "advance" ? 500 : totalAmount)
+  let totalAmount = Number(
+    booking.totalAmount ??
+    booking.finalAmount ??
+    booking.amount ??
+    0
   );
 
   // Self-healing fallback calculation for any booking record missing pre-calculated totals
-  if (paymentAmount <= 0 || totalAmount <= 0) {
+  if (totalAmount <= 0) {
     const catalog = window.fleetVehicles || [];
     const vehicle = catalog.find((item) => item.regNo === booking.vehicleReg) || {};
     const priceDay = Number(booking.priceDay || vehicle.priceDay || 2600);
@@ -1002,90 +1162,31 @@ async function initialisePaymentUI(
     const numDays = Number(booking.days || booking.durationDays || 1);
 
     totalAmount = Math.max(0, (priceDay * numDays) + (driverVal * numDays) + depositVal);
-    paymentAmount = booking.paymentPlan === "advance" ? 500 : totalAmount;
   }
 
-  const remainingBalance = Math.max(
-    0,
-    Number(booking.remainingBalance ?? totalAmount - paymentAmount)
+  totalBookingAmount = totalAmount;
+
+  isAdvancePaidVerified = (booking.paymentStatus === "advance_paid") || (Number(booking.advanceAmount || 0) > 0);
+  const advPaid = Number(booking.advanceAmount || (isAdvancePaidVerified ? 500 : 0));
+  const remBal = Number(
+    booking.remainingBalance !== undefined && booking.remainingBalance !== null
+      ? booking.remainingBalance
+      : Math.max(0, totalAmount - advPaid)
   );
 
-  console.log("Booking total:", totalAmount, "Payment due:", paymentAmount);
+  const urlPlan = urlParams.get("plan");
+  let initialPlan = "advance";
 
-
-  if ($("paymentAmount")) {
-    $("paymentAmount").textContent =
-      `₹${formatCurrency(
-        paymentAmount
-      )}`;
+  if (isAdvancePaidVerified) {
+    initialPlan = "full";
+  } else if (urlPlan === "full" || booking.paymentPlan === "full") {
+    initialPlan = "full";
   }
 
+  setupPaymentPlanPicker(booking, totalAmount, isAdvancePaidVerified, advPaid, remBal);
+  updatePaymentPlan(initialPlan);
 
-  if ($("upiAmount")) {
-    $("upiAmount").textContent = `₹${formatCurrency(paymentAmount)}`;
-  }
-
-
-  // ----------------------------------------------------------
-  // UPI
-  // ----------------------------------------------------------
-
-  const upiId =
-    PAYMENT_CONFIG?.upi?.id ||
-    "";
-
-
-  if (upiIdElement) {
-    upiIdElement.textContent =
-      upiId ||
-      "UPI ID not configured";
-  }
-
-
-  const upiUri =
-    buildUpiUri(
-      paymentAmount,
-      bookingId
-    );
-
-
-  if (
-    paymentAmount > 0 &&
-    upiId
-  ) {
-    generateQRCode(
-      upiUri
-    );
-
-  } else if (qrContainer) {
-    qrContainer.innerHTML = `
-      <div style="
-        padding:20px;
-        text-align:center;
-        color:#111;
-        font-size:13px;
-      ">
-        Payment amount unavailable.
-      </div>
-    `;
-  }
-
-
-  initialiseUPIButtons(
-    upiUri
-  );
-
-
-  setActiveMethod(
-    "upi"
-  );
-
-  if ($("paymentPlanNote")) {
-    $("paymentPlanNote").textContent =
-      booking.paymentPlan === "advance"
-        ? `₹${formatCurrency(remainingBalance)} will remain payable at pickup.`
-        : "Your booking is being paid in full today.";
-  }
+  setActiveMethod("upi");
 }
 
 
@@ -1377,14 +1478,15 @@ async function submitPayment(
       "Screenshot uploaded. Saving your payment reference..."
     );
 
-    const total = Number(booking.finalAmount ?? booking.totalAmount ?? 0);
-    const plan = booking.paymentPlan || "full";
+    const total = totalBookingAmount || Number(booking.finalAmount ?? booking.totalAmount ?? 0);
+    const plan = currentPaymentPlan || booking.paymentPlan || "full";
     const payAmount = Number(
+      currentPaymentAmount ||
       booking.paymentAmount ??
       booking.paymentAmountPaid ??
       (plan === "advance" ? Math.min(500, total) : total)
     );
-    const remBalance = Math.max(0, total - payAmount);
+    const remBalance = plan === "full" ? 0 : Math.max(0, total - payAmount);
 
     const finalBookingRecord = {
       ...booking,
@@ -1423,7 +1525,9 @@ async function submitPayment(
     // Record payment submission
     await api.post("/payments/submit", {
       bookingId,
+      paymentPlan: plan,
       amount: payAmount,
+      paymentAmount: payAmount,
       method: activeMethod || "upi",
       utr: reference,
       screenshotUrl: media?.url || null,
@@ -1724,30 +1828,42 @@ async function startPaymentPage() {
       return;
     }
 
-    if (
-      booking.paymentStatus === "paid" ||
-      booking.paymentStatus === "advance_paid" ||
-      booking.paymentStatus === "pay_at_pickup"
-    ) {
-      if (paymentVehicleName) {
-        paymentVehicleName.textContent = booking.vehicleName || "Your vehicle";
-      }
-      setStatus("This booking is already confirmed. Check My Bookings for details.");
+    const totalAmt = Number(booking.finalAmount ?? booking.totalAmount ?? booking.amount ?? 0);
+    const advPaidAmt = Number(booking.advanceAmount || (booking.paymentPlan === "advance" && booking.paymentStatus === "advance_paid" ? 500 : 0));
+    const remBal = Number(booking.remainingBalance !== undefined && booking.remainingBalance !== null ? booking.remainingBalance : (booking.paymentPlan === "advance" ? Math.max(0, totalAmt - (advPaidAmt || 500)) : 0));
+    const urlPlan = urlParams.get("plan");
+
+    // Only redirect if booking is cancelled or rejected
+    if (booking.status === "cancelled" || booking.status === "rejected") {
+      setStatus("This booking is cancelled. Please create a new booking.");
       hidePaymentInterface();
-      redirectToBookings(900);
+      redirectToBookings(1500);
       return;
     }
 
+    // If completely 100% paid
+    if (booking.paymentStatus === "paid" || (booking.paymentStatus === "advance_paid" && remBal <= 0 && urlPlan !== "full")) {
+      if (paymentVehicleName) {
+        paymentVehicleName.textContent = booking.vehicleName || "Your vehicle";
+      }
+      setStatus("This booking is already confirmed and 100% fully paid. Check My Bookings for details.");
+      hidePaymentInterface();
+      redirectToBookings(1200);
+      return;
+    }
+
+    // If pending verification of previous payment reference and not explicitly requesting full payment settlement
     if (
       booking.paymentStatus === "pending_verification" &&
-      booking.paymentRef
+      booking.paymentRef &&
+      urlPlan !== "full"
     ) {
       if (paymentVehicleName) {
         paymentVehicleName.textContent = booking.vehicleName || "Your vehicle";
       }
       setStatus("We've received your payment reference and are verifying it. Check My Bookings for the latest status.");
       hidePaymentInterface();
-      redirectToBookings(900);
+      redirectToBookings(1500);
       return;
     }
 

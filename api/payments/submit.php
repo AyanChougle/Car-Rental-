@@ -69,20 +69,32 @@ try {
 
         // 2. Ensure booking record exists in bookings table
         $existing = Database::fetchOne(
-            "SELECT id FROM bookings WHERE booking_id = ? OR booking_number = ? LIMIT 1",
+            "SELECT id, total_amount, final_amount, advance_amount, payment_plan FROM bookings WHERE booking_id = ? OR booking_number = ? LIMIT 1",
             [$bookingId, $bookingId]
         );
 
+        $plan = trim((string)($input['paymentPlan'] ?? ''));
+        if (!$plan) {
+            $plan = $amount <= 500 ? 'advance' : 'full';
+        }
+
         if ($existing) {
-            $stmt2 = $pdo->prepare(
-                "UPDATE bookings SET
-                    payment_status = 'pending_verification',
-                    payment_ref = ?,
-                    payment_screenshot_url = COALESCE(?, payment_screenshot_url),
-                    updated_at = CURRENT_TIMESTAMP
-                 WHERE booking_id = ? OR booking_number = ?"
-            );
-            $stmt2->execute([$utr, $screenshotUrl ?: null, $bookingId, $bookingId]);
+            $updateFields = [
+                "payment_status = 'pending_verification'",
+                "payment_ref = ?",
+                "payment_screenshot_url = COALESCE(?, payment_screenshot_url)",
+                "updated_at = CURRENT_TIMESTAMP"
+            ];
+            $params = [$utr, $screenshotUrl ?: null];
+            if ($plan === 'full') {
+                $updateFields[] = "payment_plan = 'full'";
+                $updateFields[] = "remaining_balance = 0.00";
+                $updateFields[] = "remaining_amount = 0.00";
+            }
+            $params[] = $bookingId;
+            $params[] = $bookingId;
+            $stmt2 = $pdo->prepare("UPDATE bookings SET " . implode(", ", $updateFields) . " WHERE booking_id = ? OR booking_number = ?");
+            $stmt2->execute($params);
         } else {
             // Auto-create booking shell so it never goes missing
             $bMaxRow = Database::fetchOne("SELECT COALESCE(MAX(id), 0) + 1 AS next_id FROM bookings");

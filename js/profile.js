@@ -1423,35 +1423,64 @@ function renderBooking(booking) {
     (booking.dates && (booking.dates.drop || booking.dates.return)) ||
     "—";
 
-  const amount = booking.totalAmount ?? booking.amount ?? 0;
+  const amount = Number(booking.totalAmount ?? booking.finalAmount ?? booking.amount ?? 0);
+  const advAmount = Number(booking.advanceAmount ?? (booking.paymentPlan === "advance" ? 500 : 0));
+  const remBalance = Number(
+    booking.remainingBalance !== undefined && booking.remainingBalance !== null
+      ? booking.remainingBalance
+      : (booking.paymentPlan === "advance" ? Math.max(0, amount - (advAmount > 0 ? advAmount : 500)) : 0)
+  );
+
+  const isFullPlan = booking.paymentPlan === "full";
+  const isAdvancePlan = booking.paymentPlan === "advance";
+  const isPaidStatus = booking.paymentStatus === "paid" || (isFullPlan && (booking.paymentStatus === "verified" || booking.paymentStatus === "confirmed"));
+  const isFullyPaid = isPaidStatus || (booking.paymentStatus === "advance_paid" && remBalance <= 0);
+  const isPendingVerification = booking.paymentStatus === "pending_verification";
+
+  // Amount due for paying full remaining balance or total amount
+  let amountDue = amount;
+  if ((booking.paymentStatus === "advance_paid" || advAmount > 0) && remBalance > 0) {
+    amountDue = remBalance;
+  } else if (remBalance > 0) {
+    amountDue = remBalance;
+  }
+
+  const bId = booking.bookingId || booking.bookingNumber || booking.id || "";
 
   let paymentButton = "";
 
-  if (status === "pending_payment") {
-    if (booking.paymentStatus === "pending_verification") {
-      paymentButton = `
+  if (isPendingVerification) {
+    paymentButton = `
+      <span class="status-pill pending" style="background: rgba(250, 204, 21, 0.15); color: #facc15; border: 1px solid rgba(250, 204, 21, 0.3); padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        Payment Under Review
+      </span>
+    `;
+  } else if (isFullyPaid) {
+    paymentButton = `
+      <span class="status-pill verified" style="background: rgba(6, 214, 160, 0.15); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.3); padding: 7px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; gap: 5px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        100% Fully Paid
+      </span>
+    `;
+  } else if (status !== "cancelled" && status !== "rejected" && status !== "completed") {
+    const isBalancePayment = (booking.paymentStatus === "advance_paid" || advAmount > 0) && remBalance > 0;
+    const btnLabel = booking.paymentStatus === "rejected"
+      ? `Resubmit Payment (₹${formatINR(amountDue)})`
+      : (isBalancePayment
+          ? `Pay Remaining Balance (₹${formatINR(amountDue)})`
+          : `Pay Full Amount (₹${formatINR(amountDue)})`);
 
-        <span class="status-pill pending">
-          Payment Under Review
-        </span>
-
-      `;
-    } else {
-      paymentButton = `
-
-        <a
-          href="payment.html?booking=${encodeURIComponent(booking.id)}"
-          class="profile-button primary"
-        >
-          ${
-            booking.paymentStatus === "rejected"
-              ? "Resubmit Payment"
-              : "Pay Now"
-          }
-        </a>
-
-      `;
-    }
+    paymentButton = `
+      <a
+        href="payment.html?booking=${encodeURIComponent(bId)}&plan=full"
+        class="profile-button primary"
+        style="background: linear-gradient(135deg, #00d2ff, #0055ff); color: #fff; font-weight: 700; padding: 8px 18px; border-radius: 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; box-shadow: 0 4px 14px rgba(0, 122, 255, 0.35); transition: transform 0.15s ease;"
+      >
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        ${btnLabel}
+      </a>
+    `;
   }
 
   return `
@@ -1547,6 +1576,23 @@ function renderBooking(booking) {
           </strong>
 
         </div>
+
+        ${
+          isAdvancePlan
+            ? `
+              <div class="booking-detail">
+                <span>Token Paid</span>
+                <strong style="color: #06d6a0;">₹${formatINR(advAmount || 500)}</strong>
+              </div>
+              <div class="booking-detail">
+                <span>Remaining Due</span>
+                <strong style="color: ${remBalance > 0 ? '#ef476f' : '#06d6a0'};">
+                  ${remBalance > 0 ? `₹${formatINR(remBalance)}` : '₹0 (Fully Paid)'}
+                </strong>
+              </div>
+            `
+            : ""
+        }
 
       </div>
 
