@@ -196,21 +196,55 @@ function getWhatsAppBookingUrl(b) {
   const dDateFmt = formatReadableDateTime(b?.dropDate || b?.drop_date);
   const durStr = formatBookingDuration(b);
 
-  const waMsg = encodeURIComponent(
-    `🎉 *KRUIZLY BOOKING APPROVED & CONFIRMED!*\n\n` +
-    `Dear *${b?.userName || "Valued Customer"}*,\n` +
-    `Your rental reservation has been officially approved! 🚗💨\n\n` +
-    `📋 *Booking ID:* #${formatBookingNumber(b)}\n` +
-    `🚘 *Vehicle:* ${b?.vehicleName || "Vehicle"} (${b?.vehicleReg || "Assigned"})\n` +
-    `📅 *Pickup Date & Time:* ${pDateFmt}\n` +
-    `📅 *Drop Date & Time:* ${dDateFmt}\n` +
-    `⏱️ *Duration:* ${durStr}\n` +
-    `💰 *Total Amount:* ${formatMoney(b?.finalAmount || b?.totalAmount || 0)}\n` +
-    `✅ *Status:* Confirmed & Approved\n\n` +
-    `📍 *Pickup:* Gavson Business Park, Ghansoli, Navi Mumbai\n` +
-    `Please carry your original Driving License & Aadhaar Card.\n\n` +
-    `Need help? Call +91 91671 64547. Thank you for choosing KRUIZLY!`
-  );
+  const isCancelledOrRejected =
+    b?.status === "cancelled" ||
+    b?.status === "rejected" ||
+    b?.booking_status === "cancelled" ||
+    b?.booking_status === "rejected" ||
+    b?.paymentStatus === "rejected" ||
+    b?.payment_status === "rejected";
+
+  let waMsg = "";
+
+  if (isCancelledOrRejected) {
+    const reason = b?.cancellationReason || b?.cancellation_reason || b?.paymentRejectionReason || "Payment / Verification could not be completed";
+    const refundInfo = b?.refundStatus || b?.refund_status
+      ? `\n💵 *Refund Status:* ${(b?.refundStatus || b?.refund_status).toUpperCase()}`
+      : "";
+
+    waMsg = encodeURIComponent(
+      `❌ *KRUIZLY BOOKING CANCELLED*\n\n` +
+      `Dear *${b?.userName || "Valued Customer"}*,\n` +
+      `We regret to inform you that your rental reservation has been *CANCELLED*. ❌\n\n` +
+      `📋 *Booking ID:* #${formatBookingNumber(b)}\n` +
+      `🚘 *Vehicle:* ${b?.vehicleName || "Vehicle"} (${b?.vehicleReg || "—"})\n` +
+      `📅 *Pickup Date & Time:* ${pDateFmt}\n` +
+      `📅 *Drop Date & Time:* ${dDateFmt}\n` +
+      `⏱️ *Duration:* ${durStr}\n` +
+      `💰 *Total Amount:* ${formatMoney(b?.finalAmount || b?.totalAmount || 0)}\n` +
+      `❌ *Status:* Booking Cancelled / Rejected\n` +
+      `📝 *Reason:* ${reason}${refundInfo}\n\n` +
+      `If you have questions or would like to re-book, please contact our support team at +91 91671 64547.\n` +
+      `Thank you for your interest in KRUIZLY.`
+    );
+  } else {
+    waMsg = encodeURIComponent(
+      `🎉 *KRUIZLY BOOKING APPROVED & CONFIRMED!*\n\n` +
+      `Dear *${b?.userName || "Valued Customer"}*,\n` +
+      `Your rental reservation has been officially approved! 🚗💨\n\n` +
+      `📋 *Booking ID:* #${formatBookingNumber(b)}\n` +
+      `🚘 *Vehicle:* ${b?.vehicleName || "Vehicle"} (${b?.vehicleReg || "Assigned"})\n` +
+      `📅 *Pickup Date & Time:* ${pDateFmt}\n` +
+      `📅 *Drop Date & Time:* ${dDateFmt}\n` +
+      `⏱️ *Duration:* ${durStr}\n` +
+      `💰 *Total Amount:* ${formatMoney(b?.finalAmount || b?.totalAmount || 0)}\n` +
+      `✅ *Status:* Confirmed & Approved\n\n` +
+      `📍 *Pickup:* Gavson Business Park, Ghansoli, Navi Mumbai\n` +
+      `Please carry your original Driving License & Aadhaar Card.\n\n` +
+      `Need help? Call +91 91671 64547. Thank you for choosing KRUIZLY!`
+    );
+  }
+
   return `https://wa.me/${phoneWithCountry || "919167164547"}?text=${waMsg}`;
 }
 
@@ -1807,9 +1841,9 @@ function openBookingDetailModal(b) {
         <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <strong style="color: var(--accent);">Customer Information</strong>
-            <a href="${escapeHtml(getWhatsAppBookingUrl(b))}" target="_blank" rel="noopener noreferrer" style="border: 1px solid #25d366; color: #25d366; padding: 4px 10px; border-radius: 6px; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1 8 8v.5z"></path></svg>
-              WhatsApp Confirmation
+            <a href="${escapeHtml(getWhatsAppBookingUrl(b))}" target="_blank" rel="noopener noreferrer" style="border: 1px solid ${b?.status === 'cancelled' || b?.status === 'rejected' || b?.booking_status === 'cancelled' || b?.booking_status === 'rejected' || b?.paymentStatus === 'rejected' ? '#ef476f' : '#25d366'}; color: ${b?.status === 'cancelled' || b?.status === 'rejected' || b?.booking_status === 'cancelled' || b?.booking_status === 'rejected' || b?.paymentStatus === 'rejected' ? '#ef476f' : '#25d366'}; padding: 4px 10px; border-radius: 6px; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+              ${b?.status === 'cancelled' || b?.status === 'rejected' || b?.booking_status === 'cancelled' || b?.booking_status === 'rejected' || b?.paymentStatus === 'rejected' ? 'WhatsApp Cancellation' : 'WhatsApp Confirmation'}
             </a>
           </div>
           <div><strong>Name:</strong> ${escapeHtml(b.userName || "Customer")}</div>

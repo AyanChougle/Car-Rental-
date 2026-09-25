@@ -341,7 +341,7 @@ if ($method === 'PUT' || $method === 'POST') {
         KpiService::syncMetrics();
     } catch (Throwable $_) {}
 
-    // Dispatch approval email & WhatsApp notification when booking status is confirmed
+    // Dispatch approval or cancellation email & WhatsApp notification
     $notificationResult = null;
     if ($newStatus === 'confirmed' || !empty($input['sendApprovalNotification'])) {
         try {
@@ -349,6 +349,14 @@ if ($method === 'PUT' || $method === 'POST') {
             $notificationResult = BookingNotificationService::sendBookingApprovalNotification($bookingId);
         } catch (Throwable $t) {
             error_log("[Approval Notification Warning] " . $t->getMessage());
+        }
+    } elseif ($newStatus === 'cancelled' || $newStatus === 'rejected') {
+        try {
+            require_once __DIR__ . '/../services/BookingNotificationService.php';
+            $reason = trim((string)($input['cancellationReason'] ?? $input['cancellation_reason'] ?? $input['reason'] ?? ''));
+            $notificationResult = BookingNotificationService::sendBookingCancellationNotification($bookingId, $reason);
+        } catch (Throwable $t) {
+            error_log("[Cancellation Notification Warning] " . $t->getMessage());
         }
     }
 

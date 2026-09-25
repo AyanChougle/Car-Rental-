@@ -117,15 +117,17 @@ try {
         KpiService::syncMetrics();
     } catch (Throwable $_) {}
 
-    // Dispatch approval email & generate WhatsApp confirmation text
+    // Dispatch approval or cancellation notification
     $notificationResult = null;
-    if ($action === 'approve') {
-        try {
-            require_once __DIR__ . '/../services/BookingNotificationService.php';
+    try {
+        require_once __DIR__ . '/../services/BookingNotificationService.php';
+        if ($action === 'approve') {
             $notificationResult = BookingNotificationService::sendBookingApprovalNotification($id);
-        } catch (Throwable $t) {
-            error_log("[Approval Notification Error] " . $t->getMessage());
+        } else {
+            $notificationResult = BookingNotificationService::sendBookingCancellationNotification($id, $reason);
         }
+    } catch (Throwable $t) {
+        error_log("[Verification Notification Error] " . $t->getMessage());
     }
 
     sendJsonResponse([

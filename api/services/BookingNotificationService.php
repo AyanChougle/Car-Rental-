@@ -192,6 +192,122 @@ class BookingNotificationService
     }
 
     /**
+     * Dispatches Cancellation Email and generates WhatsApp cancellation message.
+     */
+    public static function sendBookingCancellationNotification($bookingOrId, ?string $reason = null): array
+    {
+        try {
+            $booking = null;
+            if (is_array($bookingOrId)) {
+                $booking = $bookingOrId;
+            } else {
+                $bId = trim((string)$bookingOrId);
+                $cleanId = ltrim($bId, '#');
+                $booking = Database::fetchOne(
+                    "SELECT * FROM bookings 
+                     WHERE booking_id = ? 
+                        OR booking_number = ? 
+                        OR id = ? 
+                        OR REPLACE(booking_id, '#', '') = ? 
+                        OR REPLACE(booking_number, '#', '') = ? 
+                     LIMIT 1",
+                    [$bId, $bId, is_numeric($bId) ? (int)$bId : 0, $cleanId, $cleanId]
+                );
+            }
+
+            if (!$booking) {
+                return ['success' => false, 'error' => 'Booking record not found.'];
+            }
+
+            $bookingNumber = (string)($booking['booking_number'] ?? $booking['booking_id'] ?? $booking['id'] ?? 'KZ-0000');
+            $customerName = trim((string)($booking['user_name'] ?? 'Valued Customer'));
+            $customerEmail = trim((string)($booking['user_email'] ?? ''));
+            $customerPhone = trim((string)($booking['user_phone'] ?? ''));
+
+            $vehicleName = trim((string)($booking['vehicle_name'] ?? 'KRUIZLY Rental Vehicle'));
+            $vehicleReg = trim((string)($booking['vehicle_reg'] ?? ''));
+            $vehicleDisplay = $vehicleReg ? "{$vehicleName} ({$vehicleReg})" : $vehicleName;
+
+            $pickupLocation = trim((string)($booking['pickup_location'] ?? 'Gavson Business Park, Ghansoli, Navi Mumbai'));
+            $dropLocation = trim((string)($booking['drop_location'] ?? $pickupLocation));
+
+            $durationData = self::calculateDuration(
+                (string)($booking['pickup_date'] ?? ''),
+                (string)($booking['drop_date'] ?? '')
+            );
+
+            $totalAmount = (float)($booking['final_amount'] ?? $booking['total_amount'] ?? 0);
+            $cancellationReason = $reason ?: trim((string)($booking['cancellation_reason'] ?? $booking['payment_rejection_reason'] ?? 'Verification / Payment could not be confirmed'));
+            $refundStatus = trim((string)($booking['refund_status'] ?? 'Eligible refund initiated'));
+
+            // 1. Dispatch Cancellation Email
+            $emailSent = false;
+            $emailError = null;
+            if (!empty($customerEmail) && filter_var($customerEmail, FILTER_VALIDATE_EMAIL)) {
+                try {
+                    $htmlBody = self::buildCancellationEmailHtml([
+                        'customerName' => $customerName,
+                        'bookingNumber' => $bookingNumber,
+                        'vehicleDisplay' => $vehicleDisplay,
+                        'pickupFormatted' => $durationData['pickup_formatted'],
+                        'dropFormatted' => $durationData['drop_formatted'],
+                        'durationFormatted' => $durationData['formatted'],
+                        'pickupLocation' => $pickupLocation,
+                        'totalAmount' => number_format($totalAmount, 2),
+                        'cancellationReason' => $cancellationReason,
+                        'refundStatus' => strtoupper($refundStatus),
+                    ]);
+
+                    $subject = "❌ Reservation Cancelled: #{$bookingNumber} — {$vehicleName} | KRUIZLY";
+                    $emailSent = MailService::sendMail($customerEmail, $subject, $htmlBody);
+                } catch (Throwable $e) {
+                    $emailError = $e->getMessage();
+                    error_log("[Booking Cancellation Email Error] " . $e->getMessage());
+                }
+            }
+
+            // 2. Craft WhatsApp Message & Direct Link
+            $whatsAppText = self::buildWhatsAppCancellationText([
+                'customerName' => $customerName,
+                'bookingNumber' => $bookingNumber,
+                'vehicleDisplay' => $vehicleDisplay,
+                'pickupFormatted' => $durationData['pickup_formatted'],
+                'dropFormatted' => $durationData['drop_formatted'],
+                'durationFormatted' => $durationData['formatted'],
+                'totalAmount' => number_format($totalAmount, 2),
+                'cancellationReason' => $cancellationReason,
+                'refundStatus' => strtoupper($refundStatus),
+            ]);
+
+            $cleanPhone = preg_replace('/[^0-9]/', '', $customerPhone);
+            if (strlen($cleanPhone) === 10) {
+                $cleanPhone = '91' . $cleanPhone;
+            } elseif (strlen($cleanPhone) === 11 && str_starts_with($cleanPhone, '0')) {
+                $cleanPhone = '91' . substr($cleanPhone, 1);
+            }
+
+            $whatsAppUrl = "https://wa.me/" . ($cleanPhone ?: "919167164547") . "?text=" . rawurlencode($whatsAppText);
+
+            return [
+                'success' => true,
+                'booking_number' => $bookingNumber,
+                'email_sent' => $emailSent,
+                'email_error' => $emailError,
+                'customer_email' => $customerEmail,
+                'customer_phone' => $customerPhone,
+                'whatsapp_text' => $whatsAppText,
+                'whatsapp_url' => $whatsAppUrl,
+            ];
+        } catch (Throwable $e) {
+            error_log("[sendBookingCancellationNotification Exception] " . $e->getMessage());
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
+    }
+
+    /**
      * Builds professional HTML email template for booking approval.
      */
     private static function buildApprovalEmailHtml(array $d): string
@@ -343,5 +459,113 @@ HTML;
             "• Security deposit is 100% refundable upon vehicle return.\n\n" .
             "Need help? Contact us directly at +91 91671 64547.\n" .
             "Thank you for choosing KRUIZLY! Have a wonderful and safe ride! 🌟";
+    }
+
+    /**
+     * Builds preformatted WhatsApp cancellation message text.
+     */
+    private static function buildWhatsAppCancellationText(array $d): string
+    {
+        return
+            "❌ *KRUIZLY BOOKING CANCELLED*\n\n" .
+            "Dear *{$d['customerName']}*,\n" .
+            "We regret to inform you that your self-drive reservation #{$d['bookingNumber']} has been *CANCELLED*. ❌\n\n" .
+            "📋 *Reservation ID:* #{$d['bookingNumber']}\n" .
+            "🚘 *Vehicle:* {$d['vehicleDisplay']}\n\n" .
+            "📅 *Pickup Date & Time:* {$d['pickupFormatted']}\n" .
+            "📅 *Drop Date & Time:* {$d['dropFormatted']}\n" .
+            "⏱️ *Rental Duration:* {$d['durationFormatted']}\n" .
+            "💰 *Total Amount:* ₹{$d['totalAmount']}\n" .
+            "❌ *Status:* Booking Cancelled\n" .
+            "📝 *Reason:* {$d['cancellationReason']}\n" .
+            "💵 *Refund Status:* {$d['refundStatus']}\n\n" .
+            "If you have any questions or wish to re-book, please contact our support team at +91 91671 64547.\n" .
+            "Thank you for considering KRUIZLY.";
+    }
+
+    /**
+     * Builds professional HTML email template for booking cancellation.
+     */
+    private static function buildCancellationEmailHtml(array $d): string
+    {
+        return <<<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Booking Cancelled - KRUIZLY</title>
+</head>
+<body style="margin:0;padding:0;background-color:#070a12;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#ffffff;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:600px;margin:20px auto;background-color:#0d121f;border:1px solid #1e293b;border-radius:16px;overflow:hidden;">
+    <tr>
+      <td style="padding:28px 32px;background:linear-gradient(135deg, #1e1b4b 0%, #0d121f 100%);border-bottom:1px solid #1e293b;">
+        <h1 style="margin:0;font-size:24px;font-weight:900;color:#ef476f;letter-spacing:1px;">KRUIZLY</h1>
+        <p style="margin:4px 0 0;font-size:13px;color:#94a3b8;">Premium Self-Drive Car Rentals</p>
+      </td>
+    </tr>
+    <tr>
+      <td style="padding:32px;">
+        <span style="background:#ef476f;color:#fff;padding:6px 14px;border-radius:20px;font-weight:700;font-size:12px;letter-spacing:1px;text-transform:uppercase;">Booking Cancelled</span>
+        <h2 style="margin:16px 0 8px;font-size:20px;font-weight:800;color:#ffffff;">Reservation #{$d['bookingNumber']} Cancelled</h2>
+        <p style="margin:0 0 20px;font-size:14px;color:#cbd5e1;line-height:1.6;">
+          Dear <strong>{$d['customerName']}</strong>,<br>
+          We regret to inform you that your self-drive booking #{$d['bookingNumber']} for the <strong>{$d['vehicleDisplay']}</strong> has been cancelled.
+        </p>
+
+        <!-- Trip Details -->
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#0f172a;border:1px solid #1e293b;border-radius:12px;margin-bottom:20px;">
+          <tr>
+            <td style="padding:20px;">
+              <h3 style="margin:0 0 12px;font-size:14px;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;font-weight:700;">Trip Summary</h3>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td style="padding:6px 0;color:#94a3b8;font-size:14px;">Vehicle:</td>
+                  <td style="padding:6px 0;font-weight:700;color:#ffffff;font-size:14px;">{$d['vehicleDisplay']}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#94a3b8;font-size:14px;">Pickup Date &amp; Time:</td>
+                  <td style="padding:6px 0;font-weight:700;color:#38bdf8;font-size:14px;">{$d['pickupFormatted']}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#94a3b8;font-size:14px;">Drop Date &amp; Time:</td>
+                  <td style="padding:6px 0;font-weight:700;color:#38bdf8;font-size:14px;">{$d['dropFormatted']}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#94a3b8;font-size:14px;">Duration:</td>
+                  <td style="padding:6px 0;font-weight:700;color:#facc15;font-size:14px;">{$d['durationFormatted']}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#94a3b8;font-size:14px;">Total Amount:</td>
+                  <td style="padding:6px 0;font-weight:700;color:#ffffff;font-size:14px;">₹{$d['totalAmount']}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#ef476f;font-size:14px;">Reason:</td>
+                  <td style="padding:6px 0;font-weight:700;color:#ef476f;font-size:14px;">{$d['cancellationReason']}</td>
+                </tr>
+                <tr>
+                  <td style="padding:6px 0;color:#10b981;font-size:14px;">Refund Status:</td>
+                  <td style="padding:6px 0;font-weight:700;color:#10b981;font-size:14px;">{$d['refundStatus']}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <p style="font-size:13px;color:#94a3b8;line-height:1.6;margin:0 0 16px;text-align:center;">
+          If you have questions, please reach our customer support team:<br>
+          Call: <a href="tel:+919167164547" style="color:#38bdf8;text-decoration:none;font-weight:700;">+91 91671 64547</a> &bull; Email: <a href="mailto:support@kruizly.com" style="color:#38bdf8;text-decoration:none;">support@kruizly.com</a>
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td style="background:#090d16;padding:20px;text-align:center;border-top:1px solid #1e293b;font-size:12px;color:#64748b;">
+        &copy; 2026 KRUIZLY. All rights reserved.<br>
+        Transactional update regarding reservation #{$d['bookingNumber']}.
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+HTML;
     }
 }

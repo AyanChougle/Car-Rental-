@@ -84,18 +84,15 @@
 
   // Update all generic WhatsApp links on the page dynamically
   function applySmartWhatsAppLinks() {
-    document.querySelectorAll('a[href*="wa.me"], a[href*="whatsapp.com"], .social-pill.whatsapp, .whatsapp-pill').forEach(anchor => {
-      const currentHref = anchor.getAttribute('href') || '';
-      if (!currentHref.includes('text=') || currentHref === 'https://wa.me/919167164547') {
-        anchor.href = getSmartWhatsAppUrl();
-      }
+    document.querySelectorAll('.social-pill.whatsapp, .whatsapp-pill, a[data-smart-whatsapp="true"]').forEach(anchor => {
+      anchor.href = getSmartWhatsAppUrl();
     });
   }
 
-  // On page load and dynamic click
+  // On page load and dynamic click - ONLY apply to generic social pills, never override specific booking links!
   applySmartWhatsAppLinks();
   document.addEventListener('click', (e) => {
-    const anchor = e.target.closest('a[href*="wa.me"], a[href*="whatsapp.com"], .social-pill.whatsapp, .whatsapp-pill');
+    const anchor = e.target.closest('.social-pill.whatsapp, .whatsapp-pill, a[data-smart-whatsapp="true"]');
     if (anchor) {
       anchor.href = getSmartWhatsAppUrl();
     }
