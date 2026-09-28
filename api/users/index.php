@@ -15,15 +15,23 @@ function formatDocUrl(?string $val): ?string {
     if (!$val) return null;
     $val = trim($val);
     if (!$val) return null;
+    $isPdf = str_contains(strtolower($val), '.pdf');
     // Already a full URL or an API path
     if (
         strpos($val, 'http://') === 0 ||
         strpos($val, 'https://') === 0 ||
         strpos($val, '/api/media/') === 0
     ) {
+        if ($isPdf && !str_contains(strtolower($val), '.pdf')) {
+            $val .= (str_contains($val, '?') ? '&' : '?') . 'ext=.pdf';
+        }
         return $val;
     }
-    return '/api/media/file.php?id=' . urlencode($val);
+    $url = '/api/media/file.php?id=' . urlencode($val);
+    if ($isPdf && !str_contains(strtolower($url), '.pdf')) {
+        $url .= '&ext=.pdf';
+    }
+    return $url;
 }
 
 // ----------------------------------------------------------------

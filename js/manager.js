@@ -2354,7 +2354,9 @@ async function fetchManagerDocumentPreview(mediaUrl) {
     );
   }
 
-  return URL.createObjectURL(await response.blob());
+  const blob = await response.blob();
+  const isPdf = blob.type === "application/pdf" || url.toLowerCase().includes(".pdf");
+  return { url: URL.createObjectURL(blob), isPdf };
 }
 
 async function openManagerDocumentModal(user, type) {
@@ -2426,8 +2428,10 @@ async function openManagerDocumentModal(user, type) {
     document.getElementById("managerDocumentPreview");
 
   try {
-    const objectUrl =
+    const previewRes =
       await fetchManagerDocumentPreview(mediaUrl);
+    const objectUrl = previewRes.url;
+    const isPdf = previewRes.isPdf;
 
     if (
       activeManagerDocument?.user !== user ||
@@ -2439,20 +2443,46 @@ async function openManagerDocumentModal(user, type) {
     }
 
     managerDocumentObjectUrl = objectUrl;
-    preview.innerHTML = `
-      <img
-        src="${escapeHtml(objectUrl)}"
-        alt="${escapeHtml(documentLabel)} uploaded by ${escapeHtml(user.name || "customer")}"
-        style="display:block;width:100%;max-height:520px;object-fit:contain;background:#080909;"
-      />
-    `;
+
+    if (isPdf) {
+      preview.innerHTML = `
+        <div style="width:100%;background:#fff;border-radius:8px;overflow:hidden;position:relative;">
+          <iframe src="${escapeHtml(objectUrl)}#toolbar=0" style="display:block;width:100%;height:450px;border:none;" title="${escapeHtml(documentLabel)}"></iframe>
+          <div style="padding:6px 12px;background:#0c121d;text-align:right;border-top:1px solid rgba(255,255,255,0.1);">
+            <a href="${escapeHtml(objectUrl)}" target="_blank" rel="noopener" style="color:#4fd7ff;font-size:12px;font-weight:700;text-decoration:none;">Open Full PDF in New Tab</a>
+          </div>
+        </div>
+      `;
+    } else {
+      preview.innerHTML = `
+        <img
+          src="${escapeHtml(objectUrl)}"
+          alt="${escapeHtml(documentLabel)} uploaded by ${escapeHtml(user.name || "customer")}"
+          style="display:block;width:100%;max-height:520px;object-fit:contain;background:#080909;"
+        />
+      `;
+    }
 
     if (isLicense && mediaUrls[1]) {
-      const backObjectUrl = await fetchManagerDocumentPreview(mediaUrls[1]);
+      const backRes = await fetchManagerDocumentPreview(mediaUrls[1]);
+      const backObjectUrl = backRes.url;
+      const backIsPdf = backRes.isPdf;
       managerDocumentObjectUrls.push(backObjectUrl);
-      preview.insertAdjacentHTML("beforeend", `
-        <img src="${escapeHtml(backObjectUrl)}" alt="Driving licence back uploaded by ${escapeHtml(user.name || "customer")}" style="display:block;width:100%;max-height:520px;object-fit:contain;background:#080909;border-top:1px solid var(--line);" />
-      `);
+
+      if (backIsPdf) {
+        preview.insertAdjacentHTML("beforeend", `
+          <div style="width:100%;background:#fff;border-radius:8px;overflow:hidden;margin-top:12px;position:relative;">
+            <iframe src="${escapeHtml(backObjectUrl)}#toolbar=0" style="display:block;width:100%;height:450px;border:none;" title="Driving licence back"></iframe>
+            <div style="padding:6px 12px;background:#0c121d;text-align:right;border-top:1px solid rgba(255,255,255,0.1);">
+              <a href="${escapeHtml(backObjectUrl)}" target="_blank" rel="noopener" style="color:#4fd7ff;font-size:12px;font-weight:700;text-decoration:none;">Open Back PDF in New Tab</a>
+            </div>
+          </div>
+        `);
+      } else {
+        preview.insertAdjacentHTML("beforeend", `
+          <img src="${escapeHtml(backObjectUrl)}" alt="Driving licence back uploaded by ${escapeHtml(user.name || "customer")}" style="display:block;width:100%;max-height:520px;object-fit:contain;background:#080909;border-top:1px solid var(--line);" />
+        `);
+      }
     }
   } catch (error) {
     console.error("Manager document preview error:", error);

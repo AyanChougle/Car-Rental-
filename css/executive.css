@@ -336,6 +336,20 @@
   transform: translateY(-1px);
 }
 
+.exec-doc-pdf-wrapper {
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.exec-doc-pdf-wrapper:hover {
+  border-color: rgba(239, 71, 111, 0.5) !important;
+  box-shadow: 0 4px 16px rgba(239, 71, 111, 0.2);
+}
+
+.btn-exec-pdf-lightbox:hover {
+  background: rgba(79, 215, 255, 0.3) !important;
+  color: #ffffff !important;
+}
+
 /* ============================================================
    KRUIZLY HIGH-RES IMAGE LIGHTBOX & ENLARGE MODAL
    ============================================================ */

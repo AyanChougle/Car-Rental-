@@ -320,6 +320,12 @@ async function uploadDocumentToServer(user, file, category) {
    convert it into a temporary browser URL.
 */
 
+function createDocPreviewSvg(title = "Document", ext = "DOC", color = "%23ef476f") {
+  const safeTitle = (title || "Document").slice(-28).replace(/[<>&"]/g, "");
+  const safeExt = (ext || "DOC").toUpperCase().slice(0, 4);
+  return `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='360' height='220' viewBox='0 0 360 220'%3E%3Crect width='100%25' height='100%25' fill='%23121926' rx='10' stroke='${color}' stroke-width='2' stroke-dasharray='4'/%3E%3Cpath d='M180 45 L210 75 L210 135 L150 135 L150 45 Z' fill='${color}' opacity='0.25'/%3E%3Cpath d='M155 50 H200 L210 60 V130 H155 Z' fill='${color}'/%3E%3Ctext x='182' y='96' fill='%23ffffff' font-family='sans-serif' font-size='14' font-weight='900' text-anchor='middle'%3E${safeExt}%3C/text%3E%3Ctext x='180' y='160' fill='%23ffffff' font-family='sans-serif' font-size='13' font-weight='bold' text-anchor='middle'%3E${encodeURIComponent(safeTitle)}%3C/text%3E%3Ctext x='180' y='185' fill='%234fd7ff' font-family='sans-serif' font-size='11' text-anchor='middle'%3EClick to Open / View Document%3C/text%3E%3C/svg%3E`;
+}
+
 async function loadProtectedMediaPreview(user, mediaUrl, imageElement) {
   if (!user || !mediaUrl || !imageElement) {
     return;
@@ -364,7 +370,17 @@ async function loadProtectedMediaPreview(user, mediaUrl, imageElement) {
 
     imageElement.dataset.objectUrl = objectUrl;
 
-    imageElement.src = objectUrl;
+    const isPdf = blob.type === "application/pdf" || url.toLowerCase().includes(".pdf");
+    if (isPdf) {
+      imageElement.src = createDocPreviewSvg("Uploaded PDF Document", "PDF", "%23ef476f");
+      imageElement.style.cursor = "pointer";
+      imageElement.title = "Click to view / open uploaded PDF in new tab";
+      imageElement.onclick = () => window.open(objectUrl, "_blank");
+    } else {
+      imageElement.src = objectUrl;
+      imageElement.style.cursor = "default";
+      imageElement.onclick = null;
+    }
 
     imageElement.hidden = false;
 
@@ -1716,7 +1732,31 @@ function initDocumentUpload(user, config) {
 
     preview.dataset.objectUrl = objectUrl;
 
-    preview.src = objectUrl;
+    const lowerName = (file.name || "").toLowerCase();
+    const isPdf = file.type === "application/pdf" || lowerName.endsWith(".pdf");
+    const isDoc = lowerName.match(/\.(docx?|rtf|txt|odt)$/i);
+    const isArchive = lowerName.match(/\.(zip|7z|rar|tar(\.(gz|bz2|xz))?|gz)$/i);
+
+    if (isPdf) {
+      preview.src = createDocPreviewSvg(file.name, "PDF", "%23ef476f");
+      preview.style.cursor = "pointer";
+      preview.title = "Click to view / open selected PDF in new tab";
+      preview.onclick = () => window.open(objectUrl, "_blank");
+    } else if (isDoc) {
+      preview.src = createDocPreviewSvg(file.name, "DOC", "%233b82f6");
+      preview.style.cursor = "pointer";
+      preview.title = "Click to open selected file";
+      preview.onclick = () => window.open(objectUrl, "_blank");
+    } else if (isArchive) {
+      preview.src = createDocPreviewSvg(file.name, "ZIP", "%23f59e0b");
+      preview.style.cursor = "pointer";
+      preview.title = "Click to open archive";
+      preview.onclick = () => window.open(objectUrl, "_blank");
+    } else {
+      preview.src = objectUrl;
+      preview.style.cursor = "default";
+      preview.onclick = null;
+    }
 
     preview.hidden = false;
 

@@ -11,7 +11,7 @@ import "./nav-helper.js?v=20260908-v5";
 
 import { openReturnModal } from "./return-inspection.js";
 import { formatBookingNumber } from "./booking-reference.js";
-import { openImageLightbox } from "./image-lightbox.js?v=20260912-v1";
+import { openImageLightbox, isPdfDocument } from "./image-lightbox.js?v=20260928-v1";
 
 async function getAuthToken() {
   try {
@@ -3071,7 +3071,7 @@ async function fetchAdminDocumentPreview(mediaUrl) {
 
   // If it's already a data URI or blob URL
   if (str.startsWith("data:") || str.startsWith("blob:")) {
-    return str;
+    return { url: str, isPdf: isPdfDocument(str) };
   }
 
   let finalUrl = str;
@@ -3090,12 +3090,14 @@ async function fetchAdminDocumentPreview(mediaUrl) {
 
     const response = await fetch(finalUrl, { headers });
     if (!response.ok) {
-      if (isFullHttp) return finalUrl;
+      if (isFullHttp) return { url: finalUrl, isPdf: isPdfDocument(finalUrl) };
       throw new Error(`Media server status ${response.status}`);
     }
-    return URL.createObjectURL(await response.blob());
+    const blob = await response.blob();
+    const isPdf = blob.type === "application/pdf" || isPdfDocument(finalUrl);
+    return { url: URL.createObjectURL(blob), isPdf, isBlob: true };
   } catch (err) {
-    if (isFullHttp) return finalUrl;
+    if (isFullHttp) return { url: finalUrl, isPdf: isPdfDocument(finalUrl) };
     throw err;
   }
 }
@@ -3170,6 +3172,8 @@ async function openDocumentModal(
     "docModal"
   );
 
+  document.querySelectorAll(".admin-doc-pdf-container").forEach((el) => el.remove());
+
   const targets = [img, backImg];
   let loadedCount = 0;
 
@@ -3199,15 +3203,51 @@ async function openDocumentModal(
   await Promise.all(urls.map(async (url, index) => {
     if (!url || !targets[index]) return;
     try {
-      const objectUrl = await fetchAdminDocumentPreview(url);
-      if (!objectUrl) return;
+      const previewRes = await fetchAdminDocumentPreview(url);
+      if (!previewRes) return;
+      const objectUrl = typeof previewRes === "object" && previewRes !== null ? previewRes.url : previewRes;
+      const isPdf = typeof previewRes === "object" && previewRes !== null ? Boolean(previewRes.isPdf) : isPdfDocument(url);
+
       if (activeDocUser !== user || activeDocType !== type || !targets[index].isConnected) {
-        if (objectUrl.startsWith("blob:")) URL.revokeObjectURL(objectUrl);
+        if (typeof objectUrl === "string" && objectUrl.startsWith("blob:")) URL.revokeObjectURL(objectUrl);
         return;
       }
-      if (objectUrl.startsWith("blob:")) activeDocObjectUrls.push(objectUrl);
-      targets[index].src = objectUrl;
-      targets[index].style.display = "block";
+      if (typeof objectUrl === "string" && objectUrl.startsWith("blob:")) activeDocObjectUrls.push(objectUrl);
+
+      const wrap = targets[index].parentElement;
+      if (isPdf && wrap) {
+        targets[index].style.display = "none";
+        let pdfContainer = wrap.querySelector(".admin-doc-pdf-container");
+        if (!pdfContainer) {
+          pdfContainer = document.createElement("div");
+          pdfContainer.className = "admin-doc-pdf-container";
+          pdfContainer.style.width = "100%";
+          pdfContainer.style.height = "260px";
+          pdfContainer.style.position = "relative";
+          pdfContainer.style.borderRadius = "8px";
+          pdfContainer.style.overflow = "hidden";
+          pdfContainer.style.background = "#fff";
+          wrap.appendChild(pdfContainer);
+        }
+        pdfContainer.innerHTML = `
+          <iframe src="${escapeHtml(objectUrl)}#toolbar=0" style="width: 100%; height: 100%; border: none;" title="PDF Document Preview"></iframe>
+          <div style="position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; z-index: 10;">
+            <button type="button" class="btn btn-sm btn-dark" style="font-size: 11px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 4px; background: rgba(5,8,13,0.85); color: #4fd7ff; border: 1px solid rgba(79,215,255,0.4); cursor: pointer; border-radius: 4px;">Inspect PDF</button>
+            <a href="${escapeHtml(objectUrl)}" target="_blank" rel="noopener" style="font-size: 11px; padding: 4px 8px; text-decoration: none; color: #fff; background: rgba(5,8,13,0.85); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">Open Tab</a>
+          </div>
+        `;
+        const inspectBtn = pdfContainer.querySelector("button");
+        inspectBtn?.addEventListener("click", () => {
+          const title = $("modalTitle")?.textContent || "Document Preview";
+          const userDesc = activeDocUser ? `${activeDocUser.name || "Customer"} (${activeDocUser.phone || activeDocUser.email || ""})` : "";
+          const sideText = index === 0 ? "Front Side" : "Back Side";
+          openImageLightbox(objectUrl, `${title} — ${sideText}`, userDesc);
+        });
+        pdfContainer.style.display = "block";
+      } else {
+        targets[index].src = objectUrl;
+        targets[index].style.display = "block";
+      }
       loadedCount += 1;
     } catch (error) {
       // Fallback placeholder image when document ID is missing from local storage

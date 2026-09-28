@@ -1,16 +1,28 @@
 /**
  * js/image-lightbox.js
- * Kruizly High-Resolution Image Lightbox & Document Enlarge Viewer
+ * Kruizly High-Resolution Image & Document Lightbox Viewer
  * Features:
  * - Fullscreen dark blurred overlay with close button & ESC key support
- * - Document details title / subtitle (e.g. "Driving License — Front Side · Amanullah")
- * - 2x Zoom toggle (plus click / double-click to zoom in/out)
+ * - Document details title / subtitle (e.g. "Driving License — Front Side · Vikas Bacche")
+ * - 2x Zoom toggle (plus click / double-click to zoom in/out for images)
  * - 90-degree Rotation toggle (in case ID cards are uploaded sideways)
- * - Open Original Raw Image in New Tab
+ * - Native interactive PDF embedding with zoom/page controls
+ * - Open Original Raw Document/Image in New Tab
  */
 
 let currentLightboxZoom = 1;
 let currentLightboxRotate = 0;
+
+export function isPdfDocument(url) {
+  if (!url) return false;
+  try {
+    const decoded = decodeURIComponent(String(url).toLowerCase());
+    return decoded.includes(".pdf") || decoded.includes("application/pdf") || decoded.includes("mime=pdf") || decoded.includes("type=pdf") || decoded.includes("ext=pdf");
+  } catch (e) {
+    const raw = String(url).toLowerCase();
+    return raw.includes(".pdf") || raw.includes("application/pdf");
+  }
+}
 
 export function openImageLightbox(src, title = "Document Preview", subtitle = "") {
   if (!src) return;
@@ -59,13 +71,14 @@ export function openImageLightbox(src, title = "Document Preview", subtitle = ""
 
         <!-- Stage Body -->
         <div class="kruizly-lightbox-body" id="kruizlyLightboxBody">
-          <div class="kruizly-lightbox-stage">
+          <div class="kruizly-lightbox-stage" id="kruizlyLightboxStage">
             <img id="kruizlyLightboxImg" src="" alt="Enlarged Document" class="kruizly-lightbox-img" />
+            <iframe id="kruizlyLightboxPdf" src="" class="kruizly-lightbox-pdf" style="display:none; width: 100%; height: 100%; min-height: 520px; border: none; border-radius: 8px; background: #ffffff;" title="PDF Preview"></iframe>
           </div>
         </div>
 
         <!-- Bottom Hint -->
-        <div class="kruizly-lightbox-hint">
+        <div class="kruizly-lightbox-hint" id="kruizlyLightboxHint">
           Click image or double-click to toggle 2x zoom · Click outside or press ESC to close
         </div>
       </div>
@@ -76,6 +89,7 @@ export function openImageLightbox(src, title = "Document Preview", subtitle = ""
     const backdrop = modal.querySelector(".kruizly-lightbox-backdrop");
     const body = document.getElementById("kruizlyLightboxBody");
     const imgEl = document.getElementById("kruizlyLightboxImg");
+    const pdfEl = document.getElementById("kruizlyLightboxPdf");
     const zoomBtn = document.getElementById("kruizlyLightboxZoomBtn");
     const rotateBtn = document.getElementById("kruizlyLightboxRotateBtn");
 
@@ -86,6 +100,11 @@ export function openImageLightbox(src, title = "Document Preview", subtitle = ""
       if (imgEl) {
         imgEl.style.transform = "";
         imgEl.classList.remove("zoomed");
+        imgEl.src = "";
+      }
+      if (pdfEl) {
+        pdfEl.src = "";
+        pdfEl.style.display = "none";
       }
     };
 
@@ -130,30 +149,84 @@ export function openImageLightbox(src, title = "Document Preview", subtitle = ""
       currentLightboxRotate = (currentLightboxRotate + 90) % 360;
       updateTransform();
     });
+
+    // Auto-fallback: if browser cannot render image (e.g. PDF or non-image document served in <img>), switch to iframe viewer
+    imgEl?.addEventListener("error", () => {
+      if (imgEl.src && imgEl.style.display !== "none") {
+        const failedSrc = imgEl.src;
+        imgEl.style.display = "none";
+        if (pdfEl) {
+          pdfEl.style.display = "block";
+          pdfEl.src = failedSrc;
+        }
+        if (zoomBtn) zoomBtn.style.display = "none";
+        if (rotateBtn) rotateBtn.style.display = "none";
+        const hint = document.getElementById("kruizlyLightboxHint");
+        if (hint) {
+          hint.textContent = "Document Viewer · Use toolbar or click Open Tab for full view · Press ESC to close";
+        }
+      }
+    });
   }
 
   // Populate data
   const titleEl = document.getElementById("kruizlyLightboxTitle");
   const subEl = document.getElementById("kruizlyLightboxSubtitle");
   const imgEl = document.getElementById("kruizlyLightboxImg");
+  const pdfEl = document.getElementById("kruizlyLightboxPdf");
   const newTabBtn = document.getElementById("kruizlyLightboxNewTabBtn");
+  const zoomBtn = document.getElementById("kruizlyLightboxZoomBtn");
+  const rotateBtn = document.getElementById("kruizlyLightboxRotateBtn");
   const zoomLabel = document.getElementById("kruizlyLightboxZoomLabel");
+  const hintEl = document.getElementById("kruizlyLightboxHint");
 
   if (titleEl) titleEl.textContent = title;
   if (subEl) subEl.textContent = subtitle;
-  if (imgEl) {
-    imgEl.src = src;
-    imgEl.style.transform = "";
-    imgEl.classList.remove("zoomed");
-  }
   if (newTabBtn) newTabBtn.href = src;
   if (zoomLabel) zoomLabel.textContent = "2x Zoom";
   currentLightboxZoom = 1;
   currentLightboxRotate = 0;
+
+  const isPdf = isPdfDocument(src);
+
+  if (isPdf) {
+    if (imgEl) {
+      imgEl.src = "";
+      imgEl.style.display = "none";
+      imgEl.style.transform = "";
+      imgEl.classList.remove("zoomed");
+    }
+    if (pdfEl) {
+      pdfEl.style.display = "block";
+      pdfEl.src = src;
+    }
+    if (zoomBtn) zoomBtn.style.display = "none";
+    if (rotateBtn) rotateBtn.style.display = "none";
+    if (hintEl) {
+      hintEl.textContent = "Interactive PDF document · Use controls inside preview to zoom / navigate, or click Open Tab for full page · Press ESC to close";
+    }
+  } else {
+    if (pdfEl) {
+      pdfEl.src = "";
+      pdfEl.style.display = "none";
+    }
+    if (imgEl) {
+      imgEl.style.display = "block";
+      imgEl.src = src;
+      imgEl.style.transform = "";
+      imgEl.classList.remove("zoomed");
+    }
+    if (zoomBtn) zoomBtn.style.display = "inline-flex";
+    if (rotateBtn) rotateBtn.style.display = "inline-flex";
+    if (hintEl) {
+      hintEl.textContent = "Click image or double-click to toggle 2x zoom · Click outside or press ESC to close";
+    }
+  }
 
   modal.classList.add("active");
 }
 
 if (typeof window !== "undefined") {
   window.openImageLightbox = openImageLightbox;
+  window.isPdfDocument = isPdfDocument;
 }

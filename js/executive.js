@@ -17,7 +17,7 @@ import { api } from "./kruizly-api.js?v=20260915-v1";
 import "./nav-helper.js?v=20260908-v5";
 import { formatBookingNumber } from "./booking-reference.js";
 import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260917-v6";
-import { openImageLightbox } from "./image-lightbox.js?v=20260912-v1";
+import { openImageLightbox, isPdfDocument } from "./image-lightbox.js?v=20260928-v1";
 
 function $(id) {
   return document.getElementById(id);
@@ -1518,6 +1518,94 @@ function openKycModal(kycItem) {
   }
 }
 
+function renderExecKycDocBox(boxEl, url, sideLabel, docTypeName, isPdfFlag) {
+  if (!boxEl) return;
+  if (!url) {
+    boxEl.innerHTML = `<span style="color:var(--sub);font-size:13px;">No ${sideLabel.toLowerCase()} submitted</span>`;
+    return;
+  }
+
+  const customerName = activeKycItem?.fullName || "Customer";
+  const customerPhone = activeKycItem?.phone || "";
+  const subtitle = `${customerName} ${customerPhone ? `· ${customerPhone}` : ""}`;
+  const fullTitle = `${docTypeName} — ${sideLabel}`;
+
+  const isPdf = isPdfFlag || isPdfDocument(url);
+
+  if (isPdf) {
+    boxEl.innerHTML = `
+      <div class="exec-doc-pdf-wrapper" style="width: 100%; height: 100%; min-height: 220px; display: flex; flex-direction: column; position: relative; border-radius: 8px; overflow: hidden; background: #0c121d; border: 1px solid rgba(239, 71, 111, 0.25);">
+        <div style="flex: 1; min-height: 180px; position: relative; overflow: hidden;">
+          <iframe src="${escapeHtml(url)}#toolbar=0&navpanes=0" style="width: 100%; height: 100%; min-height: 180px; border: none; background: #fff;" title="${docTypeName} ${sideLabel} PDF Preview"></iframe>
+          <div class="exec-doc-pdf-click-overlay" role="button" tabindex="0" title="Click to inspect PDF in full lightbox" style="position: absolute; inset: 0; cursor: pointer; background: transparent;"></div>
+        </div>
+        <div class="exec-doc-pdf-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: rgba(5, 8, 13, 0.95); border-top: 1px solid rgba(255,255,255,0.08);">
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: #ef476f;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-9.5 8.5h-2v1.5h2c.55 0 1-.45 1-1s-.45-.5-1-.5zm5 0h-1.5v3h1.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5zm-5-3.5h-3.5v7h1.5v-2h2c.83 0 1.5-.67 1.5-1.5s-.67-3.5-1.5-3.5zm5 0h-3v7h3c1.66 0 3-1.34 3-3v-1c0-1.66-1.34-3-3-3z"/></svg>
+            <span>PDF Document</span>
+          </div>
+          <div style="display: flex; gap: 6px;">
+            <button type="button" class="btn-exec-pdf-lightbox" style="background: rgba(79, 215, 255, 0.15); border: 1px solid rgba(79, 215, 255, 0.4); color: #4fd7ff; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+              Inspect
+            </button>
+            <a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #fff; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+              Open
+            </a>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const overlay = boxEl.querySelector(".exec-doc-pdf-click-overlay");
+    const inspectBtn = boxEl.querySelector(".btn-exec-pdf-lightbox");
+    const openLb = () => openImageLightbox(url, fullTitle, subtitle);
+    overlay?.addEventListener("click", openLb);
+    overlay?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openLb();
+      }
+    });
+    inspectBtn?.addEventListener("click", openLb);
+    return;
+  }
+
+  // Otherwise, render image wrapper
+  boxEl.innerHTML = `
+    <div class="exec-doc-img-wrapper" role="button" tabindex="0" title="Click to enlarge ${sideLabel}">
+      <img src="${escapeHtml(url)}" alt="${docTypeName} ${sideLabel}" class="enlargeable-kyc-img" />
+      <div class="exec-doc-zoom-overlay">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+        <span>Click to Enlarge</span>
+      </div>
+    </div>
+  `;
+
+  const wrap = boxEl.querySelector(".exec-doc-img-wrapper");
+  const img = boxEl.querySelector("img");
+
+  if (img) {
+    img.addEventListener("error", () => {
+      // If image loading fails, automatically re-render as PDF preview container
+      console.warn("KYC document image error for:", url, "- switching to PDF/document preview");
+      renderExecKycDocBox(boxEl, url, sideLabel, docTypeName, true);
+    });
+  }
+
+  if (wrap) {
+    const openLb = () => openImageLightbox(url, fullTitle, subtitle);
+    wrap.addEventListener("click", openLb);
+    wrap.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openLb();
+      }
+    });
+  }
+}
+
 function renderKycDocPreviews() {
   if (!activeKycItem) return;
 
@@ -1526,77 +1614,30 @@ function renderKycDocPreviews() {
 
   let frontUrl = null;
   let backUrl = null;
+  let frontIsPdf = false;
+  let backIsPdf = false;
 
   if (activeKycDocTab === "license") {
     frontUrl = activeKycItem.licenseFrontURL || (activeKycItem.licenseFrontMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.licenseFrontMediaId)}` : null);
     backUrl = activeKycItem.licenseBackURL || (activeKycItem.licenseBackMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.licenseBackMediaId)}` : null);
+    frontIsPdf = Boolean(activeKycItem.licenseFrontIsPdf);
+    backIsPdf = Boolean(activeKycItem.licenseBackIsPdf);
   } else if (activeKycDocTab === "aadhar") {
     frontUrl = activeKycItem.aadharFrontURL || (activeKycItem.aadharFrontMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.aadharFrontMediaId)}` : null);
     backUrl = activeKycItem.aadharBackURL || (activeKycItem.aadharBackMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.aadharBackMediaId)}` : null);
+    frontIsPdf = Boolean(activeKycItem.aadharFrontIsPdf);
+    backIsPdf = Boolean(activeKycItem.aadharBackIsPdf);
   } else if (activeKycDocTab === "pan") {
     frontUrl = activeKycItem.panFrontURL || (activeKycItem.panFrontMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.panFrontMediaId)}` : null);
     backUrl = activeKycItem.panBackURL || (activeKycItem.panBackMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.panBackMediaId)}` : null);
+    frontIsPdf = Boolean(activeKycItem.panFrontIsPdf);
+    backIsPdf = Boolean(activeKycItem.panBackIsPdf);
   }
 
   const docTypeName = activeKycDocTab === "license" ? "Driving License" : activeKycDocTab === "aadhar" ? "Aadhaar Card" : "PAN Card";
-  const customerName = activeKycItem.fullName || "Customer";
-  const customerPhone = activeKycItem.phone || "";
 
-  if (frontBox) {
-    if (frontUrl) {
-      frontBox.innerHTML = `
-        <div class="exec-doc-img-wrapper" role="button" tabindex="0" title="Click to enlarge Front Side">
-          <img src="${escapeHtml(frontUrl)}" alt="${docTypeName} Front" class="enlargeable-kyc-img" onerror="this.onerror=null;this.parentElement.innerHTML='<span style=\\'color:var(--sub);font-size:13px;\\'>Document image not accessible</span>';" />
-          <div class="exec-doc-zoom-overlay">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-            <span>Click to Enlarge</span>
-          </div>
-        </div>
-      `;
-      const wrap = frontBox.querySelector(".exec-doc-img-wrapper");
-      if (wrap) {
-        wrap.addEventListener("click", () => {
-          openImageLightbox(frontUrl, `${docTypeName} — Front Side`, `${customerName} ${customerPhone ? `· ${customerPhone}` : ""}`);
-        });
-        wrap.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            openImageLightbox(frontUrl, `${docTypeName} — Front Side`, `${customerName} ${customerPhone ? `· ${customerPhone}` : ""}`);
-          }
-        });
-      }
-    } else {
-      frontBox.innerHTML = `<span style="color:var(--sub);font-size:13px;">No front image submitted</span>`;
-    }
-  }
-
-  if (backBox) {
-    if (backUrl) {
-      backBox.innerHTML = `
-        <div class="exec-doc-img-wrapper" role="button" tabindex="0" title="Click to enlarge Back Side">
-          <img src="${escapeHtml(backUrl)}" alt="${docTypeName} Back" class="enlargeable-kyc-img" onerror="this.onerror=null;this.parentElement.innerHTML='<span style=\\'color:var(--sub);font-size:13px;\\'>Document image not accessible</span>';" />
-          <div class="exec-doc-zoom-overlay">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-            <span>Click to Enlarge</span>
-          </div>
-        </div>
-      `;
-      const wrap = backBox.querySelector(".exec-doc-img-wrapper");
-      if (wrap) {
-        wrap.addEventListener("click", () => {
-          openImageLightbox(backUrl, `${docTypeName} — Back Side`, `${customerName} ${customerPhone ? `· ${customerPhone}` : ""}`);
-        });
-        wrap.addEventListener("keydown", (e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            openImageLightbox(backUrl, `${docTypeName} — Back Side`, `${customerName} ${customerPhone ? `· ${customerPhone}` : ""}`);
-          }
-        });
-      }
-    } else {
-      backBox.innerHTML = `<span style="color:var(--sub);font-size:13px;">No back image submitted</span>`;
-    }
-  }
+  renderExecKycDocBox(frontBox, frontUrl, "Front Side", docTypeName, frontIsPdf);
+  renderExecKycDocBox(backBox, backUrl, "Back Side", docTypeName, backIsPdf);
 }
 
 function closeKycModal() {
