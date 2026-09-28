@@ -1163,7 +1163,7 @@ async function loadFleetManagement() {
 
   try {
     const [res, activeRes] = await Promise.all([
-      api.get("/vehicles").catch(() => null),
+      api.get("/vehicles", { hub_id: getSelectedHubId() }).catch(() => null),
       api.get("/vehicles/active-fleet.php?_t=" + Date.now()).catch(() => null)
     ]);
 
