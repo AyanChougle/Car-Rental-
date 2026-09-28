@@ -1,0 +1,47 @@
+/* KRUIZLY Hub Dashboard UI Audit — Admin / Manager / Executive / Accounts */
+:root { --hub-cyan:#4fd7ff; --hub-green:#06d6a0; }
+
+.hub-context-bar, .kruizly-global-hub-selector { box-sizing:border-box; }
+.hub-context-bar__inner { min-width:0; }
+.hub-context-bar__title, .hub-context-bar__meta { overflow:hidden; text-overflow:ellipsis; }
+
+.admin-stats-grid, .manager-stats { width:100%; box-sizing:border-box; }
+.stat-card, .manager-stat-card { min-width:0; overflow:hidden; }
+.stat-value, .manager-stat-value { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+.accounts-table-wrap, .manager-table-wrap, .executive-table-wrap,
+.data-table-scroll-container, .admin-table-wrap { max-width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+.accounts-table, .manager-table, .executive-table { min-width:760px; }
+
+.hub-context-select:focus-visible,
+.kruizly-global-hub-select:focus-visible,
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+  outline:2px solid var(--hub-cyan);
+  outline-offset:2px;
+}
+
+@media (max-width:1100px) {
+  .admin-stats-grid, .manager-stats { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+  .hub-context-bar__inner { gap:12px; }
+}
+
+@media (max-width:760px) {
+  .admin-stats-grid, .manager-stats { grid-template-columns:1fr !important; gap:10px !important; }
+  .stat-card, .manager-stat-card { min-height:82px !important; padding:16px !important; }
+  .admin-tabs { overflow-x:auto; flex-wrap:nowrap !important; -webkit-overflow-scrolling:touch; padding-bottom:8px !important; }
+  .admin-tabs .btn, .mgr-tab-btn { flex:0 0 auto; white-space:nowrap; }
+  .accounts-table th.col-action, .accounts-table td.col-action { position:sticky; right:0; min-width:125px !important; padding:10px !important; }
+}
+
+@media (max-width:520px) {
+  .hub-context-bar__inner { border-radius:12px; }
+  .hub-context-bar__identity, .hub-context-bar__control { min-width:0; width:100%; }
+  .hub-context-select, .kruizly-global-hub-select { width:100%; min-width:0; }
+  .kruizly-global-hub-selector { width:100%; margin-left:0; }
+  .stat-label, .manager-stat-label { font-size:10.5px !important; }
+  .stat-value, .manager-stat-value { font-size:1.35rem !important; }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  *, *::before, *::after { scroll-behavior:auto !important; transition:none !important; animation:none !important; }
+}
