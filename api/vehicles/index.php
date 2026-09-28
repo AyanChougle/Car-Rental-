@@ -13,11 +13,16 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
     $category = trim((string)($_GET['category'] ?? ''));
+    $hubId = isset($_GET['hub_id']) ? (int)$_GET['hub_id'] : 0;
     $availableOnly = isset($_GET['available']) ? (bool)$_GET['available'] : false;
 
     $sql = "SELECT * FROM vehicles WHERE status != 'removed'";
     $params = [];
 
+    if ($hubId) {
+        $sql .= " AND hub_id = ?";
+        $params[] = $hubId;
+    }
     if ($category) {
         $sql .= " AND category = ?";
         $params[] = $category;
@@ -107,7 +112,7 @@ if ($method === 'POST') {
     $priceHour = (float)($input['priceHour'] ?? $input['price_hour'] ?? round($priceDay / 24));
     $driverPrice = (float)($input['driverPrice'] ?? 0.00);
     $securityDeposit = (float)($input['securityDeposit'] ?? 3000.00);
-    $hub = trim((string)($input['hub'] ?? 'Gavson Business Park, Ghansoli'));
+    $hubId = isset($input['hub_id']) ? (int)$input['hub_id'] : null;
     $acquisitionType = trim((string)($input['acquisitionType'] ?? $input['acquisition_type'] ?? 'Partner'));
     $ownerName = trim((string)($input['ownerName'] ?? $input['owner_name'] ?? ''));
     $acquisitionDate = !empty($input['acquisitionDate']) ? trim((string)$input['acquisitionDate']) : null;
@@ -119,8 +124,8 @@ if ($method === 'POST') {
     }
 
     Database::execute(
-        "INSERT INTO vehicles (car_id, reg_no, brand, model, year, category, transmission, fuel, seats, price_day, price_hour, driver_price, security_deposit, hub, location, acquisition_type, owner_name, acquisition_date, available, status, is_active_fleet, is_custom_fleet, gallery, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'available', ?, 1, ?, ?)
+        "INSERT INTO vehicles (car_id, reg_no, brand, model, year, category, transmission, fuel, seats, price_day, price_hour, driver_price, security_deposit, hub_id, acquisition_type, owner_name, acquisition_date, available, status, is_active_fleet, is_custom_fleet, gallery, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'available', ?, 1, ?, ?)
          ON DUPLICATE KEY UPDATE
             car_id = COALESCE(VALUES(car_id), car_id),
             brand = VALUES(brand),
@@ -143,7 +148,7 @@ if ($method === 'POST') {
             gallery = VALUES(gallery)",
         [
             $carId ?: null, $regNo, $brand, $model, $year, $category, $transmission, $fuel, $seats,
-            $priceDay, $priceHour, $driverPrice, $securityDeposit, $hub, $hub, $acquisitionType, $ownerName ?: null, $acquisitionDate,
+            $priceDay, $priceHour, $driverPrice, $securityDeposit, $hubId, $acquisitionType, $ownerName ?: null, $acquisitionDate,
             $isActiveFleet, $gallery, $user['firebase_uid']
         ]
     );

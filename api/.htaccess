@@ -27,6 +27,10 @@
     RewriteRule ^users/([^/]+)/role/?$ users/role.php?uid=$1 [L,QSA]
     RewriteRule ^users/?$ users/index.php [L,QSA]
 
+    # Hubs
+    RewriteRule ^hubs/([^/]+)/?$ hubs/detail.php?id= [L,QSA]
+    RewriteRule ^hubs/?$ hubs/index.php [L,QSA]
+
     # Vehicles
     RewriteRule ^vehicles/([^/]+)/?$ vehicles/detail.php?regNo=$1 [L,QSA]
     RewriteRule ^vehicles/?$ vehicles/index.php [L,QSA]
