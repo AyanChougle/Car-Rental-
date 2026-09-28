@@ -8,6 +8,42 @@ SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 SET SQL_MODE = 'NO_AUTO_VALUE_ON_ZERO';
 
+
+-- ------------------------------------------------------------
+-- HUB MANAGEMENT TABLES
+-- ------------------------------------------------------------
+DROP TABLE IF EXISTS `hub_fleet_pricing`;
+DROP TABLE IF EXISTS `hubs`;
+
+CREATE TABLE `hubs` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(255) NOT NULL,
+  `code` VARCHAR(50) NOT NULL UNIQUE,
+  `city` VARCHAR(100) DEFAULT NULL,
+  `state` VARCHAR(100) DEFAULT NULL,
+  `country` VARCHAR(100) DEFAULT 'India',
+  `address` TEXT DEFAULT NULL,
+  `contact_phone` VARCHAR(50) DEFAULT NULL,
+  `contact_email` VARCHAR(100) DEFAULT NULL,
+  `operating_hours` VARCHAR(255) DEFAULT '24/7',
+  `latitude` DECIMAL(10, 8) DEFAULT NULL,
+  `longitude` DECIMAL(11, 8) DEFAULT NULL,
+  `status` ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `hub_fleet_pricing` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `hub_id` INT NOT NULL,
+  `fleet_id` INT NOT NULL,
+  `daily_rate` DECIMAL(10,2) NOT NULL,
+  `hourly_rate` DECIMAL(10,2) NOT NULL,
+  `deposit` DECIMAL(10,2) NOT NULL,
+  `extra_km_rate` DECIMAL(10,2) NOT NULL,
+  FOREIGN KEY (`hub_id`) REFERENCES `hubs`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ------------------------------------------------------------
 -- 1. USERS TABLE
 -- ------------------------------------------------------------
@@ -43,6 +79,7 @@ CREATE TABLE `admin_users` (
   `email` VARCHAR(255) NOT NULL,
   `name` VARCHAR(255) DEFAULT NULL,
   `role` ENUM('super_admin', 'admin', 'manager', 'executive', 'accountant') NOT NULL DEFAULT 'admin',
+  `hub_id` INT DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX `idx_admin_users_uid` (`firebase_uid`),
   INDEX `idx_admin_users_email` (`email`)
@@ -70,8 +107,8 @@ CREATE TABLE `vehicles` (
   `security_deposit` DECIMAL(10,2) NOT NULL DEFAULT 3000.00,
   `free_km` INT NOT NULL DEFAULT 250,
   `extra_km` DECIMAL(10,2) NOT NULL DEFAULT 15.00,
-  `hub` VARCHAR(255) NOT NULL DEFAULT 'Gavson Business Park, Ghansoli',
-  `location` VARCHAR(255) DEFAULT 'Gavson Business Park, Ghansoli',
+  `hub_id` INT DEFAULT NULL,
+  
   `acquisition_type` VARCHAR(64) NOT NULL DEFAULT 'Partner',
   `owner_name` VARCHAR(128) DEFAULT NULL,
   `acquisition_date` DATE DEFAULT NULL,
@@ -135,9 +172,10 @@ CREATE TABLE `bookings` (
   `booking_status` VARCHAR(64) DEFAULT 'pending_payment',
   `payment_ref` VARCHAR(128) DEFAULT NULL,
   `payment_amount_paid` DECIMAL(10,2) DEFAULT 0.00,
-  `location` VARCHAR(255) DEFAULT 'Gavson Business Park, Ghansoli',
-  `pickup_location` VARCHAR(255) DEFAULT 'Gavson Business Park, Ghansoli',
-  `drop_location` VARCHAR(255) DEFAULT 'Gavson Business Park, Ghansoli',
+  `pickup_hub_id` INT DEFAULT NULL,
+  `drop_hub_id` INT DEFAULT NULL,
+  
+  
   `start_odometer` VARCHAR(32) DEFAULT NULL,
   `end_odometer` VARCHAR(32) DEFAULT NULL,
   `start_fastag` VARCHAR(32) DEFAULT NULL,
