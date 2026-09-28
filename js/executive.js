@@ -222,7 +222,7 @@ function getWhatsAppBookingUrl(b) {
       `📅 *Drop Date & Time:* ${dDateFmt}\n` +
       `⏱️ *Duration:* ${durStr}\n` +
       `💰 *Total Amount:* ${formatMoney(b?.finalAmount || b?.totalAmount || 0)}\n` +
-      `❌ *Status:* Booking Cancelled / Rejected\n` +
+      `❌ *Status:* Booking Cancelled\n` +
       `📝 *Reason:* ${reason}${refundInfo}\n\n` +
       `If you have questions or would like to re-book, please contact our support team at +91 91671 64547.\n` +
       `Thank you for your interest in KRUIZLY.`
