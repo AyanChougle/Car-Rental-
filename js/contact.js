@@ -5,7 +5,7 @@
 // prefills the form for links coming from fleet.html / vehicle.html
 // "Book Now" buttons (contact.html?subject=Booking%20Support&vehicle=Tata%20Nexon).
 import { api } from "./kruizly-api.js?v=20260917-v1";
-import "./nav-helper.js";
+import "./nav-helper.js?v=20260928-v2";
 
 const form = document.getElementById("contact-form");
 const status = document.getElementById("form-status");

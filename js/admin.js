@@ -7,7 +7,7 @@ import { auth } from "./firebase-init.js";
 import { api, API_BASE_URL } from "./kruizly-api.js?v=20260915-v1";
 import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260908-v5";
 
-import "./nav-helper.js?v=20260908-v5";
+import "./nav-helper.js?v=20260928-v2";
 
 import { openReturnModal } from "./return-inspection.js";
 import { formatBookingNumber } from "./booking-reference.js";
@@ -517,13 +517,28 @@ let currentKpiStats = null;
 
 async function loadKpiStats() {
   try {
-    const res = await api.get("/admin/stats?_t=" + Date.now());
-    if (res && res.data) {
-      currentKpiStats = res.data;
+    const selectedHubId = getSelectedHubId();
+    const globalRes = await api.get("/admin/stats?_t=" + Date.now());
+    const globalData = globalRes?.data || {};
+    if (!selectedHubId) {
+      currentKpiStats = globalData ? { ...globalData, _hubScoped: false } : null;
       applyKpiStats();
+      return;
     }
+
+    const hubRes = await api.get("/hubs/summary", { hub_id: selectedHubId, _t: Date.now() });
+    if (!hubRes?.success || !hubRes?.data) throw new Error(hubRes?.error || "Hub summary unavailable");
+    const hubData = hubRes.data;
+    const globalEff = globalData?.effective || globalData?.live || {};
+    currentKpiStats = {
+      effective: { ...globalEff, ...hubData, total_users: globalEff.total_users ?? 0, pending_docs: globalEff.pending_docs ?? 0 },
+      live: { ...globalEff, ...hubData },
+      _hubScoped: true,
+      hub: hubRes.hub || null
+    };
+    applyKpiStats();
   } catch (err) {
-    console.warn("Could not load /admin/stats:", err);
+    console.warn("Could not load Hub-aware admin KPIs:", err);
   }
 }
 
@@ -697,6 +712,8 @@ function initialiseTabs() {
         loadCoupons();
       } else if (targetId === "tab-payments") {
         loadPayments();
+      } else if (targetId === "tab-hubs") {
+        loadAdminHubs();
       } else if (targetId === "tab-fleet") {
         loadFleetManagement();
       } else if (targetId === "tab-hosts") {
@@ -976,7 +993,8 @@ async function loadAllAdminData() {
     loadHostCars(),
     loadFleetManagement(),
     loadCoupons(),
-    loadKpiStats()
+    loadKpiStats(),
+    loadAdminHubs()
   ]);
 
   if (currentKpiStats) {
@@ -1056,7 +1074,7 @@ function getMasterCatalogVehicles() {
       seats: c.seats || 5,
       priceDay: c.priceDay || 2500,
       priceHour: c.priceHour || 104,
-      hub: c.location || "Gavson Business Park, Ghansoli",
+      hub: c.location || "",
       ownerName: "Kruizly Fleet Host",
       acquisitionType: "Fleet Catalog",
       acquisitionDate: "2026-01-01",
@@ -1259,7 +1277,7 @@ async function loadFleetManagement() {
                   </td>
                   <td style="padding:12px;">
                     <span style="color:#ffffff;font-weight:600;">${escapeHtml(vehicle.ownerName || "Kruizly Fleet")}</span>
-                    <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.acquisitionType || "Partner")} · ${escapeHtml(vehicle.hub || "Gavson Hub")}</small>
+                    <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.acquisitionType || "Partner")} · ${escapeHtml(vehicle.hub || "Unassigned Hub")}</small>
                   </td>
                   <td style="padding:12px;">
                     <span style="color:#ffd166;font-weight:600;">${escapeHtml(vehicle.fuel || "Petrol")}</span>
@@ -3464,7 +3482,8 @@ async function loadBookings() {
   }
 
   try {
-    const res = await api.get("/bookings");
+    const selectedHubId = getSelectedHubId();
+    const res = await api.get("/bookings", selectedHubId ? { hub_id: selectedHubId } : {});
     const rawB = Array.isArray(res.bookings) ? res.bookings : [];
     const seenB = new Set();
     bookingsData = [];
@@ -5787,7 +5806,8 @@ async function loadPayments() {
     paymentsTableWrap.innerHTML = `<p style="color:var(--sub);">Loading payments...</p>`;
   }
   try {
-    const res = await api.get("/payments");
+    const selectedHubId = getSelectedHubId();
+    const res = await api.get("/payments", selectedHubId ? { hub_id: selectedHubId } : {});
     const rawP = Array.isArray(res.payments) ? res.payments : [];
     const seenP = new Set();
     paymentsData = [];
@@ -9377,7 +9397,7 @@ function openAdminEditBookingModal(booking) {
         `⏱️ *Duration:* ${durStr}\n` +
         `💰 *Total Amount:* ₹${norm.totalAmount || 0}\n` +
         `✅ *Status:* Confirmed & Approved\n\n` +
-        `📍 *Pickup:* Gavson Business Park, Ghansoli, Navi Mumbai\n` +
+        `📍 *Pickup:* ${escapeHtml(booking.pickup_hub_name || booking.pickup_hub || "Hub to be confirmed")}\n` +
         `Please carry your original Driving License & Aadhaar Card.\n\n` +
         `Need help? Call +91 91671 64547. Thank you for choosing KRUIZLY!`
       );
@@ -10070,6 +10090,7 @@ function refreshActiveAdminTab() {
   else if (targetId === "tab-users") loadUsers();
   else if (targetId === "tab-customers") loadCustomerAnalytics();
   else if (targetId === "tab-bookings-analytics") loadBookingsAnalytics();
+  else if (targetId === "tab-hubs") loadAdminHubs();
   else if (targetId === "tab-fleet") loadFleetManagement();
   else if (targetId === "tab-hosts") loadHostCars();
   else if (targetId === "tab-coupons") loadCoupons();
@@ -10095,126 +10116,262 @@ if (typeof document !== "undefined") {
 
 
 // ==========================================
-// HUBS MANAGEMENT
+// HUBS MANAGEMENT — DATABASE-BACKED, PERSISTENT
 // ==========================================
 
 let globalHubsList = [];
+const HUB_STORAGE_KEY = "kruizly_selected_hub_id";
+
+async function adminAuthHeaders() {
+  const token = await getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
+function getSelectedHubId() {
+  try { return localStorage.getItem(HUB_STORAGE_KEY) || ""; } catch (_) { return ""; }
+}
+
+function setSelectedHubId(id) {
+  try {
+    if (id) localStorage.setItem(HUB_STORAGE_KEY, String(id));
+    else localStorage.removeItem(HUB_STORAGE_KEY);
+  } catch (_) {}
+}
+
+function hubField(id) {
+  return document.getElementById(id);
+}
+
+function bindHubModalEvents() {
+  document.querySelectorAll("[data-open-hub-modal]").forEach((button) => {
+    if (button.dataset.hubBound === "1") return;
+    button.dataset.hubBound = "1";
+    button.addEventListener("click", () => openHubModal());
+  });
+
+  document.querySelectorAll("[data-close-hub-modal]").forEach((button) => {
+    if (button.dataset.hubBound === "1") return;
+    button.dataset.hubBound = "1";
+    button.addEventListener("click", closeHubModal);
+  });
+
+  const form = hubField("hubForm");
+  if (form && form.dataset.hubBound !== "1") {
+    form.dataset.hubBound = "1";
+    form.addEventListener("submit", handleHubSubmit);
+  }
+}
 
 async function loadAdminHubs() {
+  const tbody = document.getElementById("hubsTableBody");
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--sub);">Loading hubs...</td></tr>';
+  }
   try {
-    const res = await fetch(`${API_BASE_URL}/hubs`, {
-      headers: adminAuthHeaders()
+    const res = await fetch(`${API_BASE_URL}/hubs?_t=${Date.now()}`, {
+      headers: await adminAuthHeaders(),
+      cache: "no-store"
     });
-    if (!res.ok) throw new Error("Failed to fetch hubs");
-    const data = await res.json();
-    if (data.success) {
-      globalHubsList = data.hubs || [];
-      renderHubsTable();
-      populateHubDropdowns();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || `Failed to fetch hubs (HTTP ${res.status})`);
+
+    // READ ONLY: never create, delete, reset or replace DB records here.
+    globalHubsList = Array.isArray(data.hubs) ? data.hubs : [];
+
+    const selected = getSelectedHubId();
+    if (selected && !globalHubsList.some(h => String(h.id) === String(selected))) {
+      setSelectedHubId("");
     }
+
+    renderHubsTable();
+    populateHubDropdowns();
+    renderSelectedHubContext();
   } catch (err) {
-    console.error(err);
+    console.error("HUBS LOAD ERROR:", err);
+    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--danger,#ff6b6b);">Could not load hubs: ${escapeHtml(err.message)}</td></tr>`;
   }
 }
 
 function renderHubsTable() {
   const tbody = document.getElementById("hubsTableBody");
   if (!tbody) return;
-  
-  if (globalHubsList.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--sub);">No hubs found. Create one to get started.</td></tr>';
+
+  if (!globalHubsList.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--sub);">No hubs found.<br>Create your first hub to get started.</td></tr>';
     return;
   }
-  
+
   tbody.innerHTML = globalHubsList.map(h => `
     <tr>
-      <td><strong>${escapeHtml(h.code)}</strong></td>
-      <td>${escapeHtml(h.name)}</td>
-      <td>${escapeHtml(h.city || '-')}</td>
-      <td><span class="status-badge ${h.status === 'active' ? 'status-active' : 'status-inactive'}">${h.status.toUpperCase()}</span></td>
-      <td>
-        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;" onclick='openHubModal(${JSON.stringify(h)})'>Edit</button>
+      <td><strong>${escapeHtml(h.code || "—")}</strong></td>
+      <td>${escapeHtml(h.name || "—")}</td>
+      <td>${escapeHtml(h.city || "—")}</td>
+      <td><span class="status-badge ${h.status === 'active' ? 'status-active' : 'status-inactive'}">${escapeHtml(String(h.status || '').toUpperCase())}</span></td>
+      <td style="display:flex; gap:6px; flex-wrap:wrap;">
+        <button type="button" class="btn btn-outline" style="padding:4px 8px;font-size:11px;" data-hub-select="${Number(h.id)}">Use Hub</button>
+        <button type="button" class="btn btn-outline" style="padding:4px 8px;font-size:11px;" data-hub-edit="${Number(h.id)}">Edit</button>
+        <button type="button" class="btn btn-outline" style="padding:4px 8px;font-size:11px;" data-hub-toggle="${Number(h.id)}">${h.status === 'active' ? 'Deactivate' : 'Activate'}</button>
       </td>
     </tr>
-  `).join('');
+  `).join("");
+
+  tbody.querySelectorAll("[data-hub-select]").forEach(btn => btn.addEventListener("click", () => {
+    setSelectedHubId(btn.dataset.hubSelect);
+    populateHubDropdowns();
+    renderSelectedHubContext();
+    if (window.KRUIZLYHubContext) window.KRUIZLYHubContext.render();
+  }));
+  tbody.querySelectorAll("[data-hub-edit]").forEach(btn => btn.addEventListener("click", () => {
+    const hub = globalHubsList.find(h => Number(h.id) === Number(btn.dataset.hubEdit));
+    if (hub) openHubModal(hub);
+  }));
+  tbody.querySelectorAll("[data-hub-toggle]").forEach(btn => btn.addEventListener("click", () => toggleHubStatus(btn.dataset.hubToggle)));
+}
+
+async function toggleHubStatus(id) {
+  const hub = globalHubsList.find(h => Number(h.id) === Number(id));
+  if (!hub) return;
+  const next = hub.status === "active" ? "inactive" : "active";
+  const message = next === "inactive"
+    ? `Deactivate "${hub.name}"? Historical bookings and revenue will remain. New customer pickup selection will be disabled.`
+    : `Activate "${hub.name}"?`;
+  if (!confirm(message)) return;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/hubs/${Number(id)}/status`, {
+      method: "PATCH",
+      headers: { ...(await adminAuthHeaders()), "Content-Type": "application/json" },
+      body: JSON.stringify({ status: next })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
+    await loadAdminHubs();
+  } catch (err) {
+    console.error("HUB STATUS ERROR:", err);
+    alert("Could not change Hub status: " + err.message);
+  }
 }
 
 function populateHubDropdowns() {
   const fleetHub = document.getElementById("fleetHub");
-  if (fleetHub) {
-    fleetHub.innerHTML = '<option value="">-- Select Hub --</option>' + 
-      globalHubsList.map(h => `<option value="${h.id}">${escapeHtml(h.name)} (${escapeHtml(h.code)})</option>`).join('');
+  if (!fleetHub) return;
+
+  const previous = fleetHub.value || getSelectedHubId();
+  const active = globalHubsList.filter(h => h.status === "active" || String(h.id) === String(previous));
+  fleetHub.innerHTML = `<option value="">${active.length ? "-- Select Hub --" : "-- Create a hub first --"}</option>` +
+    active.map(h => `<option value="${Number(h.id)}">${escapeHtml(h.name)} (${escapeHtml(h.code)})</option>`).join("");
+
+  if (active.some(h => String(h.id) === String(previous))) fleetHub.value = String(previous);
+}
+
+function renderSelectedHubContext() {
+  const id = getSelectedHubId();
+  const hub = globalHubsList.find(h => String(h.id) === String(id));
+  document.querySelectorAll("[data-selected-hub-name]").forEach(el => {
+    el.textContent = hub ? `${hub.name} (${hub.code})` : "All Hubs";
+  });
+  document.querySelectorAll("[data-selected-hub-id]").forEach(el => { el.value = id; });
+}
+
+function openHubModal(hub = null) {
+  bindHubModalEvents();
+  const form = hubField("hubForm");
+  if (form) form.reset();
+
+  const fields = {
+    hubId: "", hubName: "", hubCode: "", hubCity: "", hubState: "", hubAddress: "",
+    hubPhone: "", hubEmail: "", hubHours: "24/7", hubInstructions: "", hubStatus: "active"
+  };
+  Object.entries(fields).forEach(([id, value]) => { const el = hubField(id); if (el) el.value = value; });
+
+  if (hub && hub.id) {
+    hubField("hubModalTitle").textContent = "Edit Hub";
+    const values = {
+      hubId: hub.id, hubName: hub.name || "", hubCode: hub.code || "", hubCity: hub.city || "",
+      hubState: hub.state || "", hubAddress: hub.address || "", hubPhone: hub.contact_phone || "",
+      hubEmail: hub.contact_email || "", hubHours: hub.operating_hours || "24/7",
+      hubInstructions: hub.pickup_instructions || "", hubStatus: hub.status || "active"
+    };
+    Object.entries(values).forEach(([id, value]) => { const el = hubField(id); if (el) el.value = value; });
+  } else {
+    hubField("hubModalTitle").textContent = "Add New Hub";
+  }
+
+  const modal = hubField("hubModal");
+  if (modal) modal.hidden = false;
+}
+
+function closeHubModal() {
+  const modal = hubField("hubModal");
+  if (modal) modal.hidden = true;
+}
+
+async function handleHubSubmit(event) {
+  event.preventDefault();
+  const id = String(hubField("hubId")?.value || "").trim();
+  const payload = {
+    name: String(hubField("hubName")?.value || "").trim(),
+    code: String(hubField("hubCode")?.value || "").trim().toUpperCase(),
+    city: String(hubField("hubCity")?.value || "").trim(),
+    state: String(hubField("hubState")?.value || "").trim(),
+    country: "India",
+    address: String(hubField("hubAddress")?.value || "").trim(),
+    contact_phone: String(hubField("hubPhone")?.value || "").trim(),
+    contact_email: String(hubField("hubEmail")?.value || "").trim(),
+    operating_hours: String(hubField("hubHours")?.value || "24/7").trim(),
+    pickup_instructions: String(hubField("hubInstructions")?.value || "").trim(),
+    status: String(hubField("hubStatus")?.value || "active")
+  };
+
+  if (!payload.name || !payload.code || !payload.city || !payload.state || !payload.address) {
+    alert("Please complete all required Hub fields.");
+    return;
+  }
+
+  const button = document.querySelector('#hubForm button[type="submit"]');
+  if (button) { button.disabled = true; button.textContent = "Saving..."; }
+
+  try {
+    const res = await fetch(id ? `${API_BASE_URL}/hubs/${encodeURIComponent(id)}` : `${API_BASE_URL}/hubs`, {
+      method: id ? "PUT" : "POST",
+      headers: { ...(await adminAuthHeaders()), "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+
+    closeHubModal();
+    if (data.hub?.id) setSelectedHubId(data.hub.id);
+    await loadAdminHubs();
+  } catch (err) {
+    console.error("HUB SAVE ERROR:", err);
+    alert("Could not save Hub: " + err.message);
+  } finally {
+    if (button) { button.disabled = false; button.textContent = "Save Hub"; }
   }
 }
 
-window.openHubModal = function(hub = null) {
-  const form = document.getElementById("hubForm");
-  if (form) form.reset();
-  
-  if (hub && hub.id) {
-    document.getElementById("hubModalTitle").textContent = "Edit Hub";
-    document.getElementById("hubId").value = hub.id;
-    document.getElementById("hubName").value = hub.name || "";
-    document.getElementById("hubCode").value = hub.code || "";
-    document.getElementById("hubCity").value = hub.city || "";
-    document.getElementById("hubState").value = hub.state || "";
-    document.getElementById("hubAddress").value = hub.address || "";
-    document.getElementById("hubStatus").value = hub.status || "active";
-  } else {
-    document.getElementById("hubModalTitle").textContent = "Add New Hub";
-    document.getElementById("hubId").value = "";
-    document.getElementById("hubStatus").value = "active";
-  }
-  
-  document.getElementById("hubModal").style.display = "flex";
-};
 
-window.closeHubModal = function() {
-  document.getElementById("hubModal").style.display = "none";
-};
-
-window.handleHubSubmit = async function(e) {
-  e.preventDefault();
-  
-  const id = document.getElementById("hubId").value;
-  const isEditing = !!id;
-  
-  const payload = {
-    name: document.getElementById("hubName").value,
-    code: document.getElementById("hubCode").value,
-    city: document.getElementById("hubCity").value,
-    state: document.getElementById("hubState").value,
-    address: document.getElementById("hubAddress").value,
-    status: document.getElementById("hubStatus").value
-  };
-  
-  const url = isEditing ? `${API_BASE_URL}/hubs/${id}` : `${API_BASE_URL}/hubs`;
-  const method = isEditing ? "PUT" : "POST";
-  
+window.addEventListener("kruizly:hubchange", async (event) => {
+  const id = event?.detail?.hubId ? String(event.detail.hubId) : "";
+  const fleetHub = document.getElementById("fleetHub");
+  if (fleetHub) fleetHub.value = id;
+  renderSelectedHubContext();
+  if (typeof populateHubDropdowns === "function") populateHubDropdowns();
   try {
-    const res = await fetch(url, {
-      method,
-      headers: { ...adminAuthHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-    
-    const data = await res.json();
-    if (data.success) {
-      alert("Hub saved successfully.");
-      closeHubModal();
-      loadAdminHubs(); // Refresh list
-    } else {
-      alert("Error: " + (data.error || "Unknown error"));
-    }
-  } catch (err) {
-    console.error(err);
-    alert("An error occurred while saving the hub.");
+    await Promise.allSettled([loadKpiStats(), loadBookings(), loadPayments(), loadFleetManagement()]);
+  } catch (error) {
+    console.warn("Admin Hub refresh failed:", error);
   }
-};
+});
 
-// Hook into existing init
-const originalInitAdmin = window.initAdmin || function(){};
-window.initAdmin = async function() {
-  await originalInitAdmin();
-  await loadAdminHubs();
-};
+// Keep compatibility with any legacy inline handlers still present in a cached page.
+window.openHubModal = openHubModal;
+window.closeHubModal = closeHubModal;
+window.handleHubSubmit = handleHubSubmit;
+window.toggleHubStatus = toggleHubStatus;
+
+if (typeof window !== "undefined") {
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindHubModalEvents, { once: true });
+  else bindHubModalEvents();
+}

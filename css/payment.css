@@ -775,3 +775,32 @@
     height: 170px !important;
   }
 }
+
+.payment-hub-context {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-left: 10px;
+  padding: 5px 9px;
+  gap: 6px;
+  align-items: baseline;
+  border: 1px solid rgba(79,215,255,.18);
+  border-radius: 8px;
+  background: rgba(79,215,255,.05);
+}
+.payment-hub-context__label {
+  color: rgba(255,255,255,.48);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+.payment-hub-context strong {
+  color: #4fd7ff;
+  font-size: 11px;
+}
+.payment-hub-context small {
+  color: rgba(255,255,255,.48);
+  font-size: 9px;
+}
+@media (max-width: 620px) {
+  .payment-hub-context { display: flex; margin: 7px 0 0; width: fit-content; }
+}

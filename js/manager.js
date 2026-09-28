@@ -2,7 +2,7 @@ import { auth } from "./firebase-init.js";
 import { checkAuth, getCurrentUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260917-v1";
 import { api } from "./kruizly-api.js?v=20260917-v1";
 
-import "./nav-helper.js";
+import "./nav-helper.js?v=20260928-v2";
 import { openReturnModal } from "./return-inspection.js";
 import { MEDIA_SERVER_URL } from "./media-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
@@ -997,6 +997,10 @@ async function openExecutiveBookingDetails(booking) {
    BOOKINGS
 ========================================================= */
 
+window.addEventListener("kruizly:hubchange", async () => {
+  try { await loadManagerBookings(); } catch (error) { console.error("Manager Hub refresh failed:", error); }
+});
+
 async function loadManagerBookings() {
   if (!bookingsWrap) return;
 
@@ -1007,7 +1011,8 @@ async function loadManagerBookings() {
   `;
 
   try {
-    const res = await api.get("/bookings");
+    const selectedHubId = window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : "";
+    const res = await api.get("/bookings", selectedHubId ? { hub_id: selectedHubId } : {});
     const bookings = Array.isArray(res.bookings) ? res.bookings : [];
     currentManagerBookings = bookings;
 

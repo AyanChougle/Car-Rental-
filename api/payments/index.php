@@ -10,6 +10,7 @@ require_once __DIR__ . '/../middleware/auth.php';
 
 $user = Auth::requireAuth();
 $isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive', 'accountant'], true);
+$hubIdFilter = isset($_GET['hub_id']) && $_GET['hub_id'] !== '' ? (int)$_GET['hub_id'] : 0;
 
 // Auto-heal any payments that do not yet have a corresponding booking row
 try {
@@ -82,7 +83,7 @@ if (!$isStaff) {
                 COALESCE(NULLIF(b.vehicle_reg, ''), NULLIF(v.reg_no, ''), '') AS matched_vehicle_reg,
                 b.total_amount, 
                 COALESCE(b.booking_number, b.booking_id, p.booking_id) AS matched_booking_number,
-                b.pickup_date, b.drop_date
+                b.pickup_date, b.drop_date, b.pickup_hub_id, b.drop_hub_id
          FROM payments p
          LEFT JOIN bookings b ON (
              p.booking_id = b.booking_id 
@@ -114,7 +115,7 @@ if (!$isStaff) {
                 ) AS effective_screenshot_url
          FROM payments p
          LEFT JOIN (
-             SELECT booking_id, booking_number, user_name, user_email, user_phone, vehicle_id, vehicle_name, vehicle_reg, total_amount, pickup_date, drop_date, payment_screenshot_url, firebase_uid
+             SELECT booking_id, booking_number, user_name, user_email, user_phone, vehicle_id, vehicle_name, vehicle_reg, total_amount, pickup_date, drop_date, payment_screenshot_url, firebase_uid, pickup_hub_id, drop_hub_id
              FROM bookings
              GROUP BY COALESCE(NULLIF(booking_id, ''), booking_number)
          ) b ON (
@@ -139,8 +140,10 @@ if (!$isStaff) {
              (b.vehicle_id IS NOT NULL AND b.vehicle_id > 0 AND b.vehicle_id = v.id)
              OR (b.vehicle_reg IS NOT NULL AND TRIM(b.vehicle_reg) != '' AND b.vehicle_reg != 'TBD' AND b.vehicle_reg = v.reg_no)
          )
+         WHERE (? = 0 OR b.pickup_hub_id = ? OR b.drop_hub_id = ?)
+         WHERE (? = 0 OR b.pickup_hub_id = ? OR b.drop_hub_id = ?)
          ORDER BY p.created_at DESC"
-    );
+    , [$hubIdFilter, $hubIdFilter, $hubIdFilter]);
 }
 
 // Bulletproof deduplication by payment_id or id
@@ -164,6 +167,10 @@ $payments = array_map(function($p) {
         'paymentId' => $p['payment_id'],
         'bookingId' => $p['booking_id'],
         'bookingNumber' => $p['matched_booking_number'] ?? $p['booking_id'],
+        'hubId' => (int)($p['pickup_hub_id'] ?? 0),
+        'hub_id' => (int)($p['pickup_hub_id'] ?? 0),
+        'pickupHubId' => (int)($p['pickup_hub_id'] ?? 0),
+        'dropHubId' => (int)($p['drop_hub_id'] ?? $p['pickup_hub_id'] ?? 0),
         'userId' => $p['firebase_uid'],
         'userName' => $p['matched_user_name'] ?? 'Customer',
         'userEmail' => $p['matched_user_email'] ?? '',

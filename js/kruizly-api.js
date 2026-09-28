@@ -50,6 +50,8 @@ export function resolveEndpoint(endpoint, params = {}) {
   // Route map for standard endpoints
   const routeMap = {
     "health": "/health.php",
+    "hubs": "/hubs/index.php",
+    "hubs/summary": "/hubs/summary.php",
     "users/me": "/users/me.php",
     "users/sync": "/users/sync.php",
     "users/partner-cars": "/users/partner-cars.php",
@@ -137,6 +139,18 @@ export function resolveEndpoint(endpoint, params = {}) {
   if (userRoleMatch) {
     queryParams.uid = userRoleMatch[1];
     return { path: "/users/role.php", params: queryParams };
+  }
+
+  // /hubs/:id and /hubs/:id/status
+  const hubStatusMatch = clean.match(/^hubs\/([^/]+)\/status$/);
+  if (hubStatusMatch) {
+    queryParams.id = hubStatusMatch[1];
+    return { path: "/hubs/detail.php", params: queryParams };
+  }
+  const hubDetailMatch = clean.match(/^hubs\/([^/]+)$/);
+  if (hubDetailMatch && hubDetailMatch[1] !== "index") {
+    queryParams.id = hubDetailMatch[1];
+    return { path: "/hubs/detail.php", params: queryParams };
   }
 
   // /users/partner-cars/:id/status

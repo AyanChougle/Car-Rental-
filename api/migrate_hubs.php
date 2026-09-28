@@ -5,6 +5,12 @@
  */
 require_once __DIR__ . '/config/database.php';
 
+// Safety: run from CLI, or as a signed-in admin only.
+if (PHP_SAPI !== 'cli') {
+    require_once __DIR__ . '/middleware/auth.php';
+    Auth::requireRole('admin', 'super_admin');
+}
+
 header('Content-Type: text/plain');
 
 echo "Starting Multi-Hub Migration...\n";
@@ -16,14 +22,15 @@ try {
     $pdo->exec("
         CREATE TABLE IF NOT EXISTS `hubs` (
           `id` INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-          `name` VARCHAR(255) NOT NULL,
+          `name` VARCHAR(150) NOT NULL,
           `code` VARCHAR(50) NOT NULL UNIQUE,
-          `city` VARCHAR(100) DEFAULT NULL,
+          `city` VARCHAR(100) NOT NULL,
           `state` VARCHAR(100) DEFAULT NULL,
           `country` VARCHAR(100) DEFAULT 'India',
           `address` TEXT DEFAULT NULL,
-          `contact_phone` VARCHAR(50) DEFAULT NULL,
-          `contact_email` VARCHAR(100) DEFAULT NULL,
+          `contact_phone` VARCHAR(30) DEFAULT NULL,
+          `contact_email` VARCHAR(150) DEFAULT NULL,
+          `pickup_instructions` TEXT DEFAULT NULL,
           `operating_hours` VARCHAR(255) DEFAULT '24/7',
           `latitude` DECIMAL(10, 8) DEFAULT NULL,
           `longitude` DECIMAL(11, 8) DEFAULT NULL,
@@ -49,27 +56,10 @@ try {
     ");
     echo "2. Created 'hub_fleet_pricing' table.\n";
 
-    // 3. Migrate existing hubs from vehicles table
-    $existingHubs = $pdo->query("SELECT DISTINCT `hub` FROM `vehicles` WHERE `hub` IS NOT NULL AND `hub` != ''")->fetchAll(PDO::FETCH_COLUMN);
-    $defaultHubId = null;
-
-    if (empty($existingHubs)) {
-        // Insert a default legacy hub
-        $stmt = $pdo->prepare("INSERT INTO `hubs` (`name`, `code`, `city`, `state`, `address`) VALUES ('Gavson Business Park, Ghansoli', 'GHAN-01', 'Navi Mumbai', 'Maharashtra', 'Gavson Business Park, Ghansoli')");
-        $stmt->execute();
-        $defaultHubId = $pdo->lastInsertId();
-        echo "3. Inserted default legacy hub.\n";
-    } else {
-        foreach ($existingHubs as $index => $hubName) {
-            $code = 'HUB-' . str_pad((string)($index + 1), 2, '0', STR_PAD_LEFT);
-            $stmt = $pdo->prepare("INSERT IGNORE INTO `hubs` (`name`, `code`, `address`) VALUES (?, ?, ?)");
-            $stmt->execute([$hubName, $code, $hubName]);
-            if ($defaultHubId === null) {
-                $defaultHubId = $pdo->lastInsertId() ?: $pdo->query("SELECT id FROM hubs WHERE name = " . $pdo->quote($hubName))->fetchColumn();
-            }
-        }
-        echo "3. Migrated existing hubs from vehicles.\n";
-    }
+    // 3. Preserve the Hub table exactly as-is.
+    // NEVER create a fake/default Hub during migration. Existing Hub records remain untouched.
+    $existingHubCount = (int)$pdo->query("SELECT COUNT(*) FROM `hubs`")->fetchColumn();
+    echo "3. Existing Hub records preserved: $existingHubCount. No demo/default Hub was inserted.\n";
 
     // 4. Alter vehicles table
     try {
@@ -79,13 +69,11 @@ try {
         if (!str_contains($e->getMessage(), 'Duplicate column name')) throw $e;
     }
 
-    $pdo->exec("UPDATE `vehicles` v JOIN `hubs` h ON v.hub = h.name SET v.hub_id = h.id WHERE v.hub_id IS NULL");
+    $pdo->exec("UPDATE `vehicles` v JOIN `hubs` h ON v.hub = h.name SET v.hub_id = h.id WHERE v.hub_id IS NULL AND v.hub IS NOT NULL AND v.hub != ''");
     
-    // Set fallback hub for any orphans
-    if ($defaultHubId) {
-        $pdo->exec("UPDATE `vehicles` SET `hub_id` = $defaultHubId WHERE `hub_id` IS NULL");
-    }
-    echo "4b. Updated 'hub_id' in 'vehicles' based on legacy string.\n";
+    // No guessing: vehicles whose legacy hub name did not match stay unassigned for admin review.
+    $unmappedVehicles = (int)$pdo->query("SELECT COUNT(*) FROM `vehicles` WHERE `hub_id` IS NULL")->fetchColumn();
+    echo "4b. Mapped vehicles by exact legacy hub name. Unassigned / legacy vehicles: $unmappedVehicles\n";
 
     // 5. Alter bookings table
     try {
@@ -95,10 +83,10 @@ try {
         if (!str_contains($e->getMessage(), 'Duplicate column name')) throw $e;
     }
 
-    if ($defaultHubId) {
-        $pdo->exec("UPDATE `bookings` SET `pickup_hub_id` = $defaultHubId, `drop_hub_id` = $defaultHubId WHERE `pickup_hub_id` IS NULL");
-        echo "5b. Mapped existing bookings to legacy hub.\n";
-    }
+    // Map bookings only through their vehicle's confirmed hub; everything else stays unassigned.
+    $pdo->exec("UPDATE `bookings` b JOIN `vehicles` v ON v.reg_no = b.vehicle_reg SET b.pickup_hub_id = v.hub_id, b.drop_hub_id = v.hub_id WHERE b.pickup_hub_id IS NULL AND v.hub_id IS NOT NULL");
+    $unmappedBookings = (int)$pdo->query("SELECT COUNT(*) FROM `bookings` WHERE `pickup_hub_id` IS NULL")->fetchColumn();
+    echo "5b. Bookings mapped via their vehicle's hub. Unassigned / legacy bookings: $unmappedBookings\n";
 
     // 6. Alter admin_users table
     try {

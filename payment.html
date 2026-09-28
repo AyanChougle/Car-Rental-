@@ -17,7 +17,8 @@
     
       <link rel="stylesheet" href="css/payment.css" />
       <link rel="stylesheet" href="css/kruizly-motion.css" />
-  </head>
+    <link rel="stylesheet" href="css/hub-context.css?v=20260928-v2">
+</head>
 
 <body>
 
@@ -157,6 +158,11 @@
                 <strong>
                   #<span id="paymentBookingId">---</span>
                 </strong>
+                <span class="payment-hub-context" aria-label="Pickup Hub">
+                  <span class="payment-hub-context__label">Pickup Hub</span>
+                  <strong id="paymentHubName">Loading Hub...</strong>
+                  <small id="paymentHubCode">—</small>
+                </span>
 
               </div>
 
@@ -691,10 +697,11 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <script type="module" src="js/payment.js?v=20260925-v1"></script>
+  <script type="module" src="js/payment.js?v=20260928-v2"></script>
 
   <script src="js/glass-ui.js?v=20260917-v1"></script>
   <script src="js/kruizly-motion.js?v=20260917-v1"></script>
-  </body>
+    <script src="js/hub-context.js?v=20260928-v2"></script>
+</body>
 
 </html>

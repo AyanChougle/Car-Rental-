@@ -6,7 +6,7 @@ import {
   isExecutiveUser,
 } from "./auth.js?v=20260908-v5";
 import { api } from "./kruizly-api.js?v=20260915-v1";
-import "./nav-helper.js?v=20260908-v5";
+import "./nav-helper.js?v=20260928-v2";
 
 /* ============================================================
    KRUIZLY MANAGER SUMMARY DASHBOARD
@@ -1881,11 +1881,10 @@ function computeOtherFleetStats(rawBookings, periodDays) {
         fuelType: v.fuel || v.fuelType || "",
         seats: v.seats || 5,
         priceDay: v.priceDay || v.price_day || 0,
-        hub: v.hub || "Gavson Business Park, Ghansoli",
+        hub: v.hub || "",
       }));
   } else {
-    // Fallback to hardcoded list if API didn't return vehicles
-    catalogFleets = OTHER_CATALOG_FLEETS;
+    catalogFleets = [];
   }
 
   return catalogFleets.map((car) => {
@@ -2065,7 +2064,7 @@ function renderOtherFleetGridPage(page = 1) {
         </div>
         <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--sub);">
           <span>Daily: ${formatINR(f.priceDay)}</span>
-          <span>Hub: Ghansoli</span>
+          <span>Hub: ${escapeHtml(f.hub || "Unassigned")}</span>
         </div>
       </div>
     `;
@@ -2245,12 +2244,15 @@ function initFleetFilterEvents() {
 
 async function loadManagerData() {
   try {
-    const [bookingsRes, vehiclesRes, activeFleetsRes, kpiRes] =
+    const selectedHubId = window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : "";
+    const hubParams = selectedHubId ? { hub_id: selectedHubId } : {};
+    const [bookingsRes, vehiclesRes, activeFleetsRes, kpiRes, hubSummaryRes] =
       await Promise.allSettled([
-        api.get("/bookings"),
-        api.get("/vehicles"),
-        api.get("/vehicles/active-fleet.php?_t=" + Date.now()),
-        api.get("/admin/stats?_t=" + Date.now()),
+        api.get("/bookings", hubParams),
+        api.get("/vehicles", hubParams),
+        api.get("/vehicles/active-fleet.php", { ...hubParams, _t: Date.now() }),
+        api.get("/admin/stats", { _t: Date.now() }),
+        selectedHubId ? api.get("/hubs/summary", hubParams) : Promise.resolve(null),
       ]);
 
     if (
@@ -2259,6 +2261,17 @@ async function loadManagerData() {
       kpiRes.value?.data
     ) {
       serverKpiStats = kpiRes.value.data;
+    }
+
+    if (selectedHubId && hubSummaryRes.status === "fulfilled" && hubSummaryRes.value?.success) {
+      const hubLive = hubSummaryRes.value.data || {};
+      serverKpiStats = {
+        live: hubLive,
+        effective: hubLive,
+        overrides: null,
+        monthly: [],
+        revenue_ledger: []
+      };
     }
 
     if (vehiclesRes.status === "fulfilled" && vehiclesRes.value) {
@@ -2366,7 +2379,7 @@ async function loadManagerData() {
             cMatch?.fuelType ||
             "Petrol",
           seats: Number(sf.seats || cMatch?.seats || 5),
-          hub: sf.hub || cMatch?.hub || "Gavson Business Park, Ghansoli",
+          hub: sf.hub || cMatch?.hub || "",
           acquisitionType:
             sf.acquisitionType ||
             sf.acquisition_type ||
@@ -2388,7 +2401,7 @@ async function loadManagerData() {
         };
       });
     } else {
-      activeFleetsRoster = ACTIVE_7_FLEETS.map((cf) => ({ ...cf }));
+      activeFleetsRoster = [];
     }
 
     if (bookingsRes.status === "fulfilled" && bookingsRes.value) {
@@ -2413,19 +2426,16 @@ async function loadManagerData() {
       });
     }
 
-    // Only use offline fallback bookings if database returned 0 bookings (offline/demo mode)
-    if (rawBookings.length === 0) {
-      console.warn(
-        "No bookings returned from Hostinger SQL API, loading offline baseline cache",
-      );
-      rawBookings = [...DEFAULT_SEPTEMBER_BOOKINGS];
-    }
   } catch (err) {
     console.error("Manager summary data fetch error:", err);
   }
 
   renderDashboard();
 }
+
+window.addEventListener("kruizly:hubchange", async () => {
+  try { await loadManagerData(); } catch (error) { console.error("Hub context refresh failed:", error); }
+});
 
 function initTabNavigation() {
   const tabBtns = document.querySelectorAll(".mgr-tab-btn");

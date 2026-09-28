@@ -56,6 +56,7 @@ function normalizeActiveReg(string $reg): string {
 }
 
 if ($method === 'GET') {
+    $hubId = isset($_GET['hub_id']) && $_GET['hub_id'] !== '' ? (int)$_GET['hub_id'] : 0;
     // 1. Fetch current active fleet list from settings
     $setting = null;
     try {
@@ -63,7 +64,7 @@ if ($method === 'GET') {
     } catch (Throwable $_) {
         $setting = Database::fetchOne("SELECT `value` FROM settings WHERE `key` = 'manager_active_fleets' LIMIT 1");
     }
-    $activeRegs = $defaultActiveRegs;
+    $activeRegs = [];
 
     if ($setting && !empty($setting['value'])) {
         $decoded = json_decode($setting['value'], true);
@@ -79,7 +80,9 @@ if ($method === 'GET') {
     }
 
     // 2. Fetch all vehicles from database
-    $allDbVehicles = Database::fetchAll("SELECT * FROM vehicles WHERE status != 'removed' ORDER BY brand ASC, model ASC");
+    $allDbVehicles = $hubId > 0
+        ? Database::fetchAll("SELECT v.*, h.name AS hub_name, h.code AS hub_code FROM vehicles v LEFT JOIN hubs h ON h.id = v.hub_id WHERE v.status != 'removed' AND v.hub_id = ? ORDER BY v.brand ASC, v.model ASC", [$hubId])
+        : Database::fetchAll("SELECT v.*, h.name AS hub_name, h.code AS hub_code FROM vehicles v LEFT JOIN hubs h ON h.id = v.hub_id WHERE v.status != 'removed' ORDER BY v.brand ASC, v.model ASC");
 
     $vehiclesMap = [];
     $vehiclesByCarId = [];
@@ -112,7 +115,11 @@ if ($method === 'GET') {
             'seats' => (int)$v['seats'],
             'priceDay' => (float)$v['price_day'],
             'priceHour' => (float)$v['price_hour'],
-            'hub' => $v['hub'] ?? 'Gavson Business Park, Ghansoli',
+            'hub' => $v['hub'] ?? ($v['location'] ?? null),
+            'hubId' => (int)($v['hub_id'] ?? 0),
+            'hub_id' => (int)($v['hub_id'] ?? 0),
+            'hubName' => $v['hub_name'] ?? null,
+            'hubCode' => $v['hub_code'] ?? null,
             'acquisitionType' => $v['acquisition_type'] ?? 'Partner',
             'ownerName' => $v['owner_name'] ?? null,
             'acquisitionDate' => $v['acquisition_date'] ?? null,
@@ -138,6 +145,18 @@ if ($method === 'GET') {
         $vehiclesMap[(string)$id] = $item;
         $vehiclesMap['CAT-' . $id] = $item;
         $vehiclesMap['CAT-' . str_pad((string)$id, 3, '0', STR_PAD_LEFT)] = $item;
+    }
+
+    // If no explicit manager roster exists, the live DB vehicles for the selected Hub are the roster.
+    // Never manufacture vehicles from a hardcoded catalog.
+    if (!$setting || empty($setting['value'])) {
+        $activeRegs = [];
+        foreach ($allDbVehicles as $v) {
+            $reg = strtoupper(trim((string)($v['reg_no'] ?? '')));
+            $carId = strtoupper(trim((string)($v['car_id'] ?? '')));
+            $activeRegs[] = $reg !== '' && $reg !== 'TBD' ? normalizeActiveReg($reg) : ($carId !== '' ? $carId : 'CAT-' . (int)$v['id']);
+        }
+        $activeRegs = array_values(array_unique(array_filter($activeRegs)));
     }
 
     // Default metadata for the 7 standard Kruizly fleets
@@ -178,7 +197,7 @@ if ($method === 'GET') {
                 $activeFleetList[] = $matchedVeh;
                 $seenKeys[$mKey] = true;
             }
-        } elseif (isset($standardFleetMeta[$regUpper])) {
+        } elseif (false && isset($standardFleetMeta[$regUpper])) {
             $m = $standardFleetMeta[$regUpper];
             if (empty($seenKeys[$m['carId']])) {
                 $activeFleetList[] = [

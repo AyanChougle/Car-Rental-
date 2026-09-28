@@ -21,12 +21,15 @@ if ($method === 'GET') {
 
     $status = trim((string)($_GET['status'] ?? ''));
     $search = trim((string)($_GET['search'] ?? ''));
+    $hubId = isset($_GET['hub_id']) && $_GET['hub_id'] !== '' ? (int)$_GET['hub_id'] : 0;
 
     $sql = "SELECT b.*,
                    COALESCE(NULLIF(b.user_name, ''), NULLIF(u.name, ''), u.email, 'Customer') AS resolved_user_name,
                    COALESCE(NULLIF(b.user_email, ''), NULLIF(u.email, ''), '') AS resolved_user_email,
                    COALESCE(NULLIF(b.user_phone, ''), NULLIF(u.phone, ''), '') AS resolved_user_phone,
-                   COALESCE(NULLIF(b.vehicle_name, ''), NULLIF(v.model, ''), 'Vehicle') AS resolved_vehicle_name
+                   COALESCE(NULLIF(b.vehicle_name, ''), NULLIF(v.model, ''), 'Vehicle') AS resolved_vehicle_name,
+                   ph.name AS pickup_hub_name,
+                   dh.name AS drop_hub_name
             FROM bookings b
             LEFT JOIN (
                 SELECT firebase_uid, MAX(name) AS name, MAX(email) AS email, MAX(phone) AS phone
@@ -42,8 +45,16 @@ if ($method === 'GET') {
                 (b.vehicle_id IS NOT NULL AND b.vehicle_id > 0 AND b.vehicle_id = v.id)
                 OR (b.vehicle_reg IS NOT NULL AND TRIM(b.vehicle_reg) != '' AND b.vehicle_reg != 'TBD' AND b.vehicle_reg = v.reg_no)
             )
+            LEFT JOIN hubs ph ON ph.id = b.pickup_hub_id
+            LEFT JOIN hubs dh ON dh.id = COALESCE(b.drop_hub_id, b.pickup_hub_id)
             WHERE 1=1";
     $params = [];
+
+    if ($hubId > 0) {
+        $sql .= " AND (b.pickup_hub_id = ? OR b.drop_hub_id = ?)";
+        $params[] = $hubId;
+        $params[] = $hubId;
+    }
 
     if ($status && $status !== 'all') {
         $sql .= " AND (b.status = ? OR b.booking_status = ? OR b.payment_status = ?)";
@@ -132,6 +143,12 @@ if ($method === 'GET') {
             'vehicleReg' => $b['vehicle_reg'],
             'vehicleName' => $b['resolved_vehicle_name'] ?? ($b['vehicle_name'] ?: 'Vehicle'),
             'vehicleCategory' => $b['vehicle_category'],
+            'hubId' => (int)($b['pickup_hub_id'] ?? 0),
+            'hub_id' => (int)($b['pickup_hub_id'] ?? 0),
+            'pickupHubId' => (int)($b['pickup_hub_id'] ?? 0),
+            'dropHubId' => (int)($b['drop_hub_id'] ?? $b['pickup_hub_id'] ?? 0),
+            'pickupHubName' => $b['pickup_hub_name'] ?? null,
+            'dropHubName' => $b['drop_hub_name'] ?? null,
             'pickupDate' => $b['pickup_date'],
             'dropDate' => $b['drop_date'],
             'duration' => $b['duration'],

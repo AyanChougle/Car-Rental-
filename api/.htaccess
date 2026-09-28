@@ -28,7 +28,8 @@
     RewriteRule ^users/?$ users/index.php [L,QSA]
 
     # Hubs
-    RewriteRule ^hubs/([^/]+)/?$ hubs/detail.php?id= [L,QSA]
+    RewriteRule ^hubs/([^/]+)/status/?$ hubs/detail.php?id=$1&action=status [L,QSA]
+    RewriteRule ^hubs/([^/]+)/?$ hubs/detail.php?id=$1 [L,QSA]
     RewriteRule ^hubs/?$ hubs/index.php [L,QSA]
 
     # Vehicles

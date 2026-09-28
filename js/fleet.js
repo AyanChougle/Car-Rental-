@@ -1,5 +1,5 @@
 import { api } from "./kruizly-api.js?v=20260917-v1";
-import "./nav-helper.js";
+import "./nav-helper.js?v=20260928-v2";
 
 // Fleet page: card rendering, searching, filtering,
 // sorting, expandable specifications and navigation.
@@ -633,79 +633,46 @@ function bookingDateParams() {
 
 async function applyFleetAvailabilityOverrides() {
   try {
-    const res = await api.get("/vehicles");
+    const hubId = window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : "";
+    const params = hubId ? { hub_id: hubId } : {};
+    const res = await api.get("/vehicles", params);
     const serverVehicles = Array.isArray(res.vehicles) ? res.vehicles : [];
 
-    if (serverVehicles.length > 0) {
-      const catalog = Array.isArray(window.fleetVehicles) ? [...window.fleetVehicles] : [];
-
-      const findMatchingCatalogItem = (serverV) => {
-        const sBrand = (serverV.brand || "").toLowerCase().trim();
-        const sModel = (serverV.model || "").toLowerCase().trim();
-        const sReg = (serverV.regNo || serverV.reg_no || "").toLowerCase().trim();
-        const sId = String(serverV.id || "").toLowerCase().trim();
-
-        return catalog.find((c) => {
-          if (sReg && c.regNo && c.regNo.toLowerCase().trim() === sReg) return true;
-          if (sId && c.id && String(c.id).toLowerCase().trim() === sId) return true;
-          const cBrand = (c.brand || "").toLowerCase().trim();
-          const cModel = (c.model || "").toLowerCase().trim();
-          if (cBrand === sBrand && cModel === sModel) {
-            const sTrans = (serverV.transmission || "").toLowerCase().trim();
-            const cTrans = (c.transmission || "").toLowerCase().trim();
-            if (!sTrans || !cTrans || sTrans === cTrans) return true;
-          }
-          return false;
-        });
-      };
-
-      serverVehicles.forEach((sVehicle) => {
-        const matching = findMatchingCatalogItem(sVehicle);
-        if (matching) {
-          if (sVehicle.removed || sVehicle.status === "removed" || sVehicle.status === "disabled") {
-            matching.removed = true;
-          } else {
-            if (typeof sVehicle.available === "boolean" || typeof sVehicle.available === "number") {
-              matching.available = Boolean(sVehicle.available) ? 1 : 0;
-              matching.status = sVehicle.available ? "available" : "unavailable";
-            }
-            if (sVehicle.priceHour) matching.priceHour = Number(sVehicle.priceHour);
-            if (sVehicle.priceDay) matching.priceDay = Number(sVehicle.priceDay);
-            if (sVehicle.regNo || sVehicle.reg_no) matching.regNo = sVehicle.regNo || sVehicle.reg_no;
-            if (sVehicle.gallery && Array.isArray(sVehicle.gallery) && sVehicle.gallery.length) {
-              matching.gallery = sVehicle.gallery;
-            }
-          }
-        } else if (!sVehicle.removed && sVehicle.status !== "removed" && sVehicle.status !== "disabled") {
-          catalog.push(sVehicle);
-        }
-      });
-
-      // Deduplicate catalog
-      const seen = new Set();
-      const deduplicated = [];
-      for (const v of catalog) {
-        if (v.removed) continue;
-        const key = v.id || `${v.brand}_${v.model}_${v.transmission}_${v.fuel}`.toLowerCase().replace(/\s+/g, "");
-        if (!seen.has(key)) {
-          seen.add(key);
-          deduplicated.push(v);
-        }
-      }
-
-      window.fleetVehicles = deduplicated;
-    }
+    // The live database is the source of truth for the customer fleet.
+    // Never fall back to a hardcoded vehicle catalog when the DB is empty.
+    window.fleetVehicles = serverVehicles
+      .filter(v => v && v.status !== "removed" && v.status !== "disabled")
+      .map(v => ({
+        ...v,
+        hubId: v.hubId || v.hub_id || null,
+        hub_id: v.hub_id || v.hubId || null
+      }));
   } catch (error) {
-    console.warn("Could not load MySQL fleet overrides:", error);
+    console.warn("Could not load Hub-scoped MySQL fleet:", error);
+    window.fleetVehicles = [];
   }
 }
+
+window.addEventListener("kruizly:hubchange", async () => {
+  try {
+    window.fleetVehicles = [];
+    renderFleetCards([]);
+    await applyFleetAvailabilityOverrides();
+    renderFleetCards(window.fleetVehicles || []);
+    applyFilters();
+  } catch (error) {
+    console.error("Hub fleet refresh failed:", error);
+  }
+});
 
 // Render the catalog immediately — it's already available from vehicles.js,
 // no need to wait on a network call for it. Live availability overrides
 // (from Firestore) are layered on top afterward and re-render the grid if
 // they succeed; if that call is slow, blocked by security rules, or fails
 // outright, the fleet is still visible instead of stuck on "Loading fleet...".
-renderFleetCards(window.fleetVehicles || []);
+// Do not render a hardcoded catalog. Load the selected Hub from the live database first.
+window.fleetVehicles = [];
+renderFleetCards([]);
 applyFilters();
 
 applyFleetAvailabilityOverrides().then(() => {

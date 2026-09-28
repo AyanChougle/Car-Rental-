@@ -14,7 +14,7 @@
 import { auth } from "./firebase-init.js";
 import { checkAuth, getCurrentUser, setStoredUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260908-v5";
 import { api } from "./kruizly-api.js?v=20260915-v1";
-import "./nav-helper.js?v=20260908-v5";
+import "./nav-helper.js?v=20260928-v2";
 import { formatBookingNumber } from "./booking-reference.js";
 import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260917-v6";
 import { openImageLightbox, isPdfDocument } from "./image-lightbox.js?v=20260928-v1";
@@ -239,7 +239,7 @@ function getWhatsAppBookingUrl(b) {
       `⏱️ *Duration:* ${durStr}\n` +
       `💰 *Total Amount:* ${formatMoney(b?.finalAmount || b?.totalAmount || 0)}\n` +
       `✅ *Status:* Confirmed & Approved\n\n` +
-      `📍 *Pickup:* Gavson Business Park, Ghansoli, Navi Mumbai\n` +
+      `📍 *Pickup:* Hub not assigned\n` +
       `Please carry your original Driving License & Aadhaar Card.\n\n` +
       `Need help? Call +91 91671 64547. Thank you for choosing KRUIZLY!`
     );
@@ -463,12 +463,14 @@ function initTabs() {
 
 async function loadAllExecutiveData() {
   try {
+    const selectedHubId = window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : "";
+    const hubParams = selectedHubId ? { hub_id: selectedHubId } : {};
     const [bookingsRes, paymentsRes, kycRes, fleetRes, couponsRes] = await Promise.all([
-      api.get("/bookings").catch(() => ({ bookings: [] })),
-      api.get("/payments").catch(() => ({ payments: [] })),
-      api.get("/verification").catch(() => ({ verifications: [] })),
-      api.get("/vehicles").catch(() => ({ vehicles: [] })),
-      api.get("/coupons").catch(() => ({ coupons: [] }))
+      api.get("/bookings", hubParams).catch(() => ({ bookings: [] })),
+      api.get("/payments", hubParams).catch(() => ({ payments: [] })),
+      api.get("/verification", hubParams).catch(() => ({ verifications: [] })),
+      api.get("/vehicles", hubParams).catch(() => ({ vehicles: [] })),
+      api.get("/coupons", hubParams).catch(() => ({ coupons: [] }))
     ]);
 
     const rawBk = Array.isArray(bookingsRes?.bookings) ? bookingsRes.bookings : [];
@@ -1898,7 +1900,7 @@ function openBookingDetailModal(b) {
           <div><strong>Pickup Date &amp; Time:</strong> <strong style="color: #4fd7ff;">${escapeHtml(formatReadableDateTime(b.pickupDate))}</strong></div>
           <div><strong>Drop Date &amp; Time:</strong> <strong style="color: #4fd7ff;">${escapeHtml(formatReadableDateTime(b.dropDate))}</strong></div>
           <div><strong>Rental Duration:</strong> <strong style="color: #facc15;">${escapeHtml(formatBookingDuration(b))}</strong></div>
-          <div><strong>Location:</strong> ${escapeHtml(b.location || "Ghansoli, Navi Mumbai")}</div>
+          <div><strong>Location:</strong> ${escapeHtml(b.pickupHubName || b.pickupLocation || b.location || "Hub not assigned")}</div>
         </div>
 
         <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px;">
@@ -1928,6 +1930,10 @@ function openBookingDetailModal(b) {
     modal.style.display = "flex";
   }
 }
+
+window.addEventListener("kruizly:hubchange", async () => {
+  try { await loadAllExecutiveData(); } catch (error) { console.error("Hub context refresh failed:", error); }
+});
 
 // Start
 initExecutive();

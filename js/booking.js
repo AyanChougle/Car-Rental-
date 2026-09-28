@@ -4,7 +4,7 @@
 
 import { checkAuth, getCurrentUser } from "./auth.js?v=20260917-v1";
 import { api } from "./kruizly-api.js?v=20260917-v1";
-import "./nav-helper.js";
+import "./nav-helper.js?v=20260928-v2";
 import { generateNumericBookingId } from "./booking-reference.js";
 import {
   calculateBookingPrice,
@@ -170,7 +170,7 @@ async function initBooking(vehicle) {
     deposit.textContent = "₹" + formatCurrency(vehicle.securityDeposit);
   if (location)
     location.textContent =
-      vehicle.location || "Gavson Business Park, Ghansoli, Navi Mumbai.";
+      vehicle.location || vehicle.hubName || "Hub not assigned";
 
   const imagePath = window.fleetImagePath ? window.fleetImagePath(vehicle) : "";
   if (imagePath && vehicleImage) {
@@ -706,9 +706,13 @@ async function initBooking(vehicle) {
         remainingAmount: calculation.remainingAmount,
         remainingBalance: calculation.remainingAmount,
 
-        location: vehicle.location || "Gavson Business Park, Ghansoli",
-        pickupLocation: vehicle.location || "Gavson Business Park, Ghansoli",
-        dropLocation: vehicle.location || "Gavson Business Park, Ghansoli",
+        location: vehicle.location || vehicle.hubName || "Hub not assigned",
+        pickupLocation: vehicle.location || vehicle.hubName || "Hub not assigned",
+        dropLocation: vehicle.location || vehicle.hubName || "Hub not assigned",
+        pickup_hub_id: vehicle.hubId || vehicle.hub_id || (window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : null),
+        drop_hub_id: vehicle.hubId || vehicle.hub_id || (window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : null),
+        pickupHubId: vehicle.hubId || vehicle.hub_id || (window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : null),
+        dropHubId: vehicle.hubId || vehicle.hub_id || (window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : null),
 
         status: "pending_payment",
         bookingStatus: "pending_payment",

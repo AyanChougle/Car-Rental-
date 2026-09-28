@@ -173,73 +173,61 @@ if (document.readyState === "loading") {
 }
 
 async function renderHubSelector() {
-  // Add Hub Selector UI
-  let headerInner = document.querySelector(".header-inner");
-  if (!headerInner) return;
+  const headerInner = document.querySelector(".header-inner");
+  if (!headerInner || document.getElementById("global-hub-selector")) return;
 
-  // Don't add twice
-  if (document.getElementById("global-hub-selector")) return;
+  const selectorWrap = document.createElement("div");
+  selectorWrap.id = "global-hub-selector";
+  selectorWrap.className = "kruizly-global-hub-selector";
+  selectorWrap.innerHTML = `
+    <span class="kruizly-global-hub-icon" aria-hidden="true">⌖</span>
+    <label class="sr-only" for="kruizly-hub-select">Select Hub</label>
+    <select id="kruizly-hub-select" class="kruizly-global-hub-select" aria-label="Select Hub">
+      <option value="">Loading Hubs...</option>
+    </select>`;
 
-  const selectorHtml = `
-    <div id="global-hub-selector" style="margin-left: 20px; display: flex; align-items: center; gap: 8px;">
-      <i class="fas fa-map-marker-alt" style="color: var(--primary);"></i>
-      <select id="kruizly-hub-select" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); font-size: 14px; background: var(--bg); color: var(--text);">
-        <option value="">Select Hub</option>
-      </select>
-    </div>
-  `;
-
-  // Insert after logo
   const logo = headerInner.querySelector(".logo");
-  if (logo) {
-    logo.insertAdjacentHTML("afterend", selectorHtml);
-  } else {
-    headerInner.insertAdjacentHTML("afterbegin", selectorHtml);
-  }
+  if (logo) logo.insertAdjacentElement("afterend", selectorWrap);
+  else headerInner.insertBefore(selectorWrap, headerInner.firstChild);
 
   const selectEl = document.getElementById("kruizly-hub-select");
+  const apiBase = (window.__KRUIZLY_API_URL__ || localStorage.getItem("kruizly_api_url") ||
+    ((location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "https://kruizly.com/api" : "/api")).replace(/\/$/, "");
 
   try {
-    const isLocal =
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1";
-    const apiBase =
-      localStorage.getItem("kruizly_api_url") ||
-      (isLocal ? "https://kruizly.com/api" : "/api");
-    const res = await fetch(apiBase + "/hubs?active=1");
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.hubs) {
-        selectEl.innerHTML =
-          '<option value="">All Hubs</option>' +
-          data.hubs
-            .map((h) => `<option value="${h.id}">${h.name}</option>`)
-            .join("");
-      }
-    }
+    const res = await fetch(apiBase + "/hubs?active=1&_t=" + Date.now(), {
+      headers: { Accept: "application/json" },
+      cache: "no-store"
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
+    const hubs = Array.isArray(data.hubs) ? data.hubs : [];
+    window.KRUIZLY_HUBS = hubs.slice();
+    selectEl.innerHTML = '<option value="">All Hubs</option>' +
+      hubs.map(h => `<option value="${h.id}">${String(h.name || "Hub").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}${h.city ? ` — ${String(h.city).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}` : ""}</option>`).join("");
   } catch (err) {
     console.warn("Failed to load global hubs", err);
+    selectEl.innerHTML = '<option value="">Unable to load Hubs</option>';
   }
 
-  // Set current selected
   const currentHub = localStorage.getItem("kruizly_selected_hub_id") || "";
   selectEl.value = currentHub;
 
-  // Handle change
   selectEl.addEventListener("change", (e) => {
-    const newHubId = e.target.value;
+    const newHubId = e.target.value || "";
     localStorage.setItem("kruizly_selected_hub_id", newHubId);
+    window.dispatchEvent(new CustomEvent("kruizly:hubchange", {
+      detail: {
+        hubId: newHubId ? Number(newHubId) : null,
+        hub: Array.isArray(window.KRUIZLY_HUBS) ? window.KRUIZLY_HUBS.find(h => String(h.id) === String(newHubId)) || null : null
+      }
+    }));
+    if (window.KRUIZLYHubContext?.render) window.KRUIZLYHubContext.render();
+  });
 
-    // Reload fleet if on fleet or booking
-    if (typeof loadGlobalFleet === "function") {
-      loadGlobalFleet().then(() => {
-        if (typeof renderFleetCards === "function") {
-          renderFleetCards(window.fleetVehicles);
-        }
-      });
-    }
-
-    // Reload page to reflect changes globally if needed
-    window.location.reload();
+  window.addEventListener("kruizly:hubchange", (event) => {
+    if (!selectEl) return;
+    const id = event?.detail?.hubId ? String(event.detail.hubId) : "";
+    if (selectEl.value !== id) selectEl.value = id;
   });
 }

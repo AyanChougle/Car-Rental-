@@ -1,6 +1,6 @@
 import { checkAuth, getCurrentUser } from "./auth.js?v=20260917-v1";
 import { api } from "./kruizly-api.js?v=20260917-v1";
-import "./nav-helper.js";
+import "./nav-helper.js?v=20260928-v2";
 
 import {
   calculateDuration,

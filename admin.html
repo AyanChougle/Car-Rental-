@@ -16,7 +16,8 @@
     <link rel="stylesheet" href="css/kruizly-ui.css?v=20260917-v1" />
     <link rel="stylesheet" href="css/admin.css?v=20260917-v6" />
     <link rel="stylesheet" href="css/kruizly-motion.css?v=20260917-v1" />
-  </head>
+    <link rel="stylesheet" href="css/hub-context.css?v=20260928-v2">
+</head>
   <body>
     <div class="background-video-wrap" aria-hidden="true">
       <video autoplay muted loop playsinline preload="auto">
@@ -1353,7 +1354,7 @@
             <div class="card admin-panel-card">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2 style="margin: 0; font-size: 20px;">Operational Hubs</h2>
-                <button class="btn btn-primary" onclick="window.openHubModal()">+ Add New Hub</button>
+                <button class="btn btn-primary" type="button" data-open-hub-modal>+ Add New Hub</button>
               </div>
 
               <div class="table-responsive">
@@ -1672,12 +1673,9 @@
                     <label class="admin-control-label" for="fleetHub"
                       >Operational Hub</label
                     >
-                    <input
-                      id="fleetHub"
-                      class="kr-clean-input"
-                      value="Gavson Business Park, Ghansoli"
-                      placeholder="Gavson Business Park, Ghansoli"
-                    />
+                    <select id="fleetHub" class="kr-clean-input" required>
+                      <option value="">Loading hubs...</option>
+                    </select>
                   </div>
                   <div class="admin-control-group">
                     <label
@@ -2010,6 +2008,71 @@
     </main>
 
     <!-- Document Modal Preview -->
+    <!-- Hub Create / Edit Modal -->
+    <div id="hubModal" class="modal admin-modal" hidden>
+      <div class="card admin-inspect-modal-card" style="max-width: 560px !important;">
+        <button type="button" class="admin-inspect-close" aria-label="Close modal" data-close-hub-modal>&times;</button>
+        <div class="admin-inspect-header">
+          <span class="admin-inspect-eyebrow">OPERATIONAL HUBS</span>
+          <h2 id="hubModalTitle" class="admin-inspect-title">Add New Hub</h2>
+        </div>
+        <form id="hubForm">
+          <input type="hidden" id="hubId" />
+          <div class="admin-control-group" style="margin-bottom: 14px;">
+            <label class="admin-control-label" for="hubName">Hub Name *</label>
+            <input id="hubName" class="kr-clean-input" required maxlength="255" placeholder="e.g. Central Pickup Hub" />
+          </div>
+          <div class="admin-control-group" style="margin-bottom: 14px;">
+            <label class="admin-control-label" for="hubCode">Hub Code *</label>
+            <input id="hubCode" class="kr-clean-input" required maxlength="50" placeholder="e.g. HUB-01" />
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 14px;">
+            <div class="admin-control-group">
+              <label class="admin-control-label" for="hubCity">City *</label>
+              <input id="hubCity" class="kr-clean-input" required maxlength="100" placeholder="e.g. City" />
+            </div>
+            <div class="admin-control-group">
+              <label class="admin-control-label" for="hubState">State *</label>
+              <input id="hubState" class="kr-clean-input" required maxlength="100" placeholder="e.g. State" />
+            </div>
+          </div>
+          <div class="admin-control-group" style="margin-bottom: 14px;">
+            <label class="admin-control-label" for="hubAddress">Address *</label>
+            <textarea id="hubAddress" class="kr-clean-input" required rows="2" placeholder="Full pickup / drop address"></textarea>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 14px;">
+            <div class="admin-control-group">
+              <label class="admin-control-label" for="hubPhone">Contact Phone</label>
+              <input id="hubPhone" class="kr-clean-input" maxlength="30" placeholder="Contact number" />
+            </div>
+            <div class="admin-control-group">
+              <label class="admin-control-label" for="hubEmail">Contact Email</label>
+              <input id="hubEmail" type="email" class="kr-clean-input" maxlength="150" placeholder="hub@example.com" />
+            </div>
+          </div>
+          <div class="admin-control-group" style="margin-bottom: 14px;">
+            <label class="admin-control-label" for="hubHours">Operating Hours</label>
+            <input id="hubHours" class="kr-clean-input" maxlength="100" placeholder="e.g. 09:00 - 21:00" />
+          </div>
+          <div class="admin-control-group" style="margin-bottom: 14px;">
+            <label class="admin-control-label" for="hubInstructions">Pickup Instructions</label>
+            <textarea id="hubInstructions" class="kr-clean-input" rows="2" placeholder="Customer pickup / drop instructions"></textarea>
+          </div>
+          <div class="admin-control-group" style="margin-bottom: 20px;">
+            <label class="admin-control-label" for="hubStatus">Status</label>
+            <select id="hubStatus" class="kr-clean-input" required>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+          <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button type="button" class="btn btn-outline" data-close-hub-modal>Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Hub</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <div id="docModal" class="modal admin-modal" hidden>
       <div class="card admin-inspect-modal-card">
         <button
@@ -3749,7 +3812,8 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="js/vehicles.js?v=20260917-v1"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script type="module" src="js/admin.js?v=20260928-v1"></script>
+    <script type="module" src="js/admin.js?v=20260928-v4"></script>
     <script src="js/glass-ui.js?v=20260925-v1"></script>
-  </body>
+    <script src="js/hub-context.js?v=20260928-v2"></script>
+</body>
 </html>

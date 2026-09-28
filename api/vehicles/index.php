@@ -16,7 +16,7 @@ if ($method === 'GET') {
     $hubId = isset($_GET['hub_id']) ? (int)$_GET['hub_id'] : 0;
     $availableOnly = isset($_GET['available']) ? (bool)$_GET['available'] : false;
 
-    $sql = "SELECT * FROM vehicles WHERE status != 'removed'";
+    $sql = "SELECT v.*, h.name AS hub_name, h.code AS hub_code FROM vehicles v LEFT JOIN hubs h ON h.id = v.hub_id WHERE v.status != 'removed'";
     $params = [];
 
     if ($hubId) {
@@ -77,7 +77,11 @@ if ($method === 'GET') {
             'securityDeposit' => (float)$v['security_deposit'],
             'freeKm' => (int)$v['free_km'],
             'extraKm' => (float)$v['extra_km'],
-            'hub' => $v['hub'] ?? ($v['location'] ?? 'Gavson Business Park, Ghansoli'),
+            'hub' => $v['hub'] ?? ($v['location'] ?? null),
+            'hubId' => (int)($v['hub_id'] ?? 0),
+            'hubName' => $v['hub_name'] ?? null,
+            'hubCode' => $v['hub_code'] ?? null,
+            'hub_id' => (int)($v['hub_id'] ?? 0),
             'location' => $v['location'],
             'acquisitionType' => $v['acquisition_type'] ?? 'Partner',
             'ownerName' => $v['owner_name'] ?? null,
