@@ -281,8 +281,12 @@
             <button class="btn btn-outline tab-btn" data-tab="tab-hosts">
               Vehicle Acquisition
             </button>
+            
             <button class="btn btn-outline tab-btn" data-tab="tab-fleet">
               Fleet Management
+            </button>
+            <button class="btn btn-outline tab-btn" data-tab="tab-hubs">
+              Hubs Management
             </button>
             <button class="btn btn-outline tab-btn" data-tab="tab-coupons">
               Coupons
@@ -1343,7 +1347,36 @@
             </div>
           </section>
 
+          
+          <!-- TAB: HUBS MANAGEMENT -->
+          <section id="tab-hubs" class="tab-panel" hidden>
+            <div class="card admin-panel-card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin: 0; font-size: 20px;">Operational Hubs</h2>
+                <button class="btn btn-primary" onclick="window.openHubModal()">+ Add New Hub</button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table admin-data-table" id="hubsTable">
+                  <thead>
+                    <tr>
+                      <th>Hub Code</th>
+                      <th>Name</th>
+                      <th>City</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="hubsTableBody">
+                    <tr><td colspan="5" style="text-align:center; padding:20px; color:var(--sub);">Loading hubs...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+
           <!-- TAB 5: FLEET MANAGEMENT -->
+
           <section id="tab-fleet" class="tab-panel" hidden>
             <div class="card admin-panel-card">
               <div
@@ -1665,7 +1698,7 @@
                     <input
                       id="fleetOwnerName"
                       class="kr-clean-input"
-                      placeholder="e.g. Aditi Lotankar"
+                      placeholder="e.g. Salman Khan"
                     />
                   </div>
                   <div class="admin-control-group">

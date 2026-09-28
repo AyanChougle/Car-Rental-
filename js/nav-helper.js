@@ -5,6 +5,9 @@ import { api } from "./kruizly-api.js?v=20260917-v1";
 import { isAdminUser, getStoredUser } from "./auth.js?v=20260921-v2";
 
 export function initDynamicNav() {
+  // Render Hub Selector globally
+  renderHubSelector();
+
   const currentPath = window.location.pathname.split("/").pop() || "index.html";
 
   // Ensure active class matches current page
@@ -36,9 +39,11 @@ export function initDynamicNav() {
     navs.forEach((nav) => {
       // Rebuild privileged links only after the account role has been
       // verified. This also removes legacy links hard-coded in a page.
-      nav.querySelectorAll(
-        'a[href="executive.html"], a[href="manager.html"], a[href="accounts.html"], a[href="admin.html"]'
-      ).forEach((link) => link.remove());
+      nav
+        .querySelectorAll(
+          'a[href="executive.html"], a[href="manager.html"], a[href="accounts.html"], a[href="admin.html"]',
+        )
+        .forEach((link) => link.remove());
 
       // Ensure Host Car link
       if (!nav.querySelector('a[href="partner.html"]')) {
@@ -51,7 +56,11 @@ export function initDynamicNav() {
       }
 
       // Executive operations (available to executive, manager, and admin)
-      if (normalizedRole === "executive" || normalizedRole === "manager" || normalizedRole === "admin") {
+      if (
+        normalizedRole === "executive" ||
+        normalizedRole === "manager" ||
+        normalizedRole === "admin"
+      ) {
         if (!nav.querySelector('a[href="executive.html"]')) {
           const link = document.createElement("a");
           link.href = "executive.html";
@@ -135,8 +144,11 @@ export function initDynamicNav() {
   });
 
   // Universal Mobile Navigation Toggle
-  const toggleBtn = document.getElementById("mobileNavToggle") || document.querySelector(".mobile-nav-toggle");
-  const navMenu = document.getElementById("mainNav") || document.querySelector("header .nav");
+  const toggleBtn =
+    document.getElementById("mobileNavToggle") ||
+    document.querySelector(".mobile-nav-toggle");
+  const navMenu =
+    document.getElementById("mainNav") || document.querySelector("header .nav");
 
   if (toggleBtn && navMenu) {
     toggleBtn.addEventListener("click", (e) => {
@@ -158,4 +170,76 @@ if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", initDynamicNav);
 } else {
   initDynamicNav();
+}
+
+async function renderHubSelector() {
+  // Add Hub Selector UI
+  let headerInner = document.querySelector(".header-inner");
+  if (!headerInner) return;
+
+  // Don't add twice
+  if (document.getElementById("global-hub-selector")) return;
+
+  const selectorHtml = `
+    <div id="global-hub-selector" style="margin-left: 20px; display: flex; align-items: center; gap: 8px;">
+      <i class="fas fa-map-marker-alt" style="color: var(--primary);"></i>
+      <select id="kruizly-hub-select" style="padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); font-size: 14px; background: var(--bg); color: var(--text);">
+        <option value="">Select Hub</option>
+      </select>
+    </div>
+  `;
+
+  // Insert after logo
+  const logo = headerInner.querySelector(".logo");
+  if (logo) {
+    logo.insertAdjacentHTML("afterend", selectorHtml);
+  } else {
+    headerInner.insertAdjacentHTML("afterbegin", selectorHtml);
+  }
+
+  const selectEl = document.getElementById("kruizly-hub-select");
+
+  try {
+    const isLocal =
+      window.location.hostname === "localhost" ||
+      window.location.hostname === "127.0.0.1";
+    const apiBase =
+      localStorage.getItem("kruizly_api_url") ||
+      (isLocal ? "https://kruizly.com/api" : "/api");
+    const res = await fetch(apiBase + "/hubs?active=1");
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.hubs) {
+        selectEl.innerHTML =
+          '<option value="">All Hubs</option>' +
+          data.hubs
+            .map((h) => `<option value="${h.id}">${h.name}</option>`)
+            .join("");
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to load global hubs", err);
+  }
+
+  // Set current selected
+  const currentHub = localStorage.getItem("kruizly_selected_hub_id") || "";
+  selectEl.value = currentHub;
+
+  // Handle change
+  selectEl.addEventListener("change", (e) => {
+    const newHubId = e.target.value;
+    localStorage.setItem("kruizly_selected_hub_id", newHubId);
+
+    // Reload fleet if on fleet or booking
+    if (typeof loadGlobalFleet === "function") {
+      loadGlobalFleet().then(() => {
+        if (typeof renderFleetCards === "function") {
+          renderFleetCards(window.fleetVehicles);
+        }
+      });
+    }
+
+    // Reload page to reflect changes globally if needed
+    window.location.reload();
+  });
 }

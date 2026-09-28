@@ -1448,7 +1448,7 @@ async function loadFleetManagement() {
           if ($("fleetSeats")) $("fleetSeats").value = vehicle.seats || 5;
           if ($("fleetPriceDay")) $("fleetPriceDay").value = vehicle.priceDay || 3500;
           if ($("fleetPriceHour")) $("fleetPriceHour").value = vehicle.priceHour || 145;
-          if ($("fleetHub")) $("fleetHub").value = vehicle.hub || "Gavson Business Park, Ghansoli";
+          if ($("fleetHub")) $("fleetHub").value = vehicle.hub_id || "";
           if ($("fleetAcquisitionType")) $("fleetAcquisitionType").value = vehicle.acquisitionType || "Partner";
           if ($("fleetOwnerName")) $("fleetOwnerName").value = vehicle.ownerName || "";
           if ($("fleetAcquisitionDate")) $("fleetAcquisitionDate").value = vehicle.acquisitionDate || "";
@@ -1518,7 +1518,7 @@ function resetFleetForm() {
   if ($("fleetCarId")) $("fleetCarId").value = "";
   if ($("fleetYear")) $("fleetYear").value = "2026";
   if ($("fleetSeats")) $("fleetSeats").value = "5";
-  if ($("fleetHub")) $("fleetHub").value = "Gavson Business Park, Ghansoli";
+  if ($("fleetHub")) $("fleetHub").value = "";
   if ($("fleetAcquisitionType")) $("fleetAcquisitionType").value = "Partner";
   if ($("fleetFuel")) $("fleetFuel").value = "Petrol";
   if ($("fleetTransmission")) $("fleetTransmission").value = "Manual";
@@ -1580,7 +1580,7 @@ function initialiseFleetUpload() {
         seats: Number(getValue("fleetSeats") || 5),
         priceDay,
         priceHour: Math.max(1, Math.round(priceDay / 24)),
-        hub: getValue("fleetHub") || "Gavson Business Park, Ghansoli",
+        hub_id: getValue("fleetHub") || null,
         acquisitionType: getValue("fleetAcquisitionType") || "Partner",
         ownerName: getValue("fleetOwnerName") || null,
         acquisitionDate: getValue("fleetAcquisitionDate") || null,
@@ -10092,3 +10092,129 @@ if (typeof document !== "undefined") {
   });
 }
 
+
+
+// ==========================================
+// HUBS MANAGEMENT
+// ==========================================
+
+let globalHubsList = [];
+
+async function loadAdminHubs() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/hubs`, {
+      headers: adminAuthHeaders()
+    });
+    if (!res.ok) throw new Error("Failed to fetch hubs");
+    const data = await res.json();
+    if (data.success) {
+      globalHubsList = data.hubs || [];
+      renderHubsTable();
+      populateHubDropdowns();
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function renderHubsTable() {
+  const tbody = document.getElementById("hubsTableBody");
+  if (!tbody) return;
+  
+  if (globalHubsList.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--sub);">No hubs found. Create one to get started.</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = globalHubsList.map(h => `
+    <tr>
+      <td><strong>${escapeHtml(h.code)}</strong></td>
+      <td>${escapeHtml(h.name)}</td>
+      <td>${escapeHtml(h.city || '-')}</td>
+      <td><span class="status-badge ${h.status === 'active' ? 'status-active' : 'status-inactive'}">${h.status.toUpperCase()}</span></td>
+      <td>
+        <button class="btn btn-outline" style="padding: 4px 8px; font-size: 11px;" onclick='openHubModal(${JSON.stringify(h)})'>Edit</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function populateHubDropdowns() {
+  const fleetHub = document.getElementById("fleetHub");
+  if (fleetHub) {
+    fleetHub.innerHTML = '<option value="">-- Select Hub --</option>' + 
+      globalHubsList.map(h => `<option value="${h.id}">${escapeHtml(h.name)} (${escapeHtml(h.code)})</option>`).join('');
+  }
+}
+
+window.openHubModal = function(hub = null) {
+  const form = document.getElementById("hubForm");
+  if (form) form.reset();
+  
+  if (hub && hub.id) {
+    document.getElementById("hubModalTitle").textContent = "Edit Hub";
+    document.getElementById("hubId").value = hub.id;
+    document.getElementById("hubName").value = hub.name || "";
+    document.getElementById("hubCode").value = hub.code || "";
+    document.getElementById("hubCity").value = hub.city || "";
+    document.getElementById("hubState").value = hub.state || "";
+    document.getElementById("hubAddress").value = hub.address || "";
+    document.getElementById("hubStatus").value = hub.status || "active";
+  } else {
+    document.getElementById("hubModalTitle").textContent = "Add New Hub";
+    document.getElementById("hubId").value = "";
+    document.getElementById("hubStatus").value = "active";
+  }
+  
+  document.getElementById("hubModal").style.display = "flex";
+};
+
+window.closeHubModal = function() {
+  document.getElementById("hubModal").style.display = "none";
+};
+
+window.handleHubSubmit = async function(e) {
+  e.preventDefault();
+  
+  const id = document.getElementById("hubId").value;
+  const isEditing = !!id;
+  
+  const payload = {
+    name: document.getElementById("hubName").value,
+    code: document.getElementById("hubCode").value,
+    city: document.getElementById("hubCity").value,
+    state: document.getElementById("hubState").value,
+    address: document.getElementById("hubAddress").value,
+    status: document.getElementById("hubStatus").value
+  };
+  
+  const url = isEditing ? `${API_BASE_URL}/hubs/${id}` : `${API_BASE_URL}/hubs`;
+  const method = isEditing ? "PUT" : "POST";
+  
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: { ...adminAuthHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    
+    const data = await res.json();
+    if (data.success) {
+      alert("Hub saved successfully.");
+      closeHubModal();
+      loadAdminHubs(); // Refresh list
+    } else {
+      alert("Error: " + (data.error || "Unknown error"));
+    }
+  } catch (err) {
+    console.error(err);
+    alert("An error occurred while saving the hub.");
+  }
+};
+
+// Hook into existing init
+const originalInitAdmin = window.initAdmin || function(){};
+window.initAdmin = async function() {
+  await originalInitAdmin();
+  await loadAdminHubs();
+};

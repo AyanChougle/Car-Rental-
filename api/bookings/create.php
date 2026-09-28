@@ -52,7 +52,8 @@ $couponDiscount = (float)($input['couponDiscount'] ?? 0.00);
 $paymentPlan = trim((string)($input['paymentPlan'] ?? 'full'));
 $paymentStatus = trim((string)($input['paymentStatus'] ?? 'pending_payment'));
 $status = trim((string)($input['status'] ?? 'pending_payment'));
-$location = trim((string)($input['location'] ?? 'Gavson Business Park, Ghansoli'));
+$pickupHubId = isset($input['pickup_hub_id']) ? (int)$input['pickup_hub_id'] : (isset($input['hub_id']) ? (int)$input['hub_id'] : null);
+$dropHubId = isset($input['drop_hub_id']) ? (int)$input['drop_hub_id'] : $pickupHubId;
 
 // Fetch vehicle
 $vehicle = $vehicleReg ? Database::fetchOne("SELECT * FROM vehicles WHERE reg_no = ? LIMIT 1", [$vehicleReg]) : null;
@@ -85,7 +86,7 @@ try {
         $nextId, $bookingId, $bookingNumber, $user, $dbUserId, $vehicleId, $vehicleReg, $vehicleName, $vehicleCategory,
         $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $baseAmount, $couponCode,
         $couponDiscount, $totalAmount, $advanceAmount, $remainingBalance, $paymentPlan, $paymentStatus,
-        $status, $location, $securityDeposit, $userName, $userEmail, $userPhone, $userAge, $input
+        $status, $pickupHubId, $dropHubId, $securityDeposit, $userName, $userEmail, $userPhone, $userAge, $input
     ) {
         // 1. Insert or update booking
         $stmt = $pdo->prepare(
@@ -94,7 +95,7 @@ try {
                 vehicle_id, vehicle_reg, vehicle_name, vehicle_category, pickup_date, drop_date,
                 duration, days, hours, with_driver, base_amount, coupon_code, coupon_discount,
                 total_amount, final_amount, advance_amount, remaining_balance, remaining_amount,
-                payment_plan, payment_status, status, booking_status, location, security_deposit,
+                payment_plan, payment_status, status, booking_status, pickup_hub_id, drop_hub_id, security_deposit,
                 payment_screenshot_url
             ) VALUES (
                 ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
@@ -118,7 +119,7 @@ try {
                 remaining_balance = VALUES(remaining_balance),
                 remaining_amount = VALUES(remaining_amount),
                 payment_plan = VALUES(payment_plan),
-                location = VALUES(location),
+                pickup_hub_id = VALUES(pickup_hub_id), drop_hub_id = VALUES(drop_hub_id),
                 security_deposit = VALUES(security_deposit),
                 user_name = COALESCE(NULLIF(VALUES(user_name), ''), user_name),
                 user_email = COALESCE(NULLIF(VALUES(user_email), ''), user_email),
@@ -135,7 +136,7 @@ try {
             $userEmail ?: ($user['email'] ?: 'customer@kruizly.com'), $userPhone ?: ($user['phone'] ?: null), $vehicleId, $vehicleReg ?: 'TBD', $vehicleName, $vehicleCategory,
             $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $baseAmount, $couponCode ?: null,
             $couponDiscount, $totalAmount, $totalAmount, $advanceAmount, $remainingBalance, $remainingBalance,
-            $paymentPlan, $paymentStatus, $status, $status, $location, $securityDeposit,
+            $paymentPlan, $paymentStatus, $status, $status, $pickupHubId, $dropHubId, $securityDeposit,
             $input['paymentScreenshotUrl'] ?? $input['screenshotUrl'] ?? null
         ]);
 
