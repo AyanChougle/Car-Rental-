@@ -7,6 +7,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
+if (!headers_sent()) { header('X-Kruizly-Create-Rev: 2026-09-30-v2'); }
 
 $user = Auth::requireAuth();
 $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
@@ -98,7 +99,7 @@ try {
                 payment_plan, payment_status, status, booking_status, pickup_hub_id, drop_hub_id, security_deposit,
                 payment_screenshot_url
             ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             ) ON DUPLICATE KEY UPDATE
                 id = COALESCE(id, VALUES(id)),
                 user_id = COALESCE(VALUES(user_id), user_id),

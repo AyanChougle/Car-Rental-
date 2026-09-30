@@ -22,6 +22,20 @@ class KpiService
      */
     public static function getMetrics(): array
     {
+        // Always recompute from live bookings/users/vehicles so KPIs never go stale.
+        // syncMetrics() upserts with GREATEST(), so historical months are never downgraded.
+        $fresh = self::syncMetrics();
+        if (!empty($fresh['live'])) {
+            return $fresh;
+        }
+        return self::getCachedMetrics();
+    }
+
+    /**
+     * Fallback: read previously persisted KPI rows (used only if live recalculation fails).
+     */
+    public static function getCachedMetrics(): array
+    {
         try {
             self::ensureSchema();
 
