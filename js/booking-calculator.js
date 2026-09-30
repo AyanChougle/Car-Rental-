@@ -204,8 +204,12 @@ export function calculateBookingPrice({
   const driverHourlyRate = Number(vehicle.driverPriceHour || (driverPriceDay > 0 ? driverPriceDay / 24 : 83.33));
 
   const rentalTotal = Math.round(hours * hourlyRate);
-  const driverTotal = withDriver ? Math.round(hours * driverHourlyRate) : 0;
-  const securityDeposit = Number(vehicle.securityDeposit || 0);
+  const isLuxury = (vehicle.category || "").toLowerCase() === "luxury";
+  const securityDeposit = Number(
+    vehicle.securityDeposit !== undefined && vehicle.securityDeposit !== null && vehicle.securityDeposit !== ""
+      ? vehicle.securityDeposit
+      : (isLuxury ? 15000 : 3000)
+  );
 
   // Authoritative coupon discount calculation (supports single coupon and multi-coupon stacking)
   let couponDiscount = 0;

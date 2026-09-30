@@ -24,9 +24,9 @@
 }
 
 .vehicle-main-media {
-  background-color: var(--surface-media);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  background-color: var(--kr-surface-media, #0d131c);
+  border: 1px solid var(--kr-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--kr-radius-lg, 20px);
   min-height: 320px;
   display: flex;
   align-items: center;
@@ -49,9 +49,9 @@
 
 .vehicle-spec-item {
   padding: 14px;
-  background-color: var(--surface-control);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  background-color: var(--kr-surface-control, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--kr-border, rgba(255, 255, 255, 0.12));
+  border-radius: var(--kr-radius-sm, 8px);
   text-align: center;
 }
 

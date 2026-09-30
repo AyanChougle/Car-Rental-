@@ -9590,9 +9590,10 @@ function initCustomerAnalyticsEvents() {
         custFilterFromDate = yestStart;
         custFilterToDate = yestEnd;
       } else if (custQuickFilter === "this_week") {
-        const dayOfWeek = now.getDay(); // Sunday to Saturday as 1 week
         const startOfWeek = new Date(todayStart);
-        startOfWeek.setDate(startOfWeek.getDate() - dayOfWeek);
+        const day = startOfWeek.getDay();
+        const diff = (day === 0 ? -6 : 1) - day;
+        startOfWeek.setDate(startOfWeek.getDate() + diff);
         custFilterFromDate = startOfWeek;
         custFilterToDate = todayEnd;
       } else if (custQuickFilter === "this_month") {
@@ -9893,9 +9894,11 @@ function initBookingsAnalyticsEvents() {
         bookAnFilterFromDate = new Date(todayStart.getTime() - 86400000);
         bookAnFilterToDate = new Date(todayEnd.getTime() - 86400000);
       } else if (bookAnQuickFilter === "this_week") {
-        const day = todayStart.getDay();
-        const diff = todayStart.getDate() - day + (day === 0 ? -6 : 1);
-        bookAnFilterFromDate = new Date(todayStart.setDate(diff));
+        const startOfWeek = new Date(todayStart);
+        const day = startOfWeek.getDay();
+        const diff = (day === 0 ? -6 : 1) - day;
+        startOfWeek.setDate(startOfWeek.getDate() + diff);
+        bookAnFilterFromDate = startOfWeek;
         bookAnFilterToDate = todayEnd;
       } else if (bookAnQuickFilter === "this_month") {
         bookAnFilterFromDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
@@ -9940,7 +9943,7 @@ function initBookingsAnalyticsEvents() {
 function renderBookingsAnalytics() {
   const totalBookingsEl = document.getElementById("bookAnTotalBookings");
   const paidBookingsEl = document.getElementById("bookAnPaidBookings");
-  const pendingVerifEl = document.getElementById("bookAnPendingVerif");
+  const pendingVerifEl = document.getElementById("bookAnPendingVerif") || document.getElementById("bookAnPendingVerification");
   const activeRentalsEl = document.getElementById("bookAnActiveRentals");
   const cancelledBookingsEl = document.getElementById("bookAnCancelledBookings");
   const tbody = document.getElementById("bookAnMonthlyTableBody");
@@ -9950,12 +9953,16 @@ function renderBookingsAnalytics() {
   // Filter Bookings by Selected Date Range
   const filteredBookings = bookingsData.filter(b => {
     if (!bookAnFilterFromDate && !bookAnFilterToDate) return true;
-    const pDate = parseDateOnly(b.pickupDate || b.createdAt);
-    if (!pDate) return true;
-    const pMs = pDate.getTime();
+    const cDate = parseDateOnly(b.createdAt || b.created_at);
+    const pDate = parseDateOnly(b.pickupDate);
+    const matchDate = cDate || pDate;
+    if (!matchDate) return true;
+    const pMs = matchDate.getTime();
     const startMs = bookAnFilterFromDate ? bookAnFilterFromDate.getTime() : 0;
     const endMs = bookAnFilterToDate ? bookAnFilterToDate.getTime() : Infinity;
-    return pMs >= startMs && pMs <= endMs;
+    const inRangeCreation = pMs >= startMs && pMs <= endMs;
+    const inRangePickup = pDate && (pDate.getTime() >= startMs && pDate.getTime() <= endMs);
+    return inRangeCreation || inRangePickup;
   });
 
   // 1. Total Bookings

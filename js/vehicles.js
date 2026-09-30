@@ -9,23 +9,32 @@ window.fleetVehicles = fleetVehicles;
 
 async function loadGlobalFleet() {
   try {
-    const hubId = localStorage.getItem("kruizly_selected_hub_id") || "";
+    const hubId = (typeof localStorage !== "undefined" && localStorage.getItem("kruizly_selected_hub_id")) || "";
     // determine API base path
-    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
-    const apiBase = localStorage.getItem("kruizly_api_url") || (isLocal ? "https://kruizly.com/api" : "/api");
+    const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    const apiBase = (typeof localStorage !== "undefined" && localStorage.getItem("kruizly_api_url")) || (isLocal ? "https://kruizly.com/api" : "/api");
     const url = apiBase + "/vehicles" + (hubId ? "?hub_id=" + hubId : "");
     const res = await fetch(url);
     if (res.ok) {
       const json = await res.json();
-      if (json.success && json.vehicles) {
+      if (json.success && Array.isArray(json.vehicles)) {
         fleetVehicles.length = 0;
         json.vehicles.forEach(v => fleetVehicles.push(v));
-        window.fleetVehicles = fleetVehicles;
+        if (typeof window !== "undefined") {
+          window.fleetVehicles = fleetVehicles;
+        }
       }
     }
+    return fleetVehicles;
   } catch (err) {
     console.error("Error loading global fleet:", err);
+    return fleetVehicles;
   }
+}
+
+if (typeof window !== "undefined") {
+  window.loadGlobalFleet = loadGlobalFleet;
+  window.fleetLoadingPromise = loadGlobalFleet();
 }
 
 

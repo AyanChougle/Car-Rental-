@@ -1,27 +1,59 @@
-// Vehicle detail page: pulls the vehicle from js/vehicles.js by ?reg=,
+// Vehicle detail page: pulls the vehicle from js/vehicles.js by ?reg= or ?id=,
 // fills in specs, and drives the 7-angle scroll gallery.
-(function () {
+(async function () {
 	"use strict";
 
 	const params = new URLSearchParams(window.location.search);
 	let query = params.get("id") || params.get("car") || params.get("reg") || params.get("vehicle");
 	if (query === "undefined" || query === "null" || query === "") query = null;
 
-	const catalog = window.fleetVehicles || [];
-	const vehicle = (typeof window.getFleetVehicle === "function" && window.getFleetVehicle(query)) ||
+	if (window.fleetLoadingPromise) {
+		try {
+			await window.fleetLoadingPromise;
+		} catch (_) {}
+	}
+
+	let catalog = window.fleetVehicles || [];
+	let vehicle = (typeof window.getFleetVehicle === "function" && window.getFleetVehicle(query)) ||
 		catalog.find((v) =>
-			(query && (v.id === query || v.slug === query || v.regNo === query)) ||
+			(query && (String(v.id) === String(query) || v.slug === query || v.regNo === query || v.carId === query)) ||
 			(query && `${v.brand} ${v.model}`.toLowerCase() === query.toLowerCase())
-		) ||
-		catalog[0];
+		);
+
+	if (!vehicle) {
+		try {
+			const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+			const apiBase = localStorage.getItem("kruizly_api_url") || (isLocal ? "https://kruizly.com/api" : "/api");
+			const res = await fetch(`${apiBase}/vehicles`);
+			if (res.ok) {
+				const json = await res.json();
+				if (json.success && Array.isArray(json.vehicles)) {
+					window.fleetVehicles = json.vehicles;
+					catalog = json.vehicles;
+					vehicle = (typeof window.getFleetVehicle === "function" && window.getFleetVehicle(query)) ||
+						catalog.find((v) =>
+							(query && (String(v.id) === String(query) || v.slug === query || v.regNo === query || v.carId === query)) ||
+							(query && `${v.brand} ${v.model}`.toLowerCase() === query.toLowerCase())
+						) || catalog[0];
+				}
+			}
+		} catch (e) {
+			console.error("Error fetching vehicle details:", e);
+		}
+	}
 
 	const nameEl = document.getElementById("vehicleName");
 
 	if (!vehicle) {
-		nameEl.textContent = "Vehicle not found";
-		document.getElementById("vehicleCategory").textContent = "Try the fleet page instead";
+		if (nameEl) nameEl.textContent = "Vehicle not found";
+		const catEl = document.getElementById("vehicleCategory");
+		if (catEl) catEl.textContent = "Try the fleet page instead";
 		return;
 	}
+
+	const isLuxury = (vehicle.category || "").toLowerCase() === "luxury";
+	const depositAmount = vehicle.securityDeposit || (isLuxury ? 15000 : 3000);
+	const extraKmAmount = vehicle.extraKm || (isLuxury ? 30 : 12);
 
 	const ANGLES = ["Front", "Front 3/4", "Side Profile", "Rear 3/4", "Rear", "Interior", "Detail"];
 
@@ -31,13 +63,16 @@
 
 	// ---- header + specs ----
 	document.title = `${vehicle.brand} ${vehicle.model} | KRUIZLY`;
-	document.getElementById("vehicleCategory").textContent = vehicle.category;
+	const catEl = document.getElementById("vehicleCategory");
+	if (catEl) {
+		catEl.textContent = isLuxury ? "KRUIZLY Luxury & Performance" : `KRUIZLY Main — ${(vehicle.category || "Standard").toUpperCase()}`;
+	}
 	nameEl.textContent = `${vehicle.brand} ${vehicle.model}`;
 	document.getElementById("vehicleMetaRow").innerHTML = `
 		<span>${vehicle.transmission}</span>
 		<span>${vehicle.fuel}</span>
 		<span>${vehicle.seats} Seats</span>
-		<span>${vehicle.bags} Bags</span>
+		<span>${vehicle.bags || 2} Bags</span>
 	`;
 	document.getElementById("vehiclePrice").textContent = `₹${formatCurrency(vehicle.priceDay)}/day`;
 
@@ -61,17 +96,17 @@
 
 	const specEntries = [
 		["Day rate", `₹${formatCurrency(vehicle.priceDay)}`],
-		["Hour rate", `₹${formatCurrency(vehicle.priceHour)}`],
-		["With driver", `₹${formatCurrency(vehicle.driverPrice)}`],
-		["Deposit", `₹${formatCurrency(vehicle.securityDeposit)}`],
-		["Free km/day", `${vehicle.freeKm} km`],
-		["Extra km", `₹${formatCurrency(vehicle.extraKm)}`],
-		["Fuel", vehicle.fuel],
-		["Bags", `${vehicle.bags}`],
-		["Location", vehicle.location],
+		["Hour rate", `₹${formatCurrency(vehicle.priceHour || Math.round(vehicle.priceDay / 24))}`],
+		["With driver", `₹${formatCurrency(vehicle.driverPrice || 2000)}`],
+		["Deposit", `₹${formatCurrency(depositAmount)}`],
+		["Free km/day", `${vehicle.freeKm || 200} km`],
+		["Extra km", `₹${formatCurrency(extraKmAmount)}/km`],
+		["Fuel", vehicle.fuel || "Petrol"],
+		["Bags", `${vehicle.bags || 2}`],
+		["Location", vehicle.location || "Gavson Business Park, Ghansoli"],
 		["Odometer", vehicle.odometer || "—"],
 		["Last service", vehicle.lastService || "—"],
-		["Live tracking", vehicle.tracking || "pending"],
+		["Live tracking", vehicle.tracking || "Active"],
 		["Status", vehicle.available ? "Available" : "Booked"],
 	];
 	document.getElementById("vehicleSpecs").innerHTML = specEntries

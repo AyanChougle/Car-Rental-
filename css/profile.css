@@ -4,6 +4,9 @@
    ========================================================= */
 
 
+@import url('base.css');
+@import url('components.css');
+
 :root {
   --kr-bg: #050607;
   --kr-surface: rgba(11, 17, 26, 0.82);

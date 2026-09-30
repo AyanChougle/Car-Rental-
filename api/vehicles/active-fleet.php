@@ -387,31 +387,48 @@ if ($method === 'POST') {
         }
     }
 
-    // Update is_custom_fleet flag in vehicles table for consistency
-    Database::execute("UPDATE vehicles SET is_custom_fleet = 0 WHERE status != 'removed'");
-    if (count($currentActiveRegs) > 0) {
-        $inPlaceholders = implode(',', array_fill(0, count($currentActiveRegs), '?'));
-        Database::execute(
-            "UPDATE vehicles SET is_custom_fleet = 1 
-             WHERE UPPER(reg_no) IN ($inPlaceholders) 
-                OR UPPER(car_id) IN ($inPlaceholders)",
-            array_merge($currentActiveRegs, $currentActiveRegs)
-        );
+    // Update is_active_fleet flag in vehicles table for consistency (safe against schema differences)
+    try {
+        Database::execute("UPDATE vehicles SET is_active_fleet = 0 WHERE status != 'removed'");
+        if (count($currentActiveRegs) > 0) {
+            $inPlaceholders = implode(',', array_fill(0, count($currentActiveRegs), '?'));
+            Database::execute(
+                "UPDATE vehicles SET is_active_fleet = 1 
+                 WHERE UPPER(reg_no) IN ($inPlaceholders) 
+                    OR UPPER(car_id) IN ($inPlaceholders)",
+                array_merge($currentActiveRegs, $currentActiveRegs)
+            );
 
-        $numericIds = [];
-        foreach ($currentActiveRegs as $r) {
-            if (is_numeric($r)) {
-                $numericIds[] = (int)$r;
-            } elseif (preg_match('/^CAT-?(\d+)$/i', $r, $m)) {
-                $numericIds[] = (int)$m[1];
+            $numericIds = [];
+            foreach ($currentActiveRegs as $r) {
+                if (is_numeric($r)) {
+                    $numericIds[] = (int)$r;
+                } elseif (preg_match('/^CAT-?(\d+)$/i', $r, $m)) {
+                    $numericIds[] = (int)$m[1];
+                }
+            }
+            $numericIds = array_values(array_unique($numericIds));
+            if (count($numericIds) > 0) {
+                $numPlaceholders = implode(',', array_fill(0, count($numericIds), '?'));
+                Database::execute("UPDATE vehicles SET is_active_fleet = 1 WHERE id IN ($numPlaceholders)", $numericIds);
             }
         }
-        $numericIds = array_values(array_unique($numericIds));
-        if (count($numericIds) > 0) {
-            $numPlaceholders = implode(',', array_fill(0, count($numericIds), '?'));
-            Database::execute("UPDATE vehicles SET is_custom_fleet = 1 WHERE id IN ($numPlaceholders)", $numericIds);
-        }
+    } catch (Throwable $_) {
+        // Safe fallback if column is not yet present on live DB
     }
+
+    try {
+        Database::execute("UPDATE vehicles SET is_custom_fleet = 0 WHERE status != 'removed'");
+        if (count($currentActiveRegs) > 0) {
+            $inPlaceholders = implode(',', array_fill(0, count($currentActiveRegs), '?'));
+            Database::execute(
+                "UPDATE vehicles SET is_custom_fleet = 1 
+                 WHERE UPPER(reg_no) IN ($inPlaceholders) 
+                    OR UPPER(car_id) IN ($inPlaceholders)",
+                array_merge($currentActiveRegs, $currentActiveRegs)
+            );
+        }
+    } catch (Throwable $_) {}
 
     sendJsonResponse([
         'success' => true,

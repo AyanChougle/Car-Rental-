@@ -37,6 +37,7 @@
   --kr-warning:               #fbbf24;
 
   /* Radii */
+  --kr-radius-xs:             6px;
   --kr-radius-sm:             8px;
   --kr-radius-md:             14px;
   --kr-radius-lg:             20px;
@@ -62,4 +63,12 @@
   --kr-z-dropdown:            200;
   --kr-z-drawer:              500;
   --kr-z-modal:               1000;
+
+  /* Component Compatibility Aliases */
+  --surface-media:            var(--kr-surface-media);
+  --surface-control:          var(--kr-surface-control);
+  --border:                   var(--kr-border);
+  --radius-sm:                var(--kr-radius-sm);
+  --radius-md:                var(--kr-radius-md);
+  --radius-lg:                var(--kr-radius-lg);
 }
