@@ -102,9 +102,7 @@ if ($method === 'POST') {
         sendJsonResponse(['success' => true, 'message' => 'Bank details status updated.']);
     }
 
-    if (!$isHost) {
-        sendErrorResponse('Only host accounts can submit bank details.', 403);
-    }
+    // Removed strict isHost check so anyone can submit bank details for host onboarding
 
     $name = trim(preg_replace('/\s+/', ' ', (string)($input['accountHolderName'] ?? $input['fullName'] ?? '')));
     $acct = preg_replace('/\s+/', '', (string)($input['accountNumber'] ?? ''));
