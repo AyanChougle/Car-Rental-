@@ -518,7 +518,7 @@ let currentKpiStats = null;
 async function loadKpiStats() {
   try {
     const selectedHubId = getSelectedHubId();
-    const globalRes = await api.get("/admin/stats?_t=" + Date.now());
+    const globalRes = await api.get("/admin/stats?_t=" + Date.now()).catch(() => null);
     const globalData = globalRes?.data || {};
     if (!selectedHubId) {
       currentKpiStats = globalData ? { ...globalData, _hubScoped: false } : null;
@@ -526,13 +526,33 @@ async function loadKpiStats() {
       return;
     }
 
-    const hubRes = await api.get("/hubs/summary", { hub_id: selectedHubId, _t: Date.now() });
+    let hubRes = null;
+    try {
+      hubRes = await api.get("/hubs/summary.php", { hub_id: selectedHubId, id: selectedHubId, _t: Date.now() });
+    } catch (_) {
+      hubRes = await api.get("/hubs/summary", { hub_id: selectedHubId, id: selectedHubId, _t: Date.now() });
+    }
     if (!hubRes?.success || !hubRes?.data) throw new Error(hubRes?.error || "Hub summary unavailable");
     const hubData = hubRes.data;
     const globalEff = globalData?.effective || globalData?.live || {};
     currentKpiStats = {
-      effective: { ...globalEff, ...hubData, total_users: globalEff.total_users ?? 0, pending_docs: globalEff.pending_docs ?? 0 },
-      live: { ...globalEff, ...hubData },
+      effective: {
+        ...globalEff,
+        ...hubData,
+        total_revenue: Number(hubData.total_revenue ?? 0),
+        month_revenue: Number(hubData.month_revenue ?? 0),
+        total_bookings: Number(hubData.total_bookings ?? 0),
+        paid_bookings: Number(hubData.paid_bookings ?? 0),
+        pending_payments: Number(hubData.pending_payments ?? 0),
+        pending_docs: Number(hubData.pending_docs ?? 0),
+        avg_booking: Number(hubData.avg_booking ?? 0),
+        active_rentals: Number(hubData.active_rentals ?? hubData.on_road_fleet ?? 0),
+        total_users: Number(hubData.total_users ?? globalEff.total_users ?? 0),
+        total_fleet: Number(hubData.total_fleet ?? hubData.fleet_count ?? 0),
+        available_fleet: Number(hubData.available_fleet ?? hubData.available_in_yard ?? 0),
+        fleet_utilization: Number(hubData.fleet_utilization ?? hubData.occupancy_pct ?? 0),
+      },
+      live: { ...hubData },
       _hubScoped: true,
       hub: hubRes.hub || null
     };
@@ -9670,7 +9690,9 @@ async function loadCustomerAnalytics() {
           });
         }
         if (res.value.data && (res.value.success || res.value.status === "success")) {
-          currentKpiStats = res.value.data;
+          if (!currentKpiStats || !currentKpiStats._hubScoped) {
+            currentKpiStats = res.value.data;
+          }
         }
       }
     });
@@ -9862,7 +9884,9 @@ async function loadBookingsAnalytics() {
       });
     }
     if (statsRes.status === "fulfilled" && statsRes.value?.data) {
-      currentKpiStats = statsRes.value.data;
+      if (!currentKpiStats || !currentKpiStats._hubScoped) {
+        currentKpiStats = statsRes.value.data;
+      }
     }
   } catch (err) {
     console.warn("Auto-fetch bookings analytics note:", err);
@@ -10361,6 +10385,7 @@ async function handleHubSubmit(event) {
 
 window.addEventListener("kruizly:hubchange", async (event) => {
   const id = event?.detail?.hubId ? String(event.detail.hubId) : "";
+  setSelectedHubId(id);
   const fleetHub = document.getElementById("fleetHub");
   if (fleetHub) fleetHub.value = id;
   renderSelectedHubContext();

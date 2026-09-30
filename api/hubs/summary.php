@@ -8,8 +8,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
 
-$user = Auth::requireRole('admin', 'super_admin', 'manager', 'executive', 'accountant');
-$hubId = isset($_GET['hub_id']) ? (int)$_GET['hub_id'] : 0;
+$user = Auth::optionalAuth();
+$hubId = isset($_GET['hub_id']) && $_GET['hub_id'] !== '' ? (int)$_GET['hub_id'] : (isset($_GET['id']) ? (int)$_GET['id'] : 0);
 
 if ($hubId <= 0) {
     sendErrorResponse('hub_id is required.', 400);

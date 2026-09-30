@@ -14,7 +14,6 @@ const clearFleetFiltersBtn = document.getElementById("clearFleetFilters");
 
 const state = {
   activeCategory: "all",
-  activeTier: "all",
 };
 
 function formatCurrency(value) {
@@ -65,20 +64,14 @@ function renderFleetCards(records) {
         : "booked";
 
       const bodyType = getVehicleBodyType(vehicle);
-      const isLuxury = (vehicle.category || "").toLowerCase() === "luxury" || bodyType === "luxury";
       const detailsId = `fleet-card-details-${index}`;
-
-      const tierBadge = isLuxury
-        ? `<span class="fleet-badge-tier fleet-badge-tier--luxury">KRUIZLY LUXURY</span>`
-        : `<span class="fleet-badge-tier fleet-badge-tier--main">KRUIZLY MAIN</span>`;
 
       return `
         <article
-          class="fleet-card fleet-card--compact ${isLuxury ? "fleet-card--luxury" : ""}"
+          class="fleet-card fleet-card--compact"
           data-reg="${vehicle.regNo}"
           data-category="${vehicle.category}"
           data-bodytype="${bodyType}"
-          data-tier="${isLuxury ? "luxury" : "main"}"
           data-price="${vehicle.priceDay}"
           data-seats="${vehicle.seats}"
           data-name="${vehicleName}"
@@ -87,7 +80,6 @@ function renderFleetCards(records) {
           data-index="${index}"
         >
           <div class="fleet-card__image">
-            ${tierBadge}
             <img
               src="${imagePath}"
               alt="${vehicleName}"
@@ -124,7 +116,7 @@ function renderFleetCards(records) {
                 <div class="fleet-card__subline">
                   ${vehicle.year || 2026}
                   <span aria-hidden="true">•</span>
-                  ${isLuxury ? "Luxury &amp; Performance" : (vehicle.category ? vehicle.category.toUpperCase() : "STANDARD")}
+                  ${vehicle.category ? vehicle.category.toUpperCase() : "STANDARD"}
                 </div>
               </div>
 
@@ -430,21 +422,11 @@ function applyFilters() {
       });
     }
 
-    // Tier Filter (All / Main / Luxury)
-    const cardTier = card.dataset.tier || (category === "luxury" || bodyType === "luxury" ? "luxury" : "main");
-    let matchesTier = true;
-    if (state.activeTier === "main") {
-      matchesTier = cardTier === "main";
-    } else if (state.activeTier === "luxury") {
-      matchesTier = cardTier === "luxury";
-    }
-
     // Search Query
     const searchableContent = [
       name,
       category,
       bodyType,
-      cardTier,
       transmission,
       fuel,
       card.textContent.toLowerCase(),
@@ -452,7 +434,6 @@ function applyFilters() {
     const matchesSearch = !query || searchableContent.some((value) => value.includes(query));
 
     const isMatch = Boolean(
-      matchesTier &&
       matchesBodyType &&
       matchesTransmission &&
       matchesFuel &&
@@ -551,36 +532,11 @@ if (applyMobileFiltersBtn) {
     closeSidebar();
   });
 }
-
-function initSegmentTabs() {
-  const segmentButtons = document.querySelectorAll(".fleet-segment-btn");
-  segmentButtons.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      segmentButtons.forEach((b) => {
-        b.classList.remove("is-active");
-        b.setAttribute("aria-selected", "false");
-      });
-      btn.classList.add("is-active");
-      btn.setAttribute("aria-selected", "true");
-      state.activeTier = btn.dataset.tier || "all";
-      applyFilters();
-    });
-  });
-}
-
 function resetAllFilters() {
   document.querySelectorAll(".filter-check-input").forEach((chk) => (chk.checked = false));
   if (search) search.value = "";
-  state.activeTier = "all";
-  document.querySelectorAll(".fleet-segment-btn").forEach((b) => {
-    const isAll = b.dataset.tier === "all";
-    b.classList.toggle("is-active", isAll);
-    b.setAttribute("aria-selected", String(isAll));
-  });
   applyFilters();
 }
-
-initSegmentTabs();
 
 if (resetSidebarFilters) resetSidebarFilters.addEventListener("click", resetAllFilters);
 if (clearFleetFiltersBtn) clearFleetFiltersBtn.addEventListener("click", resetAllFilters);

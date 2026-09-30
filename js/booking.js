@@ -95,36 +95,41 @@ function showUnavailable(message) {
 }
 
 if (!vehicle) {
-  if (queryId) {
-    if (bookingTitle) bookingTitle.textContent = "Loading vehicle...";
-    api.get("/vehicles")
-      .then((res) => {
-        const list = res?.vehicles || [];
+  if (bookingTitle) bookingTitle.textContent = "Loading vehicle...";
+  api.get("/vehicles")
+    .then((res) => {
+      const list = Array.isArray(res?.vehicles) ? res.vehicles : [];
+      let matched = null;
+      if (queryId) {
         const qStr = String(queryId).toLowerCase().trim();
-        const matched = list.find((v) =>
+        matched = list.find((v) =>
           (v.id && (String(v.id).toLowerCase() === qStr || String(v.id).replace(/\D/g, "") === qStr)) ||
           (v.carId && String(v.carId).toLowerCase() === qStr) ||
           (v.regNo && String(v.regNo).toLowerCase() === qStr) ||
           `${v.brand} ${v.model}`.toLowerCase() === qStr ||
           (v.slug && String(v.slug).toLowerCase() === qStr)
         );
-        if (matched) {
-          if (!matched.available) {
-            if (vehicleName) vehicleName.textContent = matched.brand + " " + matched.model;
-            showUnavailable("This car is currently booked. Please choose another vehicle from the fleet.");
-          } else {
-            initBooking(matched);
-          }
+      }
+      if (!matched && list.length > 0) {
+        matched = list.find((v) => v.available !== false && v.status !== "unavailable") || list[0];
+      }
+      if (matched) {
+        if (matched.available === false || matched.status === "unavailable") {
+          if (vehicleName) vehicleName.textContent = matched.brand + " " + matched.model;
+          showUnavailable("This car is currently booked. Please choose another vehicle from the fleet.");
         } else {
-          showNoVehicleSelected();
+          try {
+            sessionStorage.setItem("crp_selectedCarId", matched.id);
+          } catch (_) {}
+          initBooking(matched);
         }
-      })
-      .catch(() => {
+      } else {
         showNoVehicleSelected();
-      });
-  } else {
-    showNoVehicleSelected();
-  }
+      }
+    })
+    .catch(() => {
+      showNoVehicleSelected();
+    });
 } else if (!vehicle.available) {
   if (vehicleName)
     vehicleName.textContent = vehicle.brand + " " + vehicle.model;
@@ -552,7 +557,19 @@ async function initBooking(vehicle) {
       });
       calculateBooking();
     });
-  });
+  const urlPaymentPlan = params.get("paymentPlan");
+  if (urlPaymentPlan && paymentPlanInputs.some((p) => p.value === urlPaymentPlan)) {
+    paymentPlanInputs.forEach((input) => {
+      input.checked = input.value === urlPaymentPlan;
+    });
+    document.querySelectorAll(".booking-payment-option").forEach((option) => {
+      const radio = option.querySelector('input[name="paymentPlan"]');
+      option.classList.toggle(
+        "booking-payment-option--selected",
+        Boolean(radio && radio.checked),
+      );
+    });
+  }
 
   synchroniseRentalDates(true);
   calculateBooking();

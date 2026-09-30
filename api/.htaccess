@@ -28,11 +28,13 @@
     RewriteRule ^users/?$ users/index.php [L,QSA]
 
     # Hubs
-    RewriteRule ^hubs/([^/]+)/status/?$ hubs/detail.php?id=$1&action=status [L,QSA]
-    RewriteRule ^hubs/([^/]+)/?$ hubs/detail.php?id=$1 [L,QSA]
+    RewriteRule ^hubs/summary(?:\.php)?/?$ hubs/summary.php [L,QSA]
+    RewriteRule ^hubs/([0-9]+)/status/?$ hubs/detail.php?id=$1&action=status [L,QSA]
+    RewriteRule ^hubs/([0-9]+)/?$ hubs/detail.php?id=$1 [L,QSA]
     RewriteRule ^hubs/?$ hubs/index.php [L,QSA]
 
     # Vehicles
+    RewriteRule ^vehicles/active-fleet(?:\.php)?/?$ vehicles/active-fleet.php [L,QSA]
     RewriteRule ^vehicles/([^/]+)/?$ vehicles/detail.php?regNo=$1 [L,QSA]
     RewriteRule ^vehicles/?$ vehicles/index.php [L,QSA]
 

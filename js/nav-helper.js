@@ -173,6 +173,14 @@ if (document.readyState === "loading") {
 }
 
 async function renderHubSelector() {
+  const currentPath = (window.location.pathname.split("/").pop() || "index.html").toLowerCase();
+  const internalPages = ["admin.html", "manager.html", "executive.html", "accounts.html", "booking.html", "payment.html"];
+  if (internalPages.includes(currentPath) || document.querySelector(".hub-context-bar")) {
+    const existing = document.getElementById("global-hub-selector");
+    if (existing) existing.remove();
+    return;
+  }
+
   const headerInner = document.querySelector(".header-inner");
   if (!headerInner || document.getElementById("global-hub-selector")) return;
 
@@ -186,9 +194,12 @@ async function renderHubSelector() {
       <option value="">Loading Hubs...</option>
     </select>`;
 
-  const logo = headerInner.querySelector(".logo");
-  if (logo) logo.insertAdjacentElement("afterend", selectorWrap);
-  else headerInner.insertBefore(selectorWrap, headerInner.firstChild);
+  const mobileToggle = headerInner.querySelector(".mobile-nav-toggle");
+  if (mobileToggle) {
+    headerInner.insertBefore(selectorWrap, mobileToggle);
+  } else {
+    headerInner.appendChild(selectorWrap);
+  }
 
   const selectEl = document.getElementById("kruizly-hub-select");
   const apiBase = (window.__KRUIZLY_API_URL__ || localStorage.getItem("kruizly_api_url") ||

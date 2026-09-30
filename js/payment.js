@@ -227,7 +227,17 @@ const urlParams =
   );
 
 const bookingId =
-  urlParams.get("booking");
+  urlParams.get("booking") ||
+  urlParams.get("bookingId") ||
+  urlParams.get("id") ||
+  (function () {
+    try {
+      const p = JSON.parse(sessionStorage.getItem("kruizly_pending_booking") || "null");
+      return p?.bookingId || p?.bookingNumber || null;
+    } catch (_) {
+      return null;
+    }
+  })();
 
 
 // ============================================================

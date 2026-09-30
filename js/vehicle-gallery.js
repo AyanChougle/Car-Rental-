@@ -65,7 +65,7 @@
 	document.title = `${vehicle.brand} ${vehicle.model} | KRUIZLY`;
 	const catEl = document.getElementById("vehicleCategory");
 	if (catEl) {
-		catEl.textContent = isLuxury ? "KRUIZLY Luxury & Performance" : `KRUIZLY Main — ${(vehicle.category || "Standard").toUpperCase()}`;
+		catEl.textContent = vehicle.category || "Standard";
 	}
 	nameEl.textContent = `${vehicle.brand} ${vehicle.model}`;
 	document.getElementById("vehicleMetaRow").innerHTML = `
