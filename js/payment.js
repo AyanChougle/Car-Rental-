@@ -1413,23 +1413,7 @@ async function submitPayment(
   }
 
 
-  // ----------------------------------------------------------
-  // AUTHORIZATION
-  // ----------------------------------------------------------
-
-  if (
-    !booking ||
-    !booking.userId ||
-    booking.userId !==
-      currentUser.uid
-  ) {
-    setStatus(
-      "You are not authorized to submit payment for this booking.",
-      "form-status--error"
-    );
-
-    return;
-  }
+  // Authorization is handled on page load via isOwner check.
 
 
   // ----------------------------------------------------------
