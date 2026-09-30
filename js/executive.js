@@ -1998,10 +1998,8 @@ function renderHostBankAudits() {
           <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor}22;color:${statusColor};text-transform:uppercase;">${escapeHtml(bank.status)}</span>
         </td>
         <td style="padding:12px;border-bottom:1px solid #222;text-align:right;">
-          ${isPending ? `
-            <button type="button" class="btn btn-dark btn-sm view-passbook-btn" data-uid="${escapeHtml(bank.firebaseUid)}" data-url="${escapeHtml(bank.passbookUrl || '')}" style="padding:5px 12px;font-size:12.5px;">Inspect & Review</button>
-          ` : `<span style="color:var(--sub);font-size:0.8rem;">Done</span>`}
-        </td>
+            <button type="button" class="btn btn-dark btn-sm view-passbook-btn" data-uid="${escapeHtml(bank.firebaseUid)}" data-url="${escapeHtml(bank.passbookUrl || '')}" data-status="${escapeHtml(bank.status)}" style="padding:5px 12px;font-size:12.5px;">Inspect & Review</button>
+          </td>
       </tr>
     `;
   });
@@ -2011,7 +2009,7 @@ function renderHostBankAudits() {
 
   wrap.querySelectorAll(".view-passbook-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      openPassbookModal(btn.dataset.uid, btn.dataset.url);
+      openPassbookModal(btn.dataset.uid, btn.dataset.url, btn.dataset.status);
     });
   });
 
@@ -2047,7 +2045,7 @@ function renderHostBankAudits() {
 
 
 let currentBankReviewUid = null;
-function openPassbookModal(uid, url) {
+function openPassbookModal(uid, url, status) {
   currentBankReviewUid = uid;
   const modal = $("execBankPassbookModal");
   const container = $("execBankPassbookContainer");
@@ -2061,6 +2059,13 @@ function openPassbookModal(uid, url) {
   } else {
     container.innerHTML = `<img src="${escapeHtml(url)}" style="max-width:100%; max-height:100%; object-fit:contain;" alt="Passbook" />`;
   }
+
+  // Hide action buttons if already verified or rejected
+  const approveBtn = $("execApproveBankBtn");
+  const rejectBtn = $("execRejectBankBtn");
+  if (approveBtn) approveBtn.style.display = status === 'pending' ? 'inline-block' : 'none';
+  if (rejectBtn) rejectBtn.style.display = status === 'pending' ? 'inline-block' : 'none';
+
   safeShow(modal);
 }
 
