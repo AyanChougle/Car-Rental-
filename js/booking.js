@@ -658,7 +658,7 @@ async function initBooking(vehicle) {
     if (submitButton) submitButton.disabled = true;
 
     if (statusEl) {
-      statusEl.textContent = "Creating your booking in Firebase...";
+      statusEl.textContent = "Saving your booking…";
       statusEl.classList.remove("form-status--error");
     }
 
@@ -686,7 +686,6 @@ async function initBooking(vehicle) {
         vehicleReg: vehicle.regNo,
         vehicleName: vehicle.brand + " " + vehicle.model,
         vehicleCategory: vehicle.category,
-        vehicleIcon: "",
 
         pickupDate: pDate ? `${toLocalDateTime(pDate).replace("T", " ")}:00` : new Date().toISOString(),
         dropDate: dDate ? `${toLocalDateTime(dDate).replace("T", " ")}:00` : new Date().toISOString(),
@@ -707,25 +706,18 @@ async function initBooking(vehicle) {
           : calculation.couponApplied
             ? calculation.couponApplied.code
             : null,
-        couponCodes: calculation.appliedCoupons?.length
-          ? calculation.appliedCoupons.map((c) => c.code)
-          : calculation.couponApplied
-            ? [calculation.couponApplied.code]
-            : [],
-        appliedCoupons: calculation.appliedCoupons || [],
         couponDiscount: calculation.couponDiscount || 0,
         finalAmount: calculation.finalAmount,
         totalAmount: calculation.finalAmount,
 
         paymentPlan: calculation.paymentPlan,
         advanceAmount: calculation.advanceAmount,
-        paymentAmount: calculation.paymentAmount,
         remainingAmount: calculation.remainingAmount,
         remainingBalance: calculation.remainingAmount,
 
-        location: vehicle.location || vehicle.hubName || "Hub not assigned",
-        pickupLocation: vehicle.location || vehicle.hubName || "Hub not assigned",
-        dropLocation: vehicle.location || vehicle.hubName || "Hub not assigned",
+        location: vehicle.location || vehicle.hubName || "",
+        pickupLocation: vehicle.location || vehicle.hubName || "",
+        dropLocation: vehicle.location || vehicle.hubName || "",
 
         status: "pending_payment",
         bookingStatus: "pending_payment",
@@ -733,16 +725,36 @@ async function initBooking(vehicle) {
         paymentRef: null,
       };
 
-      // Store pending booking in sessionStorage so NO abandoned booking is created in Firestore
-      sessionStorage.setItem("kruizly_pending_booking", JSON.stringify(bookingRecord));
-
+      // ── STEP 1: POST to MySQL backend — source of truth ──────────────
+      let confirmedBookingId = numericBookingId;
       try {
+        const createRes = await api.post("/bookings/create", bookingRecord);
+        if (createRes?.bookingId) {
+          confirmedBookingId          = createRes.bookingId;
+          bookingRecord.bookingId     = confirmedBookingId;
+          bookingRecord.bookingNumber = confirmedBookingId;
+        }
+      } catch (apiErr) {
+        console.error("Backend booking save failed:", apiErr);
+        if (statusEl) {
+          statusEl.textContent =
+            "Could not save your booking. Please check your connection and try again.";
+          statusEl.classList.add("form-status--error");
+        }
+        if (submitButton) submitButton.disabled = false;
+        return;
+      }
+
+      // ── STEP 2: Cache in sessionStorage as a fast-path for payment page ──
+      try {
+        sessionStorage.setItem("kruizly_pending_booking", JSON.stringify(bookingRecord));
         sessionStorage.removeItem("crp_pickupDate");
         sessionStorage.removeItem("crp_dropDate");
       } catch (_) {}
 
+      // ── STEP 3: Redirect to payment with the real server-issued bookingId ──
       const paymentParams = new URLSearchParams();
-      paymentParams.set("booking", bookingRecord.bookingId);
+      paymentParams.set("booking", confirmedBookingId);
       window.location.href = "payment.html?" + paymentParams.toString();
     } catch (error) {
       console.error("Booking preparation failed:", error);
