@@ -465,7 +465,21 @@ function initTabs() {
    LOAD ALL DATA FROM HOSTINGER MYSQL VIA API
    ========================================================================== */
 
+
+async function loadExecutiveHostBank() {
+  try {
+    const res = await api.get("/users/bank-details", { all: 1 });
+    executiveHostBankData = res.bankDetails || [];
+    renderHostBankAudits();
+  } catch (err) {
+    console.error("Failed to load executive host bank details", err);
+    const wrap = $("execBankWrap");
+    if (wrap) wrap.innerHTML = '<div class="manager-state" style="padding:24px;text-align:center;color:#ef476f;">Failed to load host bank details.</div>';
+  }
+}
+
 async function loadAllExecutiveData() {
+    loadExecutiveHostBank();
   try {
     const selectedHubId = window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : "";
     const hubParams = selectedHubId ? { hub_id: selectedHubId } : {};
@@ -541,8 +555,7 @@ async function loadAllExecutiveData() {
     renderKycTable();
     renderFleetGrid();
     renderCouponsTable();
-    executiveHostBankData = bankRes?.bankDetails || [];
-    renderHostBankAudits();
+    // Host bank now loaded independently via loadExecutiveHostBank()
   } catch (err) {
     console.error("Failed to load executive data:", err);
   }
