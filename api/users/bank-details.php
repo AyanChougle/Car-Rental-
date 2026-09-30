@@ -16,7 +16,7 @@ $role = strtolower((string)($user['role'] ?? 'customer'));
 $isStaff = in_array($role, ['admin', 'super_admin', 'manager', 'accountant', 'executive'], true);
 $isHost = ($role === 'host');
 
-if (!$isHost && !$isStaff && $role !== 'customer') {
+if (!$isHost && !$isStaff) {
     sendErrorResponse('Bank details are only available for host accounts.', 403);
 }
 
@@ -102,7 +102,9 @@ if ($method === 'POST') {
         sendJsonResponse(['success' => true, 'message' => 'Bank details status updated.']);
     }
 
-    // Removed strict isHost check so anyone can submit bank details for host onboarding
+    if (!$isHost) {
+        sendErrorResponse('Only host accounts can submit bank details.', 403);
+    }
 
     $name = trim(preg_replace('/\s+/', ' ', (string)($input['accountHolderName'] ?? $input['fullName'] ?? '')));
     $acct = preg_replace('/\s+/', '', (string)($input['accountNumber'] ?? ''));
