@@ -4,7 +4,7 @@
 
 import { checkAuth, getCurrentUser } from "./auth.js?v=20260917-v1";
 import { api } from "./kruizly-api.js?v=20260917-v1";
-import "./nav-helper.js?v=20260928-v2";
+import "./nav-helper.js?v=20260930-v7";
 import { generateNumericBookingId } from "./booking-reference.js";
 import {
   calculateBookingPrice,
@@ -726,10 +726,6 @@ async function initBooking(vehicle) {
         location: vehicle.location || vehicle.hubName || "Hub not assigned",
         pickupLocation: vehicle.location || vehicle.hubName || "Hub not assigned",
         dropLocation: vehicle.location || vehicle.hubName || "Hub not assigned",
-        pickup_hub_id: vehicle.hubId || vehicle.hub_id || (window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : null),
-        drop_hub_id: vehicle.hubId || vehicle.hub_id || (window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : null),
-        pickupHubId: vehicle.hubId || vehicle.hub_id || (window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : null),
-        dropHubId: vehicle.hubId || vehicle.hub_id || (window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : null),
 
         status: "pending_payment",
         bookingStatus: "pending_payment",

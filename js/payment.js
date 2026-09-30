@@ -1159,6 +1159,7 @@ async function initialisePaymentUI(booking) {
     booking.totalAmount ??
     booking.finalAmount ??
     booking.amount ??
+    booking.rentalTotal ??
     0
   );
 
@@ -1896,7 +1897,3 @@ async function startPaymentPage() {
 // ============================================================
 
 startPaymentPage();
-
-window.addEventListener("kruizly:hubchange", () => {
-  if (currentBooking) updatePaymentHubContext(currentBooking);
-});
