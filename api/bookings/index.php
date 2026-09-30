@@ -9,6 +9,17 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
 
+// Auto-heal missing Hub columns if migration hasn't been run
+try {
+    Database::execute("SELECT pickup_hub_id FROM bookings LIMIT 1");
+} catch (Exception $e) {
+    if (strpos($e->getMessage(), 'Unknown column') !== false) {
+        try { Database::execute("ALTER TABLE bookings ADD COLUMN pickup_hub_id INT DEFAULT NULL AFTER location, ADD COLUMN drop_hub_id INT DEFAULT NULL AFTER pickup_hub_id"); } catch(Exception $e2) {}
+        try { Database::execute("UPDATE bookings b JOIN vehicles v ON v.reg_no = b.vehicle_reg SET b.pickup_hub_id = v.hub_id, b.drop_hub_id = v.hub_id WHERE b.pickup_hub_id IS NULL AND v.hub_id IS NOT NULL"); } catch(Exception $e2) {}
+    }
+}
+
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'POST') {

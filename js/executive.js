@@ -255,6 +255,7 @@ let allPayments = [];
 let allVerifications = [];
 let allFleet = [];
 let allCoupons = [];
+let executiveHostBankData = [];
 
 let execBookingsPerPage = 5;
 let execPaymentsPerPage = 5;
@@ -469,9 +470,9 @@ async function loadAllExecutiveData() {
       api.get("/bookings", hubParams).catch(() => ({ bookings: [] })),
       api.get("/payments", hubParams).catch(() => ({ payments: [] })),
       api.get("/verification", hubParams).catch(() => ({ verifications: [] })),
-      api.get("/users/bank-details", {all: 1}).catch(() => ({ bankDetails: [] })),
       api.get("/vehicles", hubParams).catch(() => ({ vehicles: [] })),
-      api.get("/coupons", hubParams).catch(() => ({ coupons: [] }))
+      api.get("/coupons", hubParams).catch(() => ({ coupons: [] })),
+      api.get("/users/bank-details", {all: 1}).catch(() => ({ bankDetails: [] }))
     ]);
 
     const rawBk = Array.isArray(bookingsRes?.bookings) ? bookingsRes.bookings : [];
@@ -537,6 +538,8 @@ async function loadAllExecutiveData() {
     renderKycTable();
     renderFleetGrid();
     renderCouponsTable();
+    executiveHostBankData = bankRes?.bankDetails || [];
+    renderHostBankAudits();
   } catch (err) {
     console.error("Failed to load executive data:", err);
   }
