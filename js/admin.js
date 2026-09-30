@@ -10407,3 +10407,32 @@ if (typeof window !== "undefined") {
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindHubModalEvents, { once: true });
   else bindHubModalEvents();
 }
+
+
+document.addEventListener("DOMContentLoaded", () => {
+  const btn = document.getElementById("runDbMigrationBtn");
+  if (btn) {
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      btn.textContent = "Running Migration... Please wait.";
+      const out = document.getElementById("migrationOutput");
+      out.style.display = "block";
+      out.textContent = "Requesting token...";
+      try {
+        const { getAuthToken } = await import("./auth.js");
+        const token = await getAuthToken();
+        out.textContent += "\nCalling https://kruizly.com/api/migrate_hubs.php...";
+        const res = await fetch("https://kruizly.com/api/migrate_hubs.php", {
+          headers: { Authorization: "Bearer " + token }
+        });
+        const text = await res.text();
+        out.textContent += "\n\n" + text;
+        if (text.includes("Added 'pickup_hub_id'")) {
+          out.textContent += "\n\n✅ SUCCESS! Please refresh the page.";
+        }
+      } catch (err) {
+        out.textContent += "\n\nERROR: " + err.message;
+      }
+    });
+  }
+});
