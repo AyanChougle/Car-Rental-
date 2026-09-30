@@ -241,7 +241,7 @@ function getFleetVehicle(query) {
   
   const direct = fleetVehicles.find(
     (v) =>
-      (v.id && (v.id.toLowerCase() === q || String(v.id).replace(/\D/g, "") === q)) ||
+      (v.id && (String(v.id).toLowerCase() === q || String(v.id).replace(/\D/g, "") === q)) ||
       (v.slug && v.slug.toLowerCase() === q) ||
       (v.regNo && v.regNo.toLowerCase() === q) ||
       `${v.brand} ${v.model}`.toLowerCase() === q ||
