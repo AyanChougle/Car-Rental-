@@ -454,6 +454,9 @@ function initTabs() {
         execCouponsPage = 1;
         renderCouponsTable();
       }
+      if (targetTab === "tab-exec-bank") {
+        loadExecutiveHostBank();
+      }
     });
   });
 }

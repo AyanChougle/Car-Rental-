@@ -10271,6 +10271,7 @@ function refreshActiveAdminTab() {
   else if (targetId === "tab-customers") loadCustomerAnalytics();
   else if (targetId === "tab-bookings-analytics") loadBookingsAnalytics();
   else if (targetId === "tab-hubs") loadAdminHubs();
+  else if (targetId === "tab-host-bank") loadAdminHostBank();
   else if (targetId === "tab-fleet") loadFleetManagement();
   else if (targetId === "tab-hosts") loadHostCars();
   else if (targetId === "tab-coupons") loadCoupons();
