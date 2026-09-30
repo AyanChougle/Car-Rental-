@@ -41,7 +41,7 @@ try { Database::execute("ALTER TABLE host_bank_details ADD COLUMN branch_name VA
 
 function buildMediaUrl(?string $id): ?string {
     if (!$id) return null;
-    return "https://kruizly.com/api/media/download.php?id=" . urlencode($id);
+    return "https://kruizly.com/api/media/file.php?id=" . urlencode($id);
 }
 
 function bankMask(string $n): string {
