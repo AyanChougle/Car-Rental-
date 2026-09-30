@@ -2012,34 +2012,6 @@ function renderHostBankAudits() {
       openPassbookModal(btn.dataset.uid, btn.dataset.url, btn.dataset.status);
     });
   });
-
-  
-        if(res.success) {
-          alert("Verified successfully.");
-          loadAllExecutiveData();
-        } else {
-          throw new Error(res.error || "Verification failed");
-        }
-      } catch (err) {
-        alert(err.message);
-        btn.disabled = false;
-      }
-    });
-  });
-
-  
-        if(res.success) {
-          alert("Rejected successfully.");
-          loadAllExecutiveData();
-        } else {
-          throw new Error(res.error || "Rejection failed");
-        }
-      } catch (err) {
-        alert(err.message);
-        btn.disabled = false;
-      }
-    });
-  });
 }
 
 

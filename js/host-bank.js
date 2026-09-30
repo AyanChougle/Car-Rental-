@@ -34,7 +34,16 @@ async function loadBankDetails() {
     $("bankAccountNumber").value = d.accountNumberMasked || d.accountNumber || "";
     $("bankIfsc").value = d.ifscCode || "";
     passbookMediaId = d.passbookMediaId || "";
-    if (passbookMediaId) $("bankPassbookNote").textContent = "Passbook photo uploaded. Choose a new file only to replace it.";
+    if (passbookMediaId) {
+      $("bankPassbookNote").textContent = "Passbook photo uploaded. Choose a new file only to replace it.";
+      if (d.passbookUrl) {
+        const img = $("bankPassbookPreview");
+        if (img) {
+          img.src = d.passbookUrl;
+          img.hidden = false;
+        }
+      }
+    }
     setPill(d.status);
     if (d.status === "rejected" && d.rejectionReason) setStatus("Rejected: " + d.rejectionReason, "error");
   } catch (e) {

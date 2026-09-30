@@ -1011,7 +1011,7 @@ let currentAdminBankReviewUid = null;
 
 async function loadAdminHostBank() {
   try {
-    const res = await get("/users/bank-details", { all: 1 });
+    const res = await api.get("/users/bank-details", { all: 1 });
     adminHostBankData = res.bankDetails || [];
     renderAdminHostBank();
   } catch (err) {
@@ -1116,7 +1116,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!confirm("Are you sure you want to verify this bank account?")) return;
     document.getElementById("adminApproveBankBtn").disabled = true;
     try {
-      const res = await post("/users/bank-details", { uid: currentAdminBankReviewUid, status: "verified" });
+      const res = await api.post("/users/bank-details", { uid: currentAdminBankReviewUid, status: "verified" });
       if(res.success) {
         alert("Verified successfully.");
         const modal = document.getElementById("adminBankPassbookModal");
@@ -1137,7 +1137,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (reason === null) return;
     document.getElementById("adminRejectBankBtn").disabled = true;
     try {
-      const res = await post("/users/bank-details", { uid: currentAdminBankReviewUid, status: "rejected", rejectionReason: reason });
+      const res = await api.post("/users/bank-details", { uid: currentAdminBankReviewUid, status: "rejected", rejectionReason: reason });
       if(res.success) {
         alert("Rejected successfully.");
         const modal = document.getElementById("adminBankPassbookModal");

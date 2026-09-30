@@ -38,6 +38,12 @@ Database::execute("CREATE TABLE IF NOT EXISTS host_bank_details (
 
 try { Database::execute("ALTER TABLE host_bank_details ADD COLUMN branch_name VARCHAR(255) DEFAULT NULL AFTER ifsc_code"); } catch (Exception $e) {}
 
+
+function buildMediaUrl(?string $id): ?string {
+    if (!$id) return null;
+    return "https://kruizly.com/api/media/download.php?id=" . urlencode($id);
+}
+
 function bankMask(string $n): string {
     $len = strlen($n);
     return $len <= 4 ? $n : str_repeat('•', $len - 4) . substr($n, -4);
@@ -51,6 +57,7 @@ function bankPayload(?array $r, bool $full): ?array {
         'accountNumberMasked' => bankMask((string)$r['account_number']),
         'ifscCode' => $r['ifsc_code'],
         'passbookMediaId' => $r['passbook_media_id'],
+          'passbookUrl' => buildMediaUrl($r['passbook_media_id'] ?? null),
         'status' => $r['status'],
         'rejectionReason' => $r['rejection_reason'],
         'updatedAt' => $r['updated_at'],

@@ -1804,6 +1804,24 @@
             </div>
           </section>
 
+          
+          <!-- TAB: HOST BANK AUDITS -->
+          <section id="tab-host-bank" class="tab-panel" hidden>
+            <div class="card admin-panel-card">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <div>
+                  <h2 style="margin: 0; font-size: 20px;">Host Bank Details Verification</h2>
+                  <p style="margin: 5px 0 0; color: var(--sub); font-size: 14px;">Review and verify host bank accounts and passbook photos.</p>
+                </div>
+              </div>
+              <div id="adminBankWrap" class="admin-table-container">
+                <div style="padding:40px;text-align:center;color:var(--sub);font-size:0.9rem;">
+                  Loading host bank details...
+                </div>
+              </div>
+            </div>
+          </section>
+
           <!-- TAB 6: COUPON MANAGEMENT -->
           <section id="tab-coupons" class="tab-panel" hidden>
             <div class="card admin-panel-card coupon-management-card">
@@ -3819,5 +3837,22 @@
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script type="module" src="js/admin.js?v=20260930-v5"></script>
     <script src="js/glass-ui.js?v=20260925-v1"></script>
+
+    <!-- MODAL: HOST BANK PASSBOOK PREVIEW -->
+    <div id="adminBankPassbookModal" class="modal admin-modal" hidden style="display:none;align-items:center;justify-content:center;">
+      <div class="card admin-inspect-modal-card" style="max-width: 600px; width:100%; position:relative;">
+        <button id="closeAdminBankPassbookModal" class="admin-inspect-close" aria-label="Close modal">&times;</button>
+        <h3 class="admin-modal-title">Passbook Verification</h3>
+        <p class="admin-modal-subtitle" style="color:var(--sub);font-size:14px;">Review the host's uploaded passbook photo.</p>
+        <div id="adminBankPassbookContainer" style="margin-top: 15px; width: 100%; height: 400px; background: #111; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <!-- Image or iframe will be injected here -->
+        </div>
+        <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
+          <button id="adminRejectBankBtn" class="btn btn-outline" style="color: #ef476f; border-color: #ef476f;">Reject Details</button>
+          <button id="adminApproveBankBtn" class="btn btn-primary">Verify &amp; Approve</button>
+        </div>
+      </div>
+    </div>
+
 </body>
 </html>
