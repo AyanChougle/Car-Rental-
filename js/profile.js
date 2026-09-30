@@ -6,7 +6,7 @@
 
 import { auth } from "./firebase-init.js";
 import { checkAuth, getCurrentUser, logout } from "./auth.js?v=20260917-v1";
-import { api } from "./kruizly-api.js?v=20260917-v1";
+import { api, API_BASE_URL } from "./kruizly-api.js?v=20260917-v1";
 import "./nav-helper.js?v=20260928-v2";
 import { formatBookingNumber } from "./booking-reference.js";
 
@@ -2493,8 +2493,7 @@ async function loadUserMedia(user) {
         const fileName = item.originalName || "Uploaded Media";
         const dateFormatted = formatDate(item.createdAt || item.uploadedAt);
         const mediaId = item.mediaId || item.id;
-        const fileUrl =
-          item.url || `/api/media/file.php?id=${encodeURIComponent(mediaId)}`;
+        const fileUrl = item.url || `${API_BASE_URL}/media/file.php?id=${encodeURIComponent(mediaId)}`;
 
         return `
         <div class="media-card" style="position:relative;border-radius:14px;overflow:hidden;background:rgba(255,255,255,0.035);border:1px solid var(--kr-border);display:flex;flex-direction:column;">
