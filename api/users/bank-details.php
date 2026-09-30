@@ -107,6 +107,7 @@ if ($method === 'POST') {
     $name = trim(preg_replace('/\s+/', ' ', (string)($input['accountHolderName'] ?? $input['fullName'] ?? '')));
     $acct = preg_replace('/\s+/', '', (string)($input['accountNumber'] ?? ''));
     $ifsc = strtoupper(preg_replace('/\s+/', '', (string)($input['ifscCode'] ?? $input['ifsc'] ?? '')));
+    $branch = trim((string)($input['branchName'] ?? ''));
     $passbook = trim((string)($input['passbookMediaId'] ?? ''));
 
     $existing = Database::fetchOne("SELECT * FROM host_bank_details WHERE firebase_uid = ? LIMIT 1", [$user['firebase_uid']]);
@@ -124,8 +125,8 @@ if ($method === 'POST') {
     if (!preg_match('/^\d{9,18}$/', $acct)) {
         sendErrorResponse('Account number must be 9 to 18 digits.', 400);
     }
-    if (!preg_match('/^[A-Z]{4}0[A-Z0-9]{6}$/', $ifsc)) {
-        sendErrorResponse('Enter a valid 11-character IFSC code (e.g. SBIN0001234).', 400);
+    if (!preg_match('/^[A-Z0-9]{11}$/', $ifsc)) {
+        sendErrorResponse('Enter a valid 11-character IFSC code.', 400);
     }
     if ($passbook === '') {
         sendErrorResponse('Upload a clear photo of your passbook front page.', 400);
@@ -133,15 +134,16 @@ if ($method === 'POST') {
 
     Database::execute(
         "INSERT INTO host_bank_details (firebase_uid, user_id, account_holder_name, account_number, ifsc_code, branch_name, passbook_media_id, status)
-         VALUES (?, ?, ?, ?, ?, ?, 'pending')
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
          ON DUPLICATE KEY UPDATE
             user_id = VALUES(user_id),
             account_holder_name = VALUES(account_holder_name),
             account_number = VALUES(account_number),
             ifsc_code = VALUES(ifsc_code),
+            branch_name = VALUES(branch_name),
             passbook_media_id = VALUES(passbook_media_id),
             status = 'pending', rejection_reason = NULL, verified_by = NULL, verified_at = NULL",
-        [$user['firebase_uid'], !empty($user['id']) ? (int)$user['id'] : null, $name, $acct, $ifsc, $passbook]
+        [$user['firebase_uid'], !empty($user['id']) ? (int)$user['id'] : null, $name, $acct, $ifsc, $branch, $passbook]
     );
 
     $row = Database::fetchOne("SELECT * FROM host_bank_details WHERE firebase_uid = ? LIMIT 1", [$user['firebase_uid']]);

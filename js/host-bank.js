@@ -86,7 +86,7 @@ async function init() {
 
     if (name.length < 3) return setStatus("Enter your full name as on the passbook.", "error");
     if (!acct.includes("•") && !/^\d{9,18}$/.test(acct)) return setStatus("Account number must be 9 to 18 digits.", "error");
-    if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) return setStatus("Enter a valid IFSC code (e.g. SBIN0001234).", "error");
+    if (!/^[A-Z0-9]{11}$/.test(ifsc)) return setStatus("Enter a valid 11-character IFSC code.", "error");
     if (!file && !passbookMediaId) return setStatus("Upload a photo of your passbook front page.", "error");
 
     saveBtn.disabled = true;
