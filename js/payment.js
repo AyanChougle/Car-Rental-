@@ -22,7 +22,7 @@ import { api } from "./kruizly-api.js?v=20260917-v1";
 import { PAYMENT_CONFIG } from "./payment-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
 
-import "./nav-helper.js?v=20260928-v2";
+import "./nav-helper.js?v=20260930-v6";
 import {
   calculateDuration,
   formatCurrency,
@@ -1147,21 +1147,8 @@ function updatePaymentPlan(newPlan) {
 // INITIALISE PAYMENT UI
 // ============================================================
 
-function updatePaymentHubContext(booking) {
-  const hubNameEl = document.getElementById("paymentHubName");
-  const hubCodeEl = document.getElementById("paymentHubCode");
-  const hubId = booking?.pickupHubId || booking?.pickup_hub_id || booking?.hubId || booking?.hub_id || "";
-  const selectedId = window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : "";
-  const hub = Array.isArray(window.KRUIZLY_HUBS)
-    ? window.KRUIZLY_HUBS.find(h => String(h.id) === String(hubId || selectedId))
-    : null;
-  if (hubNameEl) hubNameEl.textContent = hub?.name || booking?.pickupHubName || booking?.pickupLocation || booking?.location || "Hub not assigned";
-  if (hubCodeEl) hubCodeEl.textContent = hub?.code || (hubId ? `Hub #${hubId}` : "—");
-}
-
 async function initialisePaymentUI(booking) {
   console.log("Initialising payment UI...", booking);
-  updatePaymentHubContext(booking);
 
   currentBooking = booking;
 
