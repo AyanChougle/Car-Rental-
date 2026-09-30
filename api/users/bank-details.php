@@ -14,7 +14,7 @@ require_once __DIR__ . '/../middleware/auth.php';
 $user = Auth::requireAuth();
 $role = strtolower((string)($user['role'] ?? 'customer'));
 $isStaff = in_array($role, ['admin', 'super_admin', 'manager', 'accountant', 'executive'], true);
-$isHost = ($role === 'host');
+$isHost = ($role === 'host' || $role === 'admin');
 
 if (!$isHost && !$isStaff) {
     sendErrorResponse('Bank details are only available for host accounts.', 403);

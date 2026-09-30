@@ -47,7 +47,7 @@ async function init() {
   const user = getCurrentUser();
   if (!ok || !user) return;
   const role = String(user.role || "").toLowerCase();
-  const isHost = role === "host";
+  const isHost = role === "host" || role === "admin";
 
   const btn = $("bankTabBtn");
   if (btn) btn.hidden = !isHost;
