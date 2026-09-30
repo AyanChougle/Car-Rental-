@@ -1789,25 +1789,29 @@ async function startPaymentPage() {
 
     let booking = null;
 
+    // ── Fast-path: show cached data immediately while API loads ──────────
+    // This prevents the "Loading booking..." flicker for returning users.
     try {
       const rawPending = sessionStorage.getItem("kruizly_pending_booking");
       if (rawPending) {
         const parsed = JSON.parse(rawPending);
         if (parsed && String(parsed.bookingId || parsed.bookingNumber) === String(bookingId)) {
-          booking = parsed;
+          booking = parsed; // temporary display only — overwritten by API below
         }
       }
     } catch (_) {}
 
-    if (!booking) {
-      try {
-        const bRes = await api.get(`/bookings/${bookingId}`);
-        if (bRes?.booking) {
-          booking = bRes.booking;
-        }
-      } catch (error) {
-        console.warn("Backend booking read fallback:", error.message);
+    // ── Source of truth: always fetch from MySQL backend ─────────────────
+    try {
+      const bRes = await api.get(`/bookings/${bookingId}`);
+      if (bRes?.booking) {
+        booking = bRes.booking; // real backend data always wins
+        // Refresh the cache with the authoritative server data
+        try { sessionStorage.setItem("kruizly_pending_booking", JSON.stringify(booking)); } catch (_) {}
       }
+    } catch (error) {
+      console.warn("Backend booking fetch failed, falling back to cache:", error.message);
+      // booking may still be set from sessionStorage cache above — that's OK
     }
 
     if (!booking) {
