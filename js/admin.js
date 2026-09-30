@@ -7,7 +7,7 @@ import { auth } from "./firebase-init.js";
 import { api, API_BASE_URL } from "./kruizly-api.js?v=20260915-v1";
 import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260908-v5";
 
-import "./nav-helper.js?v=20260928-v2";
+import "./nav-helper.js?v=20260930-v5";
 
 import { openReturnModal } from "./return-inspection.js";
 import { formatBookingNumber } from "./booking-reference.js";

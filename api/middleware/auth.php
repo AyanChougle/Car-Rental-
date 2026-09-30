@@ -212,7 +212,7 @@ class Auth {
         $userRole = strtolower($user['role'] ?? 'customer');
 
         // Admin has universal superuser access to every single feature
-        if ($userRole === 'admin') {
+        if ($userRole === 'admin' || $userRole === 'super_admin') {
             return $user;
         }
 

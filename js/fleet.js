@@ -1,5 +1,5 @@
 import { api } from "./kruizly-api.js?v=20260917-v1";
-import "./nav-helper.js?v=20260928-v2";
+import "./nav-helper.js?v=20260930-v5";
 
 // Fleet page: card rendering, searching, filtering,
 // sorting, expandable specifications and navigation.
@@ -40,13 +40,29 @@ function getVehicleBodyType(vehicle) {
 
 function renderFleetCards(records) {
   if (!Array.isArray(records) || records.length === 0) {
+    const hubId = (typeof window !== "undefined" && window.getKruizlySelectedHubId && window.getKruizlySelectedHubId())
+      || (typeof localStorage !== "undefined" && localStorage.getItem("kruizly_selected_hub_id")) || "";
+    const selectedHub = Array.isArray(window.KRUIZLY_HUBS) ? window.KRUIZLY_HUBS.find(h => String(h.id) === String(hubId)) : null;
+    const hubName = selectedHub ? (selectedHub.name || "this operating hub") : "";
+    
     grid.innerHTML = `
-      <div class="fleet-grid__placeholder">
-        No vehicles found.
+      <div class="fleet-grid__placeholder" style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: var(--sub, rgba(255,255,255,0.65));">
+        <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 10px; color: #fff;">
+          ${hubName ? `No Vehicles Stationed at ${escapeHtml(hubName)}` : "No vehicles found."}
+        </h3>
+        <p style="font-size: 0.95rem; margin-bottom: 24px; color: rgba(255,255,255,0.6);">
+          ${hubName ? "There are currently no vehicles stationed at this location. Please switch to All Hubs or another hub to view available cars." : "No vehicles match the selected filter criteria."}
+        </p>
+        ${hubId ? `<button type="button" class="btn btn-outline" onclick="if(window.setKruizlySelectedHubId){window.setKruizlySelectedHubId('');}else{localStorage.removeItem('kruizly_selected_hub_id');location.reload();}">View All Available Fleets</button>` : ""}
       </div>
     `;
 
     grid.setAttribute("aria-busy", "false");
+    if (fleetPagination) {
+      fleetPagination.classList.add("hidden");
+      fleetPagination.hidden = true;
+      fleetPagination.innerHTML = "";
+    }
     return;
   }
 
@@ -630,15 +646,17 @@ function bookingDateParams() {
   return `&pickup=${encodeURIComponent(pickup)}&drop=${encodeURIComponent(drop)}`;
 }
 
-async function applyFleetAvailabilityOverrides() {
+async function applyFleetAvailabilityOverrides(passedHubId = null) {
   try {
-    const hubId = window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : "";
+    const hubId = passedHubId !== null && passedHubId !== undefined
+      ? String(passedHubId)
+      : ((typeof window !== "undefined" && window.getKruizlySelectedHubId && window.getKruizlySelectedHubId())
+          || (typeof localStorage !== "undefined" && localStorage.getItem("kruizly_selected_hub_id"))
+          || "");
     const params = hubId ? { hub_id: hubId } : {};
     const res = await api.get("/vehicles", params);
     const serverVehicles = Array.isArray(res.vehicles) ? res.vehicles : [];
 
-    // The live database is the source of truth for the customer fleet.
-    // Never fall back to a hardcoded vehicle catalog when the DB is empty.
     window.fleetVehicles = serverVehicles
       .filter(v => v && v.status !== "removed" && v.status !== "disabled")
       .map(v => ({
@@ -652,11 +670,12 @@ async function applyFleetAvailabilityOverrides() {
   }
 }
 
-window.addEventListener("kruizly:hubchange", async () => {
+window.addEventListener("kruizly:hubchange", async (event) => {
   try {
+    const id = event?.detail?.hubId !== undefined ? event.detail.hubId : (localStorage.getItem("kruizly_selected_hub_id") || "");
     window.fleetVehicles = [];
     renderFleetCards([]);
-    await applyFleetAvailabilityOverrides();
+    await applyFleetAvailabilityOverrides(id);
     renderFleetCards(window.fleetVehicles || []);
     applyFilters();
   } catch (error) {

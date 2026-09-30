@@ -13,15 +13,30 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
     $category = trim((string)($_GET['category'] ?? ''));
-    $hubId = isset($_GET['hub_id']) ? (int)$_GET['hub_id'] : 0;
+    $hubId = isset($_GET['hub_id']) && $_GET['hub_id'] !== '' ? (int)$_GET['hub_id'] : 0;
+    if ($hubId === 0 && isset($_GET['id']) && is_numeric($_GET['id'])) {
+        $hubId = (int)$_GET['id'];
+    }
     $availableOnly = isset($_GET['available']) ? (bool)$_GET['available'] : false;
 
     $sql = "SELECT v.*, h.name AS hub_name, h.code AS hub_code FROM vehicles v LEFT JOIN hubs h ON h.id = v.hub_id WHERE v.status != 'removed'";
     $params = [];
 
-    if ($hubId) {
-        $sql .= " AND hub_id = ?";
-        $params[] = $hubId;
+    if ($hubId > 0) {
+        $hub = Database::fetchOne("SELECT id, name, code FROM hubs WHERE id = ?", [$hubId]);
+        if ($hub) {
+            $hubNameTerm = '%' . trim((string)$hub['name']) . '%';
+            $hubCodeTerm = '%' . trim((string)$hub['code']) . '%';
+            $sql .= " AND (v.hub_id = ? OR (v.hub_id IS NULL AND (v.hub LIKE ? OR v.location LIKE ? OR v.hub LIKE ? OR v.location LIKE ?)))";
+            $params[] = $hubId;
+            $params[] = $hubNameTerm;
+            $params[] = $hubNameTerm;
+            $params[] = $hubCodeTerm;
+            $params[] = $hubCodeTerm;
+        } else {
+            $sql .= " AND v.hub_id = ?";
+            $params[] = $hubId;
+        }
     }
     if ($category) {
         $sql .= " AND category = ?";
@@ -82,7 +97,7 @@ if ($method === 'GET') {
             'hubName' => $v['hub_name'] ?? null,
             'hubCode' => $v['hub_code'] ?? null,
             'hub_id' => (int)($v['hub_id'] ?? 0),
-            'location' => $v['location'],
+            'location' => $v['location'] ?? null,
             'acquisitionType' => $v['acquisition_type'] ?? 'Partner',
             'ownerName' => $v['owner_name'] ?? null,
             'acquisitionDate' => $v['acquisition_date'] ?? null,
@@ -100,7 +115,7 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST') {
-    $user = Auth::requireRole('admin', 'manager');
+    $user = Auth::requireRole('admin', 'manager', 'super_admin');
     $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 
     $carId = strtoupper(trim((string)($input['carId'] ?? $input['car_id'] ?? '')));
@@ -116,7 +131,7 @@ if ($method === 'POST') {
     $priceHour = (float)($input['priceHour'] ?? $input['price_hour'] ?? round($priceDay / 24));
     $driverPrice = (float)($input['driverPrice'] ?? 0.00);
     $securityDeposit = (float)($input['securityDeposit'] ?? 3000.00);
-    $hubId = isset($input['hub_id']) ? (int)$input['hub_id'] : null;
+    $hubId = isset($input['hub_id']) && $input['hub_id'] !== '' ? (int)$input['hub_id'] : null;
     $acquisitionType = trim((string)($input['acquisitionType'] ?? $input['acquisition_type'] ?? 'Partner'));
     $ownerName = trim((string)($input['ownerName'] ?? $input['owner_name'] ?? ''));
     $acquisitionDate = !empty($input['acquisitionDate']) ? trim((string)$input['acquisitionDate']) : null;
@@ -127,9 +142,19 @@ if ($method === 'POST') {
         sendErrorResponse('Registration number (RC), brand, and model are required.', 400);
     }
 
+    $hubName = null;
+    $hubLocation = null;
+    if ($hubId && $hubId > 0) {
+        $hubRec = Database::fetchOne("SELECT name, city, address FROM hubs WHERE id = ?", [$hubId]);
+        if ($hubRec) {
+            $hubName = $hubRec['name'];
+            $hubLocation = !empty($hubRec['address']) ? $hubRec['address'] : ($hubRec['name'] . ', ' . ($hubRec['city'] ?? ''));
+        }
+    }
+
     Database::execute(
-        "INSERT INTO vehicles (car_id, reg_no, brand, model, year, category, transmission, fuel, seats, price_day, price_hour, driver_price, security_deposit, hub_id, acquisition_type, owner_name, acquisition_date, available, status, is_active_fleet, is_custom_fleet, gallery, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'available', ?, 1, ?, ?)
+        "INSERT INTO vehicles (car_id, reg_no, brand, model, year, category, transmission, fuel, seats, price_day, price_hour, driver_price, security_deposit, hub_id, hub, location, acquisition_type, owner_name, acquisition_date, available, status, is_active_fleet, is_custom_fleet, gallery, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'available', ?, 1, ?, ?)
          ON DUPLICATE KEY UPDATE
             car_id = COALESCE(VALUES(car_id), car_id),
             brand = VALUES(brand),
@@ -137,12 +162,15 @@ if ($method === 'POST') {
             year = VALUES(year),
             price_day = VALUES(price_day),
             price_hour = VALUES(price_hour),
+            driver_price = VALUES(driver_price),
+            security_deposit = VALUES(security_deposit),
+            hub_id = VALUES(hub_id),
+            hub = VALUES(hub),
+            location = VALUES(location),
             category = VALUES(category),
             transmission = VALUES(transmission),
             fuel = VALUES(fuel),
             seats = VALUES(seats),
-            hub = VALUES(hub),
-            location = VALUES(location),
             acquisition_type = VALUES(acquisition_type),
             owner_name = VALUES(owner_name),
             acquisition_date = VALUES(acquisition_date),
@@ -152,12 +180,13 @@ if ($method === 'POST') {
             gallery = VALUES(gallery)",
         [
             $carId ?: null, $regNo, $brand, $model, $year, $category, $transmission, $fuel, $seats,
-            $priceDay, $priceHour, $driverPrice, $securityDeposit, $hubId, $acquisitionType, $ownerName ?: null, $acquisitionDate,
-            $isActiveFleet, $gallery, $user['firebase_uid']
+            $priceDay, $priceHour, $driverPrice, $securityDeposit, $hubId, $hubName, $hubLocation,
+            $acquisitionType, $ownerName ?: null, $acquisitionDate,
+            $isActiveFleet, $gallery, $user['firebase_uid'] ?? null
         ]
     );
 
-    sendJsonResponse(['success' => true, 'message' => "Vehicle $regNo saved to fleet.", 'regNo' => $regNo]);
+    sendJsonResponse(['success' => true, 'message' => "Vehicle $regNo saved to fleet.", 'regNo' => $regNo, 'hub_id' => $hubId]);
 }
 
 sendErrorResponse('Method not allowed.', 405);

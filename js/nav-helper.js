@@ -174,7 +174,7 @@ if (document.readyState === "loading") {
 
 async function renderHubSelector() {
   const currentPath = (window.location.pathname.split("/").pop() || "index.html").toLowerCase();
-  const internalPages = ["admin.html", "manager.html", "executive.html", "accounts.html", "booking.html", "payment.html"];
+  const internalPages = ["admin.html", "manager.html", "executive.html", "accounts.html", "booking.html", "payment.html", "fleet.html"];
   if (internalPages.includes(currentPath) || document.querySelector(".hub-context-bar")) {
     const existing = document.getElementById("global-hub-selector");
     if (existing) existing.remove();
@@ -189,7 +189,6 @@ async function renderHubSelector() {
   selectorWrap.className = "kruizly-global-hub-selector";
   selectorWrap.innerHTML = `
     <span class="kruizly-global-hub-icon" aria-hidden="true">⌖</span>
-    <label class="sr-only" for="kruizly-hub-select">Select Hub</label>
     <select id="kruizly-hub-select" class="kruizly-global-hub-select" aria-label="Select Hub">
       <option value="">Loading Hubs...</option>
     </select>`;

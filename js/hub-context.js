@@ -51,6 +51,8 @@
   }
 
   function ensureBar() {
+    const duplicate = document.getElementById("global-hub-selector");
+    if (duplicate) duplicate.remove();
     if (document.querySelector(".hub-context-bar")) return document.querySelector(".hub-context-bar");
     const bar = document.createElement("section");
     bar.className = "hub-context-bar";

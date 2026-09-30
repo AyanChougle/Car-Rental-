@@ -90,8 +90,11 @@ foreach ($bookings as $b) {
     if ($payment === 'pending_verification') $pendingPayments++;
 }
 
+$hubNameTerm = '%' . trim((string)$hub['name']) . '%';
+$hubCodeTerm = '%' . trim((string)$hub['code']) . '%';
 $fleetCount = (int)(Database::fetchOne(
-    "SELECT COUNT(*) AS c FROM vehicles WHERE status != 'removed' AND hub_id = ?", [$hubId]
+    "SELECT COUNT(*) AS c FROM vehicles WHERE status != 'removed' AND (hub_id = ? OR (hub_id IS NULL AND (hub LIKE ? OR location LIKE ? OR hub LIKE ? OR location LIKE ?)))",
+    [$hubId, $hubNameTerm, $hubNameTerm, $hubCodeTerm, $hubCodeTerm]
 )['c'] ?? 0);
 
 $onRoad = (int)(Database::fetchOne(
