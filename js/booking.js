@@ -557,6 +557,8 @@ async function initBooking(vehicle) {
       });
       calculateBooking();
     });
+  });
+
   const urlPaymentPlan = params.get("paymentPlan");
   if (urlPaymentPlan && paymentPlanInputs.some((p) => p.value === urlPaymentPlan)) {
     paymentPlanInputs.forEach((input) => {
