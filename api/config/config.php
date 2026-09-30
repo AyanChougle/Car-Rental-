@@ -12,7 +12,7 @@ declare(strict_types=1);
 date_default_timezone_set('Asia/Kolkata');
 
 // Error reporting for production vs development
-$isLocal = in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1', 'localhost:5500', 'localhost:5501'], true);
+$isLocal = in_array($_SERVER['HTTP_HOST'] ?? '', ['127.0.0.1', '127.0.0.1', 'localhost:5500', 'localhost:5501'], true);
 if ($isLocal) {
     error_reporting(E_ALL);
     ini_set('display_errors', '1');
