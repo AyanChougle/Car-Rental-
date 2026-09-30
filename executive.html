@@ -105,6 +105,10 @@
             <button class="btn btn-outline tab-btn" data-tab="tab-exec-calendar">
               Booking Calendar
             </button>
+            <button class="btn btn-outline tab-btn" data-tab="tab-exec-bank">
+              Host Bank Audits
+              <span id="execBankBadge" class="badge" style="display:none; background: #ffd166; color: #000; font-size: 11px; padding: 2px 7px; border-radius: 10px; margin-left: 5px;">0</span>
+            </button>
             <button class="btn btn-outline tab-btn" data-tab="tab-exec-kyc">
               Customer ID Verification
               <span id="execKycBadge" class="badge" style="display:none; background: #ffd166; color: #000; font-size: 11px; padding: 2px 7px; border-radius: 10px; margin-left: 5px;">0</span>
@@ -200,6 +204,19 @@
               </div>
               <div id="execCouponsWrap" class="manager-table-wrap">
                 <div class="manager-state" style="padding: 24px; text-align: center; color: var(--sub);">Loading coupons...</div>
+              </div>
+            </div>
+          </section>
+
+                    <!-- TAB 7: HOST BANK DETAILS AUDIT -->
+          <section id="tab-exec-bank" class="tab-panel" hidden>
+            <div class="card manager-panel">
+              <div class="manager-panel-header" style="margin-bottom: 16px;">
+                <h2 class="manager-panel-title">Host Bank Details Verification</h2>
+                <p class="manager-panel-subtitle">Review and verify host bank accounts and passbook photos for payouts.</p>
+              </div>
+              <div id="execBankWrap" class="manager-table-wrap">
+                <div class="manager-state" style="padding: 24px; text-align: center; color: var(--sub);">Loading host bank details...</div>
               </div>
             </div>
           </section>

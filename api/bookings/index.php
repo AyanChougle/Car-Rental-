@@ -31,19 +31,10 @@ if ($method === 'GET') {
                    ph.name AS pickup_hub_name,
                    dh.name AS drop_hub_name
             FROM bookings b
-            LEFT JOIN (
-                SELECT firebase_uid, MAX(name) AS name, MAX(email) AS email, MAX(phone) AS phone
-                FROM users
-                GROUP BY firebase_uid
-            ) u ON b.firebase_uid = u.firebase_uid
-            LEFT JOIN (
-                SELECT id, reg_no, model
-                FROM vehicles
-                WHERE status != 'removed'
-                GROUP BY COALESCE(NULLIF(reg_no, ''), id)
-            ) v ON (
-                (b.vehicle_id IS NOT NULL AND b.vehicle_id > 0 AND b.vehicle_id = v.id)
-                OR (b.vehicle_reg IS NOT NULL AND TRIM(b.vehicle_reg) != '' AND b.vehicle_reg != 'TBD' AND b.vehicle_reg = v.reg_no)
+            LEFT JOIN users u ON u.firebase_uid = b.firebase_uid
+            LEFT JOIN vehicles v ON (
+                (b.vehicle_id IS NOT NULL AND b.vehicle_id > 0 AND v.id = b.vehicle_id)
+                OR (b.vehicle_reg IS NOT NULL AND TRIM(b.vehicle_reg) <> '' AND b.vehicle_reg <> 'TBD' AND v.reg_no = b.vehicle_reg)
             )
             LEFT JOIN hubs ph ON ph.id = b.pickup_hub_id
             LEFT JOIN hubs dh ON dh.id = COALESCE(b.drop_hub_id, b.pickup_hub_id)

@@ -175,7 +175,7 @@ async function initBooking(vehicle) {
     deposit.textContent = "₹" + formatCurrency(vehicle.securityDeposit);
   if (location)
     location.textContent =
-      vehicle.location || vehicle.hubName || "Hub not assigned";
+      vehicle.hubName || vehicle.location || "Hub not assigned";
 
   const imagePath = window.fleetImagePath ? window.fleetImagePath(vehicle) : "";
   if (imagePath && vehicleImage) {
@@ -717,9 +717,13 @@ async function initBooking(vehicle) {
         remainingAmount: calculation.remainingAmount,
         remainingBalance: calculation.remainingAmount,
 
-        location: vehicle.location || vehicle.hubName || "",
-        pickupLocation: vehicle.location || vehicle.hubName || "",
-        dropLocation: vehicle.location || vehicle.hubName || "",
+        pickup_hub_id: Number(vehicle.hubId || vehicle.hub_id || 0) || null,
+        drop_hub_id: Number(vehicle.hubId || vehicle.hub_id || 0) || null,
+        pickupHubName: vehicle.hubName || "",
+        dropHubName: vehicle.hubName || "",
+        location: vehicle.hubName || vehicle.location || "",
+        pickupLocation: vehicle.hubName || vehicle.location || "",
+        dropLocation: vehicle.hubName || vehicle.location || "",
 
         status: "pending_payment",
         bookingStatus: "pending_payment",

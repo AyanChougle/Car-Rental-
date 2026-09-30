@@ -1177,7 +1177,7 @@ async function initialisePaymentUI(booking) {
 
   totalBookingAmount = totalAmount;
 
-  isAdvancePaidVerified = (booking.paymentStatus === "advance_paid") || (Number(booking.advanceAmount || 0) > 0);
+  isAdvancePaidVerified = (booking.paymentStatus === "advance_paid");
   const advPaid = Number(booking.advanceAmount || (isAdvancePaidVerified ? 500 : 0));
   const remBal = Number(
     booking.remainingBalance !== undefined && booking.remainingBalance !== null
@@ -1493,9 +1493,9 @@ async function submitPayment(
     const plan = currentPaymentPlan || booking.paymentPlan || "full";
     const payAmount = Number(
       currentPaymentAmount ||
-      booking.paymentAmount ??
+      (booking.paymentAmount ??
       booking.paymentAmountPaid ??
-      (plan === "advance" ? Math.min(500, total) : total)
+      (plan === "advance" ? Math.min(500, total) : total))
     );
     const remBalance = plan === "full" ? 0 : Math.max(0, total - payAmount);
 

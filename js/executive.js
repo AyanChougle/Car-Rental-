@@ -465,10 +465,11 @@ async function loadAllExecutiveData() {
   try {
     const selectedHubId = window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : "";
     const hubParams = selectedHubId ? { hub_id: selectedHubId } : {};
-    const [bookingsRes, paymentsRes, kycRes, fleetRes, couponsRes] = await Promise.all([
+    const [bookingsRes, paymentsRes, kycRes, fleetRes, couponsRes, bankRes] = await Promise.all([
       api.get("/bookings", hubParams).catch(() => ({ bookings: [] })),
       api.get("/payments", hubParams).catch(() => ({ payments: [] })),
       api.get("/verification", hubParams).catch(() => ({ verifications: [] })),
+      api.get("/users/bank-details", {all: 1}).catch(() => ({ bankDetails: [] })),
       api.get("/vehicles", hubParams).catch(() => ({ vehicles: [] })),
       api.get("/coupons", hubParams).catch(() => ({ coupons: [] }))
     ]);
@@ -1937,3 +1938,119 @@ window.addEventListener("kruizly:hubchange", async () => {
 
 // Start
 initExecutive();
+
+
+/* ==========================================================================
+   HOST BANK DETAILS VERIFICATION RENDERER
+   ========================================================================== */
+function renderHostBankAudits() {
+  const wrap = $("execBankWrap");
+  if (!wrap) return;
+  const badge = $("execBankBadge");
+
+  const pending = executiveHostBankData.filter(h => h.status === "pending").length;
+  if (badge) {
+    badge.textContent = pending;
+    badge.style.display = pending > 0 ? "inline-block" : "none";
+  }
+
+  if (executiveHostBankData.length === 0) {
+    wrap.innerHTML = '<div class="manager-state" style="padding:24px;text-align:center;color:var(--sub);">No host bank details submitted yet.</div>';
+    return;
+  }
+
+  let html = `
+    <div style="width:100%;overflow-x:auto;">
+      <table class="manager-table" style="width:100%;min-width:800px;border-collapse:collapse;">
+        <thead>
+          <tr>
+            <th style="padding:12px;border-bottom:1px solid #333;text-align:left;">Host User</th>
+            <th style="padding:12px;border-bottom:1px solid #333;text-align:left;">Account Info</th>
+            <th style="padding:12px;border-bottom:1px solid #333;text-align:left;">Passbook</th>
+            <th style="padding:12px;border-bottom:1px solid #333;text-align:center;">Status</th>
+            <th style="padding:12px;border-bottom:1px solid #333;text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+  `;
+
+  executiveHostBankData.forEach(bank => {
+    const isPending = bank.status === "pending";
+    const statusColor = isPending ? "var(--accent)" : (bank.status === "verified" ? "var(--kr-cyan)" : "#ef476f");
+
+    html += `
+      <tr>
+        <td style="padding:12px;border-bottom:1px solid #222;">
+          <div style="font-weight:600;">${escapeHtml(bank.accountHolderName)}</div>
+          <div style="font-size:0.8rem;color:var(--sub);word-break:break-all;">${escapeHtml(bank.firebaseUid)}</div>
+        </td>
+        <td style="padding:12px;border-bottom:1px solid #222;">
+          <div>A/C: <strong style="letter-spacing:1px;">${escapeHtml(bank.accountNumber)}</strong></div>
+          <div style="font-size:0.85rem;color:var(--sub);">IFSC: ${escapeHtml(bank.ifscCode.toUpperCase())}</div>
+        </td>
+        <td style="padding:12px;border-bottom:1px solid #222;">
+          ${bank.passbookUrl ? `<button type="button" class="btn btn-outline btn-sm view-passbook-btn" data-url="${escapeHtml(bank.passbookUrl)}" style="font-size:11px;padding:3px 6px;">View Photo</button>` : `<span style="color:var(--kr-text-muted);font-size:0.8rem;">No Photo</span>`}
+        </td>
+        <td style="padding:12px;border-bottom:1px solid #222;text-align:center;">
+          <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor}22;color:${statusColor};text-transform:uppercase;">${escapeHtml(bank.status)}</span>
+        </td>
+        <td style="padding:12px;border-bottom:1px solid #222;text-align:right;">
+          ${isPending ? `
+            <div style="display:flex;gap:5px;justify-content:flex-end;">
+              <button type="button" class="btn btn-primary btn-sm verify-bank-btn" data-uid="${escapeHtml(bank.firebaseUid)}" style="padding:4px 8px;font-size:11px;">Verify</button>
+              <button type="button" class="btn btn-outline btn-sm reject-bank-btn" data-uid="${escapeHtml(bank.firebaseUid)}" style="padding:4px 8px;font-size:11px;color:#ef476f;border-color:#ef476f;">Reject</button>
+            </div>
+          ` : `<span style="color:var(--sub);font-size:0.8rem;">Done</span>`}
+        </td>
+      </tr>
+    `;
+  });
+
+  html += `</tbody></table></div>`;
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll(".view-passbook-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      window.open(btn.dataset.url, "_blank");
+    });
+  });
+
+  wrap.querySelectorAll(".verify-bank-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      if (!confirm("Are you sure you want to verify this bank account?")) return;
+      btn.disabled = true;
+      try {
+        const res = await api.post("/users/bank-details", { uid: btn.dataset.uid, status: "verified" });
+        if(res.success) {
+          alert("Verified successfully.");
+          loadAllExecutiveData();
+        } else {
+          throw new Error(res.error || "Verification failed");
+        }
+      } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+      }
+    });
+  });
+
+  wrap.querySelectorAll(".reject-bank-btn").forEach(btn => {
+    btn.addEventListener("click", async () => {
+      const reason = prompt("Enter rejection reason:");
+      if (reason === null) return;
+      btn.disabled = true;
+      try {
+        const res = await api.post("/users/bank-details", { uid: btn.dataset.uid, status: "rejected", rejectionReason: reason });
+        if(res.success) {
+          alert("Rejected successfully.");
+          loadAllExecutiveData();
+        } else {
+          throw new Error(res.error || "Rejection failed");
+        }
+      } catch (err) {
+        alert(err.message);
+        btn.disabled = false;
+      }
+    });
+  });
+}

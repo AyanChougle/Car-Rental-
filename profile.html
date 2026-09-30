@@ -137,6 +137,18 @@
           <button
             type="button"
             class="prof-tab-btn"
+            data-tab="prof-tab-bank"
+            id="bankTabBtn"
+            role="tab"
+            aria-selected="false"
+            hidden
+          >
+            Bank Details
+          </button>
+
+          <button
+            type="button"
+            class="prof-tab-btn"
             data-tab="prof-tab-media"
             role="tab"
             aria-selected="false"
@@ -695,6 +707,48 @@
           </section>
 
           <!-- ===================================================
+             TAB — HOST BANK DETAILS (host role only)
+        ==================================================== -->
+          <section id="prof-tab-bank" class="prof-panel" hidden>
+            <div class="documents-header">
+              <span class="section-label"> PAYOUTS </span>
+              <h2>Host Bank Details</h2>
+              <p>Add the bank account where your earnings will be paid. Details are reviewed by Kruizly before payouts.</p>
+            </div>
+
+            <p id="bankNotHost" class="form-status" hidden>Bank details are available for host accounts only.</p>
+
+            <form id="bankForm" class="profile-edit-form" autocomplete="off" novalidate>
+              <div class="profile-form-grid">
+                <div class="field full">
+                  <label for="bankHolderName"> Full Name (as on passbook) </label>
+                  <input type="text" id="bankHolderName" maxlength="120" placeholder="e.g. Rahul Sharma" required />
+                </div>
+                <div class="field">
+                  <label for="bankAccountNumber"> Bank Account Number </label>
+                  <input type="text" id="bankAccountNumber" inputmode="numeric" maxlength="18" placeholder="9 to 18 digits" required />
+                </div>
+                <div class="field">
+                  <label for="bankIfsc"> IFSC Code </label>
+                  <input type="text" id="bankIfsc" maxlength="11" placeholder="e.g. SBIN0001234" style="text-transform:uppercase" required />
+                </div>
+                <div class="field full">
+                  <label for="bankPassbookFile"> Passbook Front Page Photo </label>
+                  <img id="bankPassbookPreview" class="doc-upload__preview" alt="Passbook front page preview" hidden />
+                  <input type="file" id="bankPassbookFile" accept="image/*,.pdf" />
+                  <p id="bankPassbookNote" class="form-status"></p>
+                </div>
+              </div>
+
+              <div class="profile-form-actions">
+                <button type="submit" id="bankSaveBtn" class="profile-action primary">Save Bank Details</button>
+                <span id="bankStatusPill" class="fleet-status" hidden></span>
+                <p class="form-status" id="bankFormStatus" role="status" aria-live="polite"></p>
+              </div>
+            </form>
+          </section>
+
+          <!-- ===================================================
              TAB 4 — MY MEDIA
              Personal photo/video gallery. Stored on the local
              media server (Node/Express + SQLite), not Firebase
@@ -1209,6 +1263,7 @@
     <script type="module" src="js/vehicles.js?v=20260917-v1"></script>
 
     <script type="module" src="js/profile.js?v=20260928-v1"></script>
+    <script type="module" src="js/host-bank.js?v=20260930-v1"></script>
 
     <script src="js/glass-ui.js?v=20260917-v1"></script>
     <script src="js/kruizly-motion.js?v=20260917-v1"></script>

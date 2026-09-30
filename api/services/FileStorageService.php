@@ -95,7 +95,7 @@ class FileStorageService {
         $cleanCategory = preg_replace('/[^a-zA-Z0-9_-]/', '_', $category);
 
         $targetDir = STORAGE_ROOT . '/' . $cleanCategory;
-        if (in_array($cleanCategory, ['verification', 'users', 'license_doc', 'aadhar_doc', 'pan_doc'], true)) {
+        if (in_array($cleanCategory, ['verification', 'users', 'license_doc', 'aadhar_doc', 'pan_doc', 'bank_passbook'], true)) {
             $targetDir = STORAGE_ROOT . '/users/' . $safeUid . '/verification';
         } elseif ($cleanCategory === 'personal_media') {
             $targetDir = STORAGE_ROOT . '/users/' . $safeUid . '/personal';

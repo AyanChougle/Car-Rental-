@@ -7,7 +7,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
-if (!headers_sent()) { header('X-Kruizly-Create-Rev: 2026-09-30-v2'); }
+if (!headers_sent()) { header('X-Kruizly-Create-Rev: 2026-09-30-v4'); }
 
 $user = Auth::requireAuth();
 $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
@@ -62,6 +62,17 @@ $vehicleId = $vehicle && !empty($vehicle['id']) ? (int)$vehicle['id'] : null;
 $vehicleName = $vehicle ? ($vehicle['brand'] . ' ' . $vehicle['model']) : ($input['vehicleName'] ?? 'Vehicle');
 $vehicleCategory = $vehicle ? $vehicle['category'] : ($input['vehicleCategory'] ?? 'Sedan');
 
+// Resolve hub: prefer explicit ids, then the vehicle's own hub
+if (!$pickupHubId && !empty($vehicle['hub_id'] ?? null)) { $pickupHubId = (int)$vehicle['hub_id']; }
+if (!$dropHubId) { $dropHubId = $pickupHubId; }
+$locationText = '';
+if ($pickupHubId) {
+    $hubRow = Database::fetchOne("SELECT name FROM hubs WHERE id = ? LIMIT 1", [$pickupHubId]);
+    $locationText = (string)($hubRow['name'] ?? '');
+}
+if ($locationText === '') { $locationText = trim((string)($input['pickupHubName'] ?? $input['location'] ?? '')); }
+
+
 $dbUserId = null;
 if (!empty($user['id']) && (int)$user['id'] > 0) {
     $dbUserId = (int)$user['id'];
@@ -87,59 +98,77 @@ try {
         $nextId, $bookingId, $bookingNumber, $user, $dbUserId, $vehicleId, $vehicleReg, $vehicleName, $vehicleCategory,
         $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $baseAmount, $couponCode,
         $couponDiscount, $totalAmount, $advanceAmount, $remainingBalance, $paymentPlan, $paymentStatus,
-        $status, $pickupHubId, $dropHubId, $securityDeposit, $userName, $userEmail, $userPhone, $userAge, $input
+        $status, $pickupHubId, $dropHubId, $securityDeposit, $locationText, $userName, $userEmail, $userPhone, $userAge, $input
     ) {
-        // 1. Insert or update booking
-        $stmt = $pdo->prepare(
-            "INSERT INTO bookings (
-                id, booking_id, booking_number, user_id, firebase_uid, user_name, user_email, user_phone,
-                vehicle_id, vehicle_reg, vehicle_name, vehicle_category, pickup_date, drop_date,
-                duration, days, hours, with_driver, base_amount, coupon_code, coupon_discount,
-                total_amount, final_amount, advance_amount, remaining_balance, remaining_amount,
-                payment_plan, payment_status, status, booking_status, pickup_hub_id, drop_hub_id, security_deposit,
-                payment_screenshot_url
-            ) VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-            ) ON DUPLICATE KEY UPDATE
-                id = COALESCE(id, VALUES(id)),
-                user_id = COALESCE(VALUES(user_id), user_id),
-                vehicle_id = COALESCE(VALUES(vehicle_id), vehicle_id),
-                vehicle_reg = COALESCE(NULLIF(VALUES(vehicle_reg), ''), vehicle_reg),
-                vehicle_name = COALESCE(NULLIF(VALUES(vehicle_name), ''), vehicle_name),
-                vehicle_category = COALESCE(NULLIF(VALUES(vehicle_category), ''), vehicle_category),
-                pickup_date = VALUES(pickup_date),
-                drop_date = VALUES(drop_date),
-                duration = VALUES(duration),
-                days = VALUES(days),
-                hours = VALUES(hours),
-                with_driver = VALUES(with_driver),
-                base_amount = VALUES(base_amount),
-                total_amount = VALUES(total_amount),
-                final_amount = VALUES(final_amount),
-                advance_amount = VALUES(advance_amount),
-                remaining_balance = VALUES(remaining_balance),
-                remaining_amount = VALUES(remaining_amount),
-                payment_plan = VALUES(payment_plan),
-                pickup_hub_id = VALUES(pickup_hub_id), drop_hub_id = VALUES(drop_hub_id),
-                security_deposit = VALUES(security_deposit),
-                user_name = COALESCE(NULLIF(VALUES(user_name), ''), user_name),
-                user_email = COALESCE(NULLIF(VALUES(user_email), ''), user_email),
-                user_phone = COALESCE(NULLIF(VALUES(user_phone), ''), user_phone),
-                payment_status = VALUES(payment_status),
-                status = VALUES(status),
-                booking_status = VALUES(booking_status),
-                payment_screenshot_url = COALESCE(VALUES(payment_screenshot_url), payment_screenshot_url),
-                updated_at = CURRENT_TIMESTAMP"
-        );
+        // 1. Insert or update booking (schema-adaptive: only writes columns that exist in the live table)
+        $row = [
+            'id' => $nextId,
+            'booking_id' => $bookingId,
+            'booking_number' => $bookingNumber,
+            'user_id' => $dbUserId,
+            'firebase_uid' => $user['firebase_uid'],
+            'user_name' => $userName ?: ($user['name'] ?: $user['email']),
+            'user_email' => $userEmail ?: ($user['email'] ?: 'customer@kruizly.com'),
+            'user_phone' => $userPhone ?: ($user['phone'] ?: null),
+            'vehicle_id' => $vehicleId,
+            'vehicle_reg' => $vehicleReg ?: 'TBD',
+            'vehicle_name' => $vehicleName,
+            'vehicle_category' => $vehicleCategory,
+            'pickup_date' => $pickupDate,
+            'drop_date' => $dropDate,
+            'duration' => $duration,
+            'days' => $days,
+            'hours' => $hours,
+            'with_driver' => $withDriver,
+            'base_amount' => $baseAmount,
+            'coupon_code' => $couponCode ?: null,
+            'coupon_discount' => $couponDiscount,
+            'total_amount' => $totalAmount,
+            'final_amount' => $totalAmount,
+            'advance_amount' => $advanceAmount,
+            'remaining_balance' => $remainingBalance,
+            'remaining_amount' => $remainingBalance,
+            'payment_plan' => $paymentPlan,
+            'payment_status' => $paymentStatus,
+            'status' => $status,
+            'booking_status' => $status,
+            'pickup_hub_id' => $pickupHubId,
+            'drop_hub_id' => $dropHubId,
+            'security_deposit' => $securityDeposit,
+            'location' => $locationText ?: null,
+            'payment_screenshot_url' => $input['paymentScreenshotUrl'] ?? $input['screenshotUrl'] ?? null,
+        ];
 
-        $stmt->execute([
-            $nextId, $bookingId, $bookingNumber, $dbUserId, $user['firebase_uid'], $userName ?: ($user['name'] ?: $user['email']),
-            $userEmail ?: ($user['email'] ?: 'customer@kruizly.com'), $userPhone ?: ($user['phone'] ?: null), $vehicleId, $vehicleReg ?: 'TBD', $vehicleName, $vehicleCategory,
-            $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $baseAmount, $couponCode ?: null,
-            $couponDiscount, $totalAmount, $totalAmount, $advanceAmount, $remainingBalance, $remainingBalance,
-            $paymentPlan, $paymentStatus, $status, $status, $pickupHubId, $dropHubId, $securityDeposit,
-            $input['paymentScreenshotUrl'] ?? $input['screenshotUrl'] ?? null
-        ]);
+        $existingCols = [];
+        foreach ($pdo->query('SHOW COLUMNS FROM bookings')->fetchAll(PDO::FETCH_ASSOC) as $c) {
+            $existingCols[strtolower((string)$c['Field'])] = true;
+        }
+        $row = array_filter($row, fn($k) => isset($existingCols[$k]), ARRAY_FILTER_USE_KEY);
+
+        $colNames = array_keys($row);
+        $colSql = implode(', ', array_map(fn($c) => "`$c`", $colNames));
+        $phSql = implode(', ', array_fill(0, count($colNames), '?'));
+
+        $noUpdate = ['id', 'booking_id', 'booking_number', 'firebase_uid'];
+        $coalesceKeep = ['user_id', 'vehicle_id', 'payment_screenshot_url'];
+        $nonEmptyKeep = ['vehicle_reg', 'vehicle_name', 'vehicle_category', 'user_name', 'user_email', 'user_phone'];
+        $upd = [];
+        foreach ($colNames as $c) {
+            if (in_array($c, $noUpdate, true)) continue;
+            if (in_array($c, $coalesceKeep, true)) {
+                $upd[] = "`$c` = COALESCE(VALUES(`$c`), `$c`)";
+            } elseif (in_array($c, $nonEmptyKeep, true)) {
+                $upd[] = "`$c` = COALESCE(NULLIF(VALUES(`$c`), ''), `$c`)";
+            } elseif ($c === 'coupon_code' || $c === 'coupon_discount') {
+                continue;
+            } else {
+                $upd[] = "`$c` = VALUES(`$c`)";
+            }
+        }
+        if (isset($existingCols['updated_at'])) $upd[] = '`updated_at` = CURRENT_TIMESTAMP';
+
+        $pdo->prepare("INSERT INTO bookings ($colSql) VALUES ($phSql) ON DUPLICATE KEY UPDATE " . implode(', ', $upd))
+            ->execute(array_values($row));
 
         // 2. Sync phone, name, age back to users table if available
         $uFields = [];
@@ -193,7 +222,7 @@ try {
         'bookingId' => $bookingId,
         'bookingNumber' => $bookingNumber
     ], 201);
-} catch (Exception $e) {
+} catch (Throwable $e) {
     error_log("[Booking Create Error] " . $e->getMessage());
     sendErrorResponse('Failed to create booking: ' . $e->getMessage(), 500);
 }

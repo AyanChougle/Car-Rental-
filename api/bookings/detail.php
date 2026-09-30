@@ -57,9 +57,27 @@ if ($method === 'GET') {
     $pickupPhotoMediaIds = $inspection['pickupPhotoMediaIds'] ?? [];
     $pickupPhotos = $inspection['pickupPhotos'] ?? [];
 
+    $pickupHubName = null; $dropHubName = null;
+    try {
+        if (!empty($b['pickup_hub_id'])) {
+            $h = Database::fetchOne("SELECT name FROM hubs WHERE id = ? LIMIT 1", [(int)$b['pickup_hub_id']]);
+            $pickupHubName = $h['name'] ?? null;
+        }
+        if (!empty($b['drop_hub_id'])) {
+            $h = Database::fetchOne("SELECT name FROM hubs WHERE id = ? LIMIT 1", [(int)$b['drop_hub_id']]);
+            $dropHubName = $h['name'] ?? null;
+        }
+    } catch (Throwable $_) {}
+
     sendJsonResponse([
         'success' => true,
         'booking' => [
+            'pickupHubId' => isset($b['pickup_hub_id']) ? (int)$b['pickup_hub_id'] : null,
+            'dropHubId' => isset($b['drop_hub_id']) ? (int)$b['drop_hub_id'] : null,
+            'pickupHubName' => $pickupHubName,
+            'dropHubName' => $dropHubName ?: $pickupHubName,
+            'pickupLocation' => $pickupHubName ?: ($b['location'] ?? null),
+            'dropLocation' => $dropHubName ?: $pickupHubName ?: ($b['location'] ?? null),
             'id' => $b['booking_id'],
             'bookingId' => $b['booking_id'],
             'bookingNumber' => $b['booking_number'],

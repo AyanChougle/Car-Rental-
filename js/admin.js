@@ -10234,11 +10234,11 @@ function renderHubsTable() {
 
   tbody.innerHTML = globalHubsList.map(h => `
     <tr>
-      <td><strong>${escapeHtml(h.code || "—")}</strong></td>
-      <td>${escapeHtml(h.name || "—")}</td>
-      <td>${escapeHtml(h.city || "—")}</td>
-      <td><span class="status-badge ${h.status === 'active' ? 'status-active' : 'status-inactive'}">${escapeHtml(String(h.status || '').toUpperCase())}</span></td>
-      <td style="display:flex; gap:6px; flex-wrap:wrap;">
+      <td style="padding:12px; border-bottom:1px solid #333;"><strong>${escapeHtml(h.code || "—")}</strong></td>
+      <td style="padding:12px; border-bottom:1px solid #333;">${escapeHtml(h.name || "—")}</td>
+      <td style="padding:12px; border-bottom:1px solid #333;">${escapeHtml(h.city || "—")}</td>
+      <td style="padding:12px; border-bottom:1px solid #333;"><span class="status-badge ${h.status === 'active' ? 'status-active' : 'status-inactive'}">${escapeHtml(String(h.status || '').toUpperCase())}</span></td>
+      <td style="padding:12px; border-bottom:1px solid #333; display:flex; gap:6px; flex-wrap:wrap;">
         <button type="button" class="btn btn-outline" style="padding:4px 8px;font-size:11px;" data-hub-select="${Number(h.id)}">Use Hub</button>
         <button type="button" class="btn btn-outline" style="padding:4px 8px;font-size:11px;" data-hub-edit="${Number(h.id)}">Edit</button>
         <button type="button" class="btn btn-outline" style="padding:4px 8px;font-size:11px;" data-hub-toggle="${Number(h.id)}">${h.status === 'active' ? 'Deactivate' : 'Activate'}</button>

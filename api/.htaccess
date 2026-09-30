@@ -22,6 +22,7 @@
     # Users
     RewriteRule ^users/me/?$ users/me.php [L,QSA]
     RewriteRule ^users/sync/?$ users/sync.php [L,QSA]
+    RewriteRule ^users/bank-details(?:\.php)?/?$ users/bank-details.php [L,QSA]
     RewriteRule ^users/partner-cars/?$ users/partner-cars.php [L,QSA]
     RewriteRule ^users/partner-cars/([^/]+)/status/?$ users/partner-cars.php?id=$1 [L,QSA]
     RewriteRule ^users/([^/]+)/role/?$ users/role.php?uid=$1 [L,QSA]

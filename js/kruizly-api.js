@@ -55,6 +55,7 @@ export function resolveEndpoint(endpoint, params = {}) {
     "users/me": "/users/me.php",
     "users/sync": "/users/sync.php",
     "users/partner-cars": "/users/partner-cars.php",
+    "users/bank-details": "/users/bank-details.php",
     "users/role": "/users/role.php",
     "users": "/users/index.php",
     "bookings/my-bookings": "/bookings/my-bookings.php",
