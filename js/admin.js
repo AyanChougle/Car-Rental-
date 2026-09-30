@@ -1005,8 +1005,157 @@ function getFilteredBookings() {
 // LOAD ALL DATA
 // ============================================================================
 
+
+let adminHostBankData = [];
+let currentAdminBankReviewUid = null;
+
+async function loadAdminHostBank() {
+  try {
+    const res = await get("/users/bank-details", { all: 1 });
+    adminHostBankData = res.bankDetails || [];
+    renderAdminHostBank();
+  } catch (err) {
+    console.error("Failed to load host bank details", err);
+    document.getElementById("adminBankWrap").innerHTML = '<div style="padding:40px;text-align:center;color:#ef476f;">Failed to load data.</div>';
+  }
+}
+
+function renderAdminHostBank() {
+  const wrap = document.getElementById("adminBankWrap");
+  if (!wrap) return;
+
+  if (adminHostBankData.length === 0) {
+    wrap.innerHTML = '<div style="padding:40px;text-align:center;color:var(--sub);font-size:0.9rem;">No host bank details submitted yet.</div>';
+    return;
+  }
+
+  const escapeHtml = (unsafe) => {
+    if (!unsafe) return "";
+    return unsafe.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+  };
+
+  let html = `
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Host User</th>
+          <th>Account Info</th>
+          <th>Passbook</th>
+          <th style="text-align:center;">Status</th>
+          <th style="text-align:right;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  adminHostBankData.forEach(bank => {
+    const isPending = bank.status === "pending";
+    const statusColor = isPending ? "#fca311" : (bank.status === "verified" ? "#06d6a0" : "#ef476f");
+    const pbStatus = bank.passbookUrl ? "Uploaded" : "No Photo";
+
+    html += `
+      <tr>
+        <td><strong>${escapeHtml(bank.name || bank.firebaseUid)}</strong><br/><span style="color:var(--sub);font-size:12px;">${escapeHtml(bank.email || '')}</span></td>
+        <td><span style="color:var(--sub);font-size:12px;">A/C:</span> <strong>${escapeHtml(bank.accountNumber)}</strong><br/><span style="color:var(--sub);font-size:12px;">IFSC: ${escapeHtml(bank.ifscCode)}</span><br/><span style="color:var(--sub);font-size:12px;">${escapeHtml(bank.branchName || '')}</span></td>
+        <td style="color:var(--sub);font-size:12px;">${pbStatus}</td>
+        <td style="text-align:center;">
+          <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor}22;color:${statusColor};text-transform:uppercase;">${escapeHtml(bank.status)}</span>
+        </td>
+        <td style="text-align:right;">
+          <button type="button" class="btn btn-outline btn-sm admin-view-passbook-btn" data-uid="${escapeHtml(bank.firebaseUid)}" data-url="${escapeHtml(bank.passbookUrl || '')}" data-status="${escapeHtml(bank.status)}" style="padding:5px 12px;font-size:12.5px;">Inspect & Review</button>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+
+  wrap.querySelectorAll(".admin-view-passbook-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      openAdminPassbookModal(btn.dataset.uid, btn.dataset.url, btn.dataset.status);
+    });
+  });
+}
+
+function openAdminPassbookModal(uid, url, status) {
+  currentAdminBankReviewUid = uid;
+  const modal = document.getElementById("adminBankPassbookModal");
+  const container = document.getElementById("adminBankPassbookContainer");
+  if (!modal || !container) return;
+
+  container.innerHTML = "";
+  if (!url) {
+    container.innerHTML = '<div style="color:var(--sub);">No passbook photo provided.</div>';
+  } else if (url.toLowerCase().endsWith(".pdf")) {
+    container.innerHTML = `<iframe src="${url}#toolbar=0" style="width:100%; height:100%; border:none; background:#fff;"></iframe>`;
+  } else {
+    container.innerHTML = `<img src="${url}" style="max-width:100%; max-height:100%; object-fit:contain;" alt="Passbook" />`;
+  }
+
+  const approveBtn = document.getElementById("adminApproveBankBtn");
+  const rejectBtn = document.getElementById("adminRejectBankBtn");
+  if (approveBtn) approveBtn.style.display = status === 'pending' ? 'inline-block' : 'none';
+  if (rejectBtn) rejectBtn.style.display = status === 'pending' ? 'inline-block' : 'none';
+
+  modal.hidden = false;
+  modal.style.display = "flex";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("closeAdminBankPassbookModal")?.addEventListener("click", () => {
+    const modal = document.getElementById("adminBankPassbookModal");
+    if(modal) {
+      modal.hidden = true;
+      modal.style.display = "none";
+    }
+  });
+
+  document.getElementById("adminApproveBankBtn")?.addEventListener("click", async () => {
+    if (!currentAdminBankReviewUid) return;
+    if (!confirm("Are you sure you want to verify this bank account?")) return;
+    document.getElementById("adminApproveBankBtn").disabled = true;
+    try {
+      const res = await post("/users/bank-details", { uid: currentAdminBankReviewUid, status: "verified" });
+      if(res.success) {
+        alert("Verified successfully.");
+        const modal = document.getElementById("adminBankPassbookModal");
+        if(modal) { modal.hidden = true; modal.style.display = "none"; }
+        loadAdminHostBank();
+      } else {
+        throw new Error(res.error || "Verification failed");
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+    document.getElementById("adminApproveBankBtn").disabled = false;
+  });
+
+  document.getElementById("adminRejectBankBtn")?.addEventListener("click", async () => {
+    if (!currentAdminBankReviewUid) return;
+    const reason = prompt("Enter rejection reason:");
+    if (reason === null) return;
+    document.getElementById("adminRejectBankBtn").disabled = true;
+    try {
+      const res = await post("/users/bank-details", { uid: currentAdminBankReviewUid, status: "rejected", rejectionReason: reason });
+      if(res.success) {
+        alert("Rejected successfully.");
+        const modal = document.getElementById("adminBankPassbookModal");
+        if(modal) { modal.hidden = true; modal.style.display = "none"; }
+        loadAdminHostBank();
+      } else {
+        throw new Error(res.error || "Rejection failed");
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+    document.getElementById("adminRejectBankBtn").disabled = false;
+  });
+});
+
 async function loadAllAdminData() {
-  await Promise.allSettled([
+  loadAdminHostBank();
+    await Promise.allSettled([
     loadUsers(),
     loadBookings(),
     loadPayments(),
