@@ -500,6 +500,23 @@
       </div>
     </div>
 
+    
+    <!-- MODAL: HOST BANK PASSBOOK PREVIEW -->
+    <div id="execBankPassbookModal" class="manager-modal" hidden>
+      <div class="card manager-modal-card" style="max-width: 600px;">
+        <button id="closeExecBankPassbookModal" class="manager-modal-close" type="button" aria-label="Close">&times;</button>
+        <h3 class="manager-modal-title">Passbook Verification</h3>
+        <p class="manager-modal-subtitle">Review the host's uploaded passbook photo.</p>
+        <div id="execBankPassbookContainer" style="margin-top: 15px; width: 100%; height: 400px; background: #111; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+          <!-- Image or iframe will be injected here -->
+        </div>
+        <div class="manager-modal-actions">
+          <button id="execRejectBankBtn" class="btn btn-outline manager-btn-reject" type="button">Reject Details</button>
+          <button id="execApproveBankBtn" class="btn btn-dark manager-btn-approve" type="button">Verify &amp; Approve</button>
+        </div>
+      </div>
+    </div>
+
     <!-- MODAL 5: BOOKING DETAILS -->
     <div id="executiveBookingDetailModal" class="manager-modal" hidden>
       <div class="card manager-modal-card">

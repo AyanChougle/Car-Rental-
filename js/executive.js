@@ -1992,17 +1992,14 @@ function renderHostBankAudits() {
           <div style="font-size:0.85rem;color:var(--sub);">IFSC: ${escapeHtml(bank.ifscCode.toUpperCase())}</div>
         </td>
         <td style="padding:12px;border-bottom:1px solid #222;">
-          ${bank.passbookUrl ? `<button type="button" class="btn btn-outline btn-sm view-passbook-btn" data-url="${escapeHtml(bank.passbookUrl)}" style="font-size:11px;padding:3px 6px;">View Photo</button>` : `<span style="color:var(--kr-text-muted);font-size:0.8rem;">No Photo</span>`}
+          ${bank.passbookUrl ? `<button type="button" class="btn btn-dark btn-sm view-passbook-btn" data-url="${escapeHtml(bank.passbookUrl)}" style="padding:4px 10px;font-size:12px;">Inspect Passbook</button>` : `<span style="color:var(--kr-text-muted);font-size:0.8rem;">No Photo</span>`}
         </td>
         <td style="padding:12px;border-bottom:1px solid #222;text-align:center;">
           <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor}22;color:${statusColor};text-transform:uppercase;">${escapeHtml(bank.status)}</span>
         </td>
         <td style="padding:12px;border-bottom:1px solid #222;text-align:right;">
           ${isPending ? `
-            <div style="display:flex;gap:5px;justify-content:flex-end;">
-              <button type="button" class="btn btn-primary btn-sm verify-bank-btn" data-uid="${escapeHtml(bank.firebaseUid)}" style="padding:4px 8px;font-size:11px;">Verify</button>
-              <button type="button" class="btn btn-outline btn-sm reject-bank-btn" data-uid="${escapeHtml(bank.firebaseUid)}" style="padding:4px 8px;font-size:11px;color:#ef476f;border-color:#ef476f;">Reject</button>
-            </div>
+            <button type="button" class="btn btn-dark btn-sm view-passbook-btn" data-uid="${escapeHtml(bank.firebaseUid)}" data-url="${escapeHtml(bank.passbookUrl || '')}" style="padding:5px 12px;font-size:12.5px;">Inspect & Review</button>
           ` : `<span style="color:var(--sub);font-size:0.8rem;">Done</span>`}
         </td>
       </tr>
@@ -2014,16 +2011,11 @@ function renderHostBankAudits() {
 
   wrap.querySelectorAll(".view-passbook-btn").forEach(btn => {
     btn.addEventListener("click", () => {
-      window.open(btn.dataset.url, "_blank");
+      openPassbookModal(btn.dataset.uid, btn.dataset.url);
     });
   });
 
-  wrap.querySelectorAll(".verify-bank-btn").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      if (!confirm("Are you sure you want to verify this bank account?")) return;
-      btn.disabled = true;
-      try {
-        const res = await api.post("/users/bank-details", { uid: btn.dataset.uid, status: "verified" });
+  
         if(res.success) {
           alert("Verified successfully.");
           loadAllExecutiveData();
@@ -2037,13 +2029,7 @@ function renderHostBankAudits() {
     });
   });
 
-  wrap.querySelectorAll(".reject-bank-btn").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      const reason = prompt("Enter rejection reason:");
-      if (reason === null) return;
-      btn.disabled = true;
-      try {
-        const res = await api.post("/users/bank-details", { uid: btn.dataset.uid, status: "rejected", rejectionReason: reason });
+  
         if(res.success) {
           alert("Rejected successfully.");
           loadAllExecutiveData();
@@ -2057,3 +2043,68 @@ function renderHostBankAudits() {
     });
   });
 }
+
+
+
+let currentBankReviewUid = null;
+function openPassbookModal(uid, url) {
+  currentBankReviewUid = uid;
+  const modal = $("execBankPassbookModal");
+  const container = $("execBankPassbookContainer");
+  if (!modal || !container) return;
+
+  container.innerHTML = "";
+  if (!url) {
+    container.innerHTML = '<div style="color:var(--sub);">No passbook photo provided.</div>';
+  } else if (url.toLowerCase().endsWith(".pdf")) {
+    container.innerHTML = `<iframe src="${escapeHtml(url)}#toolbar=0" style="width:100%; height:100%; border:none; background:#fff;"></iframe>`;
+  } else {
+    container.innerHTML = `<img src="${escapeHtml(url)}" style="max-width:100%; max-height:100%; object-fit:contain;" alt="Passbook" />`;
+  }
+  safeShow(modal);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  $("closeExecBankPassbookModal")?.addEventListener("click", () => {
+    safeHide($("execBankPassbookModal"));
+  });
+
+  $("execApproveBankBtn")?.addEventListener("click", async () => {
+    if (!currentBankReviewUid) return;
+    if (!confirm("Are you sure you want to verify this bank account?")) return;
+    $("execApproveBankBtn").disabled = true;
+    try {
+      const res = await api.post("/users/bank-details", { uid: currentBankReviewUid, status: "verified" });
+      if(res.success) {
+        alert("Verified successfully.");
+        safeHide($("execBankPassbookModal"));
+        loadAllExecutiveData();
+      } else {
+        throw new Error(res.error || "Verification failed");
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+    $("execApproveBankBtn").disabled = false;
+  });
+
+  $("execRejectBankBtn")?.addEventListener("click", async () => {
+    if (!currentBankReviewUid) return;
+    const reason = prompt("Enter rejection reason:");
+    if (reason === null) return;
+    $("execRejectBankBtn").disabled = true;
+    try {
+      const res = await api.post("/users/bank-details", { uid: currentBankReviewUid, status: "rejected", rejectionReason: reason });
+      if(res.success) {
+        alert("Rejected successfully.");
+        safeHide($("execBankPassbookModal"));
+        loadAllExecutiveData();
+      } else {
+        throw new Error(res.error || "Rejection failed");
+      }
+    } catch (err) {
+      alert(err.message);
+    }
+    $("execRejectBankBtn").disabled = false;
+  });
+});
