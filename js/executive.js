@@ -2008,7 +2008,7 @@ function renderHostBankAudits() {
           <div style="font-size:0.85rem;color:var(--sub);">IFSC: ${escapeHtml(bank.ifscCode.toUpperCase())}</div>
         </td>
         <td style="padding:12px;border-bottom:1px solid #222;">
-          ${bank.passbookUrl ? `<button type="button" class="btn btn-dark btn-sm view-passbook-btn" data-url="${escapeHtml(bank.passbookUrl)}" style="padding:4px 10px;font-size:12px;">Inspect Passbook</button>` : `<span style="color:var(--kr-text-muted);font-size:0.8rem;">No Photo</span>`}
+          ${bank.passbookUrl ? `<button type="button" class="btn btn-dark btn-sm view-passbook-btn" data-uid="${escapeHtml(bank.firebaseUid)}" data-url="${escapeHtml(bank.passbookUrl)}" data-status="${escapeHtml(bank.status)}" style="padding:4px 10px;font-size:12px;">Inspect Passbook</button>` : `<span style="color:var(--kr-text-muted);font-size:0.8rem;">No Photo</span>`}
         </td>
         <td style="padding:12px;border-bottom:1px solid #222;text-align:center;">
           <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor}22;color:${statusColor};text-transform:uppercase;">${escapeHtml(bank.status)}</span>
