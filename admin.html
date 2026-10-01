@@ -1798,6 +1798,61 @@
                 style="margin: -8px 0 18px; color: var(--kr-text-muted)"
                 aria-live="polite"
               ></p>
+              
+              <!-- Fleet Search & Filter Bar -->
+              <div
+                class="fleet-filter-bar"
+                style="
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  gap: 12px;
+                  flex-wrap: wrap;
+                  margin-bottom: 16px;
+                  background: rgba(255, 255, 255, 0.03);
+                  border: 1px solid rgba(255, 255, 255, 0.1);
+                  border-radius: 12px;
+                  padding: 14px 18px;
+                "
+              >
+                <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 260px;">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--sub);">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                  <input
+                    type="text"
+                    id="adminFleetSearchInput"
+                    class="kr-clean-input"
+                    placeholder="Search by Car ID, Reg No, Make, Model, Host/Owner, Hub..."
+                    style="width: 100%; height: 38px; font-size: 13px;"
+                  />
+                </div>
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <label for="adminFleetStatusSelect" style="font-size: 12px; color: var(--sub); white-space: nowrap; font-weight: 600;">Status:</label>
+                    <select id="adminFleetStatusSelect" class="kr-clean-input" style="height: 38px; padding: 0 12px; font-size: 13px; min-width: 130px;">
+                      <option value="all" selected>All Statuses</option>
+                      <option value="available">Available Only</option>
+                      <option value="unavailable">Unavailable Only</option>
+                      <option value="active">Active Roster Only</option>
+                    </select>
+                  </div>
+                  <div style="display: flex; align-items: center; gap: 6px;">
+                    <label for="adminFleetSortSelect" style="font-size: 12px; color: var(--sub); white-space: nowrap; font-weight: 600;">Sort By:</label>
+                    <select id="adminFleetSortSelect" class="kr-clean-input" style="height: 38px; padding: 0 12px; font-size: 13px; min-width: 160px;">
+                      <option value="default" selected>Default Order</option>
+                      <option value="carId-asc">Car ID (A-Z)</option>
+                      <option value="name-asc">Vehicle Name (A-Z)</option>
+                      <option value="name-desc">Vehicle Name (Z-A)</option>
+                      <option value="rate-asc">Daily Rate (Low → High)</option>
+                      <option value="rate-desc">Daily Rate (High → Low)</option>
+                      <option value="reg-asc">RC / Reg No (A-Z)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
               <div id="fleetManagementWrap">
                 <p style="color: var(--kr-text-muted)">Loading fleet...</p>
               </div>
@@ -3835,7 +3890,7 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="js/vehicles.js?v=20260917-v1"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script type="module" src="js/admin.js?v=20261001-v6"></script>
+    <script type="module" src="js/admin.js?v=20261001-v7"></script>
     <script src="js/glass-ui.js?v=20260925-v1"></script>
 
     <!-- MODAL: HOST BANK PASSBOOK PREVIEW -->

@@ -1425,376 +1425,458 @@ async function loadFleetManagement() {
       );
     } catch (e) {}
 
+    currentActiveFleetRegs = activeRegs;
     renderAdminActiveFleetRoster(activeRegs, vehicles);
+    setupFleetSearchAndSort();
+    renderFleetManagementTable(vehicles, activeRegs);
 
-    if (!vehicles.length) {
-      fleetManagementWrap.innerHTML = `<p style="color:var(--sub);">No vehicles in the fleet yet. Add the first one above.</p>`;
-      return;
-    }
-
-    const totalPages = Math.max(
-      1,
-      Math.ceil(vehicles.length / ADMIN_FLEET_PER_PAGE),
-    );
-    adminFleetPage = Math.min(adminFleetPage, totalPages);
-    const pageStart = (adminFleetPage - 1) * ADMIN_FLEET_PER_PAGE;
-    const pageVehicles = vehicles.slice(
-      pageStart,
-      pageStart + ADMIN_FLEET_PER_PAGE,
-    );
-
-    fleetManagementWrap.innerHTML = `
-      <div style="width:100%;overflow-x:auto;">
-        <table class="admin-table" style="width:100%;min-width:1120px;border-collapse:collapse;text-align:left;">
-          <thead>
-            <tr style="border-bottom:1px solid var(--line);color:var(--sub);">
-              <th style="padding:12px;">Car ID</th>
-              <th style="padding:12px;">Vehicle</th>
-              <th style="padding:12px;">RC Number</th>
-              <th style="padding:12px;">Partner / Owner</th>
-              <th style="padding:12px;">Fuel &amp; Gear</th>
-              <th style="padding:12px;">Daily Rate</th>
-              <th style="padding:12px;">Availability</th>
-              <th style="padding:12px;text-align:center;">Current Fleet</th>
-              <th style="padding:12px;text-align:right;">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${pageVehicles
-              .map((vehicle) => {
-                const available = Boolean(vehicle.available);
-                const isActiveRoster = activeRegs.some((r) => {
-                  const norm = normalizeActivePlate(r);
-                  if (!norm) return false;
-                  const vReg = normalizeActivePlate(vehicle.regNo);
-                  const vRaw = normalizeActivePlate(vehicle.rawReg);
-                  const vCarId = String(vehicle.carId || "")
-                    .trim()
-                    .toUpperCase();
-                  const vId = String(vehicle.id || "")
-                    .trim()
-                    .toUpperCase();
-                  return (
-                    (vReg && norm === vReg) ||
-                    (vRaw && norm === vRaw) ||
-                    (vCarId && norm === vCarId) ||
-                    (vId && norm === vId) ||
-                    (vId && norm === "CAT-" + vId)
-                  );
-                });
-                const vehKey =
-                  vehicle.identifier ||
-                  vehicle.regNo ||
-                  vehicle.carId ||
-                  String(vehicle.id);
-                return `
-                <tr style="border-bottom:1px solid rgba(255,255,255,.06);">
-                  <td style="padding:12px;font-family:monospace;font-weight:700;color:#4fd7ff;">${escapeHtml(vehicle.carId || "—")}</td>
-                  <td style="padding:12px;">
-                    <strong style="color:#ffffff;">${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}</strong>
-                    <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.category || "Economy")}</small>
-                  </td>
-                  <td style="padding:12px;font-family:monospace;font-weight:700;color:#ffffff;">
-                    ${vehicle.rawReg && vehicle.rawReg !== "TBD" ? escapeHtml(vehicle.rawReg) : '<span style="color:var(--sub);font-weight:normal;font-style:italic;font-family:sans-serif;">—</span>'}
-                  </td>
-                  <td style="padding:12px;">
-                    <span style="color:#ffffff;font-weight:600;">${escapeHtml(vehicle.ownerName || "Kruizly Fleet")}</span>
-                    <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.acquisitionType || "Partner")} · ${escapeHtml(vehicle.hub || "Unassigned Hub")}</small>
-                  </td>
-                  <td style="padding:12px;">
-                    <span style="color:#ffd166;font-weight:600;">${escapeHtml(vehicle.fuel || "Petrol")}</span>
-                    <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.transmission || "Manual")} · ${vehicle.seats || 5} Seats</small>
-                  </td>
-                  <td style="padding:12px;font-weight:700;color:#06d6a0;">${formatINR(vehicle.priceDay)}</td>
-                  <td style="padding:12px;">
-                    <span class="status-pill ${available ? "verified" : "rejected"}">
-                      ${available ? "Available" : "Unavailable"}
-                    </span>
-                  </td>
-                  <td style="padding:12px;text-align:center;">
-                    <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
-                      <input
-                        type="checkbox"
-                        class="admin-fleet-current-checkbox"
-                        data-reg="${escapeHtml(vehKey)}"
-                        ${isActiveRoster ? "checked" : ""}
-                        style="width:18px;height:18px;accent-color:#06d6a0;cursor:pointer;"
-                      />
-                      <span style="font-size:11.5px;font-weight:700;color:${isActiveRoster ? "#06d6a0" : "var(--sub)"};">
-                        ${isActiveRoster ? "Active" : "Off"}
-                      </span>
-                    </label>
-                  </td>
-                  <td style="padding:12px;text-align:right;white-space:nowrap;">
-                    <button
-                      type="button"
-                      class="btn btn-outline admin-fleet-roster-toggle"
-                      data-reg="${escapeHtml(vehKey)}"
-                      data-active="${String(isActiveRoster)}"
-                      style="margin-right:6px; font-size:11.5px; border-color:${isActiveRoster ? "rgba(255, 209, 102, 0.4)" : "rgba(6, 214, 160, 0.4)"}; color:${isActiveRoster ? "#ffd166" : "#06d6a0"};"
-                    >
-                      ${isActiveRoster ? "Remove from Roster" : "+ Add to Roster"}
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-outline admin-fleet-edit"
-                      data-reg="${escapeHtml(vehKey)}"
-                      style="margin-right:6px;"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      class="btn ${available ? "btn-outline" : "btn-dark"} admin-fleet-toggle"
-                      data-reg="${escapeHtml(vehKey)}"
-                      data-available="${String(available)}"
-                    >
-                      ${available ? "Mark Unavailable" : "Make Available"}
-                    </button>
-                    <button
-                      type="button"
-                      class="btn btn-outline admin-fleet-remove"
-                      data-reg="${escapeHtml(vehKey)}"
-                      style="margin-left:6px;border-color:#ef476f;color:#ef476f;"
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              `;
-              })
-              .join("")}
-          </tbody>
-        </table>
-      </div>
-      ${renderAdminPagination({
-        page: adminFleetPage,
-        totalPages,
-        totalItems: vehicles.length,
-        type: "fleet",
-        pageSize: ADMIN_FLEET_PER_PAGE,
-      })}
-    `;
-
-    fleetManagementWrap
-      .querySelectorAll("[data-admin-fleet-page-action]")
-      .forEach((button) => {
-        button.addEventListener("click", () => {
-          adminFleetPage +=
-            button.dataset.adminFleetPageAction === "next" ? 1 : -1;
-          loadFleetManagement();
-          fleetManagementWrap.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
-        });
-      });
-
-    fleetManagementWrap
-      .querySelectorAll("[data-admin-fleet-page]")
-      .forEach((button) => {
-        button.addEventListener("click", () => {
-          adminFleetPage = Number(button.dataset.adminFleetPage) || 1;
-          loadFleetManagement();
-          fleetManagementWrap.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
-        });
-      });
-
-    fleetManagementWrap
-      .querySelectorAll(".admin-fleet-current-checkbox")
-      .forEach((checkbox) => {
-        checkbox.addEventListener("change", async () => {
-          const regNo = (checkbox.dataset.reg || "").trim().toUpperCase();
-          if (!regNo) return;
-          checkbox.disabled = true;
-          try {
-            const norm = normalizeActivePlate(regNo);
-            let activeList = [...currentActiveFleetRegs];
-            if (checkbox.checked) {
-              if (!activeList.includes(norm)) activeList.push(norm);
-            } else {
-              activeList = activeList.filter(
-                (r) => r.toUpperCase() !== regNo && r.toUpperCase() !== norm,
-              );
-            }
-            activeList = Array.from(
-              new Set(activeList.map((r) => normalizeActivePlate(r))),
-            );
-            localStorage.setItem(
-              "kruizly_admin_active_regs",
-              JSON.stringify(activeList),
-            );
-
-            await api.post("/vehicles/active-fleet.php", {
-              action: checkbox.checked ? "add" : "remove",
-              regNo,
-            });
-            await loadFleetManagement();
-          } catch (error) {
-            console.error("FLEET ROSTER ERROR:", error);
-            alert("Roster update error: " + (error.message || error));
-            checkbox.checked = !checkbox.checked;
-            checkbox.disabled = false;
-          }
-        });
-      });
-
-    fleetManagementWrap
-      .querySelectorAll(".admin-fleet-roster-toggle")
-      .forEach((button) => {
-        button.addEventListener("click", async () => {
-          const regNo = (button.dataset.reg || "").trim().toUpperCase();
-          if (!regNo) {
-            alert("Could not determine vehicle registration or catalog ID.");
-            return;
-          }
-          const isCurrentlyActive = button.dataset.active === "true";
-          const originalText = button.textContent;
-          button.disabled = true;
-          button.textContent = "Updating...";
-          try {
-            const norm = normalizeActivePlate(regNo);
-            let activeList = [...currentActiveFleetRegs];
-            if (isCurrentlyActive) {
-              activeList = activeList.filter(
-                (r) => r.toUpperCase() !== regNo && r.toUpperCase() !== norm,
-              );
-            } else {
-              if (!activeList.includes(norm)) activeList.push(norm);
-            }
-            activeList = Array.from(
-              new Set(activeList.map((r) => normalizeActivePlate(r))),
-            );
-            localStorage.setItem(
-              "kruizly_admin_active_regs",
-              JSON.stringify(activeList),
-            );
-
-            await api.post("/vehicles/active-fleet.php", {
-              action: isCurrentlyActive ? "remove" : "add",
-              regNo,
-            });
-            await loadFleetManagement();
-          } catch (error) {
-            console.error("FLEET ROSTER ERROR:", error);
-            alert("Roster update error: " + (error.message || error));
-            button.disabled = false;
-            button.textContent = originalText;
-          }
-        });
-      });
-
-    fleetManagementWrap
-      .querySelectorAll(".admin-fleet-edit")
-      .forEach((button) => {
-        button.addEventListener("click", () => {
-          const regNo = button.dataset.reg;
-          const vehicle = vehicles.find(
-            (item) =>
-              item.regNo === regNo ||
-              item.identifier === regNo ||
-              item.rawReg === regNo ||
-              item.carId === regNo,
-          );
-          if (!vehicle) return;
-
-          editingFleetRegNo = vehicle.rawReg || vehicle.regNo;
-          if ($("fleetCarId")) $("fleetCarId").value = vehicle.carId || "";
-          if ($("fleetBrand")) $("fleetBrand").value = vehicle.brand || "";
-          if ($("fleetModel")) $("fleetModel").value = vehicle.model || "";
-          if ($("fleetRegNo")) {
-            $("fleetRegNo").value = vehicle.rawReg || vehicle.regNo || "";
-            $("fleetRegNo").readOnly = Boolean(vehicle.rawReg);
-          }
-          if ($("fleetYear")) $("fleetYear").value = vehicle.year || 2026;
-          if ($("fleetCategory"))
-            $("fleetCategory").value = vehicle.category || "economy";
-          if ($("fleetTransmission"))
-            $("fleetTransmission").value = vehicle.transmission || "Manual";
-          if ($("fleetFuel")) $("fleetFuel").value = vehicle.fuel || "Petrol";
-          if ($("fleetSeats")) $("fleetSeats").value = vehicle.seats || 5;
-          if ($("fleetPriceDay"))
-            $("fleetPriceDay").value = vehicle.priceDay || 3500;
-          if ($("fleetPriceHour"))
-            $("fleetPriceHour").value = vehicle.priceHour || 145;
-          if ($("fleetHub")) $("fleetHub").value = vehicle.hub_id || "";
-          if ($("fleetAcquisitionType"))
-            $("fleetAcquisitionType").value =
-              vehicle.acquisitionType || "Partner";
-          if ($("fleetOwnerName"))
-            $("fleetOwnerName").value = vehicle.ownerName || "";
-          if ($("fleetAcquisitionDate"))
-            $("fleetAcquisitionDate").value = vehicle.acquisitionDate || "";
-          if ($("fleetIsActiveFleet"))
-            $("fleetIsActiveFleet").checked = activeRegs.includes(
-              regNo.toUpperCase(),
-            );
-
-          if (fleetUploadSubmit)
-            fleetUploadSubmit.textContent = "Update Vehicle";
-          if (fleetUploadStatus)
-            fleetUploadStatus.textContent = `Editing ${regNo}`;
-
-          fleetUploadForm?.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          });
-        });
-      });
-
-    fleetManagementWrap
-      .querySelectorAll(".admin-fleet-toggle")
-      .forEach((button) => {
-        button.addEventListener("click", async () => {
-          const regNo = button.dataset.reg;
-          const current = button.dataset.available === "true";
-          button.disabled = true;
-          button.textContent = "Updating...";
-          try {
-            await api
-              .post("/vehicles/availability", {
-                regNo,
-                available: !current,
-              })
-              .catch(() => {});
-            const v = vehicles.find((item) => item.regNo === regNo);
-            if (v) v.available = !current ? 1 : 0;
-            await loadFleetManagement();
-          } catch (error) {
-            console.error("FLEET AVAILABILITY ERROR:", error);
-            button.disabled = false;
-          }
-        });
-      });
-
-    fleetManagementWrap
-      .querySelectorAll(".admin-fleet-remove")
-      .forEach((button) => {
-        button.addEventListener("click", async () => {
-          const regNo = button.dataset.reg;
-          if (!regNo || !confirm(`Remove ${regNo} from the fleet?`)) return;
-
-          button.disabled = true;
-          try {
-            await api.delete(`/vehicles/${regNo}`).catch(() => {});
-            await loadFleetManagement();
-          } catch (error) {
-            console.error("FLEET REMOVE ERROR:", error);
-            button.disabled = false;
-          }
-        });
-      });
   } catch (error) {
     console.error("FLEET MANAGEMENT LOAD ERROR:", error);
-    fleetManagementWrap.innerHTML = `
-      <p style="color:#ef476f;">
-        Could not load fleet management. ${escapeHtml(error.message)}
-      </p>
-    `;
+    if (fleetManagementWrap) {
+      fleetManagementWrap.innerHTML = `
+        <p style="color:#ef476f;">
+          Could not load fleet management. ${escapeHtml(error.message || error)}
+        </p>
+      `;
+    }
   }
+}
+
+function setupFleetSearchAndSort() {
+  const searchInput = document.getElementById("adminFleetSearchInput");
+  const statusSelect = document.getElementById("adminFleetStatusSelect");
+  const sortSelect = document.getElementById("adminFleetSortSelect");
+
+  const onFilterChange = () => {
+    adminFleetPage = 1;
+    renderFleetManagementTable(adminFleetVehicles, currentActiveFleetRegs);
+  };
+
+  if (searchInput && !searchInput.dataset.bound) {
+    searchInput.dataset.bound = "true";
+    searchInput.addEventListener("input", onFilterChange);
+  }
+  if (statusSelect && !statusSelect.dataset.bound) {
+    statusSelect.dataset.bound = "true";
+    statusSelect.addEventListener("change", onFilterChange);
+  }
+  if (sortSelect && !sortSelect.dataset.bound) {
+    sortSelect.dataset.bound = "true";
+    sortSelect.addEventListener("change", onFilterChange);
+  }
+}
+
+function renderFleetManagementTable(vehicles = adminFleetVehicles, activeRegs = currentActiveFleetRegs) {
+  if (!fleetManagementWrap) return;
+
+  if (!vehicles || !vehicles.length) {
+    fleetManagementWrap.innerHTML = `<p style="color:var(--sub);">No vehicles in the fleet yet. Add the first one above.</p>`;
+    return;
+  }
+
+  // 1. Filter by Search Query
+  const searchQuery = String(document.getElementById("adminFleetSearchInput")?.value || "").trim().toLowerCase();
+  let filtered = [...vehicles];
+
+  if (searchQuery) {
+    filtered = filtered.filter((v) => {
+      const carId = String(v.carId || "").toLowerCase();
+      const regNo = String(v.regNo || v.rawReg || "").toLowerCase();
+      const brand = String(v.brand || "").toLowerCase();
+      const model = String(v.model || "").toLowerCase();
+      const fullName = `${brand} ${model}`.toLowerCase();
+      const owner = String(v.ownerName || "").toLowerCase();
+      const hub = String(v.hub || "").toLowerCase();
+      const category = String(v.category || "").toLowerCase();
+      const fuel = String(v.fuel || "").toLowerCase();
+      const transmission = String(v.transmission || "").toLowerCase();
+
+      return (
+        carId.includes(searchQuery) ||
+        regNo.includes(searchQuery) ||
+        brand.includes(searchQuery) ||
+        model.includes(searchQuery) ||
+        fullName.includes(searchQuery) ||
+        owner.includes(searchQuery) ||
+        hub.includes(searchQuery) ||
+        category.includes(searchQuery) ||
+        fuel.includes(searchQuery) ||
+        transmission.includes(searchQuery)
+      );
+    });
+  }
+
+  // 2. Filter by Status
+  const statusFilter = String(document.getElementById("adminFleetStatusSelect")?.value || "all");
+  if (statusFilter === "available") {
+    filtered = filtered.filter((v) => Boolean(v.available));
+  } else if (statusFilter === "unavailable") {
+    filtered = filtered.filter((v) => !Boolean(v.available));
+  } else if (statusFilter === "active") {
+    filtered = filtered.filter((v) => {
+      return activeRegs.some((r) => {
+        const norm = normalizeActivePlate(r);
+        if (!norm) return false;
+        const vReg = normalizeActivePlate(v.regNo);
+        const vRaw = normalizeActivePlate(v.rawReg);
+        const vCarId = String(v.carId || "").trim().toUpperCase();
+        const vId = String(v.id || "").trim().toUpperCase();
+        return (
+          (vReg && norm === vReg) ||
+          (vRaw && norm === vRaw) ||
+          (vCarId && norm === vCarId) ||
+          (vId && norm === vId)
+        );
+      });
+    });
+  }
+
+  // 3. Sort Vehicles
+  const sortKey = String(document.getElementById("adminFleetSortSelect")?.value || "default");
+  if (sortKey === "carId-asc") {
+    filtered.sort((a, b) => String(a.carId || "").localeCompare(String(b.carId || ""), undefined, { numeric: true }));
+  } else if (sortKey === "name-asc") {
+    filtered.sort((a, b) => `${a.brand} ${a.model}`.localeCompare(`${b.brand} ${b.model}`));
+  } else if (sortKey === "name-desc") {
+    filtered.sort((a, b) => `${b.brand} ${b.model}`.localeCompare(`${a.brand} ${a.model}`));
+  } else if (sortKey === "rate-asc") {
+    filtered.sort((a, b) => (Number(a.priceDay) || 0) - (Number(b.priceDay) || 0));
+  } else if (sortKey === "rate-desc") {
+    filtered.sort((a, b) => (Number(b.priceDay) || 0) - (Number(a.priceDay) || 0));
+  } else if (sortKey === "reg-asc") {
+    filtered.sort((a, b) => String(a.rawReg || a.regNo || "").localeCompare(String(b.rawReg || b.regNo || "")));
+  }
+
+  if (!filtered.length) {
+    fleetManagementWrap.innerHTML = `
+      <div style="padding:40px;text-align:center;color:var(--sub);">
+        <p style="margin:0 0 8px;font-size:1.05rem;font-weight:600;">No matching vehicles found</p>
+        <p style="margin:0;font-size:0.85rem;">Try adjusting your search query or status filter.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ADMIN_FLEET_PER_PAGE));
+  adminFleetPage = Math.min(adminFleetPage, totalPages);
+  const pageStart = (adminFleetPage - 1) * ADMIN_FLEET_PER_PAGE;
+  const pageVehicles = filtered.slice(pageStart, pageStart + ADMIN_FLEET_PER_PAGE);
+
+  fleetManagementWrap.innerHTML = `
+    <div style="width:100%;overflow-x:auto;">
+      <table class="admin-table" style="width:100%;min-width:1120px;border-collapse:collapse;text-align:left;">
+        <thead>
+          <tr style="border-bottom:1px solid var(--line);color:var(--sub);">
+            <th style="padding:12px;">Car ID</th>
+            <th style="padding:12px;">Vehicle</th>
+            <th style="padding:12px;">RC Number</th>
+            <th style="padding:12px;">Partner / Owner</th>
+            <th style="padding:12px;">Fuel &amp; Gear</th>
+            <th style="padding:12px;">Daily Rate</th>
+            <th style="padding:12px;">Availability</th>
+            <th style="padding:12px;text-align:center;">Current Fleet</th>
+            <th style="padding:12px;text-align:right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${pageVehicles
+            .map((vehicle) => {
+              const available = Boolean(vehicle.available);
+              const isActiveRoster = activeRegs.some((r) => {
+                const norm = normalizeActivePlate(r);
+                if (!norm) return false;
+                const vReg = normalizeActivePlate(vehicle.regNo);
+                const vRaw = normalizeActivePlate(vehicle.rawReg);
+                const vCarId = String(vehicle.carId || "").trim().toUpperCase();
+                const vId = String(vehicle.id || "").trim().toUpperCase();
+                return (
+                  (vReg && norm === vReg) ||
+                  (vRaw && norm === vRaw) ||
+                  (vCarId && norm === vCarId) ||
+                  (vId && norm === vId) ||
+                  (vId && norm === "CAT-" + vId)
+                );
+              });
+              const vehKey =
+                vehicle.identifier ||
+                vehicle.regNo ||
+                vehicle.carId ||
+                String(vehicle.id);
+              return `
+              <tr style="border-bottom:1px solid rgba(255,255,255,.06);">
+                <td style="padding:12px;font-family:monospace;font-weight:700;color:#4fd7ff;">${escapeHtml(vehicle.carId || "—")}</td>
+                <td style="padding:12px;">
+                  <strong style="color:#ffffff;">${escapeHtml(`${vehicle.brand} ${vehicle.model}`)}</strong>
+                  <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.category || "Economy")}</small>
+                </td>
+                <td style="padding:12px;font-family:monospace;font-weight:700;color:#ffffff;">
+                  ${vehicle.rawReg && vehicle.rawReg !== "TBD" ? escapeHtml(vehicle.rawReg) : '<span style="color:var(--sub);font-weight:normal;font-style:italic;font-family:sans-serif;">—</span>'}
+                </td>
+                <td style="padding:12px;">
+                  <span style="color:#ffffff;font-weight:600;">${escapeHtml(vehicle.ownerName || "Kruizly Fleet")}</span>
+                  <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.acquisitionType || "Partner")} · ${escapeHtml(vehicle.hub || "Unassigned Hub")}</small>
+                </td>
+                <td style="padding:12px;">
+                  <span style="color:#ffd166;font-weight:600;">${escapeHtml(vehicle.fuel || "Petrol")}</span>
+                  <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.transmission || "Manual")} · ${vehicle.seats || 5} Seats</small>
+                </td>
+                <td style="padding:12px;font-weight:700;color:#06d6a0;">${formatINR(vehicle.priceDay)}</td>
+                <td style="padding:12px;">
+                  <span class="status-pill ${available ? "verified" : "rejected"}">
+                    ${available ? "Available" : "Unavailable"}
+                  </span>
+                </td>
+                <td style="padding:12px;text-align:center;">
+                  <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">
+                    <input
+                      type="checkbox"
+                      class="admin-fleet-current-checkbox"
+                      data-reg="${escapeHtml(vehKey)}"
+                      ${isActiveRoster ? "checked" : ""}
+                      style="width:18px;height:18px;accent-color:#06d6a0;cursor:pointer;"
+                    />
+                    <span style="font-size:11.5px;font-weight:700;color:${isActiveRoster ? "#06d6a0" : "var(--sub)"};">
+                      ${isActiveRoster ? "Active" : "Off"}
+                    </span>
+                  </label>
+                </td>
+                <td style="padding:12px;text-align:right;white-space:nowrap;">
+                  <button
+                    type="button"
+                    class="btn btn-outline admin-fleet-roster-toggle"
+                    data-reg="${escapeHtml(vehKey)}"
+                    data-active="${String(isActiveRoster)}"
+                    style="margin-right:6px; font-size:11.5px; border-color:${isActiveRoster ? "rgba(255, 209, 102, 0.4)" : "rgba(6, 214, 160, 0.4)"}; color:${isActiveRoster ? "#ffd166" : "#06d6a0"};"
+                  >
+                    ${isActiveRoster ? "Remove from Roster" : "+ Add to Roster"}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline admin-fleet-edit"
+                    data-reg="${escapeHtml(vehKey)}"
+                    style="margin-right:6px;"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="btn ${available ? "btn-outline" : "btn-dark"} admin-fleet-toggle"
+                    data-reg="${escapeHtml(vehKey)}"
+                    data-available="${String(available)}"
+                  >
+                    ${available ? "Mark Unavailable" : "Make Available"}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-outline admin-fleet-remove"
+                    data-reg="${escapeHtml(vehKey)}"
+                    style="margin-left:6px;border-color:#ef476f;color:#ef476f;"
+                  >
+                    Remove
+                  </button>
+                </td>
+              </tr>
+            `;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+    ${renderAdminPagination({
+      page: adminFleetPage,
+      totalPages,
+      totalItems: filtered.length,
+      type: "fleet",
+      pageSize: ADMIN_FLEET_PER_PAGE,
+    })}
+  `;
+
+  fleetManagementWrap
+    .querySelectorAll("[data-admin-fleet-page-action]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        adminFleetPage += button.dataset.adminFleetPageAction === "next" ? 1 : -1;
+        renderFleetManagementTable(vehicles, activeRegs);
+        fleetManagementWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
+  fleetManagementWrap
+    .querySelectorAll("[data-admin-fleet-page]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        adminFleetPage = Number(button.dataset.adminFleetPage) || 1;
+        renderFleetManagementTable(vehicles, activeRegs);
+        fleetManagementWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
+  fleetManagementWrap
+    .querySelectorAll(".admin-fleet-current-checkbox")
+    .forEach((checkbox) => {
+      checkbox.addEventListener("change", async () => {
+        const regNo = (checkbox.dataset.reg || "").trim().toUpperCase();
+        if (!regNo) return;
+        checkbox.disabled = true;
+        try {
+          const norm = normalizeActivePlate(regNo);
+          let activeList = [...currentActiveFleetRegs];
+          if (checkbox.checked) {
+            if (!activeList.includes(norm)) activeList.push(norm);
+          } else {
+            activeList = activeList.filter(
+              (r) => r.toUpperCase() !== regNo && r.toUpperCase() !== norm
+            );
+          }
+          activeList = Array.from(
+            new Set(activeList.map((r) => normalizeActivePlate(r)))
+          );
+          localStorage.setItem(
+            "kruizly_admin_active_regs",
+            JSON.stringify(activeList)
+          );
+
+          await api.post("/vehicles/active-fleet.php", {
+            action: checkbox.checked ? "add" : "remove",
+            regNo,
+          });
+          await loadFleetManagement();
+        } catch (error) {
+          console.error("FLEET ROSTER ERROR:", error);
+          alert("Roster update error: " + (error.message || error));
+          checkbox.checked = !checkbox.checked;
+          checkbox.disabled = false;
+        }
+      });
+    });
+
+  fleetManagementWrap
+    .querySelectorAll(".admin-fleet-roster-toggle")
+    .forEach((button) => {
+      button.addEventListener("click", async () => {
+        const regNo = (button.dataset.reg || "").trim().toUpperCase();
+        if (!regNo) {
+          alert("Could not determine vehicle registration or catalog ID.");
+          return;
+        }
+        const isCurrentlyActive = button.dataset.active === "true";
+        const originalText = button.textContent;
+        button.disabled = true;
+        button.textContent = "Updating...";
+        try {
+          const norm = normalizeActivePlate(regNo);
+          let activeList = [...currentActiveFleetRegs];
+          if (isCurrentlyActive) {
+            activeList = activeList.filter(
+              (r) => r.toUpperCase() !== regNo && r.toUpperCase() !== norm
+            );
+          } else {
+            if (!activeList.includes(norm)) activeList.push(norm);
+          }
+          activeList = Array.from(
+            new Set(activeList.map((r) => normalizeActivePlate(r)))
+          );
+          localStorage.setItem(
+            "kruizly_admin_active_regs",
+            JSON.stringify(activeList)
+          );
+
+          await api.post("/vehicles/active-fleet.php", {
+            action: isCurrentlyActive ? "remove" : "add",
+            regNo,
+          });
+          await loadFleetManagement();
+        } catch (error) {
+          console.error("FLEET ROSTER ERROR:", error);
+          alert("Roster update error: " + (error.message || error));
+          button.disabled = false;
+          button.textContent = originalText;
+        }
+      });
+    });
+
+  fleetManagementWrap
+    .querySelectorAll(".admin-fleet-edit")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        const regNo = button.dataset.reg;
+        const vehicle = vehicles.find(
+          (item) =>
+            item.regNo === regNo ||
+            item.identifier === regNo ||
+            item.rawReg === regNo ||
+            item.carId === regNo
+        );
+        if (!vehicle) return;
+
+        editingFleetRegNo = vehicle.rawReg || vehicle.regNo;
+        if ($("fleetCarId")) $("fleetCarId").value = vehicle.carId || "";
+        if ($("fleetBrand")) $("fleetBrand").value = vehicle.brand || "";
+        if ($("fleetModel")) $("fleetModel").value = vehicle.model || "";
+        if ($("fleetRegNo")) {
+          $("fleetRegNo").value = vehicle.rawReg || vehicle.regNo || "";
+          $("fleetRegNo").readOnly = Boolean(vehicle.rawReg);
+        }
+        if ($("fleetYear")) $("fleetYear").value = vehicle.year || 2026;
+        if ($("fleetCategory")) $("fleetCategory").value = vehicle.category || "economy";
+        if ($("fleetTransmission")) $("fleetTransmission").value = vehicle.transmission || "Manual";
+        if ($("fleetFuel")) $("fleetFuel").value = vehicle.fuel || "Petrol";
+        if ($("fleetSeats")) $("fleetSeats").value = vehicle.seats || 5;
+        if ($("fleetPriceDay")) $("fleetPriceDay").value = vehicle.priceDay || 3500;
+        if ($("fleetPriceHour")) $("fleetPriceHour").value = vehicle.priceHour || 145;
+        if ($("fleetHub")) $("fleetHub").value = vehicle.hub_id || "";
+        if ($("fleetAcquisitionType")) $("fleetAcquisitionType").value = vehicle.acquisitionType || "Partner";
+        if ($("fleetOwnerName")) $("fleetOwnerName").value = vehicle.ownerName || "";
+        if ($("fleetAcquisitionDate")) $("fleetAcquisitionDate").value = vehicle.acquisitionDate || "";
+        if ($("fleetIsActiveFleet")) $("fleetIsActiveFleet").checked = activeRegs.includes(regNo.toUpperCase());
+
+        if (fleetUploadSubmit) fleetUploadSubmit.textContent = "Update Vehicle";
+        if (fleetUploadStatus) fleetUploadStatus.textContent = `Editing ${regNo}`;
+
+        fleetUploadForm?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
+  fleetManagementWrap
+    .querySelectorAll(".admin-fleet-toggle")
+    .forEach((button) => {
+      button.addEventListener("click", async () => {
+        const regNo = button.dataset.reg;
+        const current = button.dataset.available === "true";
+        button.disabled = true;
+        button.textContent = "Updating...";
+        try {
+          await api
+            .post("/vehicles/availability", { regNo, available: !current })
+            .catch(() => {});
+          const v = vehicles.find((item) => item.regNo === regNo);
+          if (v) v.available = !current ? 1 : 0;
+          await loadFleetManagement();
+        } catch (error) {
+          console.error("FLEET AVAILABILITY ERROR:", error);
+          button.disabled = false;
+        }
+      });
+    });
+
+  fleetManagementWrap
+    .querySelectorAll(".admin-fleet-remove")
+    .forEach((button) => {
+      button.addEventListener("click", async () => {
+        const regNo = button.dataset.reg;
+        if (!regNo || !confirm(`Remove ${regNo} from the fleet?`)) return;
+
+        button.disabled = true;
+        button.textContent = "Removing...";
+        try {
+          await api.delete(`/vehicles/${regNo}`).catch(() => {});
+          await loadFleetManagement();
+        } catch (error) {
+          console.error("FLEET REMOVE ERROR:", error);
+          button.disabled = false;
+        }
+      });
+    });
 }
 
 function resetFleetForm() {
