@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
         Tata: ["Nexon", "Harrier", "Safari", "Punch", "Curvv", "Altroz"],
         Hyundai: ["Creta", "Venue", "Verna", "i20", "Alcazar", "Tucson", "Exter", "Grand i10 Nios", "Aura"],
         "Maruti Suzuki": ["Grand Vitara", "Brezza", "Swift", "Ertiga", "Fronx", "Jimny", "Baleno", "Dzire", "XL6", "Ciaz", "Ignis", "Celerio"],
-        Toyota: ["Fortuner", "Innova Hycross", "Innova Crysta", "Urban Cruiser Hyryder", "Hilux", "Camry", "Glanza", "Rumion", "Vellfire"],
+        Toyota: ["Fortuner", "Innova Hycross", "Innova Crysta", "Urban Cruiser Hyryder", "Hilux", "Camry", "Glanza", "Rumion"],
         Kia: ["Seltos", "Sonet", "Carens", "Carnival", "EV6"],
         Honda: ["City", "Elevate", "Amaze"],
         Volkswagen: ["Virtus", "Taigun", "Tiguan"],
