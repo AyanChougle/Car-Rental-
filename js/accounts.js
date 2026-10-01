@@ -10,7 +10,7 @@
 
 import { auth } from "./firebase-init.js";
 import { checkAuth, getCurrentUser, setStoredUser, isAccountantUser, isAdminUser } from "./auth.js?v=20260908-v5";
-import { api } from "./kruizly-api.js?v=20260908-v5";
+import { api } from "./kruizly-api.js?v=20261001-v2";
 import "./nav-helper.js?v=20260928-v2";
 import { openImageLightbox } from "./image-lightbox.js?v=20260912-v1";
 

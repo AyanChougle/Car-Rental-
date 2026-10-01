@@ -5,7 +5,7 @@ import {
   isAdminUser,
   isExecutiveUser,
 } from "./auth.js?v=20260908-v5";
-import { api } from "./kruizly-api.js?v=20260915-v1";
+import { api } from "./kruizly-api.js?v=20261001-v2";
 import "./nav-helper.js?v=20260928-v2";
 
 /* ============================================================

@@ -6,7 +6,7 @@
 
 import { auth } from "./firebase-init.js";
 import { checkAuth, getCurrentUser, logout } from "./auth.js?v=20260917-v1";
-import { api, API_BASE_URL } from "./kruizly-api.js?v=20260917-v1";
+import { api, API_BASE_URL } from "./kruizly-api.js?v=20261001-v2";
 import "./nav-helper.js?v=20260928-v2";
 import { formatBookingNumber } from "./booking-reference.js";
 

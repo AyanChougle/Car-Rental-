@@ -3,7 +3,7 @@
 // ============================================================
 
 import { checkAuth, getCurrentUser } from "./auth.js?v=20260917-v1";
-import { api } from "./kruizly-api.js?v=20260917-v1";
+import { api } from "./kruizly-api.js?v=20261001-v2";
 import "./nav-helper.js?v=20260930-v7";
 import { generateNumericBookingId } from "./booking-reference.js";
 import {
