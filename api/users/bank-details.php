@@ -52,6 +52,8 @@ function bankMask(string $n): string {
 function bankPayload(?array $r, bool $full): ?array {
     if (!$r) return null;
     return [
+        'firebaseUid' => $r['firebase_uid'],
+        'userId' => $r['user_id'],
         'accountHolderName' => $r['account_holder_name'],
         'accountNumber' => $full ? $r['account_number'] : bankMask((string)$r['account_number']),
         'accountNumberMasked' => bankMask((string)$r['account_number']),
