@@ -5,17 +5,28 @@
 
 import { auth } from "./firebase-init.js";
 import { api, API_BASE_URL } from "./kruizly-api.js?v=20260915-v1";
-import { checkAuth, getCurrentUser, isAdminUser } from "./auth.js?v=20260908-v5";
+import {
+  checkAuth,
+  getCurrentUser,
+  isAdminUser,
+} from "./auth.js?v=20260908-v5";
 
 import "./nav-helper.js?v=20260930-v5";
 
 import { openReturnModal } from "./return-inspection.js";
 import { formatBookingNumber } from "./booking-reference.js";
-import { openImageLightbox, isPdfDocument } from "./image-lightbox.js?v=20260928-v1";
+import {
+  openImageLightbox,
+  isPdfDocument,
+} from "./image-lightbox.js?v=20260928-v1";
 
 async function getAuthToken() {
   try {
-    if (auth && auth.currentUser && typeof auth.currentUser.getIdToken === "function") {
+    if (
+      auth &&
+      auth.currentUser &&
+      typeof auth.currentUser.getIdToken === "function"
+    ) {
       return await auth.currentUser.getIdToken();
     }
     if (currentUser && typeof currentUser.getIdToken === "function") {
@@ -127,11 +138,7 @@ function parseDateOnly(value) {
   if (!value) return null;
 
   if (value instanceof Date) {
-    return new Date(
-      value.getFullYear(),
-      value.getMonth(),
-      value.getDate()
-    );
+    return new Date(value.getFullYear(), value.getMonth(), value.getDate());
   }
 
   if (typeof value === "object" && typeof value.toMillis === "function") {
@@ -159,11 +166,7 @@ function parseDateOnly(value) {
     return null;
   }
 
-  return new Date(
-    parsed.getFullYear(),
-    parsed.getMonth(),
-    parsed.getDate()
-  );
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
 }
 
 function formatDate(value) {
@@ -196,9 +199,13 @@ function safeParseDate(value) {
       const year = parseInt(ymd[1], 10);
       const month = parseInt(ymd[2], 10) - 1;
       const day = parseInt(ymd[3], 10);
-      let hour = 0, min = 0, sec = 0;
+      let hour = 0,
+        min = 0,
+        sec = 0;
       const rest = (ymd[4] || "").trim();
-      const timeMatch = rest.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i);
+      const timeMatch = rest.match(
+        /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i,
+      );
       if (timeMatch) {
         hour = parseInt(timeMatch[1], 10);
         min = parseInt(timeMatch[2], 10);
@@ -217,14 +224,19 @@ function safeParseDate(value) {
       const p1 = parseInt(dmy[1], 10);
       const p2 = parseInt(dmy[2], 10);
       const year = parseInt(dmy[3], 10);
-      let day = p1, month = p2 - 1;
+      let day = p1,
+        month = p2 - 1;
       if (p1 <= 12 && p2 > 12) {
         month = p1 - 1;
         day = p2;
       }
-      let hour = 0, min = 0, sec = 0;
+      let hour = 0,
+        min = 0,
+        sec = 0;
       const rest = (dmy[4] || "").trim();
-      const timeMatch = rest.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i);
+      const timeMatch = rest.match(
+        /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i,
+      );
       if (timeMatch) {
         hour = parseInt(timeMatch[1], 10);
         min = parseInt(timeMatch[2], 10);
@@ -286,10 +298,7 @@ function getBookingDateMillis(booking) {
     return 0;
   }
 
-  if (
-    typeof value === "object" &&
-    typeof value.toMillis === "function"
-  ) {
+  if (typeof value === "object" && typeof value.toMillis === "function") {
     return value.toMillis();
   }
 
@@ -323,11 +332,7 @@ function getStatusClass(status) {
     return "verified";
   }
 
-  if (
-    value === "cancelled" ||
-    value === "rejected" ||
-    value === "failed"
-  ) {
+  if (value === "cancelled" || value === "rejected" || value === "failed") {
     return "rejected";
   }
 
@@ -338,9 +343,7 @@ function paymentStatusText(booking) {
   switch (booking.paymentStatus) {
     case "paid":
       return `Paid${
-        booking.paymentRef
-          ? ` • ${escapeHtml(booking.paymentRef)}`
-          : ""
+        booking.paymentRef ? ` • ${escapeHtml(booking.paymentRef)}` : ""
       }`;
 
     case "advance_paid":
@@ -348,9 +351,7 @@ function paymentStatusText(booking) {
 
     case "pending_verification":
       return `Verification Pending${
-        booking.paymentRef
-          ? ` • ${escapeHtml(booking.paymentRef)}`
-          : ""
+        booking.paymentRef ? ` • ${escapeHtml(booking.paymentRef)}` : ""
       }`;
 
     case "rejected":
@@ -468,13 +469,8 @@ function hideModal(id) {
     activeDocType = null;
   }
 
-  if (
-    id === "paymentModal" &&
-    activePaymentScreenshotObjectUrl
-  ) {
-    URL.revokeObjectURL(
-      activePaymentScreenshotObjectUrl
-    );
+  if (id === "paymentModal" && activePaymentScreenshotObjectUrl) {
+    URL.revokeObjectURL(activePaymentScreenshotObjectUrl);
     activePaymentScreenshotObjectUrl = null;
   }
 
@@ -509,7 +505,11 @@ async function initAdminAuth() {
   loadAllAdminData();
 }
 
-if (typeof window !== "undefined" && (window.location.pathname.includes("admin.html") || document.getElementById("adminContent"))) {
+if (
+  typeof window !== "undefined" &&
+  (window.location.pathname.includes("admin.html") ||
+    document.getElementById("adminContent"))
+) {
   initAdminAuth();
 }
 
@@ -518,21 +518,34 @@ let currentKpiStats = null;
 async function loadKpiStats() {
   try {
     const selectedHubId = getSelectedHubId();
-    const globalRes = await api.get("/admin/stats?_t=" + Date.now()).catch(() => null);
+    const globalRes = await api
+      .get("/admin/stats?_t=" + Date.now())
+      .catch(() => null);
     const globalData = globalRes?.data || {};
     if (!selectedHubId) {
-      currentKpiStats = globalData ? { ...globalData, _hubScoped: false } : null;
+      currentKpiStats = globalData
+        ? { ...globalData, _hubScoped: false }
+        : null;
       applyKpiStats();
       return;
     }
 
     let hubRes = null;
     try {
-      hubRes = await api.get("/hubs/summary.php", { hub_id: selectedHubId, id: selectedHubId, _t: Date.now() });
+      hubRes = await api.get("/hubs/summary.php", {
+        hub_id: selectedHubId,
+        id: selectedHubId,
+        _t: Date.now(),
+      });
     } catch (_) {
-      hubRes = await api.get("/hubs/summary", { hub_id: selectedHubId, id: selectedHubId, _t: Date.now() });
+      hubRes = await api.get("/hubs/summary", {
+        hub_id: selectedHubId,
+        id: selectedHubId,
+        _t: Date.now(),
+      });
     }
-    if (!hubRes?.success || !hubRes?.data) throw new Error(hubRes?.error || "Hub summary unavailable");
+    if (!hubRes?.success || !hubRes?.data)
+      throw new Error(hubRes?.error || "Hub summary unavailable");
     const hubData = hubRes.data;
     const globalEff = globalData?.effective || globalData?.live || {};
     currentKpiStats = {
@@ -546,15 +559,21 @@ async function loadKpiStats() {
         pending_payments: Number(hubData.pending_payments ?? 0),
         pending_docs: Number(hubData.pending_docs ?? 0),
         avg_booking: Number(hubData.avg_booking ?? 0),
-        active_rentals: Number(hubData.active_rentals ?? hubData.on_road_fleet ?? 0),
+        active_rentals: Number(
+          hubData.active_rentals ?? hubData.on_road_fleet ?? 0,
+        ),
         total_users: Number(hubData.total_users ?? globalEff.total_users ?? 0),
         total_fleet: Number(hubData.total_fleet ?? hubData.fleet_count ?? 0),
-        available_fleet: Number(hubData.available_fleet ?? hubData.available_in_yard ?? 0),
-        fleet_utilization: Number(hubData.fleet_utilization ?? hubData.occupancy_pct ?? 0),
+        available_fleet: Number(
+          hubData.available_fleet ?? hubData.available_in_yard ?? 0,
+        ),
+        fleet_utilization: Number(
+          hubData.fleet_utilization ?? hubData.occupancy_pct ?? 0,
+        ),
       },
       live: { ...hubData },
       _hubScoped: true,
-      hub: hubRes.hub || null
+      hub: hubRes.hub || null,
     };
     applyKpiStats();
   } catch (err) {
@@ -570,10 +589,12 @@ function applyKpiStats() {
 
   // Revenue KPIs
   const totalRevenue = $("statTotalRevenue");
-  if (totalRevenue) totalRevenue.textContent = formatINR(eff.total_revenue || 0);
+  if (totalRevenue)
+    totalRevenue.textContent = formatINR(eff.total_revenue || 0);
 
   const monthRevenue = $("statMonthRevenue");
-  if (monthRevenue) monthRevenue.textContent = formatINR(eff.month_revenue || 0);
+  if (monthRevenue)
+    monthRevenue.textContent = formatINR(eff.month_revenue || 0);
 
   const paidBookings = $("statPaidBookings");
   if (paidBookings) paidBookings.textContent = eff.paid_bookings || 0;
@@ -586,7 +607,8 @@ function applyKpiStats() {
   if (totalBookings) totalBookings.textContent = eff.total_bookings || 0;
 
   const activeRentals = $("statActiveRentals");
-  if (activeRentals) activeRentals.textContent = eff.active_rentals || eff.on_road_count || 0;
+  if (activeRentals)
+    activeRentals.textContent = eff.active_rentals || eff.on_road_count || 0;
 
   const pendingDocs = $("statPendingDocs");
   if (pendingDocs) pendingDocs.textContent = eff.pending_docs || 0;
@@ -599,35 +621,58 @@ function applyKpiStats() {
   if (totalUsers) totalUsers.textContent = eff.total_users || 0;
 
   const activeRenters = $("statActiveRenters");
-  if (activeRenters) activeRenters.textContent = eff.active_renters || eff.verified_users || Math.round((eff.total_users || 0) * 0.75);
+  if (activeRenters)
+    activeRenters.textContent =
+      eff.active_renters ||
+      eff.verified_users ||
+      Math.round((eff.total_users || 0) * 0.75);
 
   const verifiedCustomers = $("statVerifiedCustomers");
-  if (verifiedCustomers) verifiedCustomers.textContent = eff.verified_customers || Math.round((eff.total_users || 0) * 0.85);
+  if (verifiedCustomers)
+    verifiedCustomers.textContent =
+      eff.verified_customers || Math.round((eff.total_users || 0) * 0.85);
 
   const repeatCustomers = $("statRepeatCustomers");
-  if (repeatCustomers) repeatCustomers.textContent = eff.repeat_customers || Math.max(0, (eff.paid_bookings || 0) - Math.round((eff.total_users || 0) * 0.5));
+  if (repeatCustomers)
+    repeatCustomers.textContent =
+      eff.repeat_customers ||
+      Math.max(
+        0,
+        (eff.paid_bookings || 0) - Math.round((eff.total_users || 0) * 0.5),
+      );
 
   // Fleets KPIs
   const totalFleet = $("statTotalFleet");
-  if (totalFleet) totalFleet.textContent = eff.total_fleet || eff.fleet_count || 0;
+  if (totalFleet)
+    totalFleet.textContent = eff.total_fleet || eff.fleet_count || 0;
 
   const onRoadFleet = $("statOnRoadFleet");
-  if (onRoadFleet) onRoadFleet.textContent = eff.on_road_fleet || eff.active_rentals || 0;
+  if (onRoadFleet)
+    onRoadFleet.textContent = eff.on_road_fleet || eff.active_rentals || 0;
 
   const availableFleet = $("statAvailableFleet");
   const totFleetNum = Number(eff.total_fleet || eff.fleet_count || 0);
   const onRoadNum = Number(eff.on_road_fleet || eff.active_rentals || 0);
-  if (availableFleet) availableFleet.textContent = Math.max(0, totFleetNum - onRoadNum);
+  if (availableFleet)
+    availableFleet.textContent = Math.max(0, totFleetNum - onRoadNum);
 
   const utilizationRate = $("statUtilizationRate");
   if (utilizationRate) {
-    const rate = totFleetNum > 0 ? Math.min(100, Math.max(0, Math.round((onRoadNum / totFleetNum) * 100))) : 0;
+    const rate =
+      totFleetNum > 0
+        ? Math.min(
+            100,
+            Math.max(0, Math.round((onRoadNum / totFleetNum) * 100)),
+          )
+        : 0;
     utilizationRate.textContent = `${rate}%`;
   }
 
   const badge = $("kpiOverrideBadge");
   if (badge) {
-    badge.style.display = currentKpiStats.is_overridden ? "inline-block" : "none";
+    badge.style.display = currentKpiStats.is_overridden
+      ? "inline-block"
+      : "none";
   }
 
   const pBadge = $("paymentsTabBadge");
@@ -658,10 +703,15 @@ function initKpiCategoryTabs() {
         panel.style.display = "none";
       });
 
-      if (targetTab === "revenue") $("kpiPanelRevenue") && ($("kpiPanelRevenue").style.display = "block");
-      if (targetTab === "bookings") $("kpiPanelBookings") && ($("kpiPanelBookings").style.display = "block");
-      if (targetTab === "users") $("kpiPanelUsers") && ($("kpiPanelUsers").style.display = "block");
-      if (targetTab === "fleets") $("kpiPanelFleets") && ($("kpiPanelFleets").style.display = "block");
+      if (targetTab === "revenue")
+        $("kpiPanelRevenue") && ($("kpiPanelRevenue").style.display = "block");
+      if (targetTab === "bookings")
+        $("kpiPanelBookings") &&
+          ($("kpiPanelBookings").style.display = "block");
+      if (targetTab === "users")
+        $("kpiPanelUsers") && ($("kpiPanelUsers").style.display = "block");
+      if (targetTab === "fleets")
+        $("kpiPanelFleets") && ($("kpiPanelFleets").style.display = "block");
     });
   });
 }
@@ -684,7 +734,11 @@ function initialiseAdmin() {
   initialiseAdminCalendar();
 }
 
-if (typeof window !== "undefined" && (window.location.pathname.includes("admin.html") || document.getElementById("adminContent"))) {
+if (
+  typeof window !== "undefined" &&
+  (window.location.pathname.includes("admin.html") ||
+    document.getElementById("adminContent"))
+) {
   initialiseAdmin();
 }
 
@@ -693,39 +747,25 @@ if (typeof window !== "undefined" && (window.location.pathname.includes("admin.h
 // ============================================================================
 
 function initialiseTabs() {
-  const tabs = document.querySelectorAll(
-    ".admin-tabs .tab-btn"
-  );
+  const tabs = document.querySelectorAll(".admin-tabs .tab-btn");
 
   tabs.forEach((tab) => {
     tab.addEventListener("click", () => {
       const targetId = tab.dataset.tab;
 
       tabs.forEach((item) => {
-        item.classList.remove(
-          "active",
-          "btn-dark"
-        );
+        item.classList.remove("active", "btn-dark");
 
-        item.classList.add(
-          "btn-outline"
-        );
+        item.classList.add("btn-outline");
       });
 
-      tab.classList.add(
-        "active",
-        "btn-dark"
-      );
+      tab.classList.add("active", "btn-dark");
 
-      tab.classList.remove(
-        "btn-outline"
-      );
+      tab.classList.remove("btn-outline");
 
-      document
-        .querySelectorAll(".tab-panel")
-        .forEach((panel) => {
-          panel.hidden = panel.id !== targetId;
-        });
+      document.querySelectorAll(".tab-panel").forEach((panel) => {
+        panel.hidden = panel.id !== targetId;
+      });
 
       if (targetId === "tab-coupons") {
         resetCouponForm();
@@ -755,38 +795,23 @@ function initialiseTabs() {
   const userSearch = $("userSearchInput");
 
   if (userSearch) {
-    userSearch.addEventListener(
-      "input",
-      () => {
-        const query =
-          userSearch.value
-            .toLowerCase()
-            .trim();
+    userSearch.addEventListener("input", () => {
+      const query = userSearch.value.toLowerCase().trim();
 
-        const filtered =
-          usersData.filter((user) => {
-            const name =
-              String(user.name || "")
-                .toLowerCase();
+      const filtered = usersData.filter((user) => {
+        const name = String(user.name || "").toLowerCase();
 
-            const email =
-              String(user.email || "")
-                .toLowerCase();
+        const email = String(user.email || "").toLowerCase();
 
-            const phone =
-              String(user.phone || "")
-                .toLowerCase();
+        const phone = String(user.phone || "").toLowerCase();
 
-            return (
-              name.includes(query) ||
-              email.includes(query) ||
-              phone.includes(query)
-            );
-          });
+        return (
+          name.includes(query) || email.includes(query) || phone.includes(query)
+        );
+      });
 
-        renderUsersTable(filtered);
-      }
-    );
+      renderUsersTable(filtered);
+    });
   }
 }
 
@@ -795,111 +820,76 @@ function initialiseTabs() {
 // ============================================================================
 
 function initialiseBookingFilters() {
-  const statusFilter =
-    $("bookingStatusFilter");
+  const statusFilter = $("bookingStatusFilter");
 
   if (statusFilter) {
-    statusFilter.addEventListener(
-      "change",
-      () => {
-        bookingStatus =
-          statusFilter.value;
+    statusFilter.addEventListener("change", () => {
+      bookingStatus = statusFilter.value;
 
-        adminBookingPage = 1;
+      adminBookingPage = 1;
 
-        renderBookingsTable(
-          getFilteredBookings()
-        );
-      }
-    );
+      renderBookingsTable(getFilteredBookings());
+    });
   }
 
-  const sortSelect =
-    $("bookingSortOrder");
+  const sortSelect = $("bookingSortOrder");
 
   if (sortSelect) {
-    sortSelect.value =
-      bookingSortDirection;
+    sortSelect.value = bookingSortDirection;
 
-    sortSelect.addEventListener(
-      "change",
-      () => {
-        bookingSortDirection =
-          sortSelect.value;
+    sortSelect.addEventListener("change", () => {
+      bookingSortDirection = sortSelect.value;
 
-        sortBookings();
+      sortBookings();
 
-        adminBookingPage = 1;
+      adminBookingPage = 1;
 
-        renderBookingsTable(
-          getFilteredBookings()
-        );
-      }
-    );
+      renderBookingsTable(getFilteredBookings());
+    });
   }
 
-  const dateFrom =
-    $("bookingDateFrom");
+  const dateFrom = $("bookingDateFrom");
 
   if (dateFrom) {
-    dateFrom.addEventListener(
-      "change",
-      () => {
-        bookingDateFrom =
-          dateFrom.value;
+    dateFrom.addEventListener("change", () => {
+      bookingDateFrom = dateFrom.value;
 
-        adminBookingPage = 1;
+      adminBookingPage = 1;
 
-        renderBookingsTable(
-          getFilteredBookings()
-        );
-      }
-    );
+      renderBookingsTable(getFilteredBookings());
+    });
   }
 
-  const dateTo =
-    $("bookingDateTo");
+  const dateTo = $("bookingDateTo");
 
   if (dateTo) {
-    dateTo.addEventListener(
-      "change",
-      () => {
-        bookingDateTo =
-          dateTo.value;
+    dateTo.addEventListener("change", () => {
+      bookingDateTo = dateTo.value;
 
-        adminBookingPage = 1;
+      adminBookingPage = 1;
 
-        renderBookingsTable(
-          getFilteredBookings()
-        );
-      }
-    );
+      renderBookingsTable(getFilteredBookings());
+    });
   }
 
-  const clearDate =
-    $("bookingDateClear");
+  const clearDate = $("bookingDateClear");
 
   if (clearDate) {
-    clearDate.addEventListener(
-      "click",
-      () => {
-        bookingDateFrom = "";
-        bookingDateTo = "";
-        adminBookingPage = 1;
+    clearDate.addEventListener("click", () => {
+      bookingDateFrom = "";
+      bookingDateTo = "";
+      adminBookingPage = 1;
 
-        if (dateFrom) {
-          dateFrom.value = "";
-        }
-
-        if (dateTo) {
-          dateTo.value = "";
-        }
-
-        renderBookingsTable(
-          getFilteredBookings()
-        );
+      if (dateFrom) {
+        dateFrom.value = "";
       }
-    );
+
+      if (dateTo) {
+        dateTo.value = "";
+      }
+
+      renderBookingsTable(getFilteredBookings());
+    });
   }
 }
 
@@ -908,24 +898,17 @@ function initialiseBookingFilters() {
 // ============================================================================
 
 function sortBookings() {
-  bookingsData.sort(
-    (a, b) => {
-      const dateA =
-        getBookingDateMillis(a);
+  bookingsData.sort((a, b) => {
+    const dateA = getBookingDateMillis(a);
 
-      const dateB =
-        getBookingDateMillis(b);
+    const dateB = getBookingDateMillis(b);
 
-      if (
-        bookingSortDirection ===
-        "asc"
-      ) {
-        return dateA - dateB;
-      }
-
-      return dateB - dateA;
+    if (bookingSortDirection === "asc") {
+      return dateA - dateB;
     }
-  );
+
+    return dateB - dateA;
+  });
 }
 
 // ============================================================================
@@ -933,68 +916,41 @@ function sortBookings() {
 // ============================================================================
 
 function getFilteredBookings() {
-  let result = [
-    ...bookingsData
-  ];
+  let result = [...bookingsData];
 
   // STATUS
   if (bookingStatus !== "all") {
     result = result.filter(
-      (booking) =>
-        String(
-          booking.status || ""
-        ).toLowerCase() ===
-        bookingStatus
+      (booking) => String(booking.status || "").toLowerCase() === bookingStatus,
     );
   }
 
   // FROM DATE
   if (bookingDateFrom) {
-    const from =
-      parseDateOnly(
-        bookingDateFrom
-      );
+    const from = parseDateOnly(bookingDateFrom);
 
     if (from) {
-      const fromTime =
-        from.getTime();
+      const fromTime = from.getTime();
 
-      result =
-        result.filter(
-          (booking) =>
-            getBookingDateMillis(
-              booking
-            ) >= fromTime
-        );
+      result = result.filter(
+        (booking) => getBookingDateMillis(booking) >= fromTime,
+      );
     }
   }
 
   // TO DATE
   if (bookingDateTo) {
-    const to =
-      parseDateOnly(
-        bookingDateTo
-      );
+    const to = parseDateOnly(bookingDateTo);
 
     if (to) {
       // Include complete day.
-      to.setHours(
-        23,
-        59,
-        59,
-        999
+      to.setHours(23, 59, 59, 999);
+
+      const toTime = to.getTime();
+
+      result = result.filter(
+        (booking) => getBookingDateMillis(booking) <= toTime,
       );
-
-      const toTime =
-        to.getTime();
-
-      result =
-        result.filter(
-          (booking) =>
-            getBookingDateMillis(
-              booking
-            ) <= toTime
-        );
     }
   }
 
@@ -1004,7 +960,6 @@ function getFilteredBookings() {
 // ============================================================================
 // LOAD ALL DATA
 // ============================================================================
-
 
 let adminHostBankData = [];
 let currentAdminBankReviewUid = null;
@@ -1016,7 +971,8 @@ async function loadAdminHostBank() {
     renderAdminHostBank();
   } catch (err) {
     console.error("Failed to load host bank details", err);
-    document.getElementById("adminBankWrap").innerHTML = '<div style="padding:40px;text-align:center;color:#ef476f;">Failed to load data.</div>';
+    document.getElementById("adminBankWrap").innerHTML =
+      '<div style="padding:40px;text-align:center;color:#ef476f;">Failed to load data.</div>';
   }
 }
 
@@ -1025,13 +981,20 @@ function renderAdminHostBank() {
   if (!wrap) return;
 
   if (adminHostBankData.length === 0) {
-    wrap.innerHTML = '<div style="padding:40px;text-align:center;color:var(--sub);font-size:0.9rem;">No host bank details submitted yet.</div>';
+    wrap.innerHTML =
+      '<div style="padding:40px;text-align:center;color:var(--sub);font-size:0.9rem;">No host bank details submitted yet.</div>';
     return;
   }
 
   const escapeHtml = (unsafe) => {
     if (!unsafe) return "";
-    return unsafe.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    return unsafe
+      .toString()
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   };
 
   let html = `
@@ -1048,32 +1011,40 @@ function renderAdminHostBank() {
       <tbody>
   `;
 
-  adminHostBankData.forEach(bank => {
+  adminHostBankData.forEach((bank) => {
     const isPending = bank.status === "pending";
-    const statusColor = isPending ? "#fca311" : (bank.status === "verified" ? "#06d6a0" : "#ef476f");
+    const statusColor = isPending
+      ? "#fca311"
+      : bank.status === "verified"
+        ? "#06d6a0"
+        : "#ef476f";
     const pbStatus = bank.passbookUrl ? "Uploaded" : "No Photo";
 
     html += `
       <tr>
-        <td><strong>${escapeHtml(bank.name || bank.firebaseUid)}</strong><br/><span style="color:var(--sub);font-size:12px;">${escapeHtml(bank.email || '')}</span></td>
-        <td><span style="color:var(--sub);font-size:12px;">A/C:</span> <strong>${escapeHtml(bank.accountNumber)}</strong><br/><span style="color:var(--sub);font-size:12px;">IFSC: ${escapeHtml(bank.ifscCode)}</span><br/><span style="color:var(--sub);font-size:12px;">${escapeHtml(bank.branchName || '')}</span></td>
+        <td><strong>${escapeHtml(bank.name || bank.firebaseUid)}</strong><br/><span style="color:var(--sub);font-size:12px;">${escapeHtml(bank.email || "")}</span></td>
+        <td><span style="color:var(--sub);font-size:12px;">A/C:</span> <strong>${escapeHtml(bank.accountNumber)}</strong><br/><span style="color:var(--sub);font-size:12px;">IFSC: ${escapeHtml(bank.ifscCode)}</span><br/><span style="color:var(--sub);font-size:12px;">${escapeHtml(bank.branchName || "")}</span></td>
         <td style="color:var(--sub);font-size:12px;">${pbStatus}</td>
         <td style="text-align:center;">
           <span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;background:${statusColor}22;color:${statusColor};text-transform:uppercase;">${escapeHtml(bank.status)}</span>
         </td>
         <td style="text-align:right;">
-          <button type="button" class="btn btn-outline btn-sm admin-view-passbook-btn" data-uid="${escapeHtml(bank.firebaseUid)}" data-url="${escapeHtml(bank.passbookUrl || '')}" data-status="${escapeHtml(bank.status)}" style="padding:5px 12px;font-size:12.5px;">Inspect & Review</button>
+          <button type="button" class="btn btn-outline btn-sm admin-view-passbook-btn" data-uid="${escapeHtml(bank.firebaseUid)}" data-url="${escapeHtml(bank.passbookUrl || "")}" data-status="${escapeHtml(bank.status)}" style="padding:5px 12px;font-size:12.5px;">Inspect & Review</button>
         </td>
       </tr>
     `;
   });
 
-  html += '</tbody></table>';
+  html += "</tbody></table>";
   wrap.innerHTML = html;
 
-  wrap.querySelectorAll(".admin-view-passbook-btn").forEach(btn => {
+  wrap.querySelectorAll(".admin-view-passbook-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
-      openAdminPassbookModal(btn.dataset.uid, btn.dataset.url, btn.dataset.status);
+      openAdminPassbookModal(
+        btn.dataset.uid,
+        btn.dataset.url,
+        btn.dataset.status,
+      );
     });
   });
 }
@@ -1086,7 +1057,8 @@ function openAdminPassbookModal(uid, url, status) {
 
   container.innerHTML = "";
   if (!url) {
-    container.innerHTML = '<div style="color:var(--sub);">No passbook photo provided.</div>';
+    container.innerHTML =
+      '<div style="color:var(--sub);">No passbook photo provided.</div>';
   } else if (url.toLowerCase().endsWith(".pdf")) {
     container.innerHTML = `<iframe src="${url}#toolbar=0" style="width:100%; height:100%; border:none; background:#fff;"></iframe>`;
   } else {
@@ -1095,67 +1067,89 @@ function openAdminPassbookModal(uid, url, status) {
 
   const approveBtn = document.getElementById("adminApproveBankBtn");
   const rejectBtn = document.getElementById("adminRejectBankBtn");
-  if (approveBtn) approveBtn.style.display = status === 'pending' ? 'inline-block' : 'none';
-  if (rejectBtn) rejectBtn.style.display = status === 'pending' ? 'inline-block' : 'none';
+  if (approveBtn)
+    approveBtn.style.display = status === "pending" ? "inline-block" : "none";
+  if (rejectBtn)
+    rejectBtn.style.display = status === "pending" ? "inline-block" : "none";
 
   modal.hidden = false;
   modal.style.display = "flex";
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("closeAdminBankPassbookModal")?.addEventListener("click", () => {
-    const modal = document.getElementById("adminBankPassbookModal");
-    if(modal) {
-      modal.hidden = true;
-      modal.style.display = "none";
-    }
-  });
-
-  document.getElementById("adminApproveBankBtn")?.addEventListener("click", async () => {
-    if (!currentAdminBankReviewUid) return;
-    if (!confirm("Are you sure you want to verify this bank account?")) return;
-    document.getElementById("adminApproveBankBtn").disabled = true;
-    try {
-      const res = await api.post("/users/bank-details", { uid: currentAdminBankReviewUid, status: "verified" });
-      if(res.success) {
-        alert("Verified successfully.");
-        const modal = document.getElementById("adminBankPassbookModal");
-        if(modal) { modal.hidden = true; modal.style.display = "none"; }
-        loadAdminHostBank();
-      } else {
-        throw new Error(res.error || "Verification failed");
+  document
+    .getElementById("closeAdminBankPassbookModal")
+    ?.addEventListener("click", () => {
+      const modal = document.getElementById("adminBankPassbookModal");
+      if (modal) {
+        modal.hidden = true;
+        modal.style.display = "none";
       }
-    } catch (err) {
-      alert(err.message);
-    }
-    document.getElementById("adminApproveBankBtn").disabled = false;
-  });
+    });
 
-  document.getElementById("adminRejectBankBtn")?.addEventListener("click", async () => {
-    if (!currentAdminBankReviewUid) return;
-    const reason = prompt("Enter rejection reason:");
-    if (reason === null) return;
-    document.getElementById("adminRejectBankBtn").disabled = true;
-    try {
-      const res = await api.post("/users/bank-details", { uid: currentAdminBankReviewUid, status: "rejected", rejectionReason: reason });
-      if(res.success) {
-        alert("Rejected successfully.");
-        const modal = document.getElementById("adminBankPassbookModal");
-        if(modal) { modal.hidden = true; modal.style.display = "none"; }
-        loadAdminHostBank();
-      } else {
-        throw new Error(res.error || "Rejection failed");
+  document
+    .getElementById("adminApproveBankBtn")
+    ?.addEventListener("click", async () => {
+      if (!currentAdminBankReviewUid) return;
+      if (!confirm("Are you sure you want to verify this bank account?"))
+        return;
+      document.getElementById("adminApproveBankBtn").disabled = true;
+      try {
+        const res = await api.post("/users/bank-details", {
+          uid: currentAdminBankReviewUid,
+          status: "verified",
+        });
+        if (res.success) {
+          alert("Verified successfully.");
+          const modal = document.getElementById("adminBankPassbookModal");
+          if (modal) {
+            modal.hidden = true;
+            modal.style.display = "none";
+          }
+          loadAdminHostBank();
+        } else {
+          throw new Error(res.error || "Verification failed");
+        }
+      } catch (err) {
+        alert(err.message);
       }
-    } catch (err) {
-      alert(err.message);
-    }
-    document.getElementById("adminRejectBankBtn").disabled = false;
-  });
+      document.getElementById("adminApproveBankBtn").disabled = false;
+    });
+
+  document
+    .getElementById("adminRejectBankBtn")
+    ?.addEventListener("click", async () => {
+      if (!currentAdminBankReviewUid) return;
+      const reason = prompt("Enter rejection reason:");
+      if (reason === null) return;
+      document.getElementById("adminRejectBankBtn").disabled = true;
+      try {
+        const res = await api.post("/users/bank-details", {
+          uid: currentAdminBankReviewUid,
+          status: "rejected",
+          rejectionReason: reason,
+        });
+        if (res.success) {
+          alert("Rejected successfully.");
+          const modal = document.getElementById("adminBankPassbookModal");
+          if (modal) {
+            modal.hidden = true;
+            modal.style.display = "none";
+          }
+          loadAdminHostBank();
+        } else {
+          throw new Error(res.error || "Rejection failed");
+        }
+      } catch (err) {
+        alert(err.message);
+      }
+      document.getElementById("adminRejectBankBtn").disabled = false;
+    });
 });
 
 async function loadAllAdminData() {
   loadAdminHostBank();
-    await Promise.allSettled([
+  await Promise.allSettled([
     loadUsers(),
     loadBookings(),
     loadPayments(),
@@ -1163,7 +1157,7 @@ async function loadAllAdminData() {
     loadFleetManagement(),
     loadCoupons(),
     loadKpiStats(),
-    loadAdminHubs()
+    loadAdminHubs(),
   ]);
 
   if (currentKpiStats) {
@@ -1190,7 +1184,7 @@ const DEFAULT_ACTIVE_REGS = [
   "MH04MU1178",
   "MH05FV3454",
   "MH43CU1632",
-  "MH02FU6808"
+  "MH02FU6808",
 ];
 
 let adminFleetVehicles = [];
@@ -1210,17 +1204,21 @@ function getEffectiveFleetVehicles() {
 }
 
 function normalizeActivePlate(plate) {
-  const p = String(plate || "").trim().toUpperCase();
+  const p = String(plate || "")
+    .trim()
+    .toUpperCase();
   const map = {
-    "MH03EF1025": "MH03EL1025",
-    "MH48CJ4153": "MH48GJ4153",
-    "MH43CY1632": "MH43CU1632"
+    MH03EF1025: "MH03EL1025",
+    MH48CJ4153: "MH48GJ4153",
+    MH43CY1632: "MH43CU1632",
   };
   return map[p] || p;
 }
 
 function getMasterCatalogVehicles() {
-  const catalog = Array.isArray(window.fleetVehicles) ? window.fleetVehicles : [];
+  const catalog = Array.isArray(window.fleetVehicles)
+    ? window.fleetVehicles
+    : [];
   const vehicles = [];
 
   catalog.forEach((c, idx) => {
@@ -1228,7 +1226,8 @@ function getMasterCatalogVehicles() {
     if (/^MH04KR01\d{2}$/i.test(regNo)) {
       regNo = "";
     }
-    const carId = c.id || c.carId || c.car_id || ("CAT-" + String(idx + 1).padStart(3, "0"));
+    const carId =
+      c.id || c.carId || c.car_id || "CAT-" + String(idx + 1).padStart(3, "0");
     vehicles.push({
       id: 10 + idx,
       carId,
@@ -1249,7 +1248,7 @@ function getMasterCatalogVehicles() {
       acquisitionDate: "2026-01-01",
       available: c.available !== 0 ? 1 : 0,
       status: "available",
-      is_active_fleet: 0
+      is_active_fleet: 0,
     });
   });
 
@@ -1271,31 +1270,51 @@ function renderAdminActiveFleetRoster(activeRegs, allVehicles) {
     if (!activeRegs.length) {
       chipsWrap.innerHTML = `<span style="color:var(--sub); font-size:13px;">No active fleet selected. Standard fleet will be used.</span>`;
     } else {
-      chipsWrap.innerHTML = activeRegs.map((reg) => {
-        const regNorm = String(reg || "").trim().toUpperCase();
-        const v = allVehicles.find((item) => {
-          const vReg = String(item.regNo || item.reg_no || "").trim().toUpperCase();
-          const vRaw = String(item.rawReg || "").trim().toUpperCase();
-          const vCarId = String(item.carId || item.car_id || "").trim().toUpperCase();
-          const vId = String(item.id || "").trim().toUpperCase();
-          return (vReg && vReg === regNorm) || (vRaw && vRaw === regNorm) || (vCarId && vCarId === regNorm) || (vId && vId === regNorm);
-        });
-        const name = v ? `${v.brand} ${v.model}` : reg;
-        return `
+      chipsWrap.innerHTML = activeRegs
+        .map((reg) => {
+          const regNorm = String(reg || "")
+            .trim()
+            .toUpperCase();
+          const v = allVehicles.find((item) => {
+            const vReg = String(item.regNo || item.reg_no || "")
+              .trim()
+              .toUpperCase();
+            const vRaw = String(item.rawReg || "")
+              .trim()
+              .toUpperCase();
+            const vCarId = String(item.carId || item.car_id || "")
+              .trim()
+              .toUpperCase();
+            const vId = String(item.id || "")
+              .trim()
+              .toUpperCase();
+            return (
+              (vReg && vReg === regNorm) ||
+              (vRaw && vRaw === regNorm) ||
+              (vCarId && vCarId === regNorm) ||
+              (vId && vId === regNorm)
+            );
+          });
+          const name = v ? `${v.brand} ${v.model}` : reg;
+          return `
           <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(6, 214, 160, 0.12); border:1px solid rgba(6, 214, 160, 0.35); padding:4px 10px; border-radius:8px; font-size:12px; color:#ffffff;">
             <strong style="color:#06d6a0;">${escapeHtml(reg)}</strong>
             <span>${escapeHtml(name)}</span>
             <button type="button" class="admin-chip-remove-btn" data-reg="${escapeHtml(reg)}" title="Remove from active fleet" style="background:none; border:none; color:#ef476f; cursor:pointer; font-size:14px; line-height:1; padding:0 2px;">&times;</button>
           </div>
         `;
-      }).join("");
+        })
+        .join("");
 
       chipsWrap.querySelectorAll(".admin-chip-remove-btn").forEach((btn) => {
         btn.addEventListener("click", async () => {
           const regNo = btn.dataset.reg;
           btn.disabled = true;
           try {
-            await api.post("/vehicles/active-fleet.php", { action: "remove", regNo });
+            await api.post("/vehicles/active-fleet.php", {
+              action: "remove",
+              regNo,
+            });
             await loadFleetManagement();
           } catch (err) {
             console.error("Remove active fleet error:", err);
@@ -1310,7 +1329,12 @@ function renderAdminActiveFleetRoster(activeRegs, allVehicles) {
   if (resetBtn && !resetBtn.dataset.bound) {
     resetBtn.dataset.bound = "true";
     resetBtn.addEventListener("click", async () => {
-      if (!confirm("Reset the Manager Active Fleet roster to the default 7 Kruizly vehicles?")) return;
+      if (
+        !confirm(
+          "Reset the Manager Active Fleet roster to the default 7 Kruizly vehicles?",
+        )
+      )
+        return;
       resetBtn.disabled = true;
       resetBtn.textContent = "Resetting...";
       try {
@@ -1333,33 +1357,38 @@ async function loadFleetManagement() {
   try {
     const [res, activeRes] = await Promise.all([
       api.get("/vehicles", { hub_id: getSelectedHubId() }).catch(() => null),
-      api.get("/vehicles/active-fleet.php?_t=" + Date.now()).catch(() => null)
+      api.get("/vehicles/active-fleet.php?_t=" + Date.now()).catch(() => null),
     ]);
 
-    let rawVehicles = Array.isArray(res?.vehicles) && res.vehicles.length > 0
-      ? res.vehicles
-      : getMasterCatalogVehicles();
+    let rawVehicles =
+      Array.isArray(res?.vehicles) && res.vehicles.length > 0
+        ? res.vehicles
+        : getMasterCatalogVehicles();
 
     // Deduplicate and normalize fleet vehicles
     const seenVeh = new Set();
     let vehicles = [];
     rawVehicles.forEach((v) => {
-      let reg = String(v.regNo || v.reg_no || "").trim().toUpperCase();
+      let reg = String(v.regNo || v.reg_no || "")
+        .trim()
+        .toUpperCase();
       if (/^MH04KR01\d{2}$/i.test(reg)) {
         reg = "";
       }
-      const carId = String(v.carId || v.car_id || "").trim().toUpperCase();
+      const carId = String(v.carId || v.car_id || "")
+        .trim()
+        .toUpperCase();
       const id = String(v.id || "").trim();
-      const key = (reg && reg !== "TBD") ? reg : (carId || id);
+      const key = reg && reg !== "TBD" ? reg : carId || id;
       if (key && !seenVeh.has(key)) {
         seenVeh.add(key);
-        const effectiveReg = (reg && reg !== "TBD") ? reg : "";
+        const effectiveReg = reg && reg !== "TBD" ? reg : "";
         vehicles.push({
           ...v,
           rawReg: effectiveReg,
           regNo: effectiveReg,
           carId: carId || v.carId || null,
-          identifier: effectiveReg || carId || id
+          identifier: effectiveReg || carId || id,
         });
       }
     });
@@ -1376,30 +1405,43 @@ async function loadFleetManagement() {
     try {
       const raw = localStorage.getItem("kruizly_admin_active_regs");
       if (raw) storedActiveRegs = JSON.parse(raw);
-    } catch(e) {}
+    } catch (e) {}
 
-    let rawList = Array.isArray(activeRes?.activeRegs) && activeRes.activeRegs.length > 0
-      ? activeRes.activeRegs
-      : (storedActiveRegs && storedActiveRegs.length > 0 ? storedActiveRegs : DEFAULT_ACTIVE_REGS);
+    let rawList =
+      Array.isArray(activeRes?.activeRegs) && activeRes.activeRegs.length > 0
+        ? activeRes.activeRegs
+        : storedActiveRegs && storedActiveRegs.length > 0
+          ? storedActiveRegs
+          : DEFAULT_ACTIVE_REGS;
 
-    let activeRegs = Array.from(new Set(rawList.map(r => normalizeActivePlate(r))));
+    let activeRegs = Array.from(
+      new Set(rawList.map((r) => normalizeActivePlate(r))),
+    );
 
     try {
-      localStorage.setItem("kruizly_admin_active_regs", JSON.stringify(activeRegs));
-    } catch(e) {}
+      localStorage.setItem(
+        "kruizly_admin_active_regs",
+        JSON.stringify(activeRegs),
+      );
+    } catch (e) {}
 
     renderAdminActiveFleetRoster(activeRegs, vehicles);
 
     if (!vehicles.length) {
-      fleetManagementWrap.innerHTML =
-        `<p style="color:var(--sub);">No vehicles in the fleet yet. Add the first one above.</p>`;
+      fleetManagementWrap.innerHTML = `<p style="color:var(--sub);">No vehicles in the fleet yet. Add the first one above.</p>`;
       return;
     }
 
-    const totalPages = Math.max(1, Math.ceil(vehicles.length / ADMIN_FLEET_PER_PAGE));
+    const totalPages = Math.max(
+      1,
+      Math.ceil(vehicles.length / ADMIN_FLEET_PER_PAGE),
+    );
     adminFleetPage = Math.min(adminFleetPage, totalPages);
     const pageStart = (adminFleetPage - 1) * ADMIN_FLEET_PER_PAGE;
-    const pageVehicles = vehicles.slice(pageStart, pageStart + ADMIN_FLEET_PER_PAGE);
+    const pageVehicles = vehicles.slice(
+      pageStart,
+      pageStart + ADMIN_FLEET_PER_PAGE,
+    );
 
     fleetManagementWrap.innerHTML = `
       <div style="width:100%;overflow-x:auto;">
@@ -1418,23 +1460,34 @@ async function loadFleetManagement() {
             </tr>
           </thead>
           <tbody>
-            ${pageVehicles.map((vehicle) => {
-              const available = Boolean(vehicle.available);
-              const isActiveRoster = activeRegs.some(r => {
-                const norm = normalizeActivePlate(r);
-                if (!norm) return false;
-                const vReg = normalizeActivePlate(vehicle.regNo);
-                const vRaw = normalizeActivePlate(vehicle.rawReg);
-                const vCarId = String(vehicle.carId || "").trim().toUpperCase();
-                const vId = String(vehicle.id || "").trim().toUpperCase();
-                return (vReg && norm === vReg) ||
-                       (vRaw && norm === vRaw) ||
-                       (vCarId && norm === vCarId) ||
-                       (vId && norm === vId) ||
-                       (vId && norm === ("CAT-" + vId));
-              });
-              const vehKey = vehicle.identifier || vehicle.regNo || vehicle.carId || String(vehicle.id);
-              return `
+            ${pageVehicles
+              .map((vehicle) => {
+                const available = Boolean(vehicle.available);
+                const isActiveRoster = activeRegs.some((r) => {
+                  const norm = normalizeActivePlate(r);
+                  if (!norm) return false;
+                  const vReg = normalizeActivePlate(vehicle.regNo);
+                  const vRaw = normalizeActivePlate(vehicle.rawReg);
+                  const vCarId = String(vehicle.carId || "")
+                    .trim()
+                    .toUpperCase();
+                  const vId = String(vehicle.id || "")
+                    .trim()
+                    .toUpperCase();
+                  return (
+                    (vReg && norm === vReg) ||
+                    (vRaw && norm === vRaw) ||
+                    (vCarId && norm === vCarId) ||
+                    (vId && norm === vId) ||
+                    (vId && norm === "CAT-" + vId)
+                  );
+                });
+                const vehKey =
+                  vehicle.identifier ||
+                  vehicle.regNo ||
+                  vehicle.carId ||
+                  String(vehicle.id);
+                return `
                 <tr style="border-bottom:1px solid rgba(255,255,255,.06);">
                   <td style="padding:12px;font-family:monospace;font-weight:700;color:#4fd7ff;">${escapeHtml(vehicle.carId || "—")}</td>
                   <td style="padding:12px;">
@@ -1442,7 +1495,7 @@ async function loadFleetManagement() {
                     <br><small style="color:var(--sub);font-size:11px;">${escapeHtml(vehicle.category || "Economy")}</small>
                   </td>
                   <td style="padding:12px;font-family:monospace;font-weight:700;color:#ffffff;">
-                    ${(vehicle.rawReg && vehicle.rawReg !== "TBD") ? escapeHtml(vehicle.rawReg) : '<span style="color:var(--sub);font-weight:normal;font-style:italic;font-family:sans-serif;">—</span>'}
+                    ${vehicle.rawReg && vehicle.rawReg !== "TBD" ? escapeHtml(vehicle.rawReg) : '<span style="color:var(--sub);font-weight:normal;font-style:italic;font-family:sans-serif;">—</span>'}
                   </td>
                   <td style="padding:12px;">
                     <span style="color:#ffffff;font-weight:600;">${escapeHtml(vehicle.ownerName || "Kruizly Fleet")}</span>
@@ -1509,7 +1562,8 @@ async function loadFleetManagement() {
                   </td>
                 </tr>
               `;
-            }).join("")}
+              })
+              .join("")}
           </tbody>
         </table>
       </div>
@@ -1518,7 +1572,7 @@ async function loadFleetManagement() {
         totalPages,
         totalItems: vehicles.length,
         type: "fleet",
-        pageSize: ADMIN_FLEET_PER_PAGE
+        pageSize: ADMIN_FLEET_PER_PAGE,
       })}
     `;
 
@@ -1526,9 +1580,13 @@ async function loadFleetManagement() {
       .querySelectorAll("[data-admin-fleet-page-action]")
       .forEach((button) => {
         button.addEventListener("click", () => {
-          adminFleetPage += button.dataset.adminFleetPageAction === "next" ? 1 : -1;
+          adminFleetPage +=
+            button.dataset.adminFleetPageAction === "next" ? 1 : -1;
           loadFleetManagement();
-          fleetManagementWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+          fleetManagementWrap.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
         });
       });
 
@@ -1538,7 +1596,10 @@ async function loadFleetManagement() {
         button.addEventListener("click", () => {
           adminFleetPage = Number(button.dataset.adminFleetPage) || 1;
           loadFleetManagement();
-          fleetManagementWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+          fleetManagementWrap.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
         });
       });
 
@@ -1555,10 +1616,17 @@ async function loadFleetManagement() {
             if (checkbox.checked) {
               if (!activeList.includes(norm)) activeList.push(norm);
             } else {
-              activeList = activeList.filter(r => r.toUpperCase() !== regNo && r.toUpperCase() !== norm);
+              activeList = activeList.filter(
+                (r) => r.toUpperCase() !== regNo && r.toUpperCase() !== norm,
+              );
             }
-            activeList = Array.from(new Set(activeList.map(r => normalizeActivePlate(r))));
-            localStorage.setItem("kruizly_admin_active_regs", JSON.stringify(activeList));
+            activeList = Array.from(
+              new Set(activeList.map((r) => normalizeActivePlate(r))),
+            );
+            localStorage.setItem(
+              "kruizly_admin_active_regs",
+              JSON.stringify(activeList),
+            );
 
             await api.post("/vehicles/active-fleet.php", {
               action: checkbox.checked ? "add" : "remove",
@@ -1591,16 +1659,23 @@ async function loadFleetManagement() {
             const norm = normalizeActivePlate(regNo);
             let activeList = [...currentActiveFleetRegs];
             if (isCurrentlyActive) {
-              activeList = activeList.filter(r => r.toUpperCase() !== regNo && r.toUpperCase() !== norm);
+              activeList = activeList.filter(
+                (r) => r.toUpperCase() !== regNo && r.toUpperCase() !== norm,
+              );
             } else {
               if (!activeList.includes(norm)) activeList.push(norm);
             }
-            activeList = Array.from(new Set(activeList.map(r => normalizeActivePlate(r))));
-            localStorage.setItem("kruizly_admin_active_regs", JSON.stringify(activeList));
+            activeList = Array.from(
+              new Set(activeList.map((r) => normalizeActivePlate(r))),
+            );
+            localStorage.setItem(
+              "kruizly_admin_active_regs",
+              JSON.stringify(activeList),
+            );
 
             await api.post("/vehicles/active-fleet.php", {
               action: isCurrentlyActive ? "remove" : "add",
-              regNo
+              regNo,
             });
             await loadFleetManagement();
           } catch (error) {
@@ -1617,7 +1692,13 @@ async function loadFleetManagement() {
       .forEach((button) => {
         button.addEventListener("click", () => {
           const regNo = button.dataset.reg;
-          const vehicle = vehicles.find((item) => item.regNo === regNo || item.identifier === regNo || item.rawReg === regNo || item.carId === regNo);
+          const vehicle = vehicles.find(
+            (item) =>
+              item.regNo === regNo ||
+              item.identifier === regNo ||
+              item.rawReg === regNo ||
+              item.carId === regNo,
+          );
           if (!vehicle) return;
 
           editingFleetRegNo = vehicle.rawReg || vehicle.regNo;
@@ -1629,22 +1710,38 @@ async function loadFleetManagement() {
             $("fleetRegNo").readOnly = Boolean(vehicle.rawReg);
           }
           if ($("fleetYear")) $("fleetYear").value = vehicle.year || 2026;
-          if ($("fleetCategory")) $("fleetCategory").value = vehicle.category || "economy";
-          if ($("fleetTransmission")) $("fleetTransmission").value = vehicle.transmission || "Manual";
+          if ($("fleetCategory"))
+            $("fleetCategory").value = vehicle.category || "economy";
+          if ($("fleetTransmission"))
+            $("fleetTransmission").value = vehicle.transmission || "Manual";
           if ($("fleetFuel")) $("fleetFuel").value = vehicle.fuel || "Petrol";
           if ($("fleetSeats")) $("fleetSeats").value = vehicle.seats || 5;
-          if ($("fleetPriceDay")) $("fleetPriceDay").value = vehicle.priceDay || 3500;
-          if ($("fleetPriceHour")) $("fleetPriceHour").value = vehicle.priceHour || 145;
+          if ($("fleetPriceDay"))
+            $("fleetPriceDay").value = vehicle.priceDay || 3500;
+          if ($("fleetPriceHour"))
+            $("fleetPriceHour").value = vehicle.priceHour || 145;
           if ($("fleetHub")) $("fleetHub").value = vehicle.hub_id || "";
-          if ($("fleetAcquisitionType")) $("fleetAcquisitionType").value = vehicle.acquisitionType || "Partner";
-          if ($("fleetOwnerName")) $("fleetOwnerName").value = vehicle.ownerName || "";
-          if ($("fleetAcquisitionDate")) $("fleetAcquisitionDate").value = vehicle.acquisitionDate || "";
-          if ($("fleetIsActiveFleet")) $("fleetIsActiveFleet").checked = activeRegs.includes(regNo.toUpperCase());
+          if ($("fleetAcquisitionType"))
+            $("fleetAcquisitionType").value =
+              vehicle.acquisitionType || "Partner";
+          if ($("fleetOwnerName"))
+            $("fleetOwnerName").value = vehicle.ownerName || "";
+          if ($("fleetAcquisitionDate"))
+            $("fleetAcquisitionDate").value = vehicle.acquisitionDate || "";
+          if ($("fleetIsActiveFleet"))
+            $("fleetIsActiveFleet").checked = activeRegs.includes(
+              regNo.toUpperCase(),
+            );
 
-          if (fleetUploadSubmit) fleetUploadSubmit.textContent = "Update Vehicle";
-          if (fleetUploadStatus) fleetUploadStatus.textContent = `Editing ${regNo}`;
+          if (fleetUploadSubmit)
+            fleetUploadSubmit.textContent = "Update Vehicle";
+          if (fleetUploadStatus)
+            fleetUploadStatus.textContent = `Editing ${regNo}`;
 
-          fleetUploadForm?.scrollIntoView({ behavior: "smooth", block: "start" });
+          fleetUploadForm?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          });
         });
       });
 
@@ -1657,11 +1754,13 @@ async function loadFleetManagement() {
           button.disabled = true;
           button.textContent = "Updating...";
           try {
-            await api.post("/vehicles/availability", {
-              regNo,
-              available: !current,
-            }).catch(() => {});
-            const v = vehicles.find(item => item.regNo === regNo);
+            await api
+              .post("/vehicles/availability", {
+                regNo,
+                available: !current,
+              })
+              .catch(() => {});
+            const v = vehicles.find((item) => item.regNo === regNo);
             if (v) v.available = !current ? 1 : 0;
             await loadFleetManagement();
           } catch (error) {
@@ -1729,14 +1828,21 @@ function initialiseFleetUpload() {
     const image = $("fleetImage")?.files?.[0];
 
     if (!regNo) return;
-    if (image && (!image.type.startsWith("image/") || image.size > 10 * 1024 * 1024)) {
-      if (fleetUploadStatus) fleetUploadStatus.textContent = "Use an image up to 10 MB.";
+    if (
+      image &&
+      (!image.type.startsWith("image/") || image.size > 10 * 1024 * 1024)
+    ) {
+      if (fleetUploadStatus)
+        fleetUploadStatus.textContent = "Use an image up to 10 MB.";
       return;
     }
 
     const isEditing = Boolean(editingFleetRegNo);
     if (fleetUploadSubmit) fleetUploadSubmit.disabled = true;
-    if (fleetUploadStatus) fleetUploadStatus.textContent = isEditing ? "Updating vehicle data..." : "Saving vehicle to fleet...";
+    if (fleetUploadStatus)
+      fleetUploadStatus.textContent = isEditing
+        ? "Updating vehicle data..."
+        : "Saving vehicle to fleet...";
 
     try {
       let imageUrl = null;
@@ -1771,9 +1877,11 @@ function initialiseFleetUpload() {
         acquisitionType: getValue("fleetAcquisitionType") || "Partner",
         ownerName: getValue("fleetOwnerName") || null,
         acquisitionDate: getValue("fleetAcquisitionDate") || null,
-        isActiveFleet: $("fleetIsActiveFleet") ? $("fleetIsActiveFleet").checked : true,
+        isActiveFleet: $("fleetIsActiveFleet")
+          ? $("fleetIsActiveFleet").checked
+          : true,
         available: 1,
-        status: "available"
+        status: "available",
       };
 
       if (imageUrl) {
@@ -1783,18 +1891,29 @@ function initialiseFleetUpload() {
       await api.post("/vehicles", vehicleData);
 
       // Sync active fleet roster if checkbox was toggled
-      const wantsActive = $("fleetIsActiveFleet") ? $("fleetIsActiveFleet").checked : true;
-      const isCurrentlyActive = currentActiveFleetRegs.includes(regNo.toUpperCase());
+      const wantsActive = $("fleetIsActiveFleet")
+        ? $("fleetIsActiveFleet").checked
+        : true;
+      const isCurrentlyActive = currentActiveFleetRegs.includes(
+        regNo.toUpperCase(),
+      );
       if (wantsActive !== isCurrentlyActive) {
-        await api.post("/vehicles/active-fleet.php", { action: wantsActive ? "add" : "remove", regNo });
+        await api.post("/vehicles/active-fleet.php", {
+          action: wantsActive ? "add" : "remove",
+          regNo,
+        });
       }
 
       resetFleetForm();
-      if (fleetUploadStatus) fleetUploadStatus.textContent = isEditing ? `Vehicle ${regNo} updated successfully.` : `Vehicle ${regNo} added to fleet.`;
+      if (fleetUploadStatus)
+        fleetUploadStatus.textContent = isEditing
+          ? `Vehicle ${regNo} updated successfully.`
+          : `Vehicle ${regNo} added to fleet.`;
       await loadFleetManagement();
     } catch (err) {
       console.error("FLEET SAVE ERROR:", err);
-      if (fleetUploadStatus) fleetUploadStatus.textContent = `Error: ${err.message}`;
+      if (fleetUploadStatus)
+        fleetUploadStatus.textContent = `Error: ${err.message}`;
     } finally {
       if (fleetUploadSubmit) fleetUploadSubmit.disabled = false;
     }
@@ -1809,10 +1928,42 @@ let couponsData = [];
 let editingCouponId = null;
 
 const DEFAULT_COUPONS = [
-  { id: "WELCOME500", code: "WELCOME500", type: "flat", val: 500, label: "₹500 Flat Off", minOrder: 0, status: "active" },
-  { id: "FIRST500", code: "FIRST500", type: "flat", val: 500, label: "₹500 Flat Off", minOrder: 0, status: "active" },
-  { id: "KRUIZLY10", code: "KRUIZLY10", type: "percent", val: 10, label: "10% Off Rental", minOrder: 0, status: "active" },
-  { id: "KRUIZLY20", code: "KRUIZLY20", type: "percent", val: 20, label: "20% Off Rental", minOrder: 0, status: "active" },
+  {
+    id: "WELCOME500",
+    code: "WELCOME500",
+    type: "flat",
+    val: 500,
+    label: "₹500 Flat Off",
+    minOrder: 0,
+    status: "active",
+  },
+  {
+    id: "FIRST500",
+    code: "FIRST500",
+    type: "flat",
+    val: 500,
+    label: "₹500 Flat Off",
+    minOrder: 0,
+    status: "active",
+  },
+  {
+    id: "KRUIZLY10",
+    code: "KRUIZLY10",
+    type: "percent",
+    val: 10,
+    label: "10% Off Rental",
+    minOrder: 0,
+    status: "active",
+  },
+  {
+    id: "KRUIZLY20",
+    code: "KRUIZLY20",
+    type: "percent",
+    val: 20,
+    label: "20% Off Rental",
+    minOrder: 0,
+    status: "active",
+  },
 ];
 
 async function loadCoupons() {
@@ -1825,7 +1976,9 @@ async function loadCoupons() {
     const seenC = new Set();
     couponsData = [];
     rawC.forEach((c) => {
-      const key = String(c.code || "").trim().toUpperCase();
+      const key = String(c.code || "")
+        .trim()
+        .toUpperCase();
       if (key && !seenC.has(key)) {
         seenC.add(key);
         couponsData.push(c);
@@ -1841,8 +1994,10 @@ async function loadCoupons() {
 function renderCouponsTable() {
   const wrap = $("couponsTableWrap");
   const activeStatEl = $("activeCouponsCount");
-  
-  const activeCount = couponsData.filter(c => c.status === "active" || c.active === true).length;
+
+  const activeCount = couponsData.filter(
+    (c) => c.status === "active" || c.active === true,
+  ).length;
   if (activeStatEl) activeStatEl.textContent = String(activeCount);
 
   if (!wrap) return;
@@ -1866,13 +2021,19 @@ function renderCouponsTable() {
           </tr>
         </thead>
         <tbody>
-          ${couponsData.map((c) => {
-            const active = c.status === "active" || c.active === true;
-            const isPercent = c.type === "percent" || c.type === "percentage" || c.discountType === "percent" || c.discountType === "percentage" || (typeof c.label === "string" && c.label.includes("%"));
-            const discountLabel = isPercent
-              ? `${c.val || c.discountValue}% Off`
-              : `₹${Number(c.val || c.discountValue || 0).toLocaleString("en-IN")} Off`;
-            return `
+          ${couponsData
+            .map((c) => {
+              const active = c.status === "active" || c.active === true;
+              const isPercent =
+                c.type === "percent" ||
+                c.type === "percentage" ||
+                c.discountType === "percent" ||
+                c.discountType === "percentage" ||
+                (typeof c.label === "string" && c.label.includes("%"));
+              const discountLabel = isPercent
+                ? `${c.val || c.discountValue}% Off`
+                : `₹${Number(c.val || c.discountValue || 0).toLocaleString("en-IN")} Off`;
+              return `
               <tr>
                 <td><span class="coupon-code-tag">${escapeHtml(c.code)}</span></td>
                 <td><strong style="color:var(--kz-cyan);">${escapeHtml(discountLabel)}</strong></td>
@@ -1898,7 +2059,8 @@ function renderCouponsTable() {
                 </td>
               </tr>
             `;
-          }).join("")}
+            })
+            .join("")}
         </tbody>
       </table>
     </div>
@@ -1906,20 +2068,36 @@ function renderCouponsTable() {
 
   wrap.innerHTML = html;
 
-  wrap.querySelectorAll(".admin-coupon-edit").forEach(btn => {
+  wrap.querySelectorAll(".admin-coupon-edit").forEach((btn) => {
     btn.addEventListener("click", () => {
-      const c = couponsData.find(item => String(item.id) === String(btn.dataset.id) || String(item.code) === String(btn.dataset.id));
+      const c = couponsData.find(
+        (item) =>
+          String(item.id) === String(btn.dataset.id) ||
+          String(item.code) === String(btn.dataset.id),
+      );
       if (!c) return;
       editingCouponId = c.id || c.code;
-      const isPercent = c.type === "percent" || c.type === "percentage" || c.discountType === "percent" || c.discountType === "percentage" || (typeof c.label === "string" && c.label.includes("%"));
+      const isPercent =
+        c.type === "percent" ||
+        c.type === "percentage" ||
+        c.discountType === "percent" ||
+        c.discountType === "percentage" ||
+        (typeof c.label === "string" && c.label.includes("%"));
       if ($("couponCodeInput")) $("couponCodeInput").value = c.code || "";
-      if ($("couponTypeSelect")) $("couponTypeSelect").value = isPercent ? "percent" : "flat";
-      if ($("couponValueInput")) $("couponValueInput").value = c.val || c.discountValue || "";
+      if ($("couponTypeSelect"))
+        $("couponTypeSelect").value = isPercent ? "percent" : "flat";
+      if ($("couponValueInput"))
+        $("couponValueInput").value = c.val || c.discountValue || "";
       if ($("couponLabelInput")) $("couponLabelInput").value = c.label || "";
-      if ($("couponMinOrderInput")) $("couponMinOrderInput").value = c.minOrder || c.minimumBookingAmount || 0;
-      if ($("couponStatusSelect")) $("couponStatusSelect").value = c.status || (c.active ? "active" : "inactive");
+      if ($("couponMinOrderInput"))
+        $("couponMinOrderInput").value =
+          c.minOrder || c.minimumBookingAmount || 0;
+      if ($("couponStatusSelect"))
+        $("couponStatusSelect").value =
+          c.status || (c.active ? "active" : "inactive");
 
-      if ($("couponBoxHeading")) $("couponBoxHeading").textContent = `Editing Coupon "${c.code}"`;
+      if ($("couponBoxHeading"))
+        $("couponBoxHeading").textContent = `Editing Coupon "${c.code}"`;
       const badge = $("couponFormModeBadge");
       if (badge) {
         badge.textContent = `Editing Existing #${c.id || c.code}`;
@@ -1927,9 +2105,12 @@ function renderCouponsTable() {
         badge.style.color = "#ffd166";
         badge.style.borderColor = "rgba(255, 209, 102, 0.35)";
       }
-      if ($("couponFormSubmit")) $("couponFormSubmit").textContent = "Update Existing Coupon";
-      if ($("couponCancelBtn")) $("couponCancelBtn").style.display = "inline-block";
-      if ($("couponResetNewBtn")) $("couponResetNewBtn").style.display = "inline-block";
+      if ($("couponFormSubmit"))
+        $("couponFormSubmit").textContent = "Update Existing Coupon";
+      if ($("couponCancelBtn"))
+        $("couponCancelBtn").style.display = "inline-block";
+      if ($("couponResetNewBtn"))
+        $("couponResetNewBtn").style.display = "inline-block";
       const formBox = $("couponFormBox");
       if (formBox) {
         formBox.style.border = "1px solid rgba(255, 209, 102, 0.4)";
@@ -1938,9 +2119,13 @@ function renderCouponsTable() {
     });
   });
 
-  wrap.querySelectorAll(".admin-coupon-toggle").forEach(btn => {
+  wrap.querySelectorAll(".admin-coupon-toggle").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const c = couponsData.find(item => String(item.id) === String(btn.dataset.id) || String(item.code) === String(btn.dataset.id));
+      const c = couponsData.find(
+        (item) =>
+          String(item.id) === String(btn.dataset.id) ||
+          String(item.code) === String(btn.dataset.id),
+      );
       if (!c) return;
       const isActive = c.status === "active" || c.active === true;
       const nextActive = !isActive;
@@ -1948,7 +2133,10 @@ function renderCouponsTable() {
       btn.disabled = true;
 
       try {
-        await api.put(`/coupons/${c.id || c.code}`, { active: nextActive, status: nextStatus });
+        await api.put(`/coupons/${c.id || c.code}`, {
+          active: nextActive,
+          status: nextStatus,
+        });
         await loadCoupons();
       } catch (err) {
         alert("Could not update coupon: " + err.message);
@@ -1957,10 +2145,15 @@ function renderCouponsTable() {
     });
   });
 
-  wrap.querySelectorAll(".admin-coupon-delete").forEach(btn => {
+  wrap.querySelectorAll(".admin-coupon-delete").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const c = couponsData.find(item => String(item.id) === String(btn.dataset.id) || String(item.code) === String(btn.dataset.id));
-      if (!c || !confirm(`Delete coupon "${c.code}" from server database?`)) return;
+      const c = couponsData.find(
+        (item) =>
+          String(item.id) === String(btn.dataset.id) ||
+          String(item.code) === String(btn.dataset.id),
+      );
+      if (!c || !confirm(`Delete coupon "${c.code}" from server database?`))
+        return;
       btn.disabled = true;
 
       try {
@@ -1977,7 +2170,8 @@ function renderCouponsTable() {
 function resetCouponForm() {
   editingCouponId = null;
   $("couponForm")?.reset();
-  if ($("couponBoxHeading")) $("couponBoxHeading").textContent = "Add New Coupon Code";
+  if ($("couponBoxHeading"))
+    $("couponBoxHeading").textContent = "Add New Coupon Code";
   const badge = $("couponFormModeBadge");
   if (badge) {
     badge.textContent = "Create Mode";
@@ -2000,7 +2194,8 @@ function initialiseCouponManagement() {
     resetCouponForm();
     const statusMsg = $("couponFormStatus");
     if (statusMsg) {
-      statusMsg.textContent = "Editing cancelled. Switched to Create New Coupon mode.";
+      statusMsg.textContent =
+        "Editing cancelled. Switched to Create New Coupon mode.";
       statusMsg.style.color = "var(--kr-cyan)";
     }
   });
@@ -2024,10 +2219,14 @@ function initialiseCouponManagement() {
 
   $("couponForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
-    const code = String($("couponCodeInput")?.value || "").trim().toUpperCase();
+    const code = String($("couponCodeInput")?.value || "")
+      .trim()
+      .toUpperCase();
     const type = $("couponTypeSelect")?.value || "flat";
     const val = Number($("couponValueInput")?.value || 0);
-    const label = String($("couponLabelInput")?.value || "").trim() || (type === "percent" ? `${val}% Off` : `₹${val} Flat Off`);
+    const label =
+      String($("couponLabelInput")?.value || "").trim() ||
+      (type === "percent" ? `${val}% Off` : `₹${val} Flat Off`);
     const minOrder = Number($("couponMinOrderInput")?.value || 0);
     const status = $("couponStatusSelect")?.value || "active";
 
@@ -2041,7 +2240,10 @@ function initialiseCouponManagement() {
     const submitBtn = $("couponFormSubmit");
     if (submitBtn) submitBtn.disabled = true;
     const statusMsg = $("couponFormStatus");
-    if (statusMsg) statusMsg.textContent = isEditing ? `Updating existing coupon #${currentEditId}...` : `Creating new coupon "${code}"...`;
+    if (statusMsg)
+      statusMsg.textContent = isEditing
+        ? `Updating existing coupon #${currentEditId}...`
+        : `Creating new coupon "${code}"...`;
 
     try {
       const isActive = status === "active";
@@ -2056,16 +2258,21 @@ function initialiseCouponManagement() {
         discountValue: val,
         label,
         minOrder,
-        minimumBookingAmount: minOrder
+        minimumBookingAmount: minOrder,
       };
 
-      const existingCoupon = couponsData.find(item => String(item.code || "").toUpperCase() === code);
+      const existingCoupon = couponsData.find(
+        (item) => String(item.code || "").toUpperCase() === code,
+      );
       if (isEditing) {
         // Strictly update ONLY the existing selected coupon by ID
         await api.put(`/coupons/${encodeURIComponent(currentEditId)}`, data);
       } else if (existingCoupon) {
         // Automatically update the matching existing coupon
-        await api.put(`/coupons/${encodeURIComponent(existingCoupon.id || existingCoupon.code)}`, data);
+        await api.put(
+          `/coupons/${encodeURIComponent(existingCoupon.id || existingCoupon.code)}`,
+          data,
+        );
       } else {
         // Create a distinct new coupon
         await api.post("/coupons", data);
@@ -2138,7 +2345,7 @@ function initialiseFirebaseExport() {
         const csvUrl = `${API_BASE_URL}/admin/export?format=csv`;
         const token = await getAuthToken();
         const response = await fetch(csvUrl, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {}
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
         });
         const blob = await response.blob();
         const downloadUrl = window.URL.createObjectURL(blob);
@@ -2152,7 +2359,8 @@ function initialiseFirebaseExport() {
       }
 
       if (firebaseExportStatus) {
-        firebaseExportStatus.textContent = "✓ Database Excel workbook downloaded successfully.";
+        firebaseExportStatus.textContent =
+          "✓ Database Excel workbook downloaded successfully.";
         firebaseExportStatus.style.color = "#00f0a0";
       }
     } catch (err) {
@@ -2172,10 +2380,7 @@ function normaliseFirestoreValue(value) {
     return "";
   }
 
-  if (
-    value &&
-    typeof value.toDate === "function"
-  ) {
+  if (value && typeof value.toDate === "function") {
     return value.toDate().toISOString();
   }
 
@@ -2191,19 +2396,12 @@ function normaliseFirestoreValue(value) {
     return `${value.latitude}, ${value.longitude}`;
   }
 
-  if (
-    value &&
-    typeof value.path === "string"
-  ) {
+  if (value && typeof value.path === "string") {
     return value.path;
   }
 
   if (Array.isArray(value)) {
-    return JSON.stringify(
-      value.map(
-        normaliseNestedFirestoreValue
-      )
-    );
+    return JSON.stringify(value.map(normaliseNestedFirestoreValue));
   }
 
   return value;
@@ -2214,10 +2412,7 @@ function normaliseNestedFirestoreValue(value) {
     return null;
   }
 
-  if (
-    value &&
-    typeof value.toDate === "function"
-  ) {
+  if (value && typeof value.toDate === "function") {
     return value.toDate().toISOString();
   }
 
@@ -2226,15 +2421,10 @@ function normaliseNestedFirestoreValue(value) {
   }
 
   if (Array.isArray(value)) {
-    return value.map(
-      normaliseNestedFirestoreValue
-    );
+    return value.map(normaliseNestedFirestoreValue);
   }
 
-  if (
-    value &&
-    typeof value === "object"
-  ) {
+  if (value && typeof value === "object") {
     if (
       typeof value.latitude === "number" &&
       typeof value.longitude === "number"
@@ -2250,65 +2440,46 @@ function normaliseNestedFirestoreValue(value) {
     }
 
     return Object.fromEntries(
-      Object.entries(value).map(
-        ([key, nestedValue]) => [
-          key,
-          normaliseNestedFirestoreValue(
-            nestedValue
-          ),
-        ]
-      )
+      Object.entries(value).map(([key, nestedValue]) => [
+        key,
+        normaliseNestedFirestoreValue(nestedValue),
+      ]),
     );
   }
 
   return value;
 }
 
-function flattenFirestoreRecord(
-  value,
-  prefix = "",
-  result = {}
-) {
-  Object.entries(value || {}).forEach(
-    ([key, fieldValue]) => {
-      const columnName = prefix
-        ? `${prefix}.${key}`
-        : key;
+function flattenFirestoreRecord(value, prefix = "", result = {}) {
+  Object.entries(value || {}).forEach(([key, fieldValue]) => {
+    const columnName = prefix ? `${prefix}.${key}` : key;
 
-      const isNestedObject =
-        fieldValue &&
-        typeof fieldValue === "object" &&
-        !Array.isArray(fieldValue) &&
-        !(fieldValue instanceof Date) &&
-        typeof fieldValue.toDate !== "function" &&
-        typeof fieldValue.latitude !== "number" &&
-        typeof fieldValue.path !== "string";
+    const isNestedObject =
+      fieldValue &&
+      typeof fieldValue === "object" &&
+      !Array.isArray(fieldValue) &&
+      !(fieldValue instanceof Date) &&
+      typeof fieldValue.toDate !== "function" &&
+      typeof fieldValue.latitude !== "number" &&
+      typeof fieldValue.path !== "string";
 
-      if (isNestedObject) {
-        flattenFirestoreRecord(
-          fieldValue,
-          columnName,
-          result
-        );
+    if (isNestedObject) {
+      flattenFirestoreRecord(fieldValue, columnName, result);
 
-        return;
-      }
-
-      result[columnName] =
-        normaliseFirestoreValue(
-          fieldValue
-        );
+      return;
     }
-  );
+
+    result[columnName] = normaliseFirestoreValue(fieldValue);
+  });
 
   return result;
 }
 
-async function getFirestoreExportRows(
-  collectionName
-) {
+async function getFirestoreExportRows(collectionName) {
   try {
-    const res = await api.get(`/admin/export?table=${encodeURIComponent(collectionName)}`);
+    const res = await api.get(
+      `/admin/export?table=${encodeURIComponent(collectionName)}`,
+    );
     const records = res.data || res.rows || [];
     return records.map((item) => flattenFirestoreRecord(item));
   } catch {
@@ -2317,18 +2488,14 @@ async function getFirestoreExportRows(
   }
 }
 
-function getCachedExportRows(
-  collectionName
-) {
+function getCachedExportRows(collectionName) {
   let records = null;
 
   if (collectionName === "users") {
     records = usersData;
   } else if (collectionName === "bookings") {
     records = bookingsData;
-  } else if (
-    collectionName === "partner_cars"
-  ) {
+  } else if (collectionName === "partner_cars") {
     records = hostCarsData;
   }
 
@@ -2336,57 +2503,40 @@ function getCachedExportRows(
     return null;
   }
 
-  return records.map(
-    (item) =>
-      flattenFirestoreRecord({
-        documentId: item.id,
-        ...item,
-      })
+  return records.map((item) =>
+    flattenFirestoreRecord({
+      documentId: item.id,
+      ...item,
+    }),
   );
 }
 
 function createExportWorksheet(rows) {
   const XLSX = window.XLSX;
-  const worksheetRows = rows.length
-    ? rows
-    : [{ Message: "No records" }];
+  const worksheetRows = rows.length ? rows : [{ Message: "No records" }];
 
   const headers = Array.from(
-    new Set(
-      worksheetRows.flatMap(
-        (row) => Object.keys(row)
-      )
-    )
+    new Set(worksheetRows.flatMap((row) => Object.keys(row))),
   );
 
-  const worksheet =
-    XLSX.utils.json_to_sheet(
-      worksheetRows,
-      { header: headers }
-    );
+  const worksheet = XLSX.utils.json_to_sheet(worksheetRows, {
+    header: headers,
+  });
 
   worksheet["!autofilter"] = {
     ref: worksheet["!ref"],
   };
 
-  worksheet["!cols"] = headers.map(
-    (header) => {
-      const longest = Math.max(
-        header.length,
-        ...worksheetRows.map(
-          (row) =>
-            String(row[header] ?? "").length
-        )
-      );
+  worksheet["!cols"] = headers.map((header) => {
+    const longest = Math.max(
+      header.length,
+      ...worksheetRows.map((row) => String(row[header] ?? "").length),
+    );
 
-      return {
-        wch: Math.min(
-          Math.max(longest + 2, 12),
-          45
-        ),
-      };
-    }
-  );
+    return {
+      wch: Math.min(Math.max(longest + 2, 12), 45),
+    };
+  });
 
   return worksheet;
 }
@@ -2400,38 +2550,30 @@ async function exportFirebaseToExcel() {
     return;
   }
 
-  const originalText =
-    exportFirebaseExcelBtn.textContent;
+  const originalText = exportFirebaseExcelBtn.textContent;
 
   try {
     exportFirebaseExcelBtn.disabled = true;
-    exportFirebaseExcelBtn.textContent =
-      "Preparing Excel...";
+    exportFirebaseExcelBtn.textContent = "Preparing Excel...";
 
     if (firebaseExportStatus) {
-      firebaseExportStatus.textContent =
-        "Generating Excel from Firebase...";
+      firebaseExportStatus.textContent = "Generating Excel from Firebase...";
     }
 
     const token = await getAuthToken();
 
-    const response = await fetch(
-      `${MEDIA_SERVER_URL}/api/admin/export/excel`,
-      {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
+    const response = await fetch(`${MEDIA_SERVER_URL}/api/admin/export/excel`, {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
     if (!response.ok) {
-      let message =
-        `Export failed (${response.status}).`;
+      let message = `Export failed (${response.status}).`;
 
       try {
-        const data =
-          await response.json();
+        const data = await response.json();
 
         if (data.error) {
           message = data.error;
@@ -2443,24 +2585,17 @@ async function exportFirebaseToExcel() {
       throw new Error(message);
     }
 
-    const blob =
-      await response.blob();
+    const blob = await response.blob();
 
-    const downloadUrl =
-      URL.createObjectURL(blob);
+    const downloadUrl = URL.createObjectURL(blob);
 
-    const link =
-      document.createElement("a");
+    const link = document.createElement("a");
 
     link.href = downloadUrl;
 
-    const date =
-      new Date()
-        .toISOString()
-        .slice(0, 10);
+    const date = new Date().toISOString().slice(0, 10);
 
-    link.download =
-      `CARRENTPE_Firebase_${date}.xlsx`;
+    link.download = `CARRENTPE_Firebase_${date}.xlsx`;
 
     document.body.appendChild(link);
 
@@ -2468,36 +2603,23 @@ async function exportFirebaseToExcel() {
 
     link.remove();
 
-    URL.revokeObjectURL(
-      downloadUrl
-    );
+    URL.revokeObjectURL(downloadUrl);
 
     if (firebaseExportStatus) {
-      firebaseExportStatus.textContent =
-        "Excel export completed successfully.";
+      firebaseExportStatus.textContent = "Excel export completed successfully.";
     }
-
   } catch (error) {
-    console.error(
-      "FIREBASE EXCEL EXPORT ERROR:",
-      error
-    );
+    console.error("FIREBASE EXCEL EXPORT ERROR:", error);
 
     if (firebaseExportStatus) {
-      firebaseExportStatus.textContent =
-        "Excel export failed.";
+      firebaseExportStatus.textContent = "Excel export failed.";
     }
 
-    alert(
-      "Could not create export.\n\n" +
-      error.message
-    );
-
+    alert("Could not create export.\n\n" + error.message);
   } finally {
     exportFirebaseExcelBtn.disabled = false;
 
-    exportFirebaseExcelBtn.textContent =
-      originalText;
+    exportFirebaseExcelBtn.textContent = originalText;
   }
 }
 // ============================================================================
@@ -2506,8 +2628,7 @@ async function exportFirebaseToExcel() {
 
 async function loadUsers() {
   if (usersTableWrap) {
-    usersTableWrap.innerHTML =
-      `<p style="color:var(--sub);">
+    usersTableWrap.innerHTML = `<p style="color:var(--sub);">
         Loading users...
       </p>`;
   }
@@ -2518,7 +2639,9 @@ async function loadUsers() {
     const seenU = new Set();
     usersData = [];
     rawU.forEach((u) => {
-      const key = String(u.firebase_uid || u.uid || u.email || u.id || "").trim();
+      const key = String(
+        u.firebase_uid || u.uid || u.email || u.id || "",
+      ).trim();
       if (key && !seenU.has(key)) {
         seenU.add(key);
         usersData.push(u);
@@ -2528,26 +2651,24 @@ async function loadUsers() {
     usersData.sort(
       (a, b) =>
         toMillis(b.createdAt || b.documentsVerifiedAt) -
-        toMillis(a.createdAt || a.documentsVerifiedAt)
+        toMillis(a.createdAt || a.documentsVerifiedAt),
     );
 
     updateUserStats();
 
-    renderUsersTable(
-      usersData
-    );
-
+    renderUsersTable(usersData);
   } catch (error) {
     console.error("LOAD USERS ERROR:", error);
 
-    const isPermErr = error.code === "permission-denied" || (error.message && error.message.includes("permission"));
+    const isPermErr =
+      error.code === "permission-denied" ||
+      (error.message && error.message.includes("permission"));
     const errMsg = isPermErr
       ? "Admin Authentication Required — Sign in on the Profile page as an Admin to inspect user identity records."
       : error.message;
 
     if (usersTableWrap) {
-      usersTableWrap.innerHTML =
-        `<div style="padding:24px;text-align:center;background:rgba(255,92,119,0.06);border:1px solid rgba(255,92,119,0.2);border-radius:14px;margin:10px 0;">
+      usersTableWrap.innerHTML = `<div style="padding:24px;text-align:center;background:rgba(255,92,119,0.06);border:1px solid rgba(255,92,119,0.2);border-radius:14px;margin:10px 0;">
           <p style="color:#ff5c77;font-weight:700;margin:0 0 6px;">Unable to fetch user records</p>
           <p style="color:var(--kr-text-secondary);font-size:13px;margin:0 0 14px;">${escapeHtml(errMsg)}</p>
           ${isPermErr ? `<a href="profile.html" class="btn btn-dark btn-sm" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;">Go to Profile &amp; Sign In</a>` : ""}
@@ -2566,23 +2687,17 @@ function updateUserStats() {
     return;
   }
 
-  const pending =
-    usersData.filter(
-      (user) =>
-        user.licenseStatus ===
-          "pending" ||
-        user.aadharStatus ===
-          "pending" ||
-        user.panStatus ===
-          "pending"
-    ).length;
+  const pending = usersData.filter(
+    (user) =>
+      user.licenseStatus === "pending" ||
+      user.aadharStatus === "pending" ||
+      user.panStatus === "pending",
+  ).length;
 
-  const pendingEl =
-    $("statPendingDocs");
+  const pendingEl = $("statPendingDocs");
 
   if (pendingEl) {
-    pendingEl.textContent =
-      pending;
+    pendingEl.textContent = pending;
   }
 }
 
@@ -2598,9 +2713,7 @@ function updateBookingStats() {
   }
 }
 
-function documentStatusLabel(
-  status
-) {
+function documentStatusLabel(status) {
   switch (status) {
     case "verified":
       return "Verified";
@@ -2616,9 +2729,7 @@ function documentStatusLabel(
   }
 }
 
-function documentStatusClass(
-  status
-) {
+function documentStatusClass(status) {
   if (status === "verified") {
     return "verified";
   }
@@ -2638,23 +2749,23 @@ function documentStatusClass(
 // USERS TABLE
 // ============================================================================
 
-function renderUsersTable(
-  users
-) {
+function renderUsersTable(users) {
   if (!usersTableWrap) {
     return;
   }
 
   if (!users.length) {
-    usersTableWrap.innerHTML =
-      `<p style="color:var(--sub);">
+    usersTableWrap.innerHTML = `<p style="color:var(--sub);">
         No user records found.
       </p>`;
 
     return;
   }
 
-  const totalPages = Math.max(1, Math.ceil(users.length / ADMIN_USERS_PER_PAGE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(users.length / ADMIN_USERS_PER_PAGE),
+  );
   adminUserPage = Math.min(adminUserPage, totalPages);
   const pageStart = (adminUserPage - 1) * ADMIN_USERS_PER_PAGE;
   const pageUsers = users.slice(pageStart, pageStart + ADMIN_USERS_PER_PAGE);
@@ -2711,15 +2822,50 @@ function renderUsersTable(
   `;
 
   pageUsers.forEach((user) => {
-    const hasLicense = Boolean(user.licenseFrontURL || user.licenseURL || user.licenseFrontMediaId || user.license_front_media_id || user.licenseNumber);
-      const hasAadhaar = Boolean(user.aadharFrontURL || user.aadharURL || user.aadharBackURL || user.aadharFrontMediaId || user.aadhar_front_media_id || user.aadharNumber);
-      const hasPan = Boolean(user.panFrontURL || user.panURL || user.panBackURL || user.panFrontMediaId || user.pan_front_media_id || user.panNumber);
+    const hasLicense = Boolean(
+      user.licenseFrontURL ||
+      user.licenseURL ||
+      user.licenseFrontMediaId ||
+      user.license_front_media_id ||
+      user.licenseNumber,
+    );
+    const hasAadhaar = Boolean(
+      user.aadharFrontURL ||
+      user.aadharURL ||
+      user.aadharBackURL ||
+      user.aadharFrontMediaId ||
+      user.aadhar_front_media_id ||
+      user.aadharNumber,
+    );
+    const hasPan = Boolean(
+      user.panFrontURL ||
+      user.panURL ||
+      user.panBackURL ||
+      user.panFrontMediaId ||
+      user.pan_front_media_id ||
+      user.panNumber,
+    );
 
-      const license = (user.licenseStatus && user.licenseStatus !== "not_submitted") ? user.licenseStatus : (hasLicense ? "pending" : "not_submitted");
-      const aadhaar = (user.aadharStatus && user.aadharStatus !== "not_submitted") ? user.aadharStatus : (hasAadhaar ? "pending" : "not_submitted");
-      const pan = (user.panStatus && user.panStatus !== "not_submitted") ? user.panStatus : (hasPan ? "pending" : "not_submitted");
+    const license =
+      user.licenseStatus && user.licenseStatus !== "not_submitted"
+        ? user.licenseStatus
+        : hasLicense
+          ? "pending"
+          : "not_submitted";
+    const aadhaar =
+      user.aadharStatus && user.aadharStatus !== "not_submitted"
+        ? user.aadharStatus
+        : hasAadhaar
+          ? "pending"
+          : "not_submitted";
+    const pan =
+      user.panStatus && user.panStatus !== "not_submitted"
+        ? user.panStatus
+        : hasPan
+          ? "pending"
+          : "not_submitted";
 
-      html += `
+    html += `
         <tr
           style="
             border-bottom:
@@ -2729,10 +2875,7 @@ function renderUsersTable(
 
           <td style="padding:12px;">
             <strong>
-              ${escapeHtml(
-                user.name ||
-                  "Unnamed"
-              )}
+              ${escapeHtml(user.name || "Unnamed")}
             </strong>
 
             <br>
@@ -2743,18 +2886,12 @@ function renderUsersTable(
                 font-size:.8rem;
               "
             >
-              ${escapeHtml(
-                user.email ||
-                  "No email"
-              )}
+              ${escapeHtml(user.email || "No email")}
             </span>
           </td>
 
           <td style="padding:12px;">
-            ${escapeHtml(
-              user.phone ||
-                "—"
-            )}
+            ${escapeHtml(user.phone || "—")}
           </td>
 
           <td style="padding:12px;">
@@ -2766,60 +2903,41 @@ function renderUsersTable(
 
               <option
                 value="customer"
-                ${
-                  user.role ===
-                  "customer"
-                    ? "selected"
-                    : ""
-                }
+                ${user.role === "customer" ? "selected" : ""}
               >
                 Customer
+              </option>
+              <option
+                value="host"
+                ${user.role === "host" ? "selected" : ""}
+              >
+                Host
               </option>
 
               <option
                 value="manager"
-                ${
-                  user.role ===
-                  "manager"
-                    ? "selected"
-                    : ""
-                }
+                ${user.role === "manager" ? "selected" : ""}
               >
                 Manager
               </option>
 
               <option
                 value="executive"
-                ${
-                  user.role ===
-                  "executive"
-                    ? "selected"
-                    : ""
-                }
+                ${user.role === "executive" ? "selected" : ""}
               >
                 Executive
               </option>
 
               <option
                 value="accountant"
-                ${
-                  user.role ===
-                  "accountant"
-                    ? "selected"
-                    : ""
-                }
+                ${user.role === "accountant" ? "selected" : ""}
               >
                 Accountant
               </option>
 
               <option
                 value="admin"
-                ${
-                  user.role ===
-                  "admin"
-                    ? "selected"
-                    : ""
-                }
+                ${user.role === "admin" ? "selected" : ""}
               >
                 Admin
               </option>
@@ -2829,13 +2947,9 @@ function renderUsersTable(
 
           <td style="padding:12px;">
             <span
-              class="fleet-status ${documentStatusClass(
-                license
-              )}"
+              class="fleet-status ${documentStatusClass(license)}"
             >
-              ${documentStatusLabel(
-                license
-              )}
+              ${documentStatusLabel(license)}
             </span>
 
             <br>
@@ -2843,9 +2957,7 @@ function renderUsersTable(
             <button
               type="button"
               class="btn btn-outline inspect-document-btn"
-              data-uid="${escapeHtml(
-                user.id
-              )}"
+              data-uid="${escapeHtml(user.id)}"
               data-type="license"
               style="
                 margin-top:6px;
@@ -2859,13 +2971,9 @@ function renderUsersTable(
 
           <td style="padding:12px;">
             <span
-              class="fleet-status ${documentStatusClass(
-                aadhaar
-              )}"
+              class="fleet-status ${documentStatusClass(aadhaar)}"
             >
-              ${documentStatusLabel(
-                aadhaar
-              )}
+              ${documentStatusLabel(aadhaar)}
             </span>
 
             <br>
@@ -2873,9 +2981,7 @@ function renderUsersTable(
             <button
               type="button"
               class="btn btn-outline inspect-document-btn"
-              data-uid="${escapeHtml(
-                user.id
-              )}"
+              data-uid="${escapeHtml(user.id)}"
               data-type="aadhar"
               style="
                 margin-top:6px;
@@ -2911,17 +3017,20 @@ function renderUsersTable(
           >
 
             <span style="color:${license === "verified" && aadhaar === "verified" && pan === "verified" ? "#06d6a0" : "var(--sub)"};font-size:.8rem;">
-              ${license === "verified" && aadhaar === "verified" && pan === "verified"
-                ? "Identity verified"
-                : "Review each ID"}
+              ${
+                license === "verified" &&
+                aadhaar === "verified" &&
+                pan === "verified"
+                  ? "Identity verified"
+                  : "Review each ID"
+              }
             </span>
 
           </td>
 
         </tr>
       `;
-    }
-  );
+  });
 
   html += `
         </tbody>
@@ -2931,7 +3040,7 @@ function renderUsersTable(
       page: adminUserPage,
       totalPages,
       totalItems: users.length,
-      type: "users"
+      type: "users",
     })}
   `;
 
@@ -2941,171 +3050,101 @@ function renderUsersTable(
     .querySelectorAll("[data-admin-users-page-action]")
     .forEach((button) => {
       button.addEventListener("click", () => {
-        adminUserPage += button.dataset.adminUsersPageAction === "next" ? 1 : -1;
+        adminUserPage +=
+          button.dataset.adminUsersPageAction === "next" ? 1 : -1;
         renderUsersTable(usersData);
         usersTableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
       });
     });
 
   // INSPECT DOCUMENT
-  usersTableWrap
-    .querySelectorAll(
-      ".inspect-document-btn"
-    )
-    .forEach((button) => {
-      button.addEventListener(
-        "click",
-        () => {
-          const uid =
-            button.dataset.uid;
+  usersTableWrap.querySelectorAll(".inspect-document-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const uid = button.dataset.uid;
 
-          const type =
-            button.dataset.type;
+      const type = button.dataset.type;
 
-          const user =
-            usersData.find(
-              (item) =>
-                item.id === uid
-            );
+      const user = usersData.find((item) => item.id === uid);
 
-          if (!user) {
-            alert(
-              "User record not found."
-            );
+      if (!user) {
+        alert("User record not found.");
 
-            return;
-          }
+        return;
+      }
 
-          openDocumentModal(
-            user,
-            type
-          );
-        }
-      );
+      openDocumentModal(user, type);
     });
+  });
 
   // ROLE
-  usersTableWrap
-    .querySelectorAll(
-      ".role-select"
-    )
-    .forEach((select) => {
-      select.addEventListener(
-        "change",
-        async () => {
-          const uid =
-            select.dataset.uid;
+  usersTableWrap.querySelectorAll(".role-select").forEach((select) => {
+    select.addEventListener("change", async () => {
+      const uid = select.dataset.uid;
 
-          const newRole =
-            select.value;
+      const newRole = select.value;
 
-          const user =
-            usersData.find(
-              (item) =>
-                item.id === uid
-            );
+      const user = usersData.find((item) => item.id === uid);
 
-          if (!user) return;
+      if (!user) return;
 
-          const oldRole =
-            user.role;
+      const oldRole = user.role;
 
-          user.role =
-            newRole;
+      user.role = newRole;
 
-          try {
-            await api.put(`/users/${uid}/role`, { role: newRole });
+      try {
+        await api.put(`/users/${uid}/role`, { role: newRole });
+      } catch (error) {
+        console.error("ROLE UPDATE ERROR:", error);
 
-          } catch (error) {
-            console.error(
-              "ROLE UPDATE ERROR:",
-              error
-            );
+        user.role = oldRole;
 
-            user.role =
-              oldRole;
+        select.value = oldRole || "customer";
 
-            select.value =
-              oldRole ||
-              "customer";
-
-            alert(
-              "Could not update role.\n\n" +
-              error.message
-            );
-          }
-        }
-      );
+        alert("Could not update role.\n\n" + error.message);
+      }
     });
+  });
 
   // APPROVE ACCOUNT
-  usersTableWrap
-    .querySelectorAll(
-      ".approve-all-docs-btn"
-    )
-    .forEach((button) => {
-      button.addEventListener(
-        "click",
-        async () => {
-          const uid =
-            button.dataset.uid;
+  usersTableWrap.querySelectorAll(".approve-all-docs-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const uid = button.dataset.uid;
 
-          const oldText =
-            button.textContent;
+      const oldText = button.textContent;
 
-          button.disabled = true;
-          button.textContent =
-            "Verifying...";
+      button.disabled = true;
+      button.textContent = "Verifying...";
 
-          try {
-            await api.post(`/verification/user/${uid}/status`, {
-              docType: "all",
-              status: "verified"
-            });
+      try {
+        await api.post(`/verification/user/${uid}/status`, {
+          docType: "all",
+          status: "verified",
+        });
 
-            const user =
-              usersData.find(
-                (item) =>
-                  item.id === uid
-              );
+        const user = usersData.find((item) => item.id === uid);
 
-            if (user) {
-              user.licenseStatus =
-                "verified";
+        if (user) {
+          user.licenseStatus = "verified";
 
-              user.aadharStatus =
-                "verified";
+          user.aadharStatus = "verified";
 
-              user.panStatus =
-                "verified";
-            }
-
-            updateUserStats();
-
-            renderUsersTable(
-              usersData
-            );
-
-          } catch (error) {
-            console.error(
-              "DOCUMENT APPROVAL ERROR:",
-              error
-            );
-
-            button.disabled =
-              false;
-
-            button.textContent =
-              oldText;
-
-            alert(
-              "Could not approve documents.\n\n" +
-              error.message
-            );
-          }
+          user.panStatus = "verified";
         }
-      );
+
+        updateUserStats();
+
+        renderUsersTable(usersData);
+      } catch (error) {
+        console.error("DOCUMENT APPROVAL ERROR:", error);
+
+        button.disabled = false;
+
+        button.textContent = oldText;
+
+        alert("Could not approve documents.\n\n" + error.message);
+      }
     });
+  });
 }
 
 // ============================================================================
@@ -3113,18 +3152,12 @@ function renderUsersTable(
 // ============================================================================
 
 function initialiseDocumentModal() {
-  const close =
-    $("closeDocModal");
+  const close = $("closeDocModal");
 
   if (close) {
-    close.addEventListener(
-      "click",
-      () => {
-        hideModal(
-          "docModal"
-        );
-      }
-    );
+    close.addEventListener("click", () => {
+      hideModal("docModal");
+    });
   }
 
   // Click-to-enlarge high-res preview handlers for admin doc inspection
@@ -3135,7 +3168,9 @@ function initialiseDocumentModal() {
     modalImg.addEventListener("click", () => {
       if (modalImg.src && !modalImg.src.startsWith("data:image/svg+xml")) {
         const title = $("modalTitle")?.textContent || "Document Front Preview";
-        const userDesc = activeDocUser ? `${activeDocUser.name || "Customer"} (${activeDocUser.phone || activeDocUser.email || ""})` : "";
+        const userDesc = activeDocUser
+          ? `${activeDocUser.name || "Customer"} (${activeDocUser.phone || activeDocUser.email || ""})`
+          : "";
         openImageLightbox(modalImg.src, `${title} — Front Side`, userDesc);
       }
     });
@@ -3146,109 +3181,67 @@ function initialiseDocumentModal() {
     modalBackImg.style.cursor = "zoom-in";
     modalBackImg.title = "Click to enlarge Back Side";
     modalBackImg.addEventListener("click", () => {
-      if (modalBackImg.src && !modalBackImg.src.startsWith("data:image/svg+xml")) {
+      if (
+        modalBackImg.src &&
+        !modalBackImg.src.startsWith("data:image/svg+xml")
+      ) {
         const title = $("modalTitle")?.textContent || "Document Back Preview";
-        const userDesc = activeDocUser ? `${activeDocUser.name || "Customer"} (${activeDocUser.phone || activeDocUser.email || ""})` : "";
+        const userDesc = activeDocUser
+          ? `${activeDocUser.name || "Customer"} (${activeDocUser.phone || activeDocUser.email || ""})`
+          : "";
         openImageLightbox(modalBackImg.src, `${title} — Back Side`, userDesc);
       }
     });
   }
 
-  const approve =
-    $("approveDocBtn");
+  const approve = $("approveDocBtn");
 
   if (approve) {
-    approve.addEventListener(
-      "click",
-      async () => {
-        if (
-          !activeDocUser ||
-          !activeDocType
-        ) {
-          return;
-        }
-
-        await updateDocumentStatus(
-          activeDocUser.id,
-          activeDocType,
-          "verified"
-        );
-
-        hideModal(
-          "docModal"
-        );
+    approve.addEventListener("click", async () => {
+      if (!activeDocUser || !activeDocType) {
+        return;
       }
-    );
+
+      await updateDocumentStatus(activeDocUser.id, activeDocType, "verified");
+
+      hideModal("docModal");
+    });
   }
 
-  const reject =
-    $("rejectDocBtn");
+  const reject = $("rejectDocBtn");
 
   if (reject) {
-    reject.addEventListener(
-      "click",
-      async () => {
-        if (
-          !activeDocUser ||
-          !activeDocType
-        ) {
-          return;
-        }
-
-        await updateDocumentStatus(
-          activeDocUser.id,
-          activeDocType,
-          "rejected"
-        );
-
-        hideModal(
-          "docModal"
-        );
+    reject.addEventListener("click", async () => {
+      if (!activeDocUser || !activeDocType) {
+        return;
       }
-    );
+
+      await updateDocumentStatus(activeDocUser.id, activeDocType, "rejected");
+
+      hideModal("docModal");
+    });
   }
 
-  const uploadButton =
-    $("docUploadBtn");
+  const uploadButton = $("docUploadBtn");
 
-  const uploadInput =
-    $("docUploadInput");
+  const uploadInput = $("docUploadInput");
 
-  if (
-    uploadButton &&
-    uploadInput
-  ) {
-    uploadButton.addEventListener(
-      "click",
-      () => {
-        uploadInput.click();
+  if (uploadButton && uploadInput) {
+    uploadButton.addEventListener("click", () => {
+      uploadInput.click();
+    });
+
+    uploadInput.addEventListener("change", async () => {
+      const file = uploadInput.files?.[0];
+
+      if (!file || !activeDocUser || !activeDocType) {
+        return;
       }
-    );
 
-    uploadInput.addEventListener(
-      "change",
-      async () => {
-        const file =
-          uploadInput.files?.[0];
+      await uploadDocument(activeDocUser.id, activeDocType, file);
 
-        if (
-          !file ||
-          !activeDocUser ||
-          !activeDocType
-        ) {
-          return;
-        }
-
-        await uploadDocument(
-          activeDocUser.id,
-          activeDocType,
-          file
-        );
-
-        uploadInput.value =
-          "";
-      }
-    );
+      uploadInput.value = "";
+    });
   }
 }
 
@@ -3268,7 +3261,8 @@ async function fetchAdminDocumentPreview(mediaUrl) {
     finalUrl = `${MEDIA_SERVER_URL}${str.startsWith("/") ? "" : "/"}${str}`;
   }
 
-  const isFullHttp = finalUrl.startsWith("http://") || finalUrl.startsWith("https://");
+  const isFullHttp =
+    finalUrl.startsWith("http://") || finalUrl.startsWith("https://");
 
   try {
     const token = await getAuthToken();
@@ -3289,77 +3283,83 @@ async function fetchAdminDocumentPreview(mediaUrl) {
   }
 }
 
-async function openDocumentModal(
-  user,
-  type
-) {
+async function openDocumentModal(user, type) {
   activeDocObjectUrls.forEach((url) => URL.revokeObjectURL(url));
   activeDocObjectUrls = [];
 
-  activeDocUser =
-    user;
+  activeDocUser = user;
 
-  activeDocType =
-    type;
+  activeDocType = type;
 
   const configs = {
     license: {
       title: "Driving Licence",
-      front: user.licenseFrontURL || user.licenseURL || user.licenseFrontMediaId || user.license_front_media_id,
-      back: user.licenseBackURL || user.licenseBackMediaId || user.license_back_media_id,
-      requiresBack: true
+      front:
+        user.licenseFrontURL ||
+        user.licenseURL ||
+        user.licenseFrontMediaId ||
+        user.license_front_media_id,
+      back:
+        user.licenseBackURL ||
+        user.licenseBackMediaId ||
+        user.license_back_media_id,
+      requiresBack: true,
     },
     aadhar: {
       title: "Aadhaar Card",
-      front: user.aadharFrontURL || user.aadharURL || user.aadharFrontMediaId || user.aadhar_front_media_id,
-      back: user.aadharBackURL || user.aadharBackMediaId || user.aadhar_back_media_id,
-      requiresBack: true
+      front:
+        user.aadharFrontURL ||
+        user.aadharURL ||
+        user.aadharFrontMediaId ||
+        user.aadhar_front_media_id,
+      back:
+        user.aadharBackURL ||
+        user.aadharBackMediaId ||
+        user.aadhar_back_media_id,
+      requiresBack: true,
     },
     pan: {
       title: "PAN Card",
-      front: user.panFrontURL || user.panFrontMediaId || user.pan_front_media_id,
+      front:
+        user.panFrontURL || user.panFrontMediaId || user.pan_front_media_id,
       back: user.panBackURL || user.panBackMediaId || user.pan_back_media_id,
-      requiresBack: true
-    }
+      requiresBack: true,
+    },
   };
 
   const config = configs[type] || configs.license;
   const urls = [config.front, config.back];
 
-  const titleEl =
-    $("modalTitle");
+  const titleEl = $("modalTitle");
 
   if (titleEl) {
-    titleEl.textContent =
-      `${user.name || "User"} — ${config.title}`;
+    titleEl.textContent = `${user.name || "User"} — ${config.title}`;
   }
 
-  const img =
-    $("modalImg");
+  const img = $("modalImg");
   const backImg = $("modalBackImg");
   const frontFigure = $("modalFrontFigure");
   const backFigure = $("modalBackFigure");
   const previewGrid = $("documentPreviewGrid");
 
-  const approve =
-    $("approveDocBtn");
+  const approve = $("approveDocBtn");
 
-  const reject =
-    $("rejectDocBtn");
+  const reject = $("rejectDocBtn");
 
   if (frontFigure) frontFigure.style.display = "block";
-  if (backFigure) backFigure.style.display = config.requiresBack ? "block" : "none";
+  if (backFigure)
+    backFigure.style.display = config.requiresBack ? "block" : "none";
   if (previewGrid) {
     previewGrid.style.gridTemplateColumns = config.requiresBack
       ? "repeat(2,minmax(0,1fr))"
       : "1fr";
   }
 
-  showModal(
-    "docModal"
-  );
+  showModal("docModal");
 
-  document.querySelectorAll(".admin-doc-pdf-container").forEach((el) => el.remove());
+  document
+    .querySelectorAll(".admin-doc-pdf-container")
+    .forEach((el) => el.remove());
 
   const targets = [img, backImg];
   let loadedCount = 0;
@@ -3387,165 +3387,144 @@ async function openDocumentModal(
     }
   }
 
-  await Promise.all(urls.map(async (url, index) => {
-    if (!url || !targets[index]) return;
-    try {
-      const previewRes = await fetchAdminDocumentPreview(url);
-      if (!previewRes) return;
-      const objectUrl = typeof previewRes === "object" && previewRes !== null ? previewRes.url : previewRes;
-      const isPdf = typeof previewRes === "object" && previewRes !== null ? Boolean(previewRes.isPdf) : isPdfDocument(url);
+  await Promise.all(
+    urls.map(async (url, index) => {
+      if (!url || !targets[index]) return;
+      try {
+        const previewRes = await fetchAdminDocumentPreview(url);
+        if (!previewRes) return;
+        const objectUrl =
+          typeof previewRes === "object" && previewRes !== null
+            ? previewRes.url
+            : previewRes;
+        const isPdf =
+          typeof previewRes === "object" && previewRes !== null
+            ? Boolean(previewRes.isPdf)
+            : isPdfDocument(url);
 
-      if (activeDocUser !== user || activeDocType !== type || !targets[index].isConnected) {
-        if (typeof objectUrl === "string" && objectUrl.startsWith("blob:")) URL.revokeObjectURL(objectUrl);
-        return;
-      }
-      if (typeof objectUrl === "string" && objectUrl.startsWith("blob:")) activeDocObjectUrls.push(objectUrl);
-
-      const wrap = targets[index].parentElement;
-      if (isPdf && wrap) {
-        targets[index].style.display = "none";
-        let pdfContainer = wrap.querySelector(".admin-doc-pdf-container");
-        if (!pdfContainer) {
-          pdfContainer = document.createElement("div");
-          pdfContainer.className = "admin-doc-pdf-container";
-          pdfContainer.style.width = "100%";
-          pdfContainer.style.height = "260px";
-          pdfContainer.style.position = "relative";
-          pdfContainer.style.borderRadius = "8px";
-          pdfContainer.style.overflow = "hidden";
-          pdfContainer.style.background = "#fff";
-          wrap.appendChild(pdfContainer);
+        if (
+          activeDocUser !== user ||
+          activeDocType !== type ||
+          !targets[index].isConnected
+        ) {
+          if (typeof objectUrl === "string" && objectUrl.startsWith("blob:"))
+            URL.revokeObjectURL(objectUrl);
+          return;
         }
-        pdfContainer.innerHTML = `
+        if (typeof objectUrl === "string" && objectUrl.startsWith("blob:"))
+          activeDocObjectUrls.push(objectUrl);
+
+        const wrap = targets[index].parentElement;
+        if (isPdf && wrap) {
+          targets[index].style.display = "none";
+          let pdfContainer = wrap.querySelector(".admin-doc-pdf-container");
+          if (!pdfContainer) {
+            pdfContainer = document.createElement("div");
+            pdfContainer.className = "admin-doc-pdf-container";
+            pdfContainer.style.width = "100%";
+            pdfContainer.style.height = "260px";
+            pdfContainer.style.position = "relative";
+            pdfContainer.style.borderRadius = "8px";
+            pdfContainer.style.overflow = "hidden";
+            pdfContainer.style.background = "#fff";
+            wrap.appendChild(pdfContainer);
+          }
+          pdfContainer.innerHTML = `
           <iframe src="${escapeHtml(objectUrl)}#toolbar=0" style="width: 100%; height: 100%; border: none;" title="PDF Document Preview"></iframe>
           <div style="position: absolute; bottom: 8px; right: 8px; display: flex; gap: 6px; z-index: 10;">
             <button type="button" class="btn btn-sm btn-dark" style="font-size: 11px; padding: 4px 8px; display: inline-flex; align-items: center; gap: 4px; background: rgba(5,8,13,0.85); color: #4fd7ff; border: 1px solid rgba(79,215,255,0.4); cursor: pointer; border-radius: 4px;">Inspect PDF</button>
             <a href="${escapeHtml(objectUrl)}" target="_blank" rel="noopener" style="font-size: 11px; padding: 4px 8px; text-decoration: none; color: #fff; background: rgba(5,8,13,0.85); border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">Open Tab</a>
           </div>
         `;
-        const inspectBtn = pdfContainer.querySelector("button");
-        inspectBtn?.addEventListener("click", () => {
-          const title = $("modalTitle")?.textContent || "Document Preview";
-          const userDesc = activeDocUser ? `${activeDocUser.name || "Customer"} (${activeDocUser.phone || activeDocUser.email || ""})` : "";
-          const sideText = index === 0 ? "Front Side" : "Back Side";
-          openImageLightbox(objectUrl, `${title} — ${sideText}`, userDesc);
-        });
-        pdfContainer.style.display = "block";
-      } else {
-        targets[index].src = objectUrl;
+          const inspectBtn = pdfContainer.querySelector("button");
+          inspectBtn?.addEventListener("click", () => {
+            const title = $("modalTitle")?.textContent || "Document Preview";
+            const userDesc = activeDocUser
+              ? `${activeDocUser.name || "Customer"} (${activeDocUser.phone || activeDocUser.email || ""})`
+              : "";
+            const sideText = index === 0 ? "Front Side" : "Back Side";
+            openImageLightbox(objectUrl, `${title} — ${sideText}`, userDesc);
+          });
+          pdfContainer.style.display = "block";
+        } else {
+          targets[index].src = objectUrl;
+          targets[index].style.display = "block";
+        }
+        loadedCount += 1;
+      } catch (error) {
+        // Fallback placeholder image when document ID is missing from local storage
+        const fallbackSvg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='260' viewBox='0 0 400 260'%3E%3Crect width='100%25' height='100%25' fill='%23121926' rx='12'/%3E%3Ctext x='50%25' y='46%25' fill='%2348d7ff' font-family='sans-serif' font-size='14' font-weight='bold' text-anchor='middle'%3EProtected Document on Cloud%3C/text%3E%3Ctext x='50%25' y='58%25' fill='%237b8798' font-family='sans-serif' font-size='12' text-anchor='middle'%3ERef: ${encodeURIComponent(String(url).slice(-20))}%3C/text%3E%3C/svg%3E`;
+        targets[index].src = fallbackSvg;
         targets[index].style.display = "block";
+        loadedCount += 1;
       }
-      loadedCount += 1;
-    } catch (error) {
-      // Fallback placeholder image when document ID is missing from local storage
-      const fallbackSvg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='260' viewBox='0 0 400 260'%3E%3Crect width='100%25' height='100%25' fill='%23121926' rx='12'/%3E%3Ctext x='50%25' y='46%25' fill='%2348d7ff' font-family='sans-serif' font-size='14' font-weight='bold' text-anchor='middle'%3EProtected Document on Cloud%3C/text%3E%3Ctext x='50%25' y='58%25' fill='%237b8798' font-family='sans-serif' font-size='12' text-anchor='middle'%3ERef: ${encodeURIComponent(String(url).slice(-20))}%3C/text%3E%3C/svg%3E`;
-      targets[index].src = fallbackSvg;
-      targets[index].style.display = "block";
-      loadedCount += 1;
-    }
-  }));
+    }),
+  );
 
-  const hasUploadedFile = !noFrontUploaded || !noBackUploaded || loadedCount > 0;
+  const hasUploadedFile =
+    !noFrontUploaded || !noBackUploaded || loadedCount > 0;
 
   if (approve) {
     approve.disabled = !hasUploadedFile;
-    approve.title = hasUploadedFile ? "Approve document verification" : "No document file uploaded.";
+    approve.title = hasUploadedFile
+      ? "Approve document verification"
+      : "No document file uploaded.";
   }
   if (reject) {
     reject.disabled = false;
   }
 }
 
-async function updateDocumentStatus(
-  uid,
-  type,
-  status
-) {
-  const user =
-    usersData.find(
-      (item) =>
-        item.id === uid
-    );
+async function updateDocumentStatus(uid, type, status) {
+  const user = usersData.find((item) => item.id === uid);
 
   if (!user) return;
 
   const updates = {};
 
-  if (
-    type === "license" ||
-    type === "both"
-  ) {
-    updates.licenseStatus =
-      status;
+  if (type === "license" || type === "both") {
+    updates.licenseStatus = status;
   }
 
-  if (
-    type === "aadhar" ||
-    type === "both"
-  ) {
-    updates.aadharStatus =
-      status;
+  if (type === "aadhar" || type === "both") {
+    updates.aadharStatus = status;
   }
 
-  if (
-    type === "pan" ||
-    type === "both"
-  ) {
+  if (type === "pan" || type === "both") {
     updates.panStatus = status;
   }
 
   try {
     await api.post(`/verification/user/${uid}/status`, {
       docType: type,
-      status
+      status,
     });
 
-    Object.assign(
-      user,
-      updates
-    );
+    Object.assign(user, updates);
 
     updateUserStats();
 
-    renderUsersTable(
-      usersData
-    );
-
+    renderUsersTable(usersData);
   } catch (error) {
-    console.error(
-      "DOCUMENT STATUS ERROR:",
-      error
-    );
+    console.error("DOCUMENT STATUS ERROR:", error);
 
-    alert(
-      "Could not update document status.\n\n" +
-      error.message
-    );
+    alert("Could not update document status.\n\n" + error.message);
   }
 }
 
-async function uploadDocument(
-  uid,
-  type,
-  file
-) {
-  const status =
-    $("docUploadStatus");
+async function uploadDocument(uid, type, file) {
+  const status = $("docUploadStatus");
 
-  const button =
-    $("docUploadBtn");
+  const button = $("docUploadBtn");
 
   if (button) {
-    button.disabled =
-      true;
+    button.disabled = true;
 
-    button.textContent =
-      "Uploading...";
+    button.textContent = "Uploading...";
   }
 
   if (status) {
-    status.textContent =
-      "Uploading to server...";
+    status.textContent = "Uploading to server...";
   }
 
   try {
@@ -3568,65 +3547,41 @@ async function uploadDocument(
       status: "pending",
       metadataUpdates: {
         [`${type}URL`]: url,
-        [`${type}FrontURL`]: url
-      }
+        [`${type}FrontURL`]: url,
+      },
     });
 
-    const user =
-      usersData.find(
-        (item) =>
-          item.id === uid
-      );
+    const user = usersData.find((item) => item.id === uid);
 
     if (user) {
-      Object.assign(
-        user,
-        updates
-      );
+      Object.assign(user, updates);
     }
 
-    renderUsersTable(
-      usersData
-    );
+    renderUsersTable(usersData);
 
     if (user) {
-      activeDocUser =
-        user;
+      activeDocUser = user;
 
-      openDocumentModal(
-        user,
-        type
-      );
+      openDocumentModal(user, type);
     }
 
     if (status) {
       status.textContent =
         "Uploaded successfully. Document is now pending review.";
     }
-
   } catch (error) {
-    console.error(
-      "DOCUMENT UPLOAD ERROR:",
-      error
-    );
+    console.error("DOCUMENT UPLOAD ERROR:", error);
 
-    alert(
-      "Could not upload document.\n\n" +
-      error.message
-    );
+    alert("Could not upload document.\n\n" + error.message);
 
     if (status) {
-      status.textContent =
-        error.message;
+      status.textContent = error.message;
     }
-
   } finally {
     if (button) {
-      button.disabled =
-        false;
+      button.disabled = false;
 
-      button.textContent =
-        "Upload Replacement / Missing Document";
+      button.textContent = "Upload Replacement / Missing Document";
     }
   }
 }
@@ -3637,27 +3592,30 @@ async function uploadDocument(
 
 async function loadBookings() {
   if (bookingsTableWrap) {
-    bookingsTableWrap.innerHTML =
-      `<p style="color:var(--sub);">
+    bookingsTableWrap.innerHTML = `<p style="color:var(--sub);">
         Loading bookings...
       </p>`;
   }
 
   if (paymentsTableWrap) {
-    paymentsTableWrap.innerHTML =
-      `<p style="color:var(--sub);">
+    paymentsTableWrap.innerHTML = `<p style="color:var(--sub);">
         Loading payments...
       </p>`;
   }
 
   try {
     const selectedHubId = getSelectedHubId();
-    const res = await api.get("/bookings", selectedHubId ? { hub_id: selectedHubId } : {});
+    const res = await api.get(
+      "/bookings",
+      selectedHubId ? { hub_id: selectedHubId } : {},
+    );
     const rawB = Array.isArray(res.bookings) ? res.bookings : [];
     const seenB = new Set();
     bookingsData = [];
     rawB.forEach((b) => {
-      const key = String(b.bookingNumber || b.bookingId || b.id || "").trim().toUpperCase();
+      const key = String(b.bookingNumber || b.bookingId || b.id || "")
+        .trim()
+        .toUpperCase();
       if (key && !seenB.has(key)) {
         seenB.add(key);
         bookingsData.push(b);
@@ -3666,38 +3624,43 @@ async function loadBookings() {
 
     sortBookings();
 
-    const totalBookings =
-      $("statTotalBookings");
+    const totalBookings = $("statTotalBookings");
 
     if (totalBookings) {
-      totalBookings.textContent =
-        bookingsData.length;
+      totalBookings.textContent = bookingsData.length;
     }
 
-    renderBookingsTable(
-      getFilteredBookings()
-    );
+    renderBookingsTable(getFilteredBookings());
 
     renderPaymentsTable();
 
     updateRevenueStats();
-
   } catch (error) {
     console.error("LOAD BOOKINGS ERROR:", error);
 
-    const isAuthErr = error.message && (error.message.includes("401") || error.message.includes("403") || error.message.includes("token") || error.message.includes("access"));
-    const isNetworkErr = error.message && (error.message.includes("Failed to fetch") || error.message.includes("NetworkError") || error.message.includes("connection"));
-    
+    const isAuthErr =
+      error.message &&
+      (error.message.includes("401") ||
+        error.message.includes("403") ||
+        error.message.includes("token") ||
+        error.message.includes("access"));
+    const isNetworkErr =
+      error.message &&
+      (error.message.includes("Failed to fetch") ||
+        error.message.includes("NetworkError") ||
+        error.message.includes("connection"));
+
     let errMsg = error.message;
     if (isAuthErr) {
-      errMsg = "Admin Authentication Required — Please sign in with an Admin account on the Profile page.";
+      errMsg =
+        "Admin Authentication Required — Please sign in with an Admin account on the Profile page.";
     } else if (isNetworkErr) {
-      errMsg = "Cannot connect to Backend API Server. Please verify the API is reachable.";
+      errMsg =
+        "Cannot connect to Backend API Server. Please verify the API is reachable.";
     }
 
     if (bookingsTableWrap) {
-      bookingsTableWrap.innerHTML =
-        `<div style="padding:24px;text-align:center;background:rgba(255,92,119,0.06);border:1px solid rgba(255,92,119,0.2);border-radius:14px;margin:10px 0;">
+      bookingsTableWrap.innerHTML = `<div style="padding:24px;text-align:center;background:rgba(255,92,119,0.06);border:1px solid rgba(255,92,119,0.2);border-radius:14px;margin:10px 0;">
           <p style="color:#ff5c77;font-weight:700;margin:0 0 6px;">Unable to fetch bookings</p>
           <p style="color:var(--kr-text-secondary);font-size:13px;margin:0 0 14px;">${escapeHtml(errMsg)}</p>
           <a href="profile.html" class="btn btn-dark btn-sm" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;">Go to Profile &amp; Sign In</a>
@@ -3705,8 +3668,7 @@ async function loadBookings() {
     }
 
     if (paymentsTableWrap) {
-      paymentsTableWrap.innerHTML =
-        `<div style="padding:24px;text-align:center;background:rgba(255,92,119,0.06);border:1px solid rgba(255,92,119,0.2);border-radius:14px;margin:10px 0;">
+      paymentsTableWrap.innerHTML = `<div style="padding:24px;text-align:center;background:rgba(255,92,119,0.06);border:1px solid rgba(255,92,119,0.2);border-radius:14px;margin:10px 0;">
           <p style="color:#ff5c77;font-weight:700;margin:0 0 6px;">Unable to fetch payments</p>
           <p style="color:var(--kr-text-secondary);font-size:13px;margin:0 0 14px;">${escapeHtml(errMsg)}</p>
           <a href="profile.html" class="btn btn-dark btn-sm" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;">Go to Profile &amp; Sign In</a>
@@ -3735,28 +3697,24 @@ async function loadBookings() {
 // Return Report / Process Return
 // ============================================================================
 
-function renderBookingsTable(
-  bookings
-) {
+function renderBookingsTable(bookings) {
   if (!bookingsTableWrap) {
     return;
   }
 
   const totalPages = Math.max(
     1,
-    Math.ceil(bookings.length / ADMIN_BOOKINGS_PER_PAGE)
+    Math.ceil(bookings.length / ADMIN_BOOKINGS_PER_PAGE),
   );
   adminBookingPage = Math.min(adminBookingPage, totalPages);
-  const pageStart =
-    (adminBookingPage - 1) * ADMIN_BOOKINGS_PER_PAGE;
+  const pageStart = (adminBookingPage - 1) * ADMIN_BOOKINGS_PER_PAGE;
   const pageBookings = bookings.slice(
     pageStart,
-    pageStart + ADMIN_BOOKINGS_PER_PAGE
+    pageStart + ADMIN_BOOKINGS_PER_PAGE,
   );
 
   if (!bookings.length) {
-    bookingsTableWrap.innerHTML =
-      `<div
+    bookingsTableWrap.innerHTML = `<div
         style="
           padding:40px;
           text-align:center;
@@ -3852,81 +3810,56 @@ function renderBookingsTable(
         <tbody>
   `;
 
-  pageBookings.forEach(
-    (booking) => {
-      const id =
-        booking.id;
+  pageBookings.forEach((booking) => {
+    const id = booking.id;
 
-      const rowId =
-        `booking-details-${id}`;
+    const rowId = `booking-details-${id}`;
 
-      const status =
-        String(
-          booking.status ||
-            "unknown"
-        ).toLowerCase();
+    const status = String(booking.status || "unknown").toLowerCase();
 
-      const customer =
-        booking.userName ||
-        booking.customerName ||
-        booking.name ||
-        "Customer";
+    const customer =
+      booking.userName || booking.customerName || booking.name || "Customer";
 
-      const vehicle =
-        booking.vehicleName ||
-        booking.carName ||
-        booking.vehicle ||
-        "Vehicle";
+    const vehicle =
+      booking.vehicleName || booking.carName || booking.vehicle || "Vehicle";
 
-      const rawTot = Number(booking.totalAmount ?? booking.finalAmount ?? booking.amount ?? 0);
-      const rawDep = Number(booking.securityDeposit ?? booking.security_deposit ?? 0);
-      const rawBase = Number(booking.baseAmount ?? booking.base_amount ?? 0);
-      const rawDisc = Number(booking.couponDiscount ?? booking.coupon_discount ?? 0);
-      const baseAmt = (rawTot > 0 && rawDep > 0)
+    const rawTot = Number(
+      booking.totalAmount ?? booking.finalAmount ?? booking.amount ?? 0,
+    );
+    const rawDep = Number(
+      booking.securityDeposit ?? booking.security_deposit ?? 0,
+    );
+    const rawBase = Number(booking.baseAmount ?? booking.base_amount ?? 0);
+    const rawDisc = Number(
+      booking.couponDiscount ?? booking.coupon_discount ?? 0,
+    );
+    const baseAmt =
+      rawTot > 0 && rawDep > 0
         ? Math.max(0, rawTot - rawDep)
-        : (rawBase > 0 ? Math.max(0, rawBase - rawDisc) : Math.max(0, rawTot - rawDep));
-      const totalAmt = (rawTot > 0) ? rawTot : (baseAmt + rawDep);
-      const amount = baseAmt;
+        : rawBase > 0
+          ? Math.max(0, rawBase - rawDisc)
+          : Math.max(0, rawTot - rawDep);
+    const totalAmt = rawTot > 0 ? rawTot : baseAmt + rawDep;
+    const amount = baseAmt;
 
-      const startOdo =
-        getStartOdometer(
-          booking
-        );
+    const startOdo = getStartOdometer(booking);
 
-      const endOdo =
-        getEndOdometer(
-          booking
-        );
+    const endOdo = getEndOdometer(booking);
 
-      const distance =
-        calculateDistance(
-          startOdo,
-          endOdo
-        );
+    const distance = calculateDistance(startOdo, endOdo);
 
-      const startFastag =
-        getStartFastag(
-          booking
-        );
+    const startFastag = getStartFastag(booking);
 
-      const returnFastag =
-        getReturnFastag(
-          booking
-        );
+    const returnFastag = getReturnFastag(booking);
 
-      let returnButton = "";
+    let returnButton = "";
 
-      if (
-        status ===
-        "confirmed"
-      ) {
-        returnButton = `
+    if (status === "confirmed") {
+      returnButton = `
           <button
             type="button"
             class="btn btn-dark process-return-btn"
-            data-bid="${escapeHtml(
-              id
-            )}"
+            data-bid="${escapeHtml(id)}"
             style="
               padding:6px 12px;
               font-size:.8rem;
@@ -3935,20 +3868,14 @@ function renderBookingsTable(
             Process Return
           </button>
         `;
-      }
+    }
 
-      if (
-        status ===
-          "completed" &&
-        booking.returnInspection
-      ) {
-        returnButton = `
+    if (status === "completed" && booking.returnInspection) {
+      returnButton = `
           <button
             type="button"
             class="btn btn-outline view-return-report-btn"
-            data-bid="${escapeHtml(
-              id
-            )}"
+            data-bid="${escapeHtml(id)}"
             style="
               padding:6px 12px;
               font-size:.8rem;
@@ -3957,9 +3884,9 @@ function renderBookingsTable(
             View Return Report
           </button>
         `;
-      }
+    }
 
-      html += `
+    html += `
         <tr
           style="
             border-bottom:
@@ -3973,9 +3900,7 @@ function renderBookingsTable(
               white-space:nowrap;
             "
           >
-            ${getBookingDisplayDate(
-              booking
-            )}
+            ${getBookingDisplayDate(booking)}
           </td>
 
           <td
@@ -3988,15 +3913,13 @@ function renderBookingsTable(
             "
           >
             ${escapeHtml(
-              id.toUpperCase().startsWith("KRZ-") ? id : `#${id.slice(0, 8)}`
+              id.toUpperCase().startsWith("KRZ-") ? id : `#${id.slice(0, 8)}`,
             )}
           </td>
 
           <td style="padding:14px;">
             <strong>
-              ${escapeHtml(
-                customer
-              )}
+              ${escapeHtml(customer)}
             </strong>
 
             <br>
@@ -4008,18 +3931,13 @@ function renderBookingsTable(
               "
             >
               ${escapeHtml(
-                booking.userPhone ||
-                  booking.phone ||
-                  booking.userEmail ||
-                  "—"
+                booking.userPhone || booking.phone || booking.userEmail || "—",
               )}
             </span>
           </td>
 
           <td style="padding:14px;">
-            ${escapeHtml(
-              vehicle
-            )}
+            ${escapeHtml(vehicle)}
 
             <br>
 
@@ -4033,7 +3951,7 @@ function renderBookingsTable(
                 booking.vehicleReg ||
                   booking.registration ||
                   booking.regNumber ||
-                  "—"
+                  "—",
               )}
             </span>
           </td>
@@ -4051,12 +3969,18 @@ function renderBookingsTable(
           <td style="padding:14px;">
             <span
               class="fleet-status ${getStatusClass(
-                booking.paymentStatus === 'rejected' ? 'rejected' : status
+                booking.paymentStatus === "rejected" ? "rejected" : status,
               )}"
             >
-              ${booking.paymentStatus === 'rejected'
-                ? 'Payment Rejected'
-                : escapeHtml(status.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()))}
+              ${
+                booking.paymentStatus === "rejected"
+                  ? "Payment Rejected"
+                  : escapeHtml(
+                      status
+                        .replace(/_/g, " ")
+                        .replace(/\b\w/g, (c) => c.toUpperCase()),
+                    )
+              }
             </span>
           </td>
 
@@ -4070,22 +3994,14 @@ function renderBookingsTable(
             <button
               type="button"
               class="btn btn-outline booking-details-btn"
-              data-target="${escapeHtml(
-                rowId
-              )}"
-              data-bid="${escapeHtml(
-                id
-              )}"
+              data-target="${escapeHtml(rowId)}"
+              data-bid="${escapeHtml(id)}"
               style="
                 padding:6px 12px;
                 font-size:.8rem;
               "
             >
-              ${
-                expandedBookingId === id
-                  ? "Details ▲"
-                  : "Details ▼"
-              }
+              ${expandedBookingId === id ? "Details ▲" : "Details ▼"}
             </button>
 
           </td>
@@ -4093,15 +4009,9 @@ function renderBookingsTable(
         </tr>
 
         <tr
-          id="${escapeHtml(
-            rowId
-          )}"
+          id="${escapeHtml(rowId)}"
           class="booking-detail-row"
-          ${
-            expandedBookingId === id
-              ? ""
-              : "hidden"
-          }
+          ${expandedBookingId === id ? "" : "hidden"}
           style="
             border-bottom:
               1px solid rgba(255,255,255,.06);
@@ -4143,11 +4053,7 @@ function renderBookingsTable(
                   Customer Email
                 </span>
 
-                ${escapeHtml(
-                  booking.userEmail ||
-                    booking.email ||
-                    "—"
-                )}
+                ${escapeHtml(booking.userEmail || booking.email || "—")}
               </div>
 
               <!-- VEHICLE -->
@@ -4168,7 +4074,7 @@ function renderBookingsTable(
                   booking.vehicleReg ||
                     booking.registration ||
                     booking.regNumber ||
-                    "—"
+                    "—",
                 )}
               </div>
 
@@ -4187,8 +4093,7 @@ function renderBookingsTable(
                 </span>
 
                 <strong style="color: #fff;">${formatDateTime(
-                  booking.pickupDate ||
-                    booking.bookingDate
+                  booking.pickupDate || booking.bookingDate,
                 )}</strong>
               </div>
 
@@ -4201,7 +4106,7 @@ function renderBookingsTable(
                 ${escapeHtml(
                   String(booking.pickupStatus || "awaiting pickup")
                     .replaceAll("_", " ")
-                    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+                    .replace(/\b\w/g, (letter) => letter.toUpperCase()),
                 )}
               </div>
 
@@ -4218,8 +4123,7 @@ function renderBookingsTable(
                 </span>
 
                 <strong style="color: #fff;">${formatDateTime(
-                  booking.dropDate ||
-                    booking.returnDate
+                  booking.dropDate || booking.returnDate,
                 )}</strong>
               </div>
 
@@ -4237,9 +4141,7 @@ function renderBookingsTable(
                   Payment
                 </span>
 
-                ${paymentStatusText(
-                  booking
-                )}
+                ${paymentStatusText(booking)}
               </div>
 
               <!-- START ODO -->
@@ -4260,12 +4162,8 @@ function renderBookingsTable(
                   type="number"
                   min="0"
                   class="booking-start-odo"
-                  data-bid="${escapeHtml(
-                    id
-                  )}"
-                  value="${escapeHtml(
-                    startOdo
-                  )}"
+                  data-bid="${escapeHtml(id)}"
+                  value="${escapeHtml(startOdo)}"
                   placeholder="Start KM"
                   style="
                     width:100%;
@@ -4296,12 +4194,8 @@ function renderBookingsTable(
                   type="number"
                   min="0"
                   class="booking-end-odo"
-                  data-bid="${escapeHtml(
-                    id
-                  )}"
-                  value="${escapeHtml(
-                    endOdo
-                  )}"
+                  data-bid="${escapeHtml(id)}"
+                  value="${escapeHtml(endOdo)}"
                   placeholder="End KM"
                   style="
                     width:100%;
@@ -4333,12 +4227,8 @@ function renderBookingsTable(
                   min="0"
                   step="0.01"
                   class="booking-start-fastag"
-                  data-bid="${escapeHtml(
-                    id
-                  )}"
-                  value="${escapeHtml(
-                    startFastag
-                  )}"
+                  data-bid="${escapeHtml(id)}"
+                  value="${escapeHtml(startFastag)}"
                   placeholder="Start balance"
                   style="
                     width:100%;
@@ -4370,12 +4260,8 @@ function renderBookingsTable(
                   min="0"
                   step="0.01"
                   class="booking-return-fastag"
-                  data-bid="${escapeHtml(
-                    id
-                  )}"
-                  value="${escapeHtml(
-                    returnFastag
-                  )}"
+                  data-bid="${escapeHtml(id)}"
+                  value="${escapeHtml(returnFastag)}"
                   placeholder="Return balance"
                   style="
                     width:100%;
@@ -4404,19 +4290,13 @@ function renderBookingsTable(
 
                 <strong
                   class="booking-distance"
-                  data-bid="${escapeHtml(
-                    id
-                  )}"
+                  data-bid="${escapeHtml(id)}"
                   style="
                     color:var(--accent);
                     font-size:1.1rem;
                   "
                 >
-                  ${
-                    distance !== null
-                      ? `${distance} KM`
-                      : "Not calculated"
-                  }
+                  ${distance !== null ? `${distance} KM` : "Not calculated"}
                 </strong>
               </div>
 
@@ -4440,9 +4320,7 @@ function renderBookingsTable(
               <button
                 type="button"
                 class="btn btn-dark save-booking-odo-btn"
-                data-bid="${escapeHtml(
-                  id
-                )}"
+                data-bid="${escapeHtml(id)}"
                 style="
                   padding:7px 14px;
                   font-size:.8rem;
@@ -4454,9 +4332,7 @@ function renderBookingsTable(
               <button
                 type="button"
                 class="btn btn-dark save-booking-fastag-btn"
-                data-bid="${escapeHtml(
-                  id
-                )}"
+                data-bid="${escapeHtml(id)}"
                 style="
                   padding:7px 14px;
                   font-size:.8rem;
@@ -4466,8 +4342,7 @@ function renderBookingsTable(
               </button>
 
               ${
-                status ===
-                "pending_payment"
+                status === "pending_payment"
                   ? `
                     <select
                       class="kr-clean-input booking-status-select"
@@ -4483,8 +4358,7 @@ function renderBookingsTable(
               }
 
               ${
-                status ===
-                "confirmed"
+                status === "confirmed"
                   ? `
                     <select
                       class="kr-clean-input booking-status-select"
@@ -4518,8 +4392,10 @@ function renderBookingsTable(
                 <i class="ri-file-text-line"></i> Manage Invoice
               </button>
 
-              ${Array.isArray(booking.pickupPhotoMediaIds) && booking.pickupPhotoMediaIds.length
-                ? `
+              ${
+                Array.isArray(booking.pickupPhotoMediaIds) &&
+                booking.pickupPhotoMediaIds.length
+                  ? `
                   <button
                     type="button"
                     class="btn btn-outline admin-view-pickup-photos-btn"
@@ -4529,7 +4405,8 @@ function renderBookingsTable(
                     Pickup Photos (${booking.pickupPhotoMediaIds.length})
                   </button>
                 `
-                : ""}
+                  : ""
+              }
 
             </div>
 
@@ -4537,8 +4414,7 @@ function renderBookingsTable(
 
         </tr>
       `;
-    }
-  );
+  });
 
   html += `
         </tbody>
@@ -4549,7 +4425,7 @@ function renderBookingsTable(
       page: adminBookingPage,
       totalPages,
       totalItems: bookings.length,
-      type: "bookings"
+      type: "bookings",
     })}
   `;
 
@@ -4563,7 +4439,10 @@ function renderBookingsTable(
         adminBookingPage +=
           button.dataset.adminBookingsPageAction === "next" ? 1 : -1;
         renderBookingsTable(getFilteredBookings());
-        bookingsTableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+        bookingsTableWrap.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
       });
     });
 }
@@ -4624,7 +4503,9 @@ async function openAdminPickupPhotos(booking) {
     objectUrls.forEach((url) => URL.revokeObjectURL(url));
     modal.remove();
   };
-  modal.querySelector("#closeAdminPickupPhotos")?.addEventListener("click", close);
+  modal
+    .querySelector("#closeAdminPickupPhotos")
+    ?.addEventListener("click", close);
   modal.addEventListener("click", (event) => {
     if (event.target === modal) close();
   });
@@ -4643,12 +4524,13 @@ async function openAdminPickupPhotos(booking) {
         console.error("PICKUP PHOTO LOAD ERROR:", error);
         return `<div style="padding:18px;color:#ef476f;border:1px solid var(--line);border-radius:10px;">Photo unavailable</div>`;
       }
-    })
+    }),
   );
 
   const grid = modal.querySelector("#adminPickupPhotosGrid");
   if (grid?.isConnected) {
-    grid.innerHTML = photos.filter(Boolean).join("") ||
+    grid.innerHTML =
+      photos.filter(Boolean).join("") ||
       `<p style="color:var(--sub);">No pickup photos available.</p>`;
   }
 }
@@ -4660,7 +4542,7 @@ function attachBookingEvents() {
       button.addEventListener("click", () => {
         const bid = button.dataset.bid;
         const booking = bookingsData.find(
-          (item) => item.id === bid || item.bookingNumber === bid
+          (item) => item.id === bid || item.bookingNumber === bid,
         );
         if (booking) {
           openAdminEditBookingModal(booking);
@@ -4684,7 +4566,7 @@ function attachBookingEvents() {
     .forEach((button) => {
       button.addEventListener("click", () => {
         const booking = bookingsData.find(
-          (item) => item.id === button.dataset.bid
+          (item) => item.id === button.dataset.bid,
         );
         if (booking) openAdminPickupPhotos(booking);
       });
@@ -4692,257 +4574,155 @@ function attachBookingEvents() {
 
   // DETAILS
   bookingsTableWrap
-    .querySelectorAll(
-      ".booking-details-btn"
-    )
+    .querySelectorAll(".booking-details-btn")
     .forEach((button) => {
-      button.addEventListener(
-        "click",
-        () => {
-          const id =
-            button.dataset.bid;
+      button.addEventListener("click", () => {
+        const id = button.dataset.bid;
 
-          const row =
-            document.getElementById(
-              button.dataset.target
-            );
+        const row = document.getElementById(button.dataset.target);
 
-          if (!row) {
-            console.error(
-              "Booking detail row missing:",
-              button.dataset.target
-            );
+        if (!row) {
+          console.error("Booking detail row missing:", button.dataset.target);
 
-            return;
-          }
-
-          const isHidden =
-            row.hidden;
-
-          row.hidden =
-            !isHidden;
-
-          expandedBookingId =
-            isHidden
-              ? id
-              : null;
-
-          button.textContent =
-            isHidden
-              ? "Details ▲"
-              : "Details ▼";
+          return;
         }
-      );
+
+        const isHidden = row.hidden;
+
+        row.hidden = !isHidden;
+
+        expandedBookingId = isHidden ? id : null;
+
+        button.textContent = isHidden ? "Details ▲" : "Details ▼";
+      });
     });
 
   // ODOMETER SAVE
   bookingsTableWrap
-    .querySelectorAll(
-      ".save-booking-odo-btn"
-    )
+    .querySelectorAll(".save-booking-odo-btn")
     .forEach((button) => {
-      button.addEventListener(
-        "click",
-        async () => {
-          await saveBookingOdometer(
-            button.dataset.bid,
-            button
-          );
-        }
-      );
+      button.addEventListener("click", async () => {
+        await saveBookingOdometer(button.dataset.bid, button);
+      });
     });
 
   // FASTAG SAVE
   bookingsTableWrap
-    .querySelectorAll(
-      ".save-booking-fastag-btn"
-    )
+    .querySelectorAll(".save-booking-fastag-btn")
     .forEach((button) => {
-      button.addEventListener(
-        "click",
-        async () => {
-          await saveBookingFastag(
-            button.dataset.bid,
-            button
-          );
-        }
-      );
+      button.addEventListener("click", async () => {
+        await saveBookingFastag(button.dataset.bid, button);
+      });
     });
 
   // STATUS
   bookingsTableWrap
-    .querySelectorAll(
-      ".booking-status-select"
-    )
+    .querySelectorAll(".booking-status-select")
     .forEach((select) => {
-      select.addEventListener(
-        "change",
-        async () => {
-          const bid =
-            select.dataset.bid;
+      select.addEventListener("change", async () => {
+        const bid = select.dataset.bid;
 
-          const newStatus =
-            select.value;
+        const newStatus = select.value;
 
-          const booking =
-            bookingsData.find(
-              (item) =>
-                item.id === bid
-            );
+        const booking = bookingsData.find((item) => item.id === bid);
 
-          if (!booking) {
-            return;
-          }
-
-          const oldStatus =
-            booking.status;
-
-          booking.status =
-            newStatus;
-
-          try {
-            await api.put(`/bookings/${bid}`, {
-              status: newStatus
-            });
-
-            renderBookingsTable(
-              getFilteredBookings()
-            );
-
-            updateRevenueStats();
-
-          } catch (error) {
-            console.error(
-              "BOOKING STATUS ERROR:",
-              error
-            );
-
-            booking.status =
-              oldStatus;
-
-            select.value =
-              oldStatus;
-
-            alert(
-              "Could not update booking status.\n\n" +
-              error.message
-            );
-          }
+        if (!booking) {
+          return;
         }
-      );
+
+        const oldStatus = booking.status;
+
+        booking.status = newStatus;
+
+        try {
+          await api.put(`/bookings/${bid}`, {
+            status: newStatus,
+          });
+
+          renderBookingsTable(getFilteredBookings());
+
+          updateRevenueStats();
+        } catch (error) {
+          console.error("BOOKING STATUS ERROR:", error);
+
+          booking.status = oldStatus;
+
+          select.value = oldStatus;
+
+          alert("Could not update booking status.\n\n" + error.message);
+        }
+      });
     });
 
   // PROCESS RETURN
   bookingsTableWrap
-    .querySelectorAll(
-      ".process-return-btn"
-    )
+    .querySelectorAll(".process-return-btn")
     .forEach((button) => {
-      button.addEventListener(
-        "click",
-        async () => {
-          const bid =
-            button.dataset.bid;
+      button.addEventListener("click", async () => {
+        const bid = button.dataset.bid;
 
-          const booking =
-            bookingsData.find(
-              (item) =>
-                item.id === bid
-            );
+        const booking = bookingsData.find((item) => item.id === bid);
 
-          if (!booking) {
-            alert(
-              "Booking not found."
-            );
+        if (!booking) {
+          alert("Booking not found.");
 
-            return;
-          }
-
-          try {
-            openReturnModal({
-              booking,
-              currentUser,
-
-              onSaved:
-                async () => {
-                  await loadBookings();
-                },
-            });
-
-            /*
-             * The external return-inspection.js
-             * may set style.display but leave
-             * the hidden attribute on the modal.
-             *
-             * Force it open.
-             */
-
-            setTimeout(
-              () => {
-                const modal =
-                  $("returnModal");
-
-                if (modal) {
-                  modal.hidden =
-                    false;
-
-                  modal.removeAttribute(
-                    "hidden"
-                  );
-
-                  modal.style.display =
-                    "flex";
-                }
-              },
-              50
-            );
-
-          } catch (error) {
-            console.error(
-              "RETURN MODAL ERROR:",
-              error
-            );
-
-            alert(
-              "Could not open return inspection.\n\n" +
-              error.message
-            );
-          }
+          return;
         }
-      );
+
+        try {
+          openReturnModal({
+            booking,
+            currentUser,
+
+            onSaved: async () => {
+              await loadBookings();
+            },
+          });
+
+          /*
+           * The external return-inspection.js
+           * may set style.display but leave
+           * the hidden attribute on the modal.
+           *
+           * Force it open.
+           */
+
+          setTimeout(() => {
+            const modal = $("returnModal");
+
+            if (modal) {
+              modal.hidden = false;
+
+              modal.removeAttribute("hidden");
+
+              modal.style.display = "flex";
+            }
+          }, 50);
+        } catch (error) {
+          console.error("RETURN MODAL ERROR:", error);
+
+          alert("Could not open return inspection.\n\n" + error.message);
+        }
+      });
     });
 
   // VIEW RETURN REPORT
   bookingsTableWrap
-    .querySelectorAll(
-      ".view-return-report-btn"
-    )
+    .querySelectorAll(".view-return-report-btn")
     .forEach((button) => {
-      button.addEventListener(
-        "click",
-        () => {
-          const bid =
-            button.dataset.bid;
+      button.addEventListener("click", () => {
+        const bid = button.dataset.bid;
 
-          const booking =
-            bookingsData.find(
-              (item) =>
-                item.id === bid
-            );
+        const booking = bookingsData.find((item) => item.id === bid);
 
-          if (!booking) {
-            alert(
-              "Booking not found."
-            );
+        if (!booking) {
+          alert("Booking not found.");
 
-            return;
-          }
-
-          openReturnReport(
-            booking
-          );
+          return;
         }
-      );
+
+        openReturnReport(booking);
+      });
     });
 }
 
@@ -4950,173 +4730,99 @@ function attachBookingEvents() {
 // SAVE ODOMETER
 // ============================================================================
 
-async function saveBookingOdometer(
-  bookingId,
-  button
-) {
-  const startInput =
-    bookingsTableWrap.querySelector(
-      `.booking-start-odo[data-bid="${bookingId}"]`
-    );
+async function saveBookingOdometer(bookingId, button) {
+  const startInput = bookingsTableWrap.querySelector(
+    `.booking-start-odo[data-bid="${bookingId}"]`,
+  );
 
-  const endInput =
-    bookingsTableWrap.querySelector(
-      `.booking-end-odo[data-bid="${bookingId}"]`
-    );
+  const endInput = bookingsTableWrap.querySelector(
+    `.booking-end-odo[data-bid="${bookingId}"]`,
+  );
 
-  if (
-    !startInput ||
-    !endInput
-  ) {
-    alert(
-      "Odometer fields could not be found."
-    );
+  if (!startInput || !endInput) {
+    alert("Odometer fields could not be found.");
 
     return;
   }
 
-  const startText =
-    startInput.value.trim();
+  const startText = startInput.value.trim();
 
-  const endText =
-    endInput.value.trim();
+  const endText = endInput.value.trim();
 
-  const start =
-    startText === ""
-      ? null
-      : Number(startText);
+  const start = startText === "" ? null : Number(startText);
 
-  const end =
-    endText === ""
-      ? null
-      : Number(endText);
+  const end = endText === "" ? null : Number(endText);
 
-  if (
-    start !== null &&
-    (
-      !Number.isFinite(start) ||
-      start < 0
-    )
-  ) {
-    alert(
-      "Enter a valid start odometer."
-    );
+  if (start !== null && (!Number.isFinite(start) || start < 0)) {
+    alert("Enter a valid start odometer.");
 
     return;
   }
 
-  if (
-    end !== null &&
-    (
-      !Number.isFinite(end) ||
-      end < 0
-    )
-  ) {
-    alert(
-      "Enter a valid end odometer."
-    );
+  if (end !== null && (!Number.isFinite(end) || end < 0)) {
+    alert("Enter a valid end odometer.");
 
     return;
   }
 
-  if (
-    start !== null &&
-    end !== null &&
-    end < start
-  ) {
-    alert(
-      "End odometer cannot be less than start odometer."
-    );
+  if (start !== null && end !== null && end < start) {
+    alert("End odometer cannot be less than start odometer.");
 
     return;
   }
 
-  const oldText =
-    button.textContent;
+  const oldText = button.textContent;
 
-  button.disabled =
-    true;
+  button.disabled = true;
 
-  button.textContent =
-    "Saving...";
+  button.textContent = "Saving...";
 
   try {
     await api.put(`/bookings/${bookingId}`, {
       odometerStart: start,
       odometerEnd: end,
       startOdometer: start,
-      endOdometer: end
+      endOdometer: end,
     });
 
-    const booking =
-      bookingsData.find(
-        (item) =>
-          item.id ===
-          bookingId
-      );
+    const booking = bookingsData.find((item) => item.id === bookingId);
 
     if (booking) {
-      booking.odometerStart =
-        start;
+      booking.odometerStart = start;
 
-      booking.odometerEnd =
-        end;
+      booking.odometerEnd = end;
 
-      booking.startOdometer =
-        start;
+      booking.startOdometer = start;
 
-      booking.endOdometer =
-        end;
+      booking.endOdometer = end;
     }
 
-    const distance =
-      calculateDistance(
-        start,
-        end
-      );
+    const distance = calculateDistance(start, end);
 
-    const distanceEl =
-      bookingsTableWrap.querySelector(
-        `.booking-distance[data-bid="${bookingId}"]`
-      );
+    const distanceEl = bookingsTableWrap.querySelector(
+      `.booking-distance[data-bid="${bookingId}"]`,
+    );
 
     if (distanceEl) {
       distanceEl.textContent =
-        distance !== null
-          ? `${distance} KM`
-          : "Not calculated";
+        distance !== null ? `${distance} KM` : "Not calculated";
     }
 
-    button.textContent =
-      "Saved";
+    button.textContent = "Saved";
 
-    setTimeout(
-      () => {
-        button.textContent =
-          oldText;
+    setTimeout(() => {
+      button.textContent = oldText;
 
-        button.disabled =
-          false;
-      },
-      1200
-    );
-
+      button.disabled = false;
+    }, 1200);
   } catch (error) {
-    console.error(
-      "ODOMETER SAVE ERROR:",
-      error
-    );
+    console.error("ODOMETER SAVE ERROR:", error);
 
-    button.textContent =
-      oldText;
+    button.textContent = oldText;
 
-    button.disabled =
-      false;
+    button.disabled = false;
 
-    alert(
-      "Could not save odometer readings.\n\n" +
-      error.message
-    );
+    alert("Could not save odometer readings.\n\n" + error.message);
   }
 }
 
@@ -5124,68 +4830,42 @@ async function saveBookingOdometer(
 // SAVE FASTAG BALANCES
 // ============================================================================
 
-async function saveBookingFastag(
-  bookingId,
-  button
-) {
-  const startInput =
-    bookingsTableWrap.querySelector(
-      `.booking-start-fastag[data-bid="${bookingId}"]`
-    );
+async function saveBookingFastag(bookingId, button) {
+  const startInput = bookingsTableWrap.querySelector(
+    `.booking-start-fastag[data-bid="${bookingId}"]`,
+  );
 
-  const returnInput =
-    bookingsTableWrap.querySelector(
-      `.booking-return-fastag[data-bid="${bookingId}"]`
-    );
+  const returnInput = bookingsTableWrap.querySelector(
+    `.booking-return-fastag[data-bid="${bookingId}"]`,
+  );
 
   if (!startInput || !returnInput) {
-    alert(
-      "FASTag fields could not be found."
-    );
+    alert("FASTag fields could not be found.");
 
     return;
   }
 
-  const startText =
-    startInput.value.trim();
+  const startText = startInput.value.trim();
 
-  const returnText =
-    returnInput.value.trim();
+  const returnText = returnInput.value.trim();
 
-  const start =
-    startText === ""
-      ? null
-      : Number(startText);
+  const start = startText === "" ? null : Number(startText);
 
-  const returned =
-    returnText === ""
-      ? null
-      : Number(returnText);
+  const returned = returnText === "" ? null : Number(returnText);
 
-  if (
-    start !== null &&
-    (!Number.isFinite(start) || start < 0)
-  ) {
-    alert(
-      "Enter a valid FASTag balance at start."
-    );
+  if (start !== null && (!Number.isFinite(start) || start < 0)) {
+    alert("Enter a valid FASTag balance at start.");
 
     return;
   }
 
-  if (
-    returned !== null &&
-    (!Number.isFinite(returned) || returned < 0)
-  ) {
-    alert(
-      "Enter a valid FASTag balance at return."
-    );
+  if (returned !== null && (!Number.isFinite(returned) || returned < 0)) {
+    alert("Enter a valid FASTag balance at return.");
 
     return;
   }
 
-  const oldText =
-    button.textContent;
+  const oldText = button.textContent;
 
   button.disabled = true;
   button.textContent = "Saving...";
@@ -5195,13 +4875,10 @@ async function saveBookingFastag(
       fastagStart: start,
       fastagReturn: returned,
       startFastag: start,
-      returnFastag: returned
+      returnFastag: returned,
     });
 
-    const booking =
-      bookingsData.find(
-        (item) => item.id === bookingId
-      );
+    const booking = bookingsData.find((item) => item.id === bookingId);
 
     if (booking) {
       booking.fastagStart = start;
@@ -5212,26 +4889,17 @@ async function saveBookingFastag(
 
     button.textContent = "Saved";
 
-    setTimeout(
-      () => {
-        button.textContent = oldText;
-        button.disabled = false;
-      },
-      1200
-    );
+    setTimeout(() => {
+      button.textContent = oldText;
+      button.disabled = false;
+    }, 1200);
   } catch (error) {
-    console.error(
-      "FASTAG SAVE ERROR:",
-      error
-    );
+    console.error("FASTAG SAVE ERROR:", error);
 
     button.textContent = oldText;
     button.disabled = false;
 
-    alert(
-      "Could not save FASTag balances.\n\n" +
-      error.message
-    );
+    alert("Could not save FASTag balances.\n\n" + error.message);
   }
 }
 
@@ -5243,77 +4911,51 @@ async function saveBookingFastag(
 // run the inspection process again.
 // ============================================================================
 
-function openReturnReport(
-  booking
-) {
-  const inspection =
-    booking.returnInspection;
+function openReturnReport(booking) {
+  const inspection = booking.returnInspection;
 
   if (!inspection) {
-    alert(
-      "No return inspection report exists for this booking."
-    );
+    alert("No return inspection report exists for this booking.");
 
     return;
   }
 
-  const existing =
-    document.getElementById(
-      "adminReturnReportModal"
-    );
+  const existing = document.getElementById("adminReturnReportModal");
 
   if (existing) {
     existing.remove();
   }
 
-  const rawDeductions =
-    Array.isArray(
-      inspection.items
-    )
-      ? inspection.items
-      : Array.isArray(
-          inspection.deductions
-        )
-        ? inspection.deductions
-        : [];
+  const rawDeductions = Array.isArray(inspection.items)
+    ? inspection.items
+    : Array.isArray(inspection.deductions)
+      ? inspection.deductions
+      : [];
 
   const deductions = rawDeductions.filter((item) => {
     if (typeof item === "string") return true;
     return item.checked === true || item.checked === "true";
   });
 
-  const deposit =
-    Number(
-      inspection.originalDeposit ??
-        inspection.securityDeposit ??
-        booking.securityDeposit ??
-        0
-    );
-
-  const calculatedDeductions = deductions.reduce(
-    (sum, item) =>
-      sum +
-      Number(
-        item.amount ||
-          item.deduction ||
-          0
-      ),
-    0
+  const deposit = Number(
+    inspection.originalDeposit ??
+      inspection.securityDeposit ??
+      booking.securityDeposit ??
+      0,
   );
 
-  const totalDeduction =
-    Number(
-      inspection.totalDeductions ??
-        inspection.deductionTotal ??
-        calculatedDeductions
-    );
+  const calculatedDeductions = deductions.reduce(
+    (sum, item) => sum + Number(item.amount || item.deduction || 0),
+    0,
+  );
 
-  const refund =
-    Math.max(
-      0,
-      deposit -
-        totalDeduction
-    );
+  const totalDeduction = Number(
+    inspection.totalDeductions ??
+      inspection.deductionTotal ??
+      calculatedDeductions,
+  );
+
+  const refund = Math.max(0, deposit - totalDeduction);
 
   const notes =
     inspection.invoiceNotes ||
@@ -5322,7 +4964,8 @@ function openReturnReport(
     "No inspection notes.";
 
   const returnPhotoRefs =
-    Array.isArray(inspection.returnPhotoMediaIds) && inspection.returnPhotoMediaIds.length
+    Array.isArray(inspection.returnPhotoMediaIds) &&
+    inspection.returnPhotoMediaIds.length
       ? inspection.returnPhotoMediaIds.map((mediaId, index) => ({
           mediaId,
           name: `Photo ${index + 1}`,
@@ -5333,37 +4976,20 @@ function openReturnReport(
           ? inspection.returnPhotos
           : [];
 
-  const startOdo =
-    getStartOdometer(
-      booking
-    );
+  const startOdo = getStartOdometer(booking);
 
-  const endOdo =
-    getEndOdometer(
-      booking
-    );
+  const endOdo = getEndOdometer(booking);
 
-  const distance =
-    calculateDistance(
-      startOdo,
-      endOdo
-    );
+  const distance = calculateDistance(startOdo, endOdo);
 
-  const startFastag =
-    getStartFastag(
-      booking
-    );
+  const startFastag = getStartFastag(booking);
 
-  const returnFastag =
-    getReturnFastag(
-      booking
-    );
+  const returnFastag = getReturnFastag(booking);
 
   let deductionHtml = "";
 
   if (!deductions.length) {
-    deductionHtml =
-      `
+    deductionHtml = `
         <div
           style="
             padding:16px;
@@ -5376,10 +5002,9 @@ function openReturnReport(
         </div>
       `;
   } else {
-    deductionHtml =
-      deductions
-        .map(
-          (item) => `
+    deductionHtml = deductions
+      .map(
+        (item) => `
             <div
               style="
                 display:flex;
@@ -5394,7 +5019,7 @@ function openReturnReport(
                   item.label ||
                     item.name ||
                     item.description ||
-                    "Inspection item"
+                    "Inspection item",
                 )}
               </span>
 
@@ -5403,25 +5028,17 @@ function openReturnReport(
                   color:#ef476f;
                 "
               >
-                ${formatINR(
-                  item.amount ||
-                    item.deduction ||
-                    0
-                )}
+                ${formatINR(item.amount || item.deduction || 0)}
               </strong>
             </div>
-          `
-        )
-        .join("");
+          `,
+      )
+      .join("");
   }
 
-  const modal =
-    document.createElement(
-      "div"
-    );
+  const modal = document.createElement("div");
 
-  modal.id =
-    "adminReturnReportModal";
+  modal.id = "adminReturnReportModal";
 
   modal.style.cssText = `
     position:fixed;
@@ -5526,9 +5143,7 @@ function openReturnReport(
 
           <strong>
             ${escapeHtml(
-              booking.userName ||
-                booking.customerName ||
-                "Customer"
+              booking.userName || booking.customerName || "Customer",
             )}
           </strong>
         </div>
@@ -5551,11 +5166,7 @@ function openReturnReport(
           </span>
 
           <strong>
-            ${escapeHtml(
-              booking.vehicleName ||
-                booking.carName ||
-                "Vehicle"
-            )}
+            ${escapeHtml(booking.vehicleName || booking.carName || "Vehicle")}
           </strong>
         </div>
 
@@ -5577,13 +5188,7 @@ function openReturnReport(
           </span>
 
           <strong>
-            ${
-              startOdo !== ""
-                ? `${escapeHtml(
-                    startOdo
-                  )} KM`
-                : "—"
-            }
+            ${startOdo !== "" ? `${escapeHtml(startOdo)} KM` : "—"}
           </strong>
         </div>
 
@@ -5605,13 +5210,7 @@ function openReturnReport(
           </span>
 
           <strong>
-            ${
-              endOdo !== ""
-                ? `${escapeHtml(
-                    endOdo
-                  )} KM`
-                : "—"
-            }
+            ${endOdo !== "" ? `${escapeHtml(endOdo)} KM` : "—"}
           </strong>
         </div>
 
@@ -5633,13 +5232,7 @@ function openReturnReport(
           </span>
 
           <strong>
-            ${
-              startFastag !== ""
-                ? `₹${escapeHtml(
-                    startFastag
-                  )}`
-                : "—"
-            }
+            ${startFastag !== "" ? `₹${escapeHtml(startFastag)}` : "—"}
           </strong>
         </div>
 
@@ -5661,13 +5254,7 @@ function openReturnReport(
           </span>
 
           <strong>
-            ${
-              returnFastag !== ""
-                ? `₹${escapeHtml(
-                    returnFastag
-                  )}`
-                : "—"
-            }
+            ${returnFastag !== "" ? `₹${escapeHtml(returnFastag)}` : "—"}
           </strong>
         </div>
 
@@ -5693,11 +5280,7 @@ function openReturnReport(
               color:var(--accent);
             "
           >
-            ${
-              distance !== null
-                ? `${distance} KM`
-                : "—"
-            }
+            ${distance !== null ? `${distance} KM` : "—"}
           </strong>
         </div>
 
@@ -5763,9 +5346,7 @@ function openReturnReport(
           </span>
 
           <strong>
-            ${formatINR(
-              deposit
-            )}
+            ${formatINR(deposit)}
           </strong>
         </div>
 
@@ -5785,9 +5366,7 @@ function openReturnReport(
               color:#ef476f;
             "
           >
-            ${formatINR(
-              totalDeduction
-            )}
+            ${formatINR(totalDeduction)}
           </strong>
         </div>
 
@@ -5809,9 +5388,7 @@ function openReturnReport(
               color:var(--accent);
             "
           >
-            ${formatINR(
-              refund
-            )}
+            ${formatINR(refund)}
           </strong>
         </div>
 
@@ -5841,9 +5418,7 @@ function openReturnReport(
             line-height:1.7;
           "
         >
-          ${escapeHtml(
-            notes
-          )}
+          ${escapeHtml(notes)}
         </div>
       </div>
 
@@ -5866,9 +5441,7 @@ function openReturnReport(
     </div>
   `;
 
-  document.body.appendChild(
-    modal
-  );
+  document.body.appendChild(modal);
 
   if (returnPhotoRefs.length) {
     (async () => {
@@ -5894,7 +5467,7 @@ function openReturnReport(
           } catch {
             return null;
           }
-        })
+        }),
       );
 
       if (!grid.isConnected) return;
@@ -5929,11 +5502,13 @@ function openReturnReport(
                 ${escapeHtml(photo.name || `Photo ${index + 1}`)}
               </figcaption>
             </figure>
-          `
+          `,
         )
         .join("");
 
-      grid.innerHTML = rendered || `<div class="manager-state">No return photos available.</div>`;
+      grid.innerHTML =
+        rendered ||
+        `<div class="manager-state">No return photos available.</div>`;
     })();
   }
 
@@ -5941,29 +5516,15 @@ function openReturnReport(
     modal.remove();
   };
 
-  $("closeAdminReturnReport")
-    ?.addEventListener(
-      "click",
-      close
-    );
+  $("closeAdminReturnReport")?.addEventListener("click", close);
 
-  $("closeAdminReturnReportBottom")
-    ?.addEventListener(
-      "click",
-      close
-    );
+  $("closeAdminReturnReportBottom")?.addEventListener("click", close);
 
-  modal.addEventListener(
-    "click",
-    (event) => {
-      if (
-        event.target ===
-        modal
-      ) {
-        close();
-      }
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) {
+      close();
     }
-  );
+  });
 }
 
 // ============================================================================
@@ -5976,12 +5537,17 @@ async function loadPayments() {
   }
   try {
     const selectedHubId = getSelectedHubId();
-    const res = await api.get("/payments", selectedHubId ? { hub_id: selectedHubId } : {});
+    const res = await api.get(
+      "/payments",
+      selectedHubId ? { hub_id: selectedHubId } : {},
+    );
     const rawP = Array.isArray(res.payments) ? res.payments : [];
     const seenP = new Set();
     paymentsData = [];
     rawP.forEach((p) => {
-      const key = String(p.paymentId || p.id || p.utr || "").trim().toUpperCase();
+      const key = String(p.paymentId || p.id || p.utr || "")
+        .trim()
+        .toUpperCase();
       if (key && !seenP.has(key)) {
         seenP.add(key);
         paymentsData.push(p);
@@ -6010,12 +5576,13 @@ function renderPaymentsTable() {
 
   if (!paymentRecords.length) {
     paymentRecords = bookingsData
-      .filter((b) =>
-        b.paymentStatus === "pending_verification" ||
-        b.paymentStatus === "paid" ||
-        b.paymentStatus === "advance_paid" ||
-        b.paymentRef ||
-        b.paymentScreenshotUrl
+      .filter(
+        (b) =>
+          b.paymentStatus === "pending_verification" ||
+          b.paymentStatus === "paid" ||
+          b.paymentStatus === "advance_paid" ||
+          b.paymentRef ||
+          b.paymentScreenshotUrl,
       )
       .map((b) => ({
         id: b.id || b.bookingId,
@@ -6026,13 +5593,22 @@ function renderPaymentsTable() {
         userPhone: b.userPhone || "",
         vehicleName: b.vehicleName || "Vehicle",
         vehicleReg: b.vehicleReg || "",
-        amount: Number(b.paymentAmountPaid || b.advanceAmount || b.totalAmount || 0),
+        amount: Number(
+          b.paymentAmountPaid || b.advanceAmount || b.totalAmount || 0,
+        ),
         method: b.paymentMethod || "UPI",
         utr: b.paymentRef || "",
         paymentRef: b.paymentRef || "",
         screenshotUrl: b.paymentScreenshotUrl || "",
-        status: b.paymentStatus === "paid" || b.paymentStatus === "advance_paid" || b.status === "confirmed" ? "verified" : b.paymentStatus === "rejected" ? "rejected" : "pending",
-        createdAt: b.createdAt || b.pickupDate || ""
+        status:
+          b.paymentStatus === "paid" ||
+          b.paymentStatus === "advance_paid" ||
+          b.status === "confirmed"
+            ? "verified"
+            : b.paymentStatus === "rejected"
+              ? "rejected"
+              : "pending",
+        createdAt: b.createdAt || b.pickupDate || "",
       }));
   }
 
@@ -6041,10 +5617,16 @@ function renderPaymentsTable() {
     return;
   }
 
-  const totalPages = Math.max(1, Math.ceil(paymentRecords.length / ADMIN_PAYMENTS_PER_PAGE));
+  const totalPages = Math.max(
+    1,
+    Math.ceil(paymentRecords.length / ADMIN_PAYMENTS_PER_PAGE),
+  );
   adminPaymentPage = Math.max(1, Math.min(adminPaymentPage, totalPages));
   const pageStart = (adminPaymentPage - 1) * ADMIN_PAYMENTS_PER_PAGE;
-  const pagePayments = paymentRecords.slice(pageStart, pageStart + ADMIN_PAYMENTS_PER_PAGE);
+  const pagePayments = paymentRecords.slice(
+    pageStart,
+    pageStart + ADMIN_PAYMENTS_PER_PAGE,
+  );
 
   let html = `
     <div style="width:100%;overflow-x:auto;">
@@ -6067,28 +5649,69 @@ function renderPaymentsTable() {
   pagePayments.forEach((p) => {
     const bookingId = p.bookingId || p.id || p.bookingNumber;
     const matchingBooking = bookingsData.find(
-      (b) => b.id === bookingId || b.bookingNumber === bookingId || (b.id && p.id && b.id === p.id) || (b.bookingId && p.bookingId && b.bookingId === p.bookingId)
+      (b) =>
+        b.id === bookingId ||
+        b.bookingNumber === bookingId ||
+        (b.id && p.id && b.id === p.id) ||
+        (b.bookingId && p.bookingId && b.bookingId === p.bookingId),
     );
 
     const pStatus = String(p.status || "").toLowerCase();
     const bStatus = String(matchingBooking?.status || "").toLowerCase();
-    const bPayStatus = String(matchingBooking?.paymentStatus || "").toLowerCase();
+    const bPayStatus = String(
+      matchingBooking?.paymentStatus || "",
+    ).toLowerCase();
 
     const isVerified =
-      ["verified", "approved", "paid", "advance_paid", "confirmed", "completed"].includes(pStatus) ||
-      ["verified", "approved", "paid", "advance_paid", "confirmed", "completed"].includes(bPayStatus) ||
-      ["verified", "approved", "paid", "advance_paid", "confirmed", "completed"].includes(bStatus);
+      [
+        "verified",
+        "approved",
+        "paid",
+        "advance_paid",
+        "confirmed",
+        "completed",
+      ].includes(pStatus) ||
+      [
+        "verified",
+        "approved",
+        "paid",
+        "advance_paid",
+        "confirmed",
+        "completed",
+      ].includes(bPayStatus) ||
+      [
+        "verified",
+        "approved",
+        "paid",
+        "advance_paid",
+        "confirmed",
+        "completed",
+      ].includes(bStatus);
 
     const isRejected =
       ["rejected", "cancelled", "failed"].includes(pStatus) ||
       ["rejected", "cancelled", "failed"].includes(bPayStatus) ||
       ["rejected", "cancelled", "failed"].includes(bStatus);
 
-
-    const statusClass = isVerified ? "verified" : isRejected ? "rejected" : "pending";
-    const statusLabel = isVerified ? "VERIFIED" : isRejected ? "REJECTED" : "PENDING";
-    const paymentDate = formatDate(p.createdAt || p.date || (matchingBooking && (matchingBooking.createdAt || matchingBooking.pickupDate)));
-    const targetBid = matchingBooking ? (matchingBooking.id || matchingBooking.bookingNumber) : bookingId;
+    const statusClass = isVerified
+      ? "verified"
+      : isRejected
+        ? "rejected"
+        : "pending";
+    const statusLabel = isVerified
+      ? "VERIFIED"
+      : isRejected
+        ? "REJECTED"
+        : "PENDING";
+    const paymentDate = formatDate(
+      p.createdAt ||
+        p.date ||
+        (matchingBooking &&
+          (matchingBooking.createdAt || matchingBooking.pickupDate)),
+    );
+    const targetBid = matchingBooking
+      ? matchingBooking.id || matchingBooking.bookingNumber
+      : bookingId;
 
     let actionsHtml = "";
     if (isVerified) {
@@ -6136,11 +5759,11 @@ function renderPaymentsTable() {
         <td style="padding:12px;">
           <strong style="color:#fff;">${escapeHtml(p.userName || (matchingBooking && (matchingBooking.userName || matchingBooking.name)) || "Customer")}</strong><br/>
           <small style="color:#4fd7ff;font-size:12px;">${escapeHtml(p.userEmail || (matchingBooking && (matchingBooking.userEmail || matchingBooking.email)) || "")}</small>
-          ${(p.userPhone || (matchingBooking && (matchingBooking.userPhone || matchingBooking.phone))) ? `<br/><small style="color:var(--sub);font-size:11.5px;">${escapeHtml(p.userPhone || (matchingBooking && (matchingBooking.userPhone || matchingBooking.phone)))}</small>` : ""}
+          ${p.userPhone || (matchingBooking && (matchingBooking.userPhone || matchingBooking.phone)) ? `<br/><small style="color:var(--sub);font-size:11.5px;">${escapeHtml(p.userPhone || (matchingBooking && (matchingBooking.userPhone || matchingBooking.phone)))}</small>` : ""}
         </td>
         <td style="padding:12px;">
           <strong>${escapeHtml(p.vehicleName || (matchingBooking && (matchingBooking.vehicleName || matchingBooking.carName)) || "Vehicle")}</strong>
-          ${(p.vehicleReg || (matchingBooking && (matchingBooking.vehicleReg || matchingBooking.registration))) ? `<br/><small style="color:var(--sub);font-family:monospace;">${escapeHtml(p.vehicleReg || (matchingBooking && (matchingBooking.vehicleReg || matchingBooking.registration)))}</small>` : ""}
+          ${p.vehicleReg || (matchingBooking && (matchingBooking.vehicleReg || matchingBooking.registration)) ? `<br/><small style="color:var(--sub);font-family:monospace;">${escapeHtml(p.vehicleReg || (matchingBooking && (matchingBooking.vehicleReg || matchingBooking.registration)))}</small>` : ""}
         </td>
         <td style="padding:12px;font-weight:700;color:#fff;">${formatINR(p.amount || (matchingBooking && (matchingBooking.paymentAmountPaid || matchingBooking.advanceAmount || matchingBooking.totalAmount)) || 0)}</td>
         <td style="padding:12px;font-family:monospace;">
@@ -6165,21 +5788,30 @@ function renderPaymentsTable() {
       page: adminPaymentPage,
       totalPages,
       totalItems: paymentRecords.length,
-      type: "payments"
+      type: "payments",
     })}
   `;
 
   paymentsTableWrap.innerHTML = html;
 
-  paymentsTableWrap.querySelectorAll(".review-payment-btn").forEach((button) => {
-    button.addEventListener("click", () => {
-      const pid = button.dataset.pid;
-      const bid = button.dataset.bid;
-      const payment = paymentsData.find((item) => item.id === pid || item.bookingId === bid || item.id === bid) ||
-                      bookingsData.find((item) => item.id === bid || item.bookingNumber === bid || item.id === pid);
-      if (payment) openPaymentModal(payment);
+  paymentsTableWrap
+    .querySelectorAll(".review-payment-btn")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        const pid = button.dataset.pid;
+        const bid = button.dataset.bid;
+        const payment =
+          paymentsData.find(
+            (item) =>
+              item.id === pid || item.bookingId === bid || item.id === bid,
+          ) ||
+          bookingsData.find(
+            (item) =>
+              item.id === bid || item.bookingNumber === bid || item.id === pid,
+          );
+        if (payment) openPaymentModal(payment);
+      });
     });
-  });
 
   paymentsTableWrap.querySelectorAll(".edit-invoice-btn").forEach((button) => {
     button.addEventListener("click", async () => {
@@ -6191,8 +5823,11 @@ function renderPaymentsTable() {
   paymentsTableWrap.querySelectorAll(".edit-booking-btn").forEach((button) => {
     button.addEventListener("click", () => {
       const bid = button.dataset.bid;
-      const bk = bookingsData.find((item) => item.id === bid || item.bookingNumber === bid) ||
-                 paymentsData.find((item) => item.bookingId === bid || item.id === bid);
+      const bk =
+        bookingsData.find(
+          (item) => item.id === bid || item.bookingNumber === bid,
+        ) ||
+        paymentsData.find((item) => item.bookingId === bid || item.id === bid);
       if (bk) {
         openAdminEditBookingModal(bk);
       } else {
@@ -6201,13 +5836,19 @@ function renderPaymentsTable() {
     });
   });
 
-  paymentsTableWrap.querySelectorAll("[data-admin-payments-page-action]").forEach((button) => {
-    button.addEventListener("click", () => {
-      adminPaymentPage += button.dataset.adminPaymentsPageAction === "next" ? 1 : -1;
-      renderPaymentsTable();
-      paymentsTableWrap.scrollIntoView({ behavior: "smooth", block: "start" });
+  paymentsTableWrap
+    .querySelectorAll("[data-admin-payments-page-action]")
+    .forEach((button) => {
+      button.addEventListener("click", () => {
+        adminPaymentPage +=
+          button.dataset.adminPaymentsPageAction === "next" ? 1 : -1;
+        renderPaymentsTable();
+        paymentsTableWrap.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
     });
-  });
 }
 
 async function convertBookingToFullPayment(bookingId, triggerBtn) {
@@ -6224,7 +5865,8 @@ async function convertBookingToFullPayment(bookingId, triggerBtn) {
   }
   const statusEl = $("adminInvoiceModalStatus");
   if (statusEl) {
-    statusEl.textContent = "Converted to Full Payment! Select Payment Mode, enter Reference ID, then click Save or Send.";
+    statusEl.textContent =
+      "Converted to Full Payment! Select Payment Mode, enter Reference ID, then click Save or Send.";
     statusEl.className = "form-status is-success";
   }
 }
@@ -6241,7 +5883,10 @@ function recalculateInvoiceModalTotals() {
   const discount = Number($("adminInvDiscount")?.value || 0);
   const taxRate = Number($("adminInvTaxRate")?.value || 0);
 
-  const subtotal = Math.max(0, rental + driver + extraKm + lateFee + fuel + damage - discount);
+  const subtotal = Math.max(
+    0,
+    rental + driver + extraKm + lateFee + fuel + damage - discount,
+  );
   const tax = Math.round((subtotal * taxRate) / 100);
   const total = subtotal + tax;
 
@@ -6255,11 +5900,13 @@ function recalculateInvoiceModalTotals() {
   }
   const balance = Math.max(0, total - paid);
 
-  if ($("adminInvSubtotal")) $("adminInvSubtotal").textContent = formatINR(subtotal);
+  if ($("adminInvSubtotal"))
+    $("adminInvSubtotal").textContent = formatINR(subtotal);
   if ($("adminInvTax")) $("adminInvTax").textContent = formatINR(tax);
   if ($("adminInvTotal")) $("adminInvTotal").textContent = formatINR(total);
   if ($("adminInvPaid")) $("adminInvPaid").textContent = formatINR(paid);
-  if ($("adminInvBalance")) $("adminInvBalance").textContent = formatINR(balance);
+  if ($("adminInvBalance"))
+    $("adminInvBalance").textContent = formatINR(balance);
 
   return { subtotal, tax, total, paid, balance };
 }
@@ -6284,13 +5931,25 @@ async function openInvoiceEditorModal(bookingId, triggerBtn) {
     const booking = bookingsData.find((item) => item.id === bookingId) || {};
 
     if ($("adminInvoiceModalNumber")) {
-      $("adminInvoiceModalNumber").textContent = inv.invoiceNumber || inv.invoiceId || "";
+      $("adminInvoiceModalNumber").textContent =
+        inv.invoiceNumber || inv.invoiceId || "";
     }
-    if ($("adminInvCustomerName")) $("adminInvCustomerName").value = inv.customer?.name || "";
-    if ($("adminInvCustomerEmail")) $("adminInvCustomerEmail").value = inv.customer?.email || "";
-    if ($("adminInvVehicleName")) $("adminInvVehicleName").value = inv.vehicle?.name || "";
-    let regVal = inv.vehicle?.registration || booking.vehicleReg || booking.registration || "";
-    if (typeof regVal === "string" && (regVal.toUpperCase().startsWith("ZIP") || regVal.toUpperCase() === "ZIP001")) {
+    if ($("adminInvCustomerName"))
+      $("adminInvCustomerName").value = inv.customer?.name || "";
+    if ($("adminInvCustomerEmail"))
+      $("adminInvCustomerEmail").value = inv.customer?.email || "";
+    if ($("adminInvVehicleName"))
+      $("adminInvVehicleName").value = inv.vehicle?.name || "";
+    let regVal =
+      inv.vehicle?.registration ||
+      booking.vehicleReg ||
+      booking.registration ||
+      "";
+    if (
+      typeof regVal === "string" &&
+      (regVal.toUpperCase().startsWith("ZIP") ||
+        regVal.toUpperCase() === "ZIP001")
+    ) {
       regVal = "";
     }
     if ($("adminInvVehicleReg")) $("adminInvVehicleReg").value = regVal;
@@ -6301,23 +5960,39 @@ async function openInvoiceEditorModal(bookingId, triggerBtn) {
     if ($("adminInvExtraKm")) $("adminInvExtraKm").value = c.extraKm || 0;
     if ($("adminInvLateFee")) $("adminInvLateFee").value = c.lateFee || 0;
     if ($("adminInvFuel")) $("adminInvFuel").value = c.fuel || 0;
-    if ($("adminInvDamage")) $("adminInvDamage").value = Number(c.damage || 0) + Number(c.cleaning || 0);
+    if ($("adminInvDamage"))
+      $("adminInvDamage").value =
+        Number(c.damage || 0) + Number(c.cleaning || 0);
     if ($("adminInvDiscount")) $("adminInvDiscount").value = c.discount || 0;
     if ($("adminInvTaxRate")) $("adminInvTaxRate").value = inv.taxRate ?? 0;
     if ($("adminInvNotes")) $("adminInvNotes").value = inv.notes || "";
 
     const pay = inv.payment || {};
-    if ($("adminInvPaymentMode")) $("adminInvPaymentMode").value = pay.mode || booking.paymentMode || "UPI";
-    if ($("adminInvPaymentRef")) $("adminInvPaymentRef").value = pay.reference || booking.paymentRef || "";
+    if ($("adminInvPaymentMode"))
+      $("adminInvPaymentMode").value = pay.mode || booking.paymentMode || "UPI";
+    if ($("adminInvPaymentRef"))
+      $("adminInvPaymentRef").value = pay.reference || booking.paymentRef || "";
 
-    const isFull = inv.paymentPlan === "full" || inv.paymentStatus === "paid" || inv.balanceDue === 0;
+    const isFull =
+      inv.paymentPlan === "full" ||
+      inv.paymentStatus === "paid" ||
+      inv.balanceDue === 0;
     if ($("adminInvFullPaidCheck")) $("adminInvFullPaidCheck").checked = isFull;
     if (currentEditingInvoice) {
       currentEditingInvoice.isFullPaid = isFull;
-      currentEditingInvoice.originalAmountPaid = inv.amountPaid || booking.paymentAmountPaid || booking.advanceAmount || 0;
+      currentEditingInvoice.originalAmountPaid =
+        inv.amountPaid ||
+        booking.paymentAmountPaid ||
+        booking.advanceAmount ||
+        0;
     }
     if ($("adminInvAmountPaid")) {
-      $("adminInvAmountPaid").value = isFull ? (inv.total || inv.subtotal || 0) : (inv.amountPaid || booking.paymentAmountPaid || booking.advanceAmount || 0);
+      $("adminInvAmountPaid").value = isFull
+        ? inv.total || inv.subtotal || 0
+        : inv.amountPaid ||
+          booking.paymentAmountPaid ||
+          booking.advanceAmount ||
+          0;
     }
 
     recalculateInvoiceModalTotals();
@@ -6363,11 +6038,15 @@ function initialiseInvoiceEditorModal() {
         const damage = Number($("adminInvDamage")?.value || 0);
         const discount = Number($("adminInvDiscount")?.value || 0);
         const taxRate = Number($("adminInvTaxRate")?.value || 0);
-        const subtotal = Math.max(0, rental + driver + extraKm + lateFee + fuel + damage - discount);
+        const subtotal = Math.max(
+          0,
+          rental + driver + extraKm + lateFee + fuel + damage - discount,
+        );
         const total = subtotal + Math.round((subtotal * taxRate) / 100);
         if (amountPaidInput) amountPaidInput.value = total;
       } else {
-        if (amountPaidInput) amountPaidInput.value = currentEditingInvoice.originalAmountPaid || 0;
+        if (amountPaidInput)
+          amountPaidInput.value = currentEditingInvoice.originalAmountPaid || 0;
       }
       recalculateInvoiceModalTotals();
     });
@@ -6383,11 +6062,14 @@ function initialiseInvoiceEditorModal() {
       const damage = Number($("adminInvDamage")?.value || 0);
       const discount = Number($("adminInvDiscount")?.value || 0);
       const taxRate = Number($("adminInvTaxRate")?.value || 0);
-      const subtotal = Math.max(0, rental + driver + extraKm + lateFee + fuel + damage - discount);
+      const subtotal = Math.max(
+        0,
+        rental + driver + extraKm + lateFee + fuel + damage - discount,
+      );
       const total = subtotal + Math.round((subtotal * taxRate) / 100);
       const currentPaid = Number(amountPaidInput.value || 0);
       if (fullPaidCheck) {
-        fullPaidCheck.checked = (currentPaid >= total && total > 0);
+        fullPaidCheck.checked = currentPaid >= total && total > 0;
       }
       recalculateInvoiceModalTotals();
     });
@@ -6403,8 +6085,10 @@ function initialiseInvoiceEditorModal() {
         previewBtn.textContent = "Generating PDF…";
         // Sync latest form inputs to backend before opening PDF preview
         const totalsData = recalculateInvoiceModalTotals();
-        const isFull = (totalsData.balance === 0 || $("adminInvFullPaidCheck")?.checked);
-        const bookingId = currentEditingInvoice.bookingId || currentEditingInvoice.id;
+        const isFull =
+          totalsData.balance === 0 || $("adminInvFullPaidCheck")?.checked;
+        const bookingId =
+          currentEditingInvoice.bookingId || currentEditingInvoice.id;
 
         const payload = {
           bookingId,
@@ -6433,8 +6117,12 @@ function initialiseInvoiceEditorModal() {
           amountPaid: totalsData.paid,
           paymentMode: $("adminInvPaymentMode")?.value || "UPI",
           paymentRef: $("adminInvPaymentRef")?.value || "",
-          paymentPlan: isFull ? "full" : (currentEditingInvoice.paymentPlan || "advance"),
-          paymentStatus: isFull ? "paid" : (currentEditingInvoice.paymentStatus || "advance_paid"),
+          paymentPlan: isFull
+            ? "full"
+            : currentEditingInvoice.paymentPlan || "advance",
+          paymentStatus: isFull
+            ? "paid"
+            : currentEditingInvoice.paymentStatus || "advance_paid",
         };
 
         await api.post("/invoices/update", payload);
@@ -6468,8 +6156,10 @@ function initialiseInvoiceEditorModal() {
         }
 
         const totalsData = recalculateInvoiceModalTotals();
-        const isFull = (totalsData.balance === 0 || $("adminInvFullPaidCheck")?.checked);
-        const bookingId = currentEditingInvoice.bookingId || currentEditingInvoice.id;
+        const isFull =
+          totalsData.balance === 0 || $("adminInvFullPaidCheck")?.checked;
+        const bookingId =
+          currentEditingInvoice.bookingId || currentEditingInvoice.id;
 
         const payload = {
           bookingId,
@@ -6498,8 +6188,12 @@ function initialiseInvoiceEditorModal() {
           amountPaid: totalsData.paid,
           paymentMode: $("adminInvPaymentMode")?.value || "UPI",
           paymentRef: $("adminInvPaymentRef")?.value || "",
-          paymentPlan: isFull ? "full" : (currentEditingInvoice.paymentPlan || "advance"),
-          paymentStatus: isFull ? "paid" : (currentEditingInvoice.paymentStatus || "advance_paid"),
+          paymentPlan: isFull
+            ? "full"
+            : currentEditingInvoice.paymentPlan || "advance",
+          paymentStatus: isFull
+            ? "paid"
+            : currentEditingInvoice.paymentStatus || "advance_paid",
         };
 
         const res = await api.post("/invoices/update", payload);
@@ -6542,8 +6236,10 @@ function initialiseInvoiceEditorModal() {
         }
 
         const totalsData = recalculateInvoiceModalTotals();
-        const isFull = (totalsData.balance === 0 || $("adminInvFullPaidCheck")?.checked);
-        const bookingId = currentEditingInvoice.bookingId || currentEditingInvoice.id;
+        const isFull =
+          totalsData.balance === 0 || $("adminInvFullPaidCheck")?.checked;
+        const bookingId =
+          currentEditingInvoice.bookingId || currentEditingInvoice.id;
 
         const payload = {
           bookingId,
@@ -6572,18 +6268,23 @@ function initialiseInvoiceEditorModal() {
           amountPaid: totalsData.paid,
           paymentMode: $("adminInvPaymentMode")?.value || "UPI",
           paymentRef: $("adminInvPaymentRef")?.value || "",
-          paymentPlan: isFull ? "full" : (currentEditingInvoice.paymentPlan || "advance"),
-          paymentStatus: isFull ? "paid" : (currentEditingInvoice.paymentStatus || "advance_paid"),
+          paymentPlan: isFull
+            ? "full"
+            : currentEditingInvoice.paymentPlan || "advance",
+          paymentStatus: isFull
+            ? "paid"
+            : currentEditingInvoice.paymentStatus || "advance_paid",
         };
 
         await api.post("/invoices/update", payload);
 
         const sendRes = await api.post("/invoices/send", {
           bookingId,
-          recipientEmail: payload.customer.email
+          recipientEmail: payload.customer.email,
         });
 
-        if (!sendRes.success) throw new Error(sendRes.error || "Email send failed");
+        if (!sendRes.success)
+          throw new Error(sendRes.error || "Email send failed");
 
         renderPaymentsTable();
         updateRevenueStats();
@@ -6608,25 +6309,22 @@ function initialiseInvoiceEditorModal() {
 }
 
 function initialisePaymentModal() {
-  const close =
-    $("closePaymentModal");
+  const close = $("closePaymentModal");
 
   if (close) {
-    close.addEventListener(
-      "click",
-      () => {
-        hideModal(
-          "paymentModal"
-        );
-      }
-    );
+    close.addEventListener("click", () => {
+      hideModal("paymentModal");
+    });
   }
 
   const payInvoiceBtn = $("paymentModalInvoiceBtn");
   if (payInvoiceBtn) {
     payInvoiceBtn.addEventListener("click", async () => {
       if (!activePaymentBooking) return;
-      const targetId = activePaymentBooking.id || activePaymentBooking.bookingId || activePaymentBooking.bookingNumber;
+      const targetId =
+        activePaymentBooking.id ||
+        activePaymentBooking.bookingId ||
+        activePaymentBooking.bookingNumber;
       hideModal("paymentModal");
       await openInvoiceEditorModal(targetId, payInvoiceBtn);
     });
@@ -6636,214 +6334,195 @@ function initialisePaymentModal() {
   if (payEditBtn) {
     payEditBtn.addEventListener("click", () => {
       if (!activePaymentBooking) return;
-      const targetId = activePaymentBooking.id || activePaymentBooking.bookingId || activePaymentBooking.bookingNumber;
-      const bk = bookingsData.find(b => b.id === targetId || b.bookingNumber === targetId) || activePaymentBooking;
+      const targetId =
+        activePaymentBooking.id ||
+        activePaymentBooking.bookingId ||
+        activePaymentBooking.bookingNumber;
+      const bk =
+        bookingsData.find(
+          (b) => b.id === targetId || b.bookingNumber === targetId,
+        ) || activePaymentBooking;
       hideModal("paymentModal");
       openAdminEditBookingModal(bk);
     });
   }
 
-  const approve =
-    $("approvePaymentBtn");
+  const approve = $("approvePaymentBtn");
 
   if (approve) {
-    approve.addEventListener(
-      "click",
-      async () => {
-        if (
-          !activePaymentBooking
-        ) {
-          return;
-        }
-
-        try {
-          approve.disabled =
-            true;
-
-          approve.textContent =
-            "Approving...";
-
-          const isAdvancePayment = activePaymentBooking.paymentPlan === "advance";
-          const targetBookingId = activePaymentBooking.id || activePaymentBooking.bookingId;
-
-          const verifyRes = await api.post(`/payments/${targetBookingId}/verify`, {
-            action: "approve",
-            bookingId: targetBookingId
-          });
-
-          activePaymentBooking.paymentStatus =
-            isAdvancePayment ? "advance_paid" : "paid";
-
-          activePaymentBooking.status =
-            "confirmed";
-
-          // Update matching items in memory
-          const pItem = paymentsData.find(p => p.id === targetBookingId || p.bookingId === targetBookingId);
-          if (pItem) {
-            pItem.status = "verified";
-          }
-          const bItem = bookingsData.find(b => b.id === targetBookingId || b.bookingNumber === targetBookingId);
-          if (bItem) {
-            bItem.paymentStatus = isAdvancePayment ? "advance_paid" : "paid";
-            bItem.status = "confirmed";
-          }
-
-          hideModal(
-            "paymentModal"
-          );
-
-          // Full sync with DB
-          try {
-            if (typeof loadPayments === "function") await loadPayments();
-            if (typeof loadBookings === "function") await loadBookings();
-            if (typeof loadAdminCalendar === "function") await loadAdminCalendar();
-            if (typeof loadKpiStats === "function") await loadKpiStats();
-          } catch (syncErr) {
-            console.warn("Sync error after payment approval:", syncErr);
-          }
-
-          renderBookingsTable(
-            getFilteredBookings()
-          );
-
-          renderPaymentsTable();
-
-          updateRevenueStats();
-
-          const notif = verifyRes?.notification;
-          if (notif) {
-            let msg = "✅ Payment approved and booking confirmed!";
-            if (notif.email_sent) {
-              msg += `\n✉️ Official confirmation email sent to ${notif.customer_email || 'client'}.`;
-            }
-            if (notif.whatsapp_url) {
-              if (confirm(msg + "\n\nWould you like to open WhatsApp to send the confirmation message to the client now?")) {
-                window.open(notif.whatsapp_url, "_blank");
-              }
-            } else {
-              alert(msg);
-            }
-          }
-
-        } catch (error) {
-          console.error(
-            "PAYMENT APPROVAL ERROR:",
-            error
-          );
-
-          alert(
-            "Could not approve payment.\n\n" +
-            error.message
-          );
-
-        } finally {
-          approve.disabled =
-            false;
-
-          approve.textContent =
-            "Approve & Confirm Booking";
-        }
+    approve.addEventListener("click", async () => {
+      if (!activePaymentBooking) {
+        return;
       }
-    );
+
+      try {
+        approve.disabled = true;
+
+        approve.textContent = "Approving...";
+
+        const isAdvancePayment = activePaymentBooking.paymentPlan === "advance";
+        const targetBookingId =
+          activePaymentBooking.id || activePaymentBooking.bookingId;
+
+        const verifyRes = await api.post(
+          `/payments/${targetBookingId}/verify`,
+          {
+            action: "approve",
+            bookingId: targetBookingId,
+          },
+        );
+
+        activePaymentBooking.paymentStatus = isAdvancePayment
+          ? "advance_paid"
+          : "paid";
+
+        activePaymentBooking.status = "confirmed";
+
+        // Update matching items in memory
+        const pItem = paymentsData.find(
+          (p) => p.id === targetBookingId || p.bookingId === targetBookingId,
+        );
+        if (pItem) {
+          pItem.status = "verified";
+        }
+        const bItem = bookingsData.find(
+          (b) =>
+            b.id === targetBookingId || b.bookingNumber === targetBookingId,
+        );
+        if (bItem) {
+          bItem.paymentStatus = isAdvancePayment ? "advance_paid" : "paid";
+          bItem.status = "confirmed";
+        }
+
+        hideModal("paymentModal");
+
+        // Full sync with DB
+        try {
+          if (typeof loadPayments === "function") await loadPayments();
+          if (typeof loadBookings === "function") await loadBookings();
+          if (typeof loadAdminCalendar === "function")
+            await loadAdminCalendar();
+          if (typeof loadKpiStats === "function") await loadKpiStats();
+        } catch (syncErr) {
+          console.warn("Sync error after payment approval:", syncErr);
+        }
+
+        renderBookingsTable(getFilteredBookings());
+
+        renderPaymentsTable();
+
+        updateRevenueStats();
+
+        const notif = verifyRes?.notification;
+        if (notif) {
+          let msg = "✅ Payment approved and booking confirmed!";
+          if (notif.email_sent) {
+            msg += `\n✉️ Official confirmation email sent to ${notif.customer_email || "client"}.`;
+          }
+          if (notif.whatsapp_url) {
+            if (
+              confirm(
+                msg +
+                  "\n\nWould you like to open WhatsApp to send the confirmation message to the client now?",
+              )
+            ) {
+              window.open(notif.whatsapp_url, "_blank");
+            }
+          } else {
+            alert(msg);
+          }
+        }
+      } catch (error) {
+        console.error("PAYMENT APPROVAL ERROR:", error);
+
+        alert("Could not approve payment.\n\n" + error.message);
+      } finally {
+        approve.disabled = false;
+
+        approve.textContent = "Approve & Confirm Booking";
+      }
+    });
   }
 
-  const reject =
-    $("rejectPaymentBtn");
+  const reject = $("rejectPaymentBtn");
 
   if (reject) {
-    reject.addEventListener(
-      "click",
-      async () => {
-        if (
-          !activePaymentBooking
-        ) {
-          return;
-        }
-
-        const reason =
-          prompt(
-            "Reason for rejecting this payment:"
-          );
-
-        if (
-          reason ===
-          null
-        ) {
-          return;
-        }
-
-        try {
-          const targetBookingId = activePaymentBooking.id || activePaymentBooking.bookingId;
-
-          await api.post(`/payments/${targetBookingId}/verify`, {
-            action: "reject",
-            reason: reason || "Payment could not be verified.",
-            bookingId: targetBookingId
-          });
-
-          activePaymentBooking.paymentStatus =
-            "rejected";
-
-          const pItem = paymentsData.find(p => p.id === targetBookingId || p.bookingId === targetBookingId);
-          if (pItem) {
-            pItem.status = "rejected";
-          }
-          const bItem = bookingsData.find(b => b.id === targetBookingId || b.bookingNumber === targetBookingId);
-          if (bItem) {
-            bItem.paymentStatus = "rejected";
-          }
-
-          hideModal(
-            "paymentModal"
-          );
-
-          // Full sync with DB
-          try {
-            if (typeof loadPayments === "function") await loadPayments();
-            if (typeof loadBookings === "function") await loadBookings();
-            if (typeof loadAdminCalendar === "function") await loadAdminCalendar();
-            if (typeof loadKpiStats === "function") await loadKpiStats();
-          } catch (syncErr) {
-            console.warn("Sync error after payment rejection:", syncErr);
-          }
-
-          renderPaymentsTable();
-
-          renderBookingsTable(
-            getFilteredBookings()
-          );
-
-          updateRevenueStats();
-
-        } catch (error) {
-          console.error(
-            "PAYMENT REJECTION ERROR:",
-            error
-          );
-
-          alert(
-            "Could not reject payment.\n\n" +
-            error.message
-          );
-        }
+    reject.addEventListener("click", async () => {
+      if (!activePaymentBooking) {
+        return;
       }
-    );
+
+      const reason = prompt("Reason for rejecting this payment:");
+
+      if (reason === null) {
+        return;
+      }
+
+      try {
+        const targetBookingId =
+          activePaymentBooking.id || activePaymentBooking.bookingId;
+
+        await api.post(`/payments/${targetBookingId}/verify`, {
+          action: "reject",
+          reason: reason || "Payment could not be verified.",
+          bookingId: targetBookingId,
+        });
+
+        activePaymentBooking.paymentStatus = "rejected";
+
+        const pItem = paymentsData.find(
+          (p) => p.id === targetBookingId || p.bookingId === targetBookingId,
+        );
+        if (pItem) {
+          pItem.status = "rejected";
+        }
+        const bItem = bookingsData.find(
+          (b) =>
+            b.id === targetBookingId || b.bookingNumber === targetBookingId,
+        );
+        if (bItem) {
+          bItem.paymentStatus = "rejected";
+        }
+
+        hideModal("paymentModal");
+
+        // Full sync with DB
+        try {
+          if (typeof loadPayments === "function") await loadPayments();
+          if (typeof loadBookings === "function") await loadBookings();
+          if (typeof loadAdminCalendar === "function")
+            await loadAdminCalendar();
+          if (typeof loadKpiStats === "function") await loadKpiStats();
+        } catch (syncErr) {
+          console.warn("Sync error after payment rejection:", syncErr);
+        }
+
+        renderPaymentsTable();
+
+        renderBookingsTable(getFilteredBookings());
+
+        updateRevenueStats();
+      } catch (error) {
+        console.error("PAYMENT REJECTION ERROR:", error);
+
+        alert("Could not reject payment.\n\n" + error.message);
+      }
+    });
   }
 }
 
-async function openPaymentModal(
-  booking
-) {
+async function openPaymentModal(booking) {
   if (activePaymentScreenshotObjectUrl) {
-    URL.revokeObjectURL(
-      activePaymentScreenshotObjectUrl
-    );
+    URL.revokeObjectURL(activePaymentScreenshotObjectUrl);
     activePaymentScreenshotObjectUrl = null;
   }
 
   // Ensure we have full booking record if available
   const bookingId = booking.id || booking.bookingId || booking.bookingNumber;
-  const fullBooking = bookingsData.find(b => b.id === bookingId || b.bookingNumber === bookingId) || booking;
+  const fullBooking =
+    bookingsData.find(
+      (b) => b.id === bookingId || b.bookingNumber === bookingId,
+    ) || booking;
   activePaymentBooking = fullBooking;
 
   const isVerified =
@@ -6865,15 +6544,15 @@ async function openPaymentModal(
 
   const approve = $("approvePaymentBtn");
   if (approve) {
-    approve.textContent = isVerified ? "Re-Confirm & Sync" : "Approve & Confirm Booking";
+    approve.textContent = isVerified
+      ? "Re-Confirm & Sync"
+      : "Approve & Confirm Booking";
   }
 
-  const title =
-    $("paymentModalTitle");
+  const title = $("paymentModalTitle");
 
   if (title) {
-    title.textContent =
-      `Booking #${formatBookingNumber(fullBooking)}`;
+    title.textContent = `Booking #${formatBookingNumber(fullBooking)}`;
   }
 
   let screenshotSrc =
@@ -6882,7 +6561,9 @@ async function openPaymentModal(
     booking.paymentScreenshotUrl ||
     booking.screenshotUrl ||
     booking.screenshotURL ||
-    (typeof booking.paymentScreenshot === "string" ? booking.paymentScreenshot : null);
+    (typeof booking.paymentScreenshot === "string"
+      ? booking.paymentScreenshot
+      : null);
 
   if (!screenshotSrc && booking.paymentScreenshotMediaId) {
     screenshotSrc = `/api/media/file.php?id=${encodeURIComponent(booking.paymentScreenshotMediaId)}`;
@@ -6890,8 +6571,7 @@ async function openPaymentModal(
     screenshotSrc = `/api/media/file.php?id=${encodeURIComponent(screenshotSrc)}`;
   }
 
-  const body =
-    $("paymentModalBody");
+  const body = $("paymentModalBody");
 
   if (body) {
     body.innerHTML = `
@@ -6905,29 +6585,23 @@ async function openPaymentModal(
         <div class="booking-summary__row">
           <span>Customer</span>
           <strong>
-            ${escapeHtml(
-              booking.userName ||
-                "Customer"
-            )}
+            ${escapeHtml(booking.userName || "Customer")}
           </strong>
         </div>
 
         <div class="booking-summary__row">
           <span>Vehicle</span>
           <strong>
-            ${escapeHtml(
-              booking.vehicleName ||
-                "Vehicle"
-            )}
+            ${escapeHtml(booking.vehicleName || "Vehicle")}
           </strong>
         </div>
 
         ${(() => {
-          const pStr = booking.pickupDate || booking.pickup_date || '';
-          const dStr = booking.dropDate || booking.drop_date || '';
-          const pFmt = pStr ? formatDateTime(pStr) : '—';
-          const dFmt = dStr ? formatDateTime(dStr) : '—';
-          let durText = '';
+          const pStr = booking.pickupDate || booking.pickup_date || "";
+          const dStr = booking.dropDate || booking.drop_date || "";
+          const pFmt = pStr ? formatDateTime(pStr) : "—";
+          const dFmt = dStr ? formatDateTime(dStr) : "—";
+          let durText = "";
           if (pStr && dStr) {
             const pT = new Date(pStr).getTime();
             const dT = new Date(dStr).getTime();
@@ -6935,9 +6609,11 @@ async function openPaymentModal(
               const diffHrs = Math.max(1, Math.ceil((dT - pT) / (1000 * 3600)));
               const days = Math.floor(diffHrs / 24);
               const rem = diffHrs % 24;
-              if (days > 0 && rem > 0) durText = `${days} Day${days > 1 ? 's' : ''} ${rem} Hr${rem > 1 ? 's' : ''} (${diffHrs} hrs total)`;
-              else if (days > 0) durText = `${days} Day${days > 1 ? 's' : ''} (${diffHrs} hrs)`;
-              else durText = `${diffHrs} Hour${diffHrs > 1 ? 's' : ''}`;
+              if (days > 0 && rem > 0)
+                durText = `${days} Day${days > 1 ? "s" : ""} ${rem} Hr${rem > 1 ? "s" : ""} (${diffHrs} hrs total)`;
+              else if (days > 0)
+                durText = `${days} Day${days > 1 ? "s" : ""} (${diffHrs} hrs)`;
+              else durText = `${diffHrs} Hour${diffHrs > 1 ? "s" : ""}`;
             }
           }
           return `
@@ -6949,48 +6625,76 @@ async function openPaymentModal(
             <span>Drop Date &amp; Time</span>
             <strong style="color: #4fd7ff;">${escapeHtml(dFmt)}</strong>
           </div>
-          ${durText ? `
+          ${
+            durText
+              ? `
           <div class="booking-summary__row">
             <span>Rental Duration</span>
             <strong style="color: #facc15;">${escapeHtml(durText)}</strong>
           </div>
-          ` : ''}
+          `
+              : ""
+          }
           `;
         })()}
 
         ${(() => {
-          const paidAmt = Number(booking.amount ?? booking.advanceAmount ?? booking.advance_amount ?? booking.tokenAmount ?? booking.token_amount ?? booking.paymentAmount ?? booking.amountPaid ?? 0);
-          const totalAmt = Number(booking.totalAmount ?? booking.total_amount ?? booking.finalAmount ?? 0);
-          const balanceAmt = Number(booking.remainingAmount ?? booking.remaining_amount ?? booking.remainingBalance ?? (totalAmt > paidAmt ? totalAmt - paidAmt : 0));
+          const paidAmt = Number(
+            booking.amount ??
+              booking.advanceAmount ??
+              booking.advance_amount ??
+              booking.tokenAmount ??
+              booking.token_amount ??
+              booking.paymentAmount ??
+              booking.amountPaid ??
+              0,
+          );
+          const totalAmt = Number(
+            booking.totalAmount ??
+              booking.total_amount ??
+              booking.finalAmount ??
+              0,
+          );
+          const balanceAmt = Number(
+            booking.remainingAmount ??
+              booking.remaining_amount ??
+              booking.remainingBalance ??
+              (totalAmt > paidAmt ? totalAmt - paidAmt : 0),
+          );
           return `
           <div class="booking-summary__row">
             <span>Token Amount Paid</span>
             <strong style="color: #06d6a0; font-size: 1.05rem;">
-              ${formatINR(paidAmt > 0 ? paidAmt : (totalAmt <= 500 && totalAmt > 0 ? totalAmt : 500))}
+              ${formatINR(paidAmt > 0 ? paidAmt : totalAmt <= 500 && totalAmt > 0 ? totalAmt : 500)}
             </strong>
           </div>
-          ${totalAmt > 0 ? `
+          ${
+            totalAmt > 0
+              ? `
           <div class="booking-summary__row">
             <span>Total Booking Value</span>
             <strong>${formatINR(totalAmt)}</strong>
           </div>
-          ` : ''}
-          ${balanceAmt > 0 ? `
+          `
+              : ""
+          }
+          ${
+            balanceAmt > 0
+              ? `
           <div class="booking-summary__row">
             <span>Balance Due at Pickup</span>
             <strong style="color: #ffb703;">${formatINR(balanceAmt)}</strong>
           </div>
-          ` : ''}
+          `
+              : ""
+          }
           `;
         })()}
 
         <div class="booking-summary__row">
           <span>Method</span>
           <strong>
-            ${escapeHtml(
-              booking.paymentMethod ||
-                "UPI"
-            )}
+            ${escapeHtml(booking.paymentMethod || "UPI")}
           </strong>
         </div>
 
@@ -7001,10 +6705,7 @@ async function openPaymentModal(
               font-family:monospace;
             "
           >
-            ${escapeHtml(
-              booking.paymentRef ||
-                "—"
-            )}
+            ${escapeHtml(booking.paymentRef || "—")}
           </strong>
         </div>
 
@@ -7012,11 +6713,9 @@ async function openPaymentModal(
           screenshotSrc
             ? `
               <img
-                src="${escapeHtml(
-                  screenshotSrc
-                )}"
+                src="${escapeHtml(screenshotSrc)}"
                 alt="Payment screenshot"
-                onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'400\\' height=\\'260\\' viewBox=\\'0 0 400 260\\'%3E%3Crect width=\\'100%25\\' height=\\'100%25\\' fill=\\'%23121926\\' rx=\\'12\\'/%3E%3Ctext x=\\'50%25\\' y=\\'46%25\\' fill=\\'%2348d7ff\\' font-family=\\'sans-serif\\' font-size=\\'14\\' font-weight=\\'bold\\' text-anchor=\\'middle\\'%3EProtected Payment Proof%3C/text%3E%3Ctext x=\\'50%25\\' y=\\'58%25\\' fill=\\'%237b8798\\' font-family=\\'sans-serif\\' font-size=\\'12\\' text-anchor=\\'middle\\'%3ERef: ${escapeHtml(booking.paymentRef || booking.id || '')}%3C/text%3E%3C/svg%3E';"
+                onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'400\\' height=\\'260\\' viewBox=\\'0 0 400 260\\'%3E%3Crect width=\\'100%25\\' height=\\'100%25\\' fill=\\'%23121926\\' rx=\\'12\\'/%3E%3Ctext x=\\'50%25\\' y=\\'46%25\\' fill=\\'%2348d7ff\\' font-family=\\'sans-serif\\' font-size=\\'14\\' font-weight=\\'bold\\' text-anchor=\\'middle\\'%3EProtected Payment Proof%3C/text%3E%3Ctext x=\\'50%25\\' y=\\'58%25\\' fill=\\'%237b8798\\' font-family=\\'sans-serif\\' font-size=\\'12\\' text-anchor=\\'middle\\'%3ERef: ${escapeHtml(booking.paymentRef || booking.id || "")}%3C/text%3E%3C/svg%3E';"
                 style="
                   width:100%;
                   max-height:400px;
@@ -7044,7 +6743,7 @@ async function openPaymentModal(
                   Loading payment screenshot...
                 </div>
               `
-            : `
+              : `
               <p
                 style="
                   color:var(--sub);
@@ -7059,33 +6758,22 @@ async function openPaymentModal(
     `;
   }
 
-  showModal(
-    "paymentModal"
-  );
+  showModal("paymentModal");
 
-  if (
-    booking.paymentScreenshotMediaId &&
-    !screenshotSrc
-  ) {
-    const preview =
-      $("paymentScreenshotPreview");
+  if (booking.paymentScreenshotMediaId && !screenshotSrc) {
+    const preview = $("paymentScreenshotPreview");
 
     try {
-      const objectUrl =
-        await fetchMediaBlobUrl(
-          booking.paymentScreenshotMediaId
-        );
+      const objectUrl = await fetchMediaBlobUrl(
+        booking.paymentScreenshotMediaId,
+      );
 
-      if (
-        activePaymentBooking !== booking ||
-        !preview?.isConnected
-      ) {
+      if (activePaymentBooking !== booking || !preview?.isConnected) {
         URL.revokeObjectURL(objectUrl);
         return;
       }
 
-      activePaymentScreenshotObjectUrl =
-        objectUrl;
+      activePaymentScreenshotObjectUrl = objectUrl;
 
       preview.innerHTML = `
         <img
@@ -7101,10 +6789,7 @@ async function openPaymentModal(
         />
       `;
     } catch (error) {
-      console.error(
-        "PAYMENT SCREENSHOT LOAD ERROR:",
-        error
-      );
+      console.error("PAYMENT SCREENSHOT LOAD ERROR:", error);
 
       if (preview?.isConnected) {
         preview.innerHTML = `
@@ -7123,10 +6808,22 @@ async function openPaymentModal(
 
 function getBookingCollectedAmount(booking) {
   if (booking.paymentStatus === "advance_paid") {
-    return Number(booking.advanceAmount || booking.paymentAmountPaid || booking.paymentAmount || 500);
+    return Number(
+      booking.advanceAmount ||
+        booking.paymentAmountPaid ||
+        booking.paymentAmount ||
+        500,
+    );
   }
   if (booking.paymentStatus === "paid") {
-    return Number(booking.finalAmount || booking.totalAmount || booking.paymentAmountPaid || booking.paymentAmount || booking.rentalTotal || 0);
+    return Number(
+      booking.finalAmount ||
+        booking.totalAmount ||
+        booking.paymentAmountPaid ||
+        booking.paymentAmount ||
+        booking.rentalTotal ||
+        0,
+    );
   }
   return Number(booking.paymentAmountPaid || booking.paymentAmount || 0);
 }
@@ -7137,12 +6834,11 @@ function updateRevenueStats() {
     return;
   }
 
-  const paid =
-    bookingsData.filter(
-      (booking) =>
-        booking.paymentStatus === "paid" ||
-        booking.paymentStatus === "advance_paid"
-    );
+  const paid = bookingsData.filter(
+    (booking) =>
+      booking.paymentStatus === "paid" ||
+      booking.paymentStatus === "advance_paid",
+  );
 
   // Dynamic KPI calculations strictly derived from MySQL database
   const effKpi = currentKpiStats?.effective || currentKpiStats?.live;
@@ -7151,7 +6847,13 @@ function updateRevenueStats() {
   const calculatedTotalRevenue = bookingsData.reduce((sum, b) => {
     const s = String(b.status || "").toLowerCase();
     const p = String(b.paymentStatus || "").toLowerCase();
-    if (s === "cancelled" || s === "rejected" || p === "cancelled" || p === "rejected") return sum;
+    if (
+      s === "cancelled" ||
+      s === "rejected" ||
+      p === "cancelled" ||
+      p === "rejected"
+    )
+      return sum;
     if (p === "advance_paid") return sum + Number(b.advanceAmount || 500);
     const dep = Number(b.securityDeposit || b.security_deposit || 0);
     const tot = Number(b.finalAmount || b.totalAmount || 0);
@@ -7164,21 +6866,30 @@ function updateRevenueStats() {
     return sum + net;
   }, 0);
 
-  const totalRevenue = effKpi?.total_revenue !== undefined ? Number(effKpi.total_revenue) : calculatedTotalRevenue;
-  const monthlyRevenue = effKpi?.month_revenue !== undefined ? Number(effKpi.month_revenue) : (effKpi?.total_revenue || calculatedTotalRevenue);
+  const totalRevenue =
+    effKpi?.total_revenue !== undefined
+      ? Number(effKpi.total_revenue)
+      : calculatedTotalRevenue;
+  const monthlyRevenue =
+    effKpi?.month_revenue !== undefined
+      ? Number(effKpi.month_revenue)
+      : effKpi?.total_revenue || calculatedTotalRevenue;
 
-  const pendingPayments =
-    bookingsData.filter(
-      (booking) =>
-        booking.paymentStatus === "pending_verification" ||
-        (booking.paymentRef && booking.paymentStatus !== "paid" && booking.paymentStatus !== "advance_paid" && booking.paymentStatus !== "rejected")
-    ).length;
+  const pendingPayments = bookingsData.filter(
+    (booking) =>
+      booking.paymentStatus === "pending_verification" ||
+      (booking.paymentRef &&
+        booking.paymentStatus !== "paid" &&
+        booking.paymentStatus !== "advance_paid" &&
+        booking.paymentStatus !== "rejected"),
+  ).length;
 
   // Keep the average aligned with verified revenue and paid bookings
-  const average =
-    paid.length
-      ? Math.round((totalRevenue / paid.length) * 100) / 100
-      : (effKpi?.avg_booking ? Number(effKpi.avg_booking) : 0);
+  const average = paid.length
+    ? Math.round((totalRevenue / paid.length) * 100) / 100
+    : effKpi?.avg_booking
+      ? Number(effKpi.avg_booking)
+      : 0;
 
   const totalRevenueEl = $("statTotalRevenue");
   if (totalRevenueEl) {
@@ -7192,12 +6903,16 @@ function updateRevenueStats() {
 
   const pendingEl = $("statPendingPayments");
   if (pendingEl) {
-    pendingEl.textContent = effKpi?.pending_payments !== undefined ? effKpi.pending_payments : pendingPayments;
+    pendingEl.textContent =
+      effKpi?.pending_payments !== undefined
+        ? effKpi.pending_payments
+        : pendingPayments;
   }
 
   const paidBookingsEl = $("statPaidBookings");
   if (paidBookingsEl) {
-    paidBookingsEl.textContent = effKpi?.paid_bookings !== undefined ? effKpi.paid_bookings : paid.length;
+    paidBookingsEl.textContent =
+      effKpi?.paid_bookings !== undefined ? effKpi.paid_bookings : paid.length;
   }
 
   const averageEl = $("statAvgBooking");
@@ -7212,14 +6927,25 @@ function updateRevenueStats() {
   const availableFleetEl = $("statAvailableFleet");
   const utilizationEl = $("statUtilizationRate");
 
-  const fleetList = (Array.isArray(adminFleetVehicles) && adminFleetVehicles.length)
-    ? adminFleetVehicles
-    : (typeof getEffectiveFleetVehicles === "function" ? getEffectiveFleetVehicles() : []);
-  const totFleetNum = Math.max(1, Number(effKpi?.total_fleet || effKpi?.fleet_count || (fleetList.length ? fleetList.length : 39)));
+  const fleetList =
+    Array.isArray(adminFleetVehicles) && adminFleetVehicles.length
+      ? adminFleetVehicles
+      : typeof getEffectiveFleetVehicles === "function"
+        ? getEffectiveFleetVehicles()
+        : [];
+  const totFleetNum = Math.max(
+    1,
+    Number(
+      effKpi?.total_fleet ||
+        effKpi?.fleet_count ||
+        (fleetList.length ? fleetList.length : 39),
+    ),
+  );
   const nowMs = Date.now();
   const onRoadCount = bookingsData.filter((b) => {
     const s = String(b.status || "").toLowerCase();
-    if (s === "completed" || s === "cancelled" || s === "rejected") return false;
+    if (s === "completed" || s === "cancelled" || s === "rejected")
+      return false;
     if (s === "active" || s === "in_trip" || s === "started") return true;
     if (s === "confirmed") {
       const pMs = b.pickupDate ? new Date(b.pickupDate).getTime() : 0;
@@ -7229,9 +6955,17 @@ function updateRevenueStats() {
     return false;
   }).length;
 
-  const onRoadNum = Math.min(totFleetNum, effKpi?.on_road_fleet !== undefined ? Number(effKpi.on_road_fleet) : onRoadCount);
+  const onRoadNum = Math.min(
+    totFleetNum,
+    effKpi?.on_road_fleet !== undefined
+      ? Number(effKpi.on_road_fleet)
+      : onRoadCount,
+  );
   const yardNum = Math.max(0, totFleetNum - onRoadNum);
-  const rate = totFleetNum > 0 ? Math.min(100, Math.max(0, Math.round((onRoadNum / totFleetNum) * 100))) : 0;
+  const rate =
+    totFleetNum > 0
+      ? Math.min(100, Math.max(0, Math.round((onRoadNum / totFleetNum) * 100)))
+      : 0;
 
   if (totalFleetEl) totalFleetEl.textContent = String(totFleetNum);
   if (onRoadFleetEl) onRoadFleetEl.textContent = String(onRoadNum);
@@ -7239,22 +6973,15 @@ function updateRevenueStats() {
   if (availableFleetEl) availableFleetEl.textContent = String(yardNum);
   if (utilizationEl) utilizationEl.textContent = `${rate}%`;
 
-  const badge =
-    $("paymentsTabBadge");
+  const badge = $("paymentsTabBadge");
 
   if (badge) {
-    if (
-      pendingPayments >
-      0
-    ) {
-      badge.hidden =
-        false;
+    if (pendingPayments > 0) {
+      badge.hidden = false;
 
-      badge.textContent =
-        pendingPayments;
+      badge.textContent = pendingPayments;
     } else {
-      badge.hidden =
-        true;
+      badge.hidden = true;
     }
   }
 }
@@ -7278,7 +7005,9 @@ function updateRevenueStats() {
 // pattern as profile.js's getPrivateMediaBlobUrl().
 // ============================================================================
 
-const MEDIA_SERVER_URL = window.__KRUIZLY_API_URL__ ? window.__KRUIZLY_API_URL__.replace(/\/api$/, '') : window.location.origin;
+const MEDIA_SERVER_URL = window.__KRUIZLY_API_URL__
+  ? window.__KRUIZLY_API_URL__.replace(/\/api$/, "")
+  : window.location.origin;
 
 const hostPhotoCache = new Map(); // carId -> loaded [{ id, mimeType, originalName, blobUrl }]
 
@@ -7318,8 +7047,8 @@ async function fetchHostCarMedia(car) {
   if (ownerUid && ownerUid !== currentUser?.uid) {
     urls.push(
       `${MEDIA_SERVER_URL}/api/media?category=partner_car_photo&relatedId=${encodeURIComponent(
-        relatedId
-      )}&userId=${encodeURIComponent(ownerUid)}`
+        relatedId,
+      )}&userId=${encodeURIComponent(ownerUid)}`,
     );
   }
 
@@ -7350,7 +7079,7 @@ async function fetchMediaBlobUrl(mediaId) {
 
   const response = await fetch(
     `${MEDIA_SERVER_URL}/api/media/file/${encodeURIComponent(mediaId)}`,
-    { headers }
+    { headers },
   );
 
   if (!response.ok) {
@@ -7381,7 +7110,7 @@ async function loadHostPhotosIntoCache(car) {
         console.warn(`Could not load photo ${record.id}:`, error);
         return null;
       }
-    })
+    }),
   );
 
   const loaded = withBlobUrls.filter(Boolean);
@@ -7409,8 +7138,7 @@ function invalidateHostPhotoCache(carId) {
 
 async function loadHostCars() {
   if (hostCarsTableWrap) {
-    hostCarsTableWrap.innerHTML =
-      `<p style="color:var(--sub);">
+    hostCarsTableWrap.innerHTML = `<p style="color:var(--sub);">
         Loading host listings...
       </p>`;
   }
@@ -7419,46 +7147,29 @@ async function loadHostCars() {
     const res = await api.get("/users/partner-cars?scope=all");
     hostCarsData = Array.isArray(res.partnerCars) ? res.partnerCars : [];
 
-    hostCarsData.sort(
-      (a, b) =>
-        toMillis(b.createdAt) - toMillis(a.createdAt)
-    );
+    hostCarsData.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 
-    const pending =
-      hostCarsData.filter(
-        (car) =>
-          car.status ===
-          "pending_approval"
-      ).length;
+    const pending = hostCarsData.filter(
+      (car) => car.status === "pending_approval",
+    ).length;
 
-    const pendingEl =
-      $("statPendingHosts");
+    const pendingEl = $("statPendingHosts");
 
     if (pendingEl) {
-      pendingEl.textContent =
-        pending;
+      pendingEl.textContent = pending;
     }
 
-    renderHostCarsTable(
-      hostCarsData
-    );
-
+    renderHostCarsTable(hostCarsData);
   } catch (error) {
-    console.error(
-      "HOST CAR LOAD ERROR:",
-      error
-    );
+    console.error("HOST CAR LOAD ERROR:", error);
 
     if (hostCarsTableWrap) {
-      hostCarsTableWrap.innerHTML =
-        `<p style="color:#ef476f;">
+      hostCarsTableWrap.innerHTML = `<p style="color:#ef476f;">
           Failed to load host listings.
         </p>
 
         <small style="color:var(--sub);">
-          ${escapeHtml(
-            error.message
-          )}
+          ${escapeHtml(error.message)}
         </small>`;
     }
   }
@@ -7468,16 +7179,13 @@ async function loadHostCars() {
 // photo row is actually opened), so the row starts out showing just the
 // legacy Firestore `photos` array (if any) plus a loading line, and the
 // toggle button's count is a "so far" hint until it's been opened once.
-function renderHostCarsTable(
-  cars
-) {
+function renderHostCarsTable(cars) {
   if (!hostCarsTableWrap) {
     return;
   }
 
   if (!cars.length) {
-    hostCarsTableWrap.innerHTML =
-      `<p style="color:var(--sub);">
+    hostCarsTableWrap.innerHTML = `<p style="color:var(--sub);">
         No host vehicle listings submitted yet.
       </p>`;
 
@@ -7532,31 +7240,21 @@ function renderHostCarsTable(
         <tbody>
   `;
 
-  cars.forEach(
-    (car) => {
-      const legacyPhotos =
-        Array.isArray(
-          car.photos
-        )
-          ? car.photos
-          : [];
+  cars.forEach((car) => {
+    const legacyPhotos = Array.isArray(car.photos) ? car.photos : [];
 
-      const cachedServerPhotos =
-        hostPhotoCache.get(
-          car.id
-        ) || [];
+    const cachedServerPhotos = hostPhotoCache.get(car.id) || [];
 
-      const knownPhotoCount =
-        legacyPhotos.length +
-        Math.max(
-          cachedServerPhotos.length,
-          Array.isArray(car.photoMediaIds) ? car.photoMediaIds.length : 0
-        );
+    const knownPhotoCount =
+      legacyPhotos.length +
+      Math.max(
+        cachedServerPhotos.length,
+        Array.isArray(car.photoMediaIds) ? car.photoMediaIds.length : 0,
+      );
 
-      const detailsRow =
-        `host-details-${car.id}`;
+    const detailsRow = `host-details-${car.id}`;
 
-      html += `
+    html += `
         <tr
           style="
             border-bottom:
@@ -7566,14 +7264,8 @@ function renderHostCarsTable(
 
           <td style="padding:12px;">
             <strong>
-              ${escapeHtml(
-                car.brand ||
-                  ""
-              )}
-              ${escapeHtml(
-                car.model ||
-                  ""
-              )}
+              ${escapeHtml(car.brand || "")}
+              ${escapeHtml(car.model || "")}
             </strong>
 
             <br>
@@ -7584,18 +7276,12 @@ function renderHostCarsTable(
                 font-size:.8rem;
               "
             >
-              ${escapeHtml(
-                car.location ||
-                  "—"
-              )}
+              ${escapeHtml(car.location || "—")}
             </span>
           </td>
 
           <td style="padding:12px;">
-            ${escapeHtml(
-              car.ownerName ||
-                "—"
-            )}
+            ${escapeHtml(car.ownerName || "—")}
 
             <br>
 
@@ -7605,23 +7291,15 @@ function renderHostCarsTable(
                 font-size:.8rem;
               "
             >
-              ${escapeHtml(
-                car.ownerPhone ||
-                  "—"
-              )}
+              ${escapeHtml(car.ownerPhone || "—")}
             </span>
           </td>
 
           <td style="padding:12px;">
             <span
-              class="fleet-status ${getStatusClass(
-                car.status
-              )}"
+              class="fleet-status ${getStatusClass(car.status)}"
             >
-              ${escapeHtml(
-                car.status ||
-                  "unknown"
-              )}
+              ${escapeHtml(car.status || "unknown")}
             </span>
           </td>
 
@@ -7643,15 +7321,12 @@ function renderHostCarsTable(
             </button>
 
             ${
-              car.status ===
-              "pending_approval"
+              car.status === "pending_approval"
                 ? `
                   <button
                     type="button"
                     class="btn btn-dark approve-host-btn"
-                    data-hid="${escapeHtml(
-                      car.id
-                    )}"
+                    data-hid="${escapeHtml(car.id)}"
                     style="
                       padding:5px 9px;
                       font-size:.78rem;
@@ -7663,9 +7338,7 @@ function renderHostCarsTable(
                   <button
                     type="button"
                     class="btn btn-outline reject-host-btn"
-                    data-hid="${escapeHtml(
-                      car.id
-                    )}"
+                    data-hid="${escapeHtml(car.id)}"
                     style="
                       padding:5px 9px;
                       font-size:.78rem;
@@ -7676,15 +7349,12 @@ function renderHostCarsTable(
                     Reject
                   </button>
                 `
-                : car.status ===
-                  "approved"
+                : car.status === "approved"
                   ? `
                     <button
                       type="button"
                       class="btn btn-outline host-photo-upload-btn"
-                      data-hid="${escapeHtml(
-                        car.id
-                      )}"
+                      data-hid="${escapeHtml(car.id)}"
                       style="
                         padding:5px 9px;
                         font-size:.78rem;
@@ -7698,9 +7368,7 @@ function renderHostCarsTable(
                       accept="image/*"
                       multiple
                       class="host-photo-input"
-                      data-hid="${escapeHtml(
-                        car.id
-                      )}"
+                      data-hid="${escapeHtml(car.id)}"
                       hidden
                     />
                   `
@@ -7748,8 +7416,7 @@ function renderHostCarsTable(
         </tr>
 
       `;
-    }
-  );
+  });
 
   html += `
         </tbody>
@@ -7766,9 +7433,8 @@ function renderHostCarsTable(
 }
 
 function renderHostDetail(label, value) {
-  const display = value === undefined || value === null || value === ""
-    ? "—"
-    : value;
+  const display =
+    value === undefined || value === null || value === "" ? "—" : value;
 
   return `
     <div class="host-document-item">
@@ -7782,13 +7448,21 @@ function renderLegacyHostPhotos(carId, urls) {
   if (!urls.length) return "";
 
   return urls
-    .map(
-      (url, index) => {
-        const isDirect = typeof url === "string" && (url.startsWith("http://") || url.startsWith("https://") || url.startsWith("data:") || url.startsWith("blob:") || url.startsWith("assets/") || url.startsWith("images/"));
-        const srcUrl = isDirect ? url : `/api/media/file.php?id=${encodeURIComponent(url)}`;
-        const fallbackSvg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='90' viewBox='0 0 120 90'%3E%3Crect width='100%25' height='100%25' fill='%23121926' rx='8'/%3E%3Ctext x='50%25' y='50%25' fill='%237b8798' font-family='sans-serif' font-size='10' text-anchor='middle' dy='.3em'%3E${encodeURIComponent(url)}%3C/text%3E%3C/svg%3E`;
+    .map((url, index) => {
+      const isDirect =
+        typeof url === "string" &&
+        (url.startsWith("http://") ||
+          url.startsWith("https://") ||
+          url.startsWith("data:") ||
+          url.startsWith("blob:") ||
+          url.startsWith("assets/") ||
+          url.startsWith("images/"));
+      const srcUrl = isDirect
+        ? url
+        : `/api/media/file.php?id=${encodeURIComponent(url)}`;
+      const fallbackSvg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='90' viewBox='0 0 120 90'%3E%3Crect width='100%25' height='100%25' fill='%23121926' rx='8'/%3E%3Ctext x='50%25' y='50%25' fill='%237b8798' font-family='sans-serif' font-size='10' text-anchor='middle' dy='.3em'%3E${encodeURIComponent(url)}%3C/text%3E%3C/svg%3E`;
 
-        return `
+      return `
         <div
           class="host-photo-tile"
           style="position:relative;width:120px;height:90px;"
@@ -7816,8 +7490,7 @@ function renderLegacyHostPhotos(carId, urls) {
           >×</button>
         </div>
       `;
-      }
-    )
+    })
     .join("");
 }
 
@@ -7856,7 +7529,7 @@ function renderServerHostPhotos(carId, photos) {
             "
           >×</button>
         </div>
-      `
+      `,
     )
     .join("");
 }
@@ -7894,277 +7567,238 @@ function attachHostCarEvents() {
         const reopened = document.getElementById(`host-details-${carId}`);
         if (reopened) reopened.hidden = false;
         const reopenedButton = hostCarsTableWrap.querySelector(
-          `.host-details-toggle-btn[data-hid="${carId}"]`
+          `.host-details-toggle-btn[data-hid="${carId}"]`,
         );
         if (reopenedButton) reopenedButton.textContent = "Hide Details ▴";
       });
     });
 
   // APPROVE
-  hostCarsTableWrap
-    .querySelectorAll(
-      ".approve-host-btn"
-    )
-    .forEach((button) => {
-      button.addEventListener(
-        "click",
-        async () => {
-          const id = button.dataset.hid;
-          if (!id) {
-            alert("Could not determine host car ID. Please refresh the page.");
-            return;
-          }
+  hostCarsTableWrap.querySelectorAll(".approve-host-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.hid;
+      if (!id) {
+        alert("Could not determine host car ID. Please refresh the page.");
+        return;
+      }
 
-          try {
-            button.disabled = true;
-            button.textContent = "Approving...";
-
-            try {
-              await api.put(`/users/partner-cars/${encodeURIComponent(id)}/status`, {
-                id,
-                carId: id,
-                status: "approved"
-              });
-            } catch (err) {
-              await api.put(`/users/partner-cars`, {
-                id,
-                carId: id,
-                status: "approved"
-              });
-            }
-
-            const car = hostCarsData.find((item) => item.id === id || item.carId === id);
-            if (car) {
-              car.status = "approved";
-            }
-
-            updateHostCount();
-            renderHostCarsTable(hostCarsData);
-          } catch (error) {
-            console.error("HOST APPROVAL ERROR:", error);
-            button.disabled = false;
-            button.textContent = "Approve";
-            alert("Could not approve host car.\n\n" + error.message);
-          }
-        }
-      );
-    });
-
-  // REJECT
-  hostCarsTableWrap
-    .querySelectorAll(".reject-host-btn")
-    .forEach((button) => {
-      button.addEventListener("click", async () => {
-        const id = button.dataset.hid;
-        if (!id) {
-          alert("Could not determine host car ID. Please refresh the page.");
-          return;
-        }
-
-        const reason = prompt("Reason for rejecting this host car:");
-        if (reason === null) {
-          return;
-        }
+      try {
+        button.disabled = true;
+        button.textContent = "Approving...";
 
         try {
-          button.disabled = true;
-
-          try {
-            await api.put(`/users/partner-cars/${encodeURIComponent(id)}/status`, {
+          await api.put(
+            `/users/partner-cars/${encodeURIComponent(id)}/status`,
+            {
               id,
               carId: id,
-              status: "rejected",
-              rejectionReason: reason || "Listing rejected."
-            });
-          } catch (err) {
-            await api.put(`/users/partner-cars`, {
-              id,
-              carId: id,
-              status: "rejected",
-              rejectionReason: reason || "Listing rejected."
-            });
-          }
-
-          const car = hostCarsData.find((item) => item.id === id || item.carId === id);
-          if (car) {
-            car.status = "rejected";
-          }
-
-          updateHostCount();
-          renderHostCarsTable(hostCarsData);
-        } catch (error) {
-          console.error("HOST REJECTION ERROR:", error);
-          button.disabled = false;
-          alert("Could not reject host car.\n\n" + error.message);
+              status: "approved",
+            },
+          );
+        } catch (err) {
+          await api.put(`/users/partner-cars`, {
+            id,
+            carId: id,
+            status: "approved",
+          });
         }
+
+        const car = hostCarsData.find(
+          (item) => item.id === id || item.carId === id,
+        );
+        if (car) {
+          car.status = "approved";
         }
-      );
+
+        updateHostCount();
+        renderHostCarsTable(hostCarsData);
+      } catch (error) {
+        console.error("HOST APPROVAL ERROR:", error);
+        button.disabled = false;
+        button.textContent = "Approve";
+        alert("Could not approve host car.\n\n" + error.message);
+      }
     });
+  });
+
+  // REJECT
+  hostCarsTableWrap.querySelectorAll(".reject-host-btn").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const id = button.dataset.hid;
+      if (!id) {
+        alert("Could not determine host car ID. Please refresh the page.");
+        return;
+      }
+
+      const reason = prompt("Reason for rejecting this host car:");
+      if (reason === null) {
+        return;
+      }
+
+      try {
+        button.disabled = true;
+
+        try {
+          await api.put(
+            `/users/partner-cars/${encodeURIComponent(id)}/status`,
+            {
+              id,
+              carId: id,
+              status: "rejected",
+              rejectionReason: reason || "Listing rejected.",
+            },
+          );
+        } catch (err) {
+          await api.put(`/users/partner-cars`, {
+            id,
+            carId: id,
+            status: "rejected",
+            rejectionReason: reason || "Listing rejected.",
+          });
+        }
+
+        const car = hostCarsData.find(
+          (item) => item.id === id || item.carId === id,
+        );
+        if (car) {
+          car.status = "rejected";
+        }
+
+        updateHostCount();
+        renderHostCarsTable(hostCarsData);
+      } catch (error) {
+        console.error("HOST REJECTION ERROR:", error);
+        button.disabled = false;
+        alert("Could not reject host car.\n\n" + error.message);
+      }
+    });
+  });
 
   // PHOTOS TOGGLE — lazily fetches server-hosted photos the first time a
   // given car's row is opened, then just shows/hides on subsequent clicks.
   hostCarsTableWrap
-    .querySelectorAll(
-      ".host-photo-toggle-btn"
-    )
+    .querySelectorAll(".host-photo-toggle-btn")
     .forEach((button) => {
-      button.addEventListener(
-        "click",
-        async () => {
-          const carId = button.dataset.hid;
-          const row = document.getElementById(button.dataset.target);
+      button.addEventListener("click", async () => {
+        const carId = button.dataset.hid;
+        const row = document.getElementById(button.dataset.target);
 
-          if (!row) return;
+        if (!row) return;
 
-          const wasHidden = row.hidden;
-          row.hidden = !wasHidden;
+        const wasHidden = row.hidden;
+        row.hidden = !wasHidden;
 
-          if (!wasHidden) {
-            // just closed — nothing to fetch
-            return;
-          }
-
-          if (hostPhotoCache.has(carId)) {
-            // already loaded on a previous open — nothing to do
-            return;
-          }
-
-          const grid = row.querySelector(".host-photo-grid");
-
-          if (grid) {
-            grid.insertAdjacentHTML(
-              "beforeend",
-              `<span class="host-photo-loading" style="color:var(--sub);">Loading photos…</span>`
-            );
-          }
-
-          const car = hostCarsData.find((item) => item.id === carId);
-
-          if (!car) return;
-
-          try {
-            await loadHostPhotosIntoCache(car);
-          } catch (error) {
-            console.warn("HOST PHOTO LOAD ERROR:", error);
-          }
-
-          // Re-render so the newly loaded photos (and the accurate count on
-          // the toggle button) show up. The row stays open across the
-          // re-render since renderHostCarsTable rebuilds `hidden` from
-          // scratch — reopen it here.
-          renderHostCarsTable(hostCarsData);
-
-          const reopenedRow = document.getElementById(`host-photo-${carId}`);
-          if (reopenedRow) reopenedRow.hidden = false;
+        if (!wasHidden) {
+          // just closed — nothing to fetch
+          return;
         }
-      );
+
+        if (hostPhotoCache.has(carId)) {
+          // already loaded on a previous open — nothing to do
+          return;
+        }
+
+        const grid = row.querySelector(".host-photo-grid");
+
+        if (grid) {
+          grid.insertAdjacentHTML(
+            "beforeend",
+            `<span class="host-photo-loading" style="color:var(--sub);">Loading photos…</span>`,
+          );
+        }
+
+        const car = hostCarsData.find((item) => item.id === carId);
+
+        if (!car) return;
+
+        try {
+          await loadHostPhotosIntoCache(car);
+        } catch (error) {
+          console.warn("HOST PHOTO LOAD ERROR:", error);
+        }
+
+        // Re-render so the newly loaded photos (and the accurate count on
+        // the toggle button) show up. The row stays open across the
+        // re-render since renderHostCarsTable rebuilds `hidden` from
+        // scratch — reopen it here.
+        renderHostCarsTable(hostCarsData);
+
+        const reopenedRow = document.getElementById(`host-photo-${carId}`);
+        if (reopenedRow) reopenedRow.hidden = false;
+      });
     });
 
   // PHOTO UPLOAD trigger
   hostCarsTableWrap
-    .querySelectorAll(
-      ".host-photo-upload-btn"
-    )
+    .querySelectorAll(".host-photo-upload-btn")
     .forEach((button) => {
-      button.addEventListener(
-        "click",
-        () => {
-          const input =
-            hostCarsTableWrap.querySelector(
-              `.host-photo-input[data-hid="${button.dataset.hid}"]`
-            );
+      button.addEventListener("click", () => {
+        const input = hostCarsTableWrap.querySelector(
+          `.host-photo-input[data-hid="${button.dataset.hid}"]`,
+        );
 
-          if (input) {
-            input.click();
-          }
+        if (input) {
+          input.click();
         }
-      );
+      });
     });
 
   // FILE INPUT — uploads to the media server, not Firebase Storage
-  hostCarsTableWrap
-    .querySelectorAll(
-      ".host-photo-input"
-    )
-    .forEach((input) => {
-      input.addEventListener(
-        "change",
-        async () => {
-          const files =
-            Array.from(
-              input.files ||
-                []
-            );
+  hostCarsTableWrap.querySelectorAll(".host-photo-input").forEach((input) => {
+    input.addEventListener("change", async () => {
+      const files = Array.from(input.files || []);
 
-          if (!files.length) {
-            return;
-          }
+      if (!files.length) {
+        return;
+      }
 
-          await uploadHostPhotos(
-            input.dataset.hid,
-            files
-          );
+      await uploadHostPhotos(input.dataset.hid, files);
 
-          input.value =
-            "";
-        }
-      );
+      input.value = "";
     });
+  });
 
   // REMOVE PHOTO — legacy Firestore-array photos vs. server-hosted photos
   // are removed through two different paths (see data-source).
   hostCarsTableWrap
-    .querySelectorAll(
-      ".remove-host-photo-btn"
-    )
+    .querySelectorAll(".remove-host-photo-btn")
     .forEach((button) => {
-      button.addEventListener(
-        "click",
-        async () => {
-          const confirmed =
-            confirm(
-              "Remove this photo from the host car listing?"
-            );
+      button.addEventListener("click", async () => {
+        const confirmed = confirm(
+          "Remove this photo from the host car listing?",
+        );
 
-          if (!confirmed) {
-            return;
-          }
-
-          const carId = button.dataset.hid;
-          const source = button.dataset.source;
-
-          button.disabled = true;
-
-          try {
-            if (source === "server") {
-              await removeServerHostPhoto(carId, button.dataset.mediaId);
-            } else {
-              await removeLegacyHostPhoto(
-                carId,
-                decodeURIComponent(button.dataset.url)
-              );
-            }
-
-            renderHostCarsTable(hostCarsData);
-
-            const row = document.getElementById(`host-photo-${carId}`);
-            if (row) row.hidden = false;
-
-          } catch (error) {
-            console.error(
-              "PHOTO REMOVE ERROR:",
-              error
-            );
-
-            button.disabled = false;
-
-            alert(
-              "Could not remove photo.\n\n" +
-              error.message
-            );
-          }
+        if (!confirmed) {
+          return;
         }
-      );
+
+        const carId = button.dataset.hid;
+        const source = button.dataset.source;
+
+        button.disabled = true;
+
+        try {
+          if (source === "server") {
+            await removeServerHostPhoto(carId, button.dataset.mediaId);
+          } else {
+            await removeLegacyHostPhoto(
+              carId,
+              decodeURIComponent(button.dataset.url),
+            );
+          }
+
+          renderHostCarsTable(hostCarsData);
+
+          const row = document.getElementById(`host-photo-${carId}`);
+          if (row) row.hidden = false;
+        } catch (error) {
+          console.error("PHOTO REMOVE ERROR:", error);
+
+          button.disabled = false;
+
+          alert("Could not remove photo.\n\n" + error.message);
+        }
+      });
     });
 }
 
@@ -8192,19 +7826,14 @@ async function removeServerHostPhoto(carId, mediaId) {
 }
 
 function updateHostCount() {
-  const pending =
-    hostCarsData.filter(
-      (car) =>
-        car.status ===
-        "pending_approval"
-    ).length;
+  const pending = hostCarsData.filter(
+    (car) => car.status === "pending_approval",
+  ).length;
 
-  const element =
-    $("statPendingHosts");
+  const element = $("statPendingHosts");
 
   if (element) {
-    element.textContent =
-      pending;
+    element.textContent = pending;
   }
 }
 
@@ -8212,15 +7841,8 @@ function updateHostCount() {
 // relatedId=<car id>) instead of Firebase Storage — the admin's own ID
 // token is attached, so these uploads land under the admin's uid on the
 // server side (see the merge logic in fetchHostCarMedia).
-async function uploadHostPhotos(
-  hostId,
-  files
-) {
-  const car =
-    hostCarsData.find(
-      (item) =>
-        item.id === hostId
-    );
+async function uploadHostPhotos(hostId, files) {
+  const car = hostCarsData.find((item) => item.id === hostId);
 
   if (!car) {
     return;
@@ -8241,10 +7863,11 @@ async function uploadHostPhotos(
       formData.append("category", "partner_car_photo");
       formData.append("relatedId", hostId);
 
-      const response = await fetch(
-        `${MEDIA_SERVER_URL}/api/media/upload`,
-        { method: "POST", headers, body: formData }
-      );
+      const response = await fetch(`${MEDIA_SERVER_URL}/api/media/upload`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
 
       const data = await response.json().catch(() => ({}));
 
@@ -8273,9 +7896,7 @@ async function uploadHostPhotos(
   if (row) row.hidden = false;
 
   if (failures.length) {
-    alert(
-      "Some photos could not be uploaded:\n\n" + failures.join("\n")
-    );
+    alert("Some photos could not be uploaded:\n\n" + failures.join("\n"));
   }
 }
 
@@ -8284,37 +7905,22 @@ async function uploadHostPhotos(
 // ============================================================================
 
 function initialiseReturnModal() {
-  const close =
-    $("closeReturnModal");
+  const close = $("closeReturnModal");
 
   if (close) {
-    close.addEventListener(
-      "click",
-      () => {
-        hideModal(
-          "returnModal"
-        );
-      }
-    );
+    close.addEventListener("click", () => {
+      hideModal("returnModal");
+    });
   }
 
-  const modal =
-    $("returnModal");
+  const modal = $("returnModal");
 
   if (modal) {
-    modal.addEventListener(
-      "click",
-      (event) => {
-        if (
-          event.target ===
-          modal
-        ) {
-          hideModal(
-            "returnModal"
-          );
-        }
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        hideModal("returnModal");
       }
-    );
+    });
   }
 }
 
@@ -8328,55 +7934,71 @@ let adminCalViewMode = "grid"; // "grid" | "agenda"
 let adminCalSearchQuery = "";
 let adminCalStatusFilter = "all";
 let adminCalVehicleFilter = "all";
-if (!adminFleetVehicles || !adminFleetVehicles.length) adminFleetVehicles = getEffectiveFleetVehicles();
+if (!adminFleetVehicles || !adminFleetVehicles.length)
+  adminFleetVehicles = getEffectiveFleetVehicles();
 let activeEditingBooking = null;
 let activeDayScheduleDate = "";
 
 const CAL_MONTH_NAMES = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December"
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 function parseFlexDate(value) {
   if (!value && value !== 0) return null;
 
-  if (typeof value === 'object') {
-    if (typeof value.toDate === 'function') return value.toDate();
-    if (typeof value.toMillis === 'function') return new Date(value.toMillis());
-    if (typeof value.seconds === 'number') return new Date(value.seconds * 1000);
+  if (typeof value === "object") {
+    if (typeof value.toDate === "function") return value.toDate();
+    if (typeof value.toMillis === "function") return new Date(value.toMillis());
+    if (typeof value.seconds === "number")
+      return new Date(value.seconds * 1000);
   }
 
   if (value instanceof Date) {
     return isNaN(value.getTime()) ? null : value;
   }
 
-  if (typeof value === 'number') {
+  if (typeof value === "number") {
     const d = new Date(value);
     return isNaN(d.getTime()) ? null : d;
   }
 
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     let s = value.trim();
-    if (!s || s === '—' || s === '-') return null;
+    if (!s || s === "—" || s === "-") return null;
 
-    s = s.replace(/(\d+)(st|nd|rd|th)\b/gi, '$1');
+    s = s.replace(/(\d+)(st|nd|rd|th)\b/gi, "$1");
 
     const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(.*)$/);
     if (dmy) {
       const day = parseInt(dmy[1], 10);
       const month = parseInt(dmy[2], 10) - 1;
       const year = parseInt(dmy[3], 10);
-      let hour = 0, min = 0, sec = 0;
-      const rest = (dmy[4] || '').trim();
-      const timeMatch = rest.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i);
+      let hour = 0,
+        min = 0,
+        sec = 0;
+      const rest = (dmy[4] || "").trim();
+      const timeMatch = rest.match(
+        /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i,
+      );
       if (timeMatch) {
         hour = parseInt(timeMatch[1], 10);
         min = parseInt(timeMatch[2], 10);
         sec = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
         if (timeMatch[4]) {
           const meridiem = timeMatch[4].toLowerCase();
-          if (meridiem === 'pm' && hour < 12) hour += 12;
-          if (meridiem === 'am' && hour === 12) hour = 0;
+          if (meridiem === "pm" && hour < 12) hour += 12;
+          if (meridiem === "am" && hour === 12) hour = 0;
         }
       }
       const d = new Date(year, month, day, hour, min, sec);
@@ -8388,17 +8010,21 @@ function parseFlexDate(value) {
       const year = parseInt(ymd[1], 10);
       const month = parseInt(ymd[2], 10) - 1;
       const day = parseInt(ymd[3], 10);
-      let hour = 0, min = 0, sec = 0;
-      const rest = (ymd[4] || '').trim();
-      const timeMatch = rest.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i);
+      let hour = 0,
+        min = 0,
+        sec = 0;
+      const rest = (ymd[4] || "").trim();
+      const timeMatch = rest.match(
+        /(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)?/i,
+      );
       if (timeMatch) {
         hour = parseInt(timeMatch[1], 10);
         min = parseInt(timeMatch[2], 10);
         sec = timeMatch[3] ? parseInt(timeMatch[3], 10) : 0;
         if (timeMatch[4]) {
           const meridiem = timeMatch[4].toLowerCase();
-          if (meridiem === 'pm' && hour < 12) hour += 12;
-          if (meridiem === 'am' && hour === 12) hour = 0;
+          if (meridiem === "pm" && hour < 12) hour += 12;
+          if (meridiem === "am" && hour === 12) hour = 0;
         }
       }
       const d = new Date(year, month, day, hour, min, sec);
@@ -8414,46 +8040,96 @@ function parseFlexDate(value) {
 
 function normalizeCalendarBooking(bk) {
   if (!bk) return null;
-  const id = String(bk.id || bk._id || bk.bookingId || bk.bookingNumber || '');
-  const userName = bk.userName || bk.user_name || bk.customerName || bk.name || 'Customer';
-  const userPhone = bk.userPhone || bk.user_phone || bk.phone || '';
-  const userEmail = bk.userEmail || bk.user_email || bk.email || '';
-  const carName = bk.carName || bk.car_name || bk.vehicleName || bk.vehicle_name || bk.vehicle || 'Vehicle';
-  const carReg = bk.vehicleReg || bk.vehicle_reg || bk.carReg || bk.regNo || '';
-  
-  const rawPickup = bk.pickupDate || bk.pickup_date || bk.pickupDateTime || bk.bookingDate || bk.date || bk.createdAt || '';
-  const rawDrop = bk.dropDate || bk.drop_date || bk.dropDateTime || bk.returnDate || bk.return_date || rawPickup;
-  
+  const id = String(bk.id || bk._id || bk.bookingId || bk.bookingNumber || "");
+  const userName =
+    bk.userName || bk.user_name || bk.customerName || bk.name || "Customer";
+  const userPhone = bk.userPhone || bk.user_phone || bk.phone || "";
+  const userEmail = bk.userEmail || bk.user_email || bk.email || "";
+  const carName =
+    bk.carName ||
+    bk.car_name ||
+    bk.vehicleName ||
+    bk.vehicle_name ||
+    bk.vehicle ||
+    "Vehicle";
+  const carReg = bk.vehicleReg || bk.vehicle_reg || bk.carReg || bk.regNo || "";
+
+  const rawPickup =
+    bk.pickupDate ||
+    bk.pickup_date ||
+    bk.pickupDateTime ||
+    bk.bookingDate ||
+    bk.date ||
+    bk.createdAt ||
+    "";
+  const rawDrop =
+    bk.dropDate ||
+    bk.drop_date ||
+    bk.dropDateTime ||
+    bk.returnDate ||
+    bk.return_date ||
+    rawPickup;
+
   let pickupDate = parseFlexDate(rawPickup);
   let dropDate = parseFlexDate(rawDrop);
   if (!dropDate && pickupDate) dropDate = new Date(pickupDate);
   if (!pickupDate && dropDate) pickupDate = new Date(dropDate);
-  
-  const totalAmount = Number(bk.totalAmount ?? bk.total_amount ?? bk.finalAmount ?? bk.amount ?? bk.total ?? 0);
-  const tokenPaid = Number(bk.advanceAmount ?? bk.advance_amount ?? bk.tokenAmount ?? bk.token_amount ?? bk.paymentAmount ?? bk.amountPaid ?? 0);
-  const rawStatus = String(bk.status || bk.bookingStatus || bk.booking_status || 'confirmed').toLowerCase();
-  
+
+  const totalAmount = Number(
+    bk.totalAmount ??
+      bk.total_amount ??
+      bk.finalAmount ??
+      bk.amount ??
+      bk.total ??
+      0,
+  );
+  const tokenPaid = Number(
+    bk.advanceAmount ??
+      bk.advance_amount ??
+      bk.tokenAmount ??
+      bk.token_amount ??
+      bk.paymentAmount ??
+      bk.amountPaid ??
+      0,
+  );
+  const rawStatus = String(
+    bk.status || bk.bookingStatus || bk.booking_status || "confirmed",
+  ).toLowerCase();
+
   // Calculate classification
   const now = new Date();
-  let badgeCategory = 'upcoming';
-  if (rawStatus === 'cancelled' || rawStatus === 'rejected' || rawStatus === 'failed') {
-    badgeCategory = 'cancelled';
-  } else if (rawStatus === 'completed' || rawStatus === 'returned') {
-    badgeCategory = 'completed';
-  } else if (rawStatus === 'pending_payment' || rawStatus === 'pending' || rawStatus === 'pending_verification' || rawStatus === 'awaiting_verification') {
-    badgeCategory = 'pending';
-  } else if (rawStatus === 'active' || rawStatus === 'in_trip' || rawStatus === 'picked_up') {
-    badgeCategory = 'active';
+  let badgeCategory = "upcoming";
+  if (
+    rawStatus === "cancelled" ||
+    rawStatus === "rejected" ||
+    rawStatus === "failed"
+  ) {
+    badgeCategory = "cancelled";
+  } else if (rawStatus === "completed" || rawStatus === "returned") {
+    badgeCategory = "completed";
+  } else if (
+    rawStatus === "pending_payment" ||
+    rawStatus === "pending" ||
+    rawStatus === "pending_verification" ||
+    rawStatus === "awaiting_verification"
+  ) {
+    badgeCategory = "pending";
+  } else if (
+    rawStatus === "active" ||
+    rawStatus === "in_trip" ||
+    rawStatus === "picked_up"
+  ) {
+    badgeCategory = "active";
   } else {
     // Confirmed / Paid
     if (pickupDate && dropDate && now >= pickupDate && now <= dropDate) {
-      badgeCategory = 'active';
+      badgeCategory = "active";
     } else if (pickupDate && now < pickupDate) {
-      badgeCategory = 'upcoming';
+      badgeCategory = "upcoming";
     } else if (dropDate && now > dropDate) {
-      badgeCategory = 'completed';
+      badgeCategory = "completed";
     } else {
-      badgeCategory = 'upcoming';
+      badgeCategory = "upcoming";
     }
   }
 
@@ -8473,7 +8149,7 @@ function normalizeCalendarBooking(bk) {
     tokenPaid,
     status: rawStatus,
     badgeCategory,
-    notes: bk.notes || bk.pickupLocation || bk.pickup_location || ''
+    notes: bk.notes || bk.pickupLocation || bk.pickup_location || "",
   };
 }
 
@@ -8485,7 +8161,11 @@ function toLocalDateString(d) {
 
 function formatCalTime(d) {
   if (!d || isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", hour12: true });
+  return d.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 function formatCalDateTime(d) {
@@ -8496,7 +8176,7 @@ function formatCalDateTime(d) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    hour12: true
+    hour12: true,
   });
 }
 
@@ -8577,8 +8257,14 @@ export function initialiseAdminCalendar() {
       viewAgendaBtn.classList.remove("active");
       const gridWrap = $("adminCalGridContainer");
       const agendaWrap = $("adminCalAgendaContainer");
-      if (gridWrap) { gridWrap.classList.remove("hidden"); gridWrap.hidden = false; }
-      if (agendaWrap) { agendaWrap.classList.add("hidden"); agendaWrap.hidden = true; }
+      if (gridWrap) {
+        gridWrap.classList.remove("hidden");
+        gridWrap.hidden = false;
+      }
+      if (agendaWrap) {
+        agendaWrap.classList.add("hidden");
+        agendaWrap.hidden = true;
+      }
       renderAdminCalendarView();
     });
 
@@ -8588,8 +8274,14 @@ export function initialiseAdminCalendar() {
       viewGridBtn.classList.remove("active");
       const gridWrap = $("adminCalGridContainer");
       const agendaWrap = $("adminCalAgendaContainer");
-      if (agendaWrap) { agendaWrap.classList.remove("hidden"); agendaWrap.hidden = false; }
-      if (gridWrap) { gridWrap.classList.add("hidden"); gridWrap.hidden = true; }
+      if (agendaWrap) {
+        agendaWrap.classList.remove("hidden");
+        agendaWrap.hidden = false;
+      }
+      if (gridWrap) {
+        gridWrap.classList.add("hidden");
+        gridWrap.hidden = true;
+      }
       renderAdminCalendarView();
     });
   }
@@ -8601,7 +8293,10 @@ export function initialiseAdminCalendar() {
   // Day Bookings Schedule Modal setup
   const closeDayBtn = $("closeAdminDayBookingsModal");
   const dayAddBtn = $("adminDayAddBookingBtn");
-  if (closeDayBtn) closeDayBtn.addEventListener("click", () => hideModal("adminDayBookingsModal"));
+  if (closeDayBtn)
+    closeDayBtn.addEventListener("click", () =>
+      hideModal("adminDayBookingsModal"),
+    );
   if (dayAddBtn) {
     dayAddBtn.addEventListener("click", () => {
       hideModal("adminDayBookingsModal");
@@ -8614,8 +8309,14 @@ export function initialiseAdminCalendar() {
   const cancelAddBtn = $("cancelAddBookingBtn");
   const addForm = $("adminAddBookingForm");
 
-  if (closeAddBtn) closeAddBtn.addEventListener("click", () => hideModal("adminAddBookingModal"));
-  if (cancelAddBtn) cancelAddBtn.addEventListener("click", () => hideModal("adminAddBookingModal"));
+  if (closeAddBtn)
+    closeAddBtn.addEventListener("click", () =>
+      hideModal("adminAddBookingModal"),
+    );
+  if (cancelAddBtn)
+    cancelAddBtn.addEventListener("click", () =>
+      hideModal("adminAddBookingModal"),
+    );
   if (addForm) addForm.addEventListener("submit", handleAdminCreateBooking);
 
   // Edit Booking Modal setup
@@ -8624,13 +8325,22 @@ export function initialiseAdminCalendar() {
   const cancelBkBtn = $("adminCancelBookingBtn");
   const deleteBkBtn = $("adminDeleteBookingBtn");
 
-  if (closeEditBtn) closeEditBtn.addEventListener("click", () => hideModal("adminEditBookingModal"));
+  if (closeEditBtn)
+    closeEditBtn.addEventListener("click", () =>
+      hideModal("adminEditBookingModal"),
+    );
   if (editForm) editForm.addEventListener("submit", handleAdminSaveEditBooking);
-  if (cancelBkBtn) cancelBkBtn.addEventListener("click", handleAdminCancelBookingAction);
-  if (deleteBkBtn) deleteBkBtn.addEventListener("click", handleAdminDeleteBookingAction);
+  if (cancelBkBtn)
+    cancelBkBtn.addEventListener("click", handleAdminCancelBookingAction);
+  if (deleteBkBtn)
+    deleteBkBtn.addEventListener("click", handleAdminDeleteBookingAction);
 
   // Close modals on overlay click
-  ["adminAddBookingModal", "adminEditBookingModal", "adminDayBookingsModal"].forEach((modalId) => {
+  [
+    "adminAddBookingModal",
+    "adminEditBookingModal",
+    "adminDayBookingsModal",
+  ].forEach((modalId) => {
     const modalEl = $(modalId);
     if (modalEl) {
       modalEl.addEventListener("click", (e) => {
@@ -8644,15 +8354,21 @@ export async function loadAdminCalendar() {
   try {
     const [bookingsRes, vehiclesRes] = await Promise.allSettled([
       api.get("/bookings"),
-      api.get("/vehicles")
+      api.get("/vehicles"),
     ]);
 
-    if (bookingsRes.status === "fulfilled" && bookingsRes.value && Array.isArray(bookingsRes.value.bookings)) {
+    if (
+      bookingsRes.status === "fulfilled" &&
+      bookingsRes.value &&
+      Array.isArray(bookingsRes.value.bookings)
+    ) {
       const rawBk = bookingsRes.value.bookings;
       const seenBk = new Set();
       bookingsData = [];
       rawBk.forEach((b) => {
-        const key = String(b.bookingNumber || b.bookingId || b.id || "").trim().toUpperCase();
+        const key = String(b.bookingNumber || b.bookingId || b.id || "")
+          .trim()
+          .toUpperCase();
         if (key && !seenBk.has(key)) {
           seenBk.add(key);
           bookingsData.push(b);
@@ -8660,14 +8376,23 @@ export async function loadAdminCalendar() {
       });
     }
 
-    if (vehiclesRes.status === "fulfilled" && vehiclesRes.value && Array.isArray(vehiclesRes.value.vehicles) && vehiclesRes.value.vehicles.length > 0) {
+    if (
+      vehiclesRes.status === "fulfilled" &&
+      vehiclesRes.value &&
+      Array.isArray(vehiclesRes.value.vehicles) &&
+      vehiclesRes.value.vehicles.length > 0
+    ) {
       const rawV = vehiclesRes.value.vehicles;
       const seenV = new Set();
       const loaded = [];
       rawV.forEach((v) => {
-        const reg = String(v.regNo || v.reg_no || "").trim().toUpperCase();
-        const carId = String(v.carId || v.car_id || v.id || "").trim().toUpperCase();
-        const key = (reg && reg !== "TBD") ? reg : carId;
+        const reg = String(v.regNo || v.reg_no || "")
+          .trim()
+          .toUpperCase();
+        const carId = String(v.carId || v.car_id || v.id || "")
+          .trim()
+          .toUpperCase();
+        const key = reg && reg !== "TBD" ? reg : carId;
         if (key && !seenV.has(key)) {
           seenV.add(key);
           loaded.push(v);
@@ -8694,7 +8419,7 @@ function populateAdminVehicleDropdowns(extraSelectedVehicle = null) {
   const addSelect = $("addBkVehicleSelect");
   const editSelect = $("editBkVehicleSelect");
   const calVehFilter = $("adminCalVehicleFilter");
-  
+
   const vehicles = getEffectiveFleetVehicles();
 
   let optionsHtml = `<option value="">-- Choose Fleet Vehicle --</option>`;
@@ -8704,12 +8429,14 @@ function populateAdminVehicleDropdowns(extraSelectedVehicle = null) {
 
   if (vehicles && vehicles.length > 0) {
     vehicles.forEach((v) => {
-      const name = `${v.brand || ""} ${v.model || ""}`.trim() || v.name || "Car";
+      const name =
+        `${v.brand || ""} ${v.model || ""}`.trim() || v.name || "Car";
       const reg = String(v.regNo || v.reg_no || v.id || "").trim();
       const key = reg.toUpperCase().replace(/\s+/g, "");
       if (key && !seenKeys.has(key)) {
         seenKeys.add(key);
-        const price = v.priceDay || v.price_day || v.price_per_day || v.price || "";
+        const price =
+          v.priceDay || v.price_day || v.price_per_day || v.price || "";
         optionsHtml += `<option value="${escapeHtml(reg)}">${escapeHtml(name)} (${escapeHtml(reg)}) ${price ? "- ₹" + price + "/day" : ""}</option>`;
         filterOptionsHtml += `<option value="${escapeHtml(reg)}">${escapeHtml(name)} (${escapeHtml(reg)})</option>`;
       }
@@ -8718,8 +8445,14 @@ function populateAdminVehicleDropdowns(extraSelectedVehicle = null) {
 
   // Preserve any assigned vehicle that might not be in the current fleet roster
   if (extraSelectedVehicle) {
-    const extraReg = String(extraSelectedVehicle.reg || extraSelectedVehicle.carReg || "").trim();
-    const extraName = String(extraSelectedVehicle.name || extraSelectedVehicle.carName || "Assigned Vehicle").trim();
+    const extraReg = String(
+      extraSelectedVehicle.reg || extraSelectedVehicle.carReg || "",
+    ).trim();
+    const extraName = String(
+      extraSelectedVehicle.name ||
+        extraSelectedVehicle.carName ||
+        "Assigned Vehicle",
+    ).trim();
     const extraKey = extraReg.toUpperCase().replace(/\s+/g, "");
     if (extraReg && !seenKeys.has(extraKey)) {
       optionsHtml += `<option value="${escapeHtml(extraReg)}">${escapeHtml(extraName)} (${escapeHtml(extraReg)})</option>`;
@@ -8744,16 +8477,32 @@ function populateAdminVehicleDropdowns(extraSelectedVehicle = null) {
 }
 
 function getFilteredCalendarBookings() {
-  const normalized = (bookingsData || []).map(normalizeCalendarBooking).filter(Boolean);
+  const normalized = (bookingsData || [])
+    .map(normalizeCalendarBooking)
+    .filter(Boolean);
 
   return normalized.filter((b) => {
     // Status Filter
     if (adminCalStatusFilter !== "all") {
-      if (adminCalStatusFilter === "active" && b.badgeCategory !== "active") return false;
-      if (adminCalStatusFilter === "upcoming" && b.badgeCategory !== "upcoming") return false;
-      if (adminCalStatusFilter === "completed" && b.badgeCategory !== "completed") return false;
-      if (adminCalStatusFilter === "pending_payment" && b.badgeCategory !== "pending") return false;
-      if (adminCalStatusFilter === "cancelled" && b.badgeCategory !== "cancelled") return false;
+      if (adminCalStatusFilter === "active" && b.badgeCategory !== "active")
+        return false;
+      if (adminCalStatusFilter === "upcoming" && b.badgeCategory !== "upcoming")
+        return false;
+      if (
+        adminCalStatusFilter === "completed" &&
+        b.badgeCategory !== "completed"
+      )
+        return false;
+      if (
+        adminCalStatusFilter === "pending_payment" &&
+        b.badgeCategory !== "pending"
+      )
+        return false;
+      if (
+        adminCalStatusFilter === "cancelled" &&
+        b.badgeCategory !== "cancelled"
+      )
+        return false;
     }
 
     // Vehicle Filter (Per Car)
@@ -8761,7 +8510,11 @@ function getFilteredCalendarBookings() {
       const vTarget = adminCalVehicleFilter.toLowerCase();
       const vReg = (b.carReg || "").toLowerCase();
       const vName = (b.carName || "").toLowerCase();
-      if (vReg !== vTarget && !vName.includes(vTarget) && !vTarget.includes(vReg)) {
+      if (
+        vReg !== vTarget &&
+        !vName.includes(vTarget) &&
+        !vTarget.includes(vReg)
+      ) {
         return false;
       }
     }
@@ -8819,21 +8572,40 @@ function renderAdminCalendarGrid() {
   for (let i = firstDayIndex - 1; i >= 0; i--) {
     const dNum = prevMonthDays - i;
     const cellDate = new Date(adminCalYear, adminCalMonth - 1, dNum);
-    gridHtml += renderCalendarCell(cellDate, dNum, true, todayStr, filteredBookings);
+    gridHtml += renderCalendarCell(
+      cellDate,
+      dNum,
+      true,
+      todayStr,
+      filteredBookings,
+    );
   }
 
   // 2. Current month days
   for (let d = 1; d <= daysInMonth; d++) {
     const cellDate = new Date(adminCalYear, adminCalMonth, d);
-    gridHtml += renderCalendarCell(cellDate, d, false, todayStr, filteredBookings);
+    gridHtml += renderCalendarCell(
+      cellDate,
+      d,
+      false,
+      todayStr,
+      filteredBookings,
+    );
   }
 
   // 3. Next month leading days to complete grid (multiples of 7)
   const totalCellsSoFar = firstDayIndex + daysInMonth;
-  const remainingCells = (totalCellsSoFar % 7 === 0) ? 0 : 7 - (totalCellsSoFar % 7);
+  const remainingCells =
+    totalCellsSoFar % 7 === 0 ? 0 : 7 - (totalCellsSoFar % 7);
   for (let nextD = 1; nextD <= remainingCells; nextD++) {
     const cellDate = new Date(adminCalYear, adminCalMonth + 1, nextD);
-    gridHtml += renderCalendarCell(cellDate, nextD, true, todayStr, filteredBookings);
+    gridHtml += renderCalendarCell(
+      cellDate,
+      nextD,
+      true,
+      todayStr,
+      filteredBookings,
+    );
   }
 
   gridEl.innerHTML = gridHtml;
@@ -8847,7 +8619,11 @@ function renderAdminCalendarGrid() {
         openAdminDayBookingsModal(dateStr);
       } else {
         const bid = pill.dataset.bid;
-        const bk = bookingsData.find((item) => String(item.id || item.bookingId || item.bookingNumber) === String(bid));
+        const bk = bookingsData.find(
+          (item) =>
+            String(item.id || item.bookingId || item.bookingNumber) ===
+            String(bid),
+        );
         if (bk) openAdminEditBookingModal(bk);
       }
     });
@@ -8892,7 +8668,12 @@ function renderAdminCalendarGrid() {
   // Clicking anywhere on cell
   gridEl.querySelectorAll(".admin-cal-cell").forEach((cell) => {
     cell.addEventListener("click", (e) => {
-      if (e.target.closest(".cal-event-pill") || e.target.closest(".cal-event-more") || e.target.closest(".admin-cal-badge-count") || e.target.closest(".admin-cal-cell-header")) {
+      if (
+        e.target.closest(".cal-event-pill") ||
+        e.target.closest(".cal-event-more") ||
+        e.target.closest(".admin-cal-badge-count") ||
+        e.target.closest(".admin-cal-cell-header")
+      ) {
         return;
       }
       const dateStr = cell.dataset.date;
@@ -8911,7 +8692,10 @@ function renderAdminCalendarGrid() {
 function getCalShortCarName(fullName) {
   if (!fullName) return "Vehicle";
   let s = String(fullName).trim();
-  s = s.replace(/^(Mahindra|Maruti Suzuki|Maruti|Toyota|Hyundai|Tata|Honda|Kia)\s+/i, "");
+  s = s.replace(
+    /^(Mahindra|Maruti Suzuki|Maruti|Toyota|Hyundai|Tata|Honda|Kia)\s+/i,
+    "",
+  );
   // Keep concise name (e.g. "Thar LX", "Innova Crysta", "Scorpio-N")
   const parts = s.split(/\s+/);
   if (parts.length > 2) {
@@ -8943,13 +8727,33 @@ function formatCalCompactAmount(amt) {
   return String(n);
 }
 
-function renderCalendarCell(cellDate, dayNumber, isOtherMonth, todayStr, allBookings) {
+function renderCalendarCell(
+  cellDate,
+  dayNumber,
+  isOtherMonth,
+  todayStr,
+  allBookings,
+) {
   const cellDateStr = toLocalDateString(cellDate);
   const isToday = cellDateStr === todayStr;
 
   // Find bookings active on this date
-  const cellDayStart = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate(), 0, 0, 0).getTime();
-  const cellDayEnd = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate(), 23, 59, 59).getTime();
+  const cellDayStart = new Date(
+    cellDate.getFullYear(),
+    cellDate.getMonth(),
+    cellDate.getDate(),
+    0,
+    0,
+    0,
+  ).getTime();
+  const cellDayEnd = new Date(
+    cellDate.getFullYear(),
+    cellDate.getMonth(),
+    cellDate.getDate(),
+    23,
+    59,
+    59,
+  ).getTime();
 
   const matchingBookings = allBookings.filter((b) => {
     if (!b.pickupDate) return false;
@@ -8967,8 +8771,10 @@ function renderCalendarCell(cellDate, dayNumber, isOtherMonth, todayStr, allBook
   const displayed = matchingBookings.slice(0, maxDisplay);
 
   displayed.forEach((b) => {
-    const isPickupDay = b.pickupDate && toLocalDateString(b.pickupDate) === cellDateStr;
-    const isDropDay = b.dropDate && toLocalDateString(b.dropDate) === cellDateStr;
+    const isPickupDay =
+      b.pickupDate && toLocalDateString(b.pickupDate) === cellDateStr;
+    const isDropDay =
+      b.dropDate && toLocalDateString(b.dropDate) === cellDateStr;
 
     let flagShort = "";
     let flagFull = "";
@@ -9016,7 +8822,7 @@ function renderCalendarCell(cellDate, dayNumber, isOtherMonth, todayStr, allBook
 
   return `
     <div class="${classes}" data-date="${cellDateStr}" data-count="${matchingBookings.length}">
-      <div class="admin-cal-cell-header" data-date="${cellDateStr}" data-count="${matchingBookings.length}" style="cursor:pointer;" title="${matchingBookings.length > 0 ? `Click to view schedule for this day (${matchingBookings.length} bookings)` : 'Click to add a booking for this day'}">
+      <div class="admin-cal-cell-header" data-date="${cellDateStr}" data-count="${matchingBookings.length}" style="cursor:pointer;" title="${matchingBookings.length > 0 ? `Click to view schedule for this day (${matchingBookings.length} bookings)` : "Click to add a booking for this day"}">
         <span class="admin-cal-day-num">${dayNumber}</span>
         ${matchingBookings.length > 0 ? `<span class="admin-cal-badge-count" data-date="${cellDateStr}" title="${matchingBookings.length} bookings on this date">${matchingBookings.length}</span>` : ""}
       </div>
@@ -9034,15 +8840,42 @@ function openAdminDayBookingsModal(dateStr) {
   const parts = dateStr.split("-");
   let dateFormatted = dateStr;
   if (parts.length === 3) {
-    const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-    dateFormatted = d.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+    const d = new Date(
+      parseInt(parts[0], 10),
+      parseInt(parts[1], 10) - 1,
+      parseInt(parts[2], 10),
+    );
+    dateFormatted = d.toLocaleDateString("en-IN", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
   }
 
   const allBookings = getFilteredCalendarBookings();
   const dParts = dateStr.split("-");
-  const cellDate = new Date(parseInt(dParts[0], 10), parseInt(dParts[1], 10) - 1, parseInt(dParts[2], 10));
-  const cellDayStart = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate(), 0, 0, 0).getTime();
-  const cellDayEnd = new Date(cellDate.getFullYear(), cellDate.getMonth(), cellDate.getDate(), 23, 59, 59).getTime();
+  const cellDate = new Date(
+    parseInt(dParts[0], 10),
+    parseInt(dParts[1], 10) - 1,
+    parseInt(dParts[2], 10),
+  );
+  const cellDayStart = new Date(
+    cellDate.getFullYear(),
+    cellDate.getMonth(),
+    cellDate.getDate(),
+    0,
+    0,
+    0,
+  ).getTime();
+  const cellDayEnd = new Date(
+    cellDate.getFullYear(),
+    cellDate.getMonth(),
+    cellDate.getDate(),
+    23,
+    59,
+    59,
+  ).getTime();
 
   const matching = allBookings.filter((b) => {
     if (!b.pickupDate) return false;
@@ -9068,11 +8901,21 @@ function openAdminDayBookingsModal(dateStr) {
     } else {
       let html = "";
       matching.forEach((b) => {
-        const rawBk = bookingsData.find((item) => String(item.id || item.bookingId || item.bookingNumber) === String(b.id)) || b.raw || b;
+        const rawBk =
+          bookingsData.find(
+            (item) =>
+              String(item.id || item.bookingId || item.bookingNumber) ===
+              String(b.id),
+          ) ||
+          b.raw ||
+          b;
         const statusLabel = b.badgeCategory.toUpperCase();
-        const payStatus = rawBk.paymentStatus ? rawBk.paymentStatus.replace(/_/g, " ").toUpperCase() : "CONFIRMED";
+        const payStatus = rawBk.paymentStatus
+          ? rawBk.paymentStatus.replace(/_/g, " ").toUpperCase()
+          : "CONFIRMED";
         const payMethod = rawBk.paymentMethod || rawBk.method || "UPI";
-        const payRef = rawBk.paymentRef || rawBk.utr || rawBk.transactionId || "";
+        const payRef =
+          rawBk.paymentRef || rawBk.utr || rawBk.transactionId || "";
 
         html += `
           <div class="day-schedule-item cal-agenda-card--${escapeHtml(b.badgeCategory)}">
@@ -9154,7 +8997,11 @@ function openAdminDayBookingsModal(dateStr) {
       listEl.querySelectorAll(".day-modal-edit-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           const bid = btn.dataset.bid;
-          const bk = bookingsData.find((item) => String(item.id || item.bookingId || item.bookingNumber) === String(bid));
+          const bk = bookingsData.find(
+            (item) =>
+              String(item.id || item.bookingId || item.bookingNumber) ===
+              String(bid),
+          );
           if (bk) {
             hideModal("adminDayBookingsModal");
             openAdminEditBookingModal(bk);
@@ -9173,16 +9020,21 @@ function openAdminDayBookingsModal(dateStr) {
       listEl.querySelectorAll(".day-modal-receipt-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
           const bid = btn.dataset.bid;
-          const bk = bookingsData.find((item) => String(item.id || item.bookingId || item.bookingNumber) === String(bid)) ||
-                     paymentsData.find((item) => item.id === bid || item.bookingId === bid);
+          const bk =
+            bookingsData.find(
+              (item) =>
+                String(item.id || item.bookingId || item.bookingNumber) ===
+                String(bid),
+            ) ||
+            paymentsData.find(
+              (item) => item.id === bid || item.bookingId === bid,
+            );
           if (bk) {
             hideModal("adminDayBookingsModal");
             openPaymentModal(bk);
           }
         });
       });
-
-      
     }
   }
 
@@ -9205,7 +9057,8 @@ function renderAdminCalendarAgenda() {
       </div>
     `;
     const emptyAddBtn = $("calAgendaAddBtn");
-    if (emptyAddBtn) emptyAddBtn.addEventListener("click", () => openAdminAddBookingModal());
+    if (emptyAddBtn)
+      emptyAddBtn.addEventListener("click", () => openAdminAddBookingModal());
     return;
   }
 
@@ -9221,9 +9074,12 @@ function renderAdminCalendarAgenda() {
     const statusLabel = (b.status || b.badgeCategory || "active").toUpperCase();
     const rawId = String(b.id || b.bookingNumber || b.bookingId || "");
     const cleanId = rawId.startsWith("#") ? rawId.slice(1) : rawId;
-    const formattedPrice = "₹" + Number(b.totalAmount || 0).toLocaleString("en-IN");
+    const formattedPrice =
+      "₹" + Number(b.totalAmount || 0).toLocaleString("en-IN");
     const userContact = b.userPhone || b.userEmail || "No contact info";
-    const regBadge = b.carReg ? `<span class="cal-agenda-reg">(${escapeHtml(b.carReg)})</span>` : "";
+    const regBadge = b.carReg
+      ? `<span class="cal-agenda-reg">(${escapeHtml(b.carReg)})</span>`
+      : "";
 
     html += `
       <div class="cal-agenda-card cal-agenda-card--${escapeHtml(b.badgeCategory)}">
@@ -9277,7 +9133,11 @@ function renderAdminCalendarAgenda() {
   listEl.querySelectorAll(".edit-cal-bk-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       const bid = btn.dataset.bid;
-      const bk = bookingsData.find((item) => String(item.id || item.bookingId || item.bookingNumber) === String(bid));
+      const bk = bookingsData.find(
+        (item) =>
+          String(item.id || item.bookingId || item.bookingNumber) ===
+          String(bid),
+      );
       if (bk) {
         openAdminEditBookingModal(bk);
       }
@@ -9292,8 +9152,22 @@ function openAdminAddBookingModal(prefilledDateStr) {
   populateAdminVehicleDropdowns();
 
   const now = new Date();
-  let pDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0, 0);
-  let rDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 10, 0, 0);
+  let pDate = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+    10,
+    0,
+    0,
+  );
+  let rDate = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + 1,
+    10,
+    0,
+    0,
+  );
 
   if (prefilledDateStr) {
     const parts = prefilledDateStr.split("-");
@@ -9350,7 +9224,7 @@ async function handleAdminCreateBooking(e) {
       bookingStatus: status,
       totalAmount: totalAmount,
       baseAmount: totalAmount,
-      location: notes || "Ghansoli Branch"
+      location: notes || "Ghansoli Branch",
     };
 
     const res = await api.post("/bookings", payload);
@@ -9407,8 +9281,14 @@ function openAdminEditBookingModal(booking) {
     if (targetKey) {
       for (let i = 0; i < vehicleSelect.options.length; i++) {
         const opt = vehicleSelect.options[i];
-        const optValKey = String(opt.value || "").toUpperCase().replace(/\s+/g, "");
-        if (optValKey === targetKey || (targetKey.length >= 6 && optValKey.includes(targetKey)) || (optValKey.length >= 6 && targetKey.includes(optValKey))) {
+        const optValKey = String(opt.value || "")
+          .toUpperCase()
+          .replace(/\s+/g, "");
+        if (
+          optValKey === targetKey ||
+          (targetKey.length >= 6 && optValKey.includes(targetKey)) ||
+          (optValKey.length >= 6 && targetKey.includes(optValKey))
+        ) {
           vehicleSelect.selectedIndex = i;
           matched = true;
           break;
@@ -9420,8 +9300,13 @@ function openAdminEditBookingModal(booking) {
       const nameKey = String(norm.carName).toUpperCase().replace(/\s+/g, "");
       for (let i = 0; i < vehicleSelect.options.length; i++) {
         const opt = vehicleSelect.options[i];
-        const optTextKey = String(opt.textContent || "").toUpperCase().replace(/\s+/g, "");
-        if (optTextKey.includes(nameKey) || (nameKey.length >= 4 && nameKey.includes(optTextKey))) {
+        const optTextKey = String(opt.textContent || "")
+          .toUpperCase()
+          .replace(/\s+/g, "");
+        if (
+          optTextKey.includes(nameKey) ||
+          (nameKey.length >= 4 && nameKey.includes(optTextKey))
+        ) {
           vehicleSelect.selectedIndex = i;
           matched = true;
           break;
@@ -9429,7 +9314,10 @@ function openAdminEditBookingModal(booking) {
       }
     }
 
-    if (!matched && (targetReg || (norm.carName && norm.carName !== "Vehicle"))) {
+    if (
+      !matched &&
+      (targetReg || (norm.carName && norm.carName !== "Vehicle"))
+    ) {
       const optVal = targetReg || norm.carName;
       const optText = `${norm.carName || "Vehicle"} (${targetReg || "Assigned"})`;
       const opt = new Option(optText, optVal, true, true);
@@ -9438,10 +9326,12 @@ function openAdminEditBookingModal(booking) {
   }
 
   const pickupInput = $("editBkPickupDate");
-  if (pickupInput && norm.pickupDate) pickupInput.value = formatInputDateTime(norm.pickupDate);
+  if (pickupInput && norm.pickupDate)
+    pickupInput.value = formatInputDateTime(norm.pickupDate);
 
   const returnInput = $("editBkReturnDate");
-  if (returnInput && norm.dropDate) returnInput.value = formatInputDateTime(norm.dropDate);
+  if (returnInput && norm.dropDate)
+    returnInput.value = formatInputDateTime(norm.dropDate);
 
   const statusSelect = $("editBkStatus");
   if (statusSelect) {
@@ -9467,14 +9357,17 @@ function openAdminEditBookingModal(booking) {
         const diffHrs = Math.max(1, Math.ceil((rT - pT) / (1000 * 3600)));
         const days = Math.floor(diffHrs / 24);
         const remHrs = diffHrs % 24;
-        let dStr = '';
-        if (days > 0 && remHrs > 0) dStr = `${days} Day${days > 1 ? 's' : ''} ${remHrs} Hr${remHrs > 1 ? 's' : ''} (${diffHrs} hrs total)`;
-        else if (days > 0) dStr = `${days} Day${days > 1 ? 's' : ''} (${diffHrs} hrs)`;
-        else dStr = `${diffHrs} Hour${diffHrs > 1 ? 's' : ''}`;
+        let dStr = "";
+        if (days > 0 && remHrs > 0)
+          dStr = `${days} Day${days > 1 ? "s" : ""} ${remHrs} Hr${remHrs > 1 ? "s" : ""} (${diffHrs} hrs total)`;
+        else if (days > 0)
+          dStr = `${days} Day${days > 1 ? "s" : ""} (${diffHrs} hrs)`;
+        else dStr = `${diffHrs} Hour${diffHrs > 1 ? "s" : ""}`;
 
         if (durTextEl) durTextEl.textContent = dStr;
-        if (timeSummaryEl) timeSummaryEl.textContent = `${formatDateTime(pD || pVal)} ➔ ${formatDateTime(rD || rVal)}`;
-        if (durBadge) durBadge.style.display = 'flex';
+        if (timeSummaryEl)
+          timeSummaryEl.textContent = `${formatDateTime(pD || pVal)} ➔ ${formatDateTime(rD || rVal)}`;
+        if (durBadge) durBadge.style.display = "flex";
         return;
       }
     }
@@ -9503,23 +9396,29 @@ function openAdminEditBookingModal(booking) {
       norm.bookingStatus === "rejected" ||
       norm.paymentStatus === "rejected";
 
-    const pDateFmt = norm.pickupDate ? formatDateTime(norm.pickupDate) : '—';
-    const dDateFmt = norm.dropDate ? formatDateTime(norm.dropDate) : '—';
-    const cleanPhone = String(norm.customerPhone || norm.phone || '').replace(/[^0-9]/g, '');
-    const phoneWithCountry = cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone;
+    const pDateFmt = norm.pickupDate ? formatDateTime(norm.pickupDate) : "—";
+    const dDateFmt = norm.dropDate ? formatDateTime(norm.dropDate) : "—";
+    const cleanPhone = String(norm.customerPhone || norm.phone || "").replace(
+      /[^0-9]/g,
+      "",
+    );
+    const phoneWithCountry =
+      cleanPhone.length === 10 ? "91" + cleanPhone : cleanPhone;
 
     const pD = safeParseDate(norm.pickupDate);
     const rD = safeParseDate(norm.dropDate);
     const pT = pD ? pD.getTime() : 0;
     const rT = rD ? rD.getTime() : 0;
-    let durStr = '1 Day (24 hrs)';
+    let durStr = "1 Day (24 hrs)";
     if (pT > 0 && rT > pT) {
       const diffHrs = Math.max(1, Math.ceil((rT - pT) / (1000 * 3600)));
       const days = Math.floor(diffHrs / 24);
       const remHrs = diffHrs % 24;
-      if (days > 0 && remHrs > 0) durStr = `${days} Day${days > 1 ? 's' : ''} ${remHrs} Hr${remHrs > 1 ? 's' : ''} (${diffHrs} hrs total)`;
-      else if (days > 0) durStr = `${days} Day${days > 1 ? 's' : ''} (${diffHrs} hrs)`;
-      else durStr = `${diffHrs} Hour${diffHrs > 1 ? 's' : ''}`;
+      if (days > 0 && remHrs > 0)
+        durStr = `${days} Day${days > 1 ? "s" : ""} ${remHrs} Hr${remHrs > 1 ? "s" : ""} (${diffHrs} hrs total)`;
+      else if (days > 0)
+        durStr = `${days} Day${days > 1 ? "s" : ""} (${diffHrs} hrs)`;
+      else durStr = `${diffHrs} Hour${diffHrs > 1 ? "s" : ""}`;
     }
 
     let waMsg = "";
@@ -9531,21 +9430,25 @@ function openAdminEditBookingModal(booking) {
       waBtn.style.borderColor = "#ef476f";
       waBtn.style.color = "#ef476f";
 
-      const reason = norm.cancellationReason || norm.cancellation_reason || norm.paymentRejectionReason || "Verification / Payment unverified";
+      const reason =
+        norm.cancellationReason ||
+        norm.cancellation_reason ||
+        norm.paymentRejectionReason ||
+        "Verification / Payment unverified";
       waMsg = encodeURIComponent(
         `❌ *KRUIZLY BOOKING CANCELLED*\n\n` +
-        `Dear *${norm.customerName || 'Valued Customer'}*,\n` +
-        `We regret to inform you that your rental reservation has been *CANCELLED*. ❌\n\n` +
-        `📋 *Booking ID:* #${norm.bookingNumber || norm.id}\n` +
-        `🚘 *Vehicle:* ${norm.carName || 'Vehicle'} (${norm.vehicleReg || 'Assigned'})\n` +
-        `📅 *Pickup Date & Time:* ${pDateFmt}\n` +
-        `📅 *Drop Date & Time:* ${dDateFmt}\n` +
-        `⏱️ *Duration:* ${durStr}\n` +
-        `💰 *Total Amount:* ₹${norm.totalAmount || 0}\n` +
-        `❌ *Status:* Booking Cancelled\n` +
-        `📝 *Reason:* ${reason}\n\n` +
-        `If you have questions or would like to re-book, please contact our support team at +91 91671 64547.\n` +
-        `Thank you for your interest in KRUIZLY.`
+          `Dear *${norm.customerName || "Valued Customer"}*,\n` +
+          `We regret to inform you that your rental reservation has been *CANCELLED*. ❌\n\n` +
+          `📋 *Booking ID:* #${norm.bookingNumber || norm.id}\n` +
+          `🚘 *Vehicle:* ${norm.carName || "Vehicle"} (${norm.vehicleReg || "Assigned"})\n` +
+          `📅 *Pickup Date & Time:* ${pDateFmt}\n` +
+          `📅 *Drop Date & Time:* ${dDateFmt}\n` +
+          `⏱️ *Duration:* ${durStr}\n` +
+          `💰 *Total Amount:* ₹${norm.totalAmount || 0}\n` +
+          `❌ *Status:* Booking Cancelled\n` +
+          `📝 *Reason:* ${reason}\n\n` +
+          `If you have questions or would like to re-book, please contact our support team at +91 91671 64547.\n` +
+          `Thank you for your interest in KRUIZLY.`,
       );
     } else {
       waBtn.innerHTML = `
@@ -9557,21 +9460,21 @@ function openAdminEditBookingModal(booking) {
 
       waMsg = encodeURIComponent(
         `🎉 *KRUIZLY BOOKING APPROVED & CONFIRMED!*\n\n` +
-        `Dear *${norm.customerName || 'Valued Customer'}*,\n` +
-        `Your rental reservation has been officially approved! 🚗💨\n\n` +
-        `📋 *Booking ID:* #${norm.bookingNumber || norm.id}\n` +
-        `🚘 *Vehicle:* ${norm.carName || 'Vehicle'} (${norm.vehicleReg || 'Assigned'})\n` +
-        `📅 *Pickup Date & Time:* ${pDateFmt}\n` +
-        `📅 *Drop Date & Time:* ${dDateFmt}\n` +
-        `⏱️ *Duration:* ${durStr}\n` +
-        `💰 *Total Amount:* ₹${norm.totalAmount || 0}\n` +
-        `✅ *Status:* Confirmed & Approved\n\n` +
-        `📍 *Pickup:* ${escapeHtml(booking.pickup_hub_name || booking.pickup_hub || "Hub to be confirmed")}\n` +
-        `Please carry your original Driving License & Aadhaar Card.\n\n` +
-        `Need help? Call +91 91671 64547. Thank you for choosing KRUIZLY!`
+          `Dear *${norm.customerName || "Valued Customer"}*,\n` +
+          `Your rental reservation has been officially approved! 🚗💨\n\n` +
+          `📋 *Booking ID:* #${norm.bookingNumber || norm.id}\n` +
+          `🚘 *Vehicle:* ${norm.carName || "Vehicle"} (${norm.vehicleReg || "Assigned"})\n` +
+          `📅 *Pickup Date & Time:* ${pDateFmt}\n` +
+          `📅 *Drop Date & Time:* ${dDateFmt}\n` +
+          `⏱️ *Duration:* ${durStr}\n` +
+          `💰 *Total Amount:* ₹${norm.totalAmount || 0}\n` +
+          `✅ *Status:* Confirmed & Approved\n\n` +
+          `📍 *Pickup:* ${escapeHtml(booking.pickup_hub_name || booking.pickup_hub || "Hub to be confirmed")}\n` +
+          `Please carry your original Driving License & Aadhaar Card.\n\n` +
+          `Need help? Call +91 91671 64547. Thank you for choosing KRUIZLY!`,
       );
     }
-    waBtn.href = `https://wa.me/${phoneWithCountry || '919167164547'}?text=${waMsg}`;
+    waBtn.href = `https://wa.me/${phoneWithCountry || "919167164547"}?text=${waMsg}`;
   }
 
   showModal("adminEditBookingModal");
@@ -9608,10 +9511,13 @@ async function handleAdminSaveEditBooking(e) {
       status: status,
       bookingStatus: status,
       totalAmount: totalAmount,
-      sendApprovalNotification: (status === "confirmed")
+      sendApprovalNotification: status === "confirmed",
     };
 
-    const res = await api.put(`/bookings/detail.php?id=${encodeURIComponent(id)}`, payload);
+    const res = await api.put(
+      `/bookings/detail.php?id=${encodeURIComponent(id)}`,
+      payload,
+    );
     if (res && res.success) {
       hideModal("adminEditBookingModal");
       await loadAdminCalendar();
@@ -9622,10 +9528,15 @@ async function handleAdminSaveEditBooking(e) {
       if (status === "confirmed" && notif) {
         let msg = "✅ Booking saved and confirmed!";
         if (notif.email_sent) {
-          msg += `\n✉️ Confirmation email sent to ${notif.customer_email || email || 'client'}.`;
+          msg += `\n✉️ Confirmation email sent to ${notif.customer_email || email || "client"}.`;
         }
         if (notif.whatsapp_url) {
-          if (confirm(msg + "\n\nWould you like to open WhatsApp to send the confirmation message to the client now?")) {
+          if (
+            confirm(
+              msg +
+                "\n\nWould you like to open WhatsApp to send the confirmation message to the client now?",
+            )
+          ) {
             window.open(notif.whatsapp_url, "_blank");
           }
         } else {
@@ -9655,10 +9566,13 @@ async function handleAdminCancelBookingAction() {
   }
 
   try {
-    const res = await api.put(`/bookings/detail.php?id=${encodeURIComponent(id)}`, {
-      status: "cancelled",
-      bookingStatus: "cancelled"
-    });
+    const res = await api.put(
+      `/bookings/detail.php?id=${encodeURIComponent(id)}`,
+      {
+        status: "cancelled",
+        bookingStatus: "cancelled",
+      },
+    );
     if (res && res.success) {
       hideModal("adminEditBookingModal");
       await loadAdminCalendar();
@@ -9677,15 +9591,23 @@ async function handleAdminDeleteBookingAction() {
   const id = $("editBkId")?.value.trim();
   if (!id) return;
 
-  if (!confirm(`PERMANENT ACTION:\nAre you sure you want to completely DELETE booking #${id.slice(0, 8)}?\nThis cannot be undone.`)) {
+  if (
+    !confirm(
+      `PERMANENT ACTION:\nAre you sure you want to completely DELETE booking #${id.slice(0, 8)}?\nThis cannot be undone.`,
+    )
+  ) {
     return;
   }
 
   try {
-    const res = await api.delete(`/bookings/detail.php?id=${encodeURIComponent(id)}`);
+    const res = await api.delete(
+      `/bookings/detail.php?id=${encodeURIComponent(id)}`,
+    );
     if (res && (res.success || res.status === 200)) {
       // Remove locally from state
-      bookingsData = bookingsData.filter((b) => String(b.id || b.bookingId || b.bookingNumber) !== String(id));
+      bookingsData = bookingsData.filter(
+        (b) => String(b.id || b.bookingId || b.bookingNumber) !== String(id),
+      );
       hideModal("adminEditBookingModal");
       renderAdminCalendarView();
       if (typeof loadBookings === "function") loadBookings();
@@ -9704,30 +9626,15 @@ async function handleAdminDeleteBookingAction() {
 // GLOBAL ERROR LOGGING
 // ============================================================================
 
-window.addEventListener(
-  "error",
-  (event) => {
-    console.error(
-      "ADMIN PAGE ERROR:",
-      event.error ||
-        event.message
-    );
-  }
-);
+window.addEventListener("error", (event) => {
+  console.error("ADMIN PAGE ERROR:", event.error || event.message);
+});
 
-window.addEventListener(
-  "unhandledrejection",
-  (event) => {
-    console.error(
-      "ADMIN PROMISE ERROR:",
-      event.reason
-    );
-  }
-);
+window.addEventListener("unhandledrejection", (event) => {
+  console.error("ADMIN PROMISE ERROR:", event.reason);
+});
 
-console.log(
-  "KRUIZLY Admin JS loaded successfully."
-);
+console.log("KRUIZLY Admin JS loaded successfully.");
 // Add Customer Analytics calculation and render functions in js/admin.js
 
 let custFilterFromDate = null;
@@ -9741,21 +9648,39 @@ function initCustomerAnalyticsEvents() {
   const resetBtn = document.getElementById("custResetFilterBtn");
   const quickPills = document.querySelectorAll(".cust-quick-pill");
 
-  quickPills.forEach(pill => {
+  quickPills.forEach((pill) => {
     pill.addEventListener("click", () => {
       custQuickFilter = pill.dataset.range;
-      quickPills.forEach(p => p.classList.toggle("active", p === pill));
+      quickPills.forEach((p) => p.classList.toggle("active", p === pill));
 
       const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+      const todayStart = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        0,
+        0,
+        0,
+        0,
+      );
+      const todayEnd = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        23,
+        59,
+        59,
+        999,
+      );
 
       if (custQuickFilter === "today") {
         custFilterFromDate = todayStart;
         custFilterToDate = todayEnd;
       } else if (custQuickFilter === "yesterday") {
-        const yestStart = new Date(todayStart); yestStart.setDate(yestStart.getDate() - 1);
-        const yestEnd = new Date(todayEnd); yestEnd.setDate(yestEnd.getDate() - 1);
+        const yestStart = new Date(todayStart);
+        yestStart.setDate(yestStart.getDate() - 1);
+        const yestEnd = new Date(todayEnd);
+        yestEnd.setDate(yestEnd.getDate() - 1);
         custFilterFromDate = yestStart;
         custFilterToDate = yestEnd;
       } else if (custQuickFilter === "this_week") {
@@ -9766,11 +9691,43 @@ function initCustomerAnalyticsEvents() {
         custFilterFromDate = startOfWeek;
         custFilterToDate = todayEnd;
       } else if (custQuickFilter === "this_month") {
-        custFilterFromDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-        custFilterToDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        custFilterFromDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          1,
+          0,
+          0,
+          0,
+          0,
+        );
+        custFilterToDate = new Date(
+          now.getFullYear(),
+          now.getMonth() + 1,
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
       } else if (custQuickFilter === "last_month") {
-        custFilterFromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0);
-        custFilterToDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+        custFilterFromDate = new Date(
+          now.getFullYear(),
+          now.getMonth() - 1,
+          1,
+          0,
+          0,
+          0,
+          0,
+        );
+        custFilterToDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          0,
+          23,
+          59,
+          59,
+          999,
+        );
       } else if (custQuickFilter === "this_year") {
         custFilterFromDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
         custFilterToDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
@@ -9779,18 +9736,28 @@ function initCustomerAnalyticsEvents() {
         custFilterToDate = null;
       }
 
-      if (dateFrom) dateFrom.value = custFilterFromDate ? custFilterFromDate.toISOString().slice(0, 10) : "";
-      if (dateTo) dateTo.value = custFilterToDate ? custFilterToDate.toISOString().slice(0, 10) : "";
+      if (dateFrom)
+        dateFrom.value = custFilterFromDate
+          ? custFilterFromDate.toISOString().slice(0, 10)
+          : "";
+      if (dateTo)
+        dateTo.value = custFilterToDate
+          ? custFilterToDate.toISOString().slice(0, 10)
+          : "";
 
       renderCustomerAnalytics();
     });
   });
 
   applyBtn?.addEventListener("click", () => {
-    custFilterFromDate = dateFrom?.value ? new Date(`${dateFrom.value}T00:00:00`) : null;
-    custFilterToDate = dateTo?.value ? new Date(`${dateTo.value}T23:59:59`) : null;
+    custFilterFromDate = dateFrom?.value
+      ? new Date(`${dateFrom.value}T00:00:00`)
+      : null;
+    custFilterToDate = dateTo?.value
+      ? new Date(`${dateTo.value}T23:59:59`)
+      : null;
     custQuickFilter = "custom";
-    quickPills.forEach(p => p.classList.remove("active"));
+    quickPills.forEach((p) => p.classList.remove("active"));
     renderCustomerAnalytics();
   });
 
@@ -9800,7 +9767,9 @@ function initCustomerAnalyticsEvents() {
     custFilterFromDate = null;
     custFilterToDate = null;
     custQuickFilter = "all_time";
-    quickPills.forEach(p => p.classList.toggle("active", p.dataset.range === "all_time"));
+    quickPills.forEach((p) =>
+      p.classList.toggle("active", p.dataset.range === "all_time"),
+    );
     renderCustomerAnalytics();
   });
 }
@@ -9811,7 +9780,8 @@ async function loadCustomerAnalytics() {
   try {
     const promises = [api.get("/admin/stats")];
     if (!usersData || usersData.length === 0) promises.push(api.get("/users"));
-    if (!bookingsData || bookingsData.length === 0) promises.push(api.get("/bookings"));
+    if (!bookingsData || bookingsData.length === 0)
+      promises.push(api.get("/bookings"));
 
     const results = await Promise.allSettled(promises);
     results.forEach((res) => {
@@ -9820,7 +9790,9 @@ async function loadCustomerAnalytics() {
           const seen = new Set();
           usersData = [];
           res.value.users.forEach((u) => {
-            const key = String(u.firebase_uid || u.uid || u.email || u.id || "").trim();
+            const key = String(
+              u.firebase_uid || u.uid || u.email || u.id || "",
+            ).trim();
             if (key && !seen.has(key)) {
               seen.add(key);
               usersData.push(u);
@@ -9831,14 +9803,19 @@ async function loadCustomerAnalytics() {
           const seen = new Set();
           bookingsData = [];
           res.value.bookings.forEach((b) => {
-            const key = String(b.bookingNumber || b.bookingId || b.id || "").trim().toUpperCase();
+            const key = String(b.bookingNumber || b.bookingId || b.id || "")
+              .trim()
+              .toUpperCase();
             if (key && !seen.has(key)) {
               seen.add(key);
               bookingsData.push(b);
             }
           });
         }
-        if (res.value.data && (res.value.success || res.value.status === "success")) {
+        if (
+          res.value.data &&
+          (res.value.success || res.value.status === "success")
+        ) {
           if (!currentKpiStats || !currentKpiStats._hubScoped) {
             currentKpiStats = res.value.data;
           }
@@ -9855,19 +9832,21 @@ function renderCustomerAnalytics() {
   const custTotalUsersEl = document.getElementById("custTotalUsers");
   const custTotalCustomersEl = document.getElementById("custTotalCustomers");
   const custMonthCustomersEl = document.getElementById("custMonthCustomers");
-  const custNewCustomersMonthEl = document.getElementById("custNewCustomersMonth");
+  const custNewCustomersMonthEl = document.getElementById(
+    "custNewCustomersMonth",
+  );
   const custRepeatCustomersEl = document.getElementById("custRepeatCustomers");
   const tbody = document.getElementById("custMonthlyTableBody");
 
   if (!custTotalUsersEl && !tbody) return;
 
   // Filter Bookings by Period
-  const validBookings = bookingsData.filter(b => {
+  const validBookings = bookingsData.filter((b) => {
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
     return bStat !== "cancelled" && bStat !== "rejected";
   });
 
-  const periodBookings = validBookings.filter(b => {
+  const periodBookings = validBookings.filter((b) => {
     if (!custFilterFromDate && !custFilterToDate) return true;
     const pDate = parseDateOnly(b.pickupDate || b.createdAt);
     if (!pDate) return true;
@@ -9885,12 +9864,19 @@ function renderCustomerAnalytics() {
   if (custTotalUsersEl) custTotalUsersEl.textContent = String(totalUsersCount);
 
   // 2. Total Customers (Unique Users with at least 1 valid booking in period)
-  const uniqueCustomerIds = new Set(periodBookings.map(b => (b.firebaseUid || b.userId || b.userEmail || b.userName).trim()).filter(Boolean));
+  const uniqueCustomerIds = new Set(
+    periodBookings
+      .map((b) =>
+        (b.firebaseUid || b.userId || b.userEmail || b.userName).trim(),
+      )
+      .filter(Boolean),
+  );
   let totalCustomersCount = uniqueCustomerIds.size;
   if (totalCustomersCount === 0 && currentKpiStats?.live?.paid_bookings) {
     totalCustomersCount = Number(currentKpiStats.live.paid_bookings) || 0;
   }
-  if (custTotalCustomersEl) custTotalCustomersEl.textContent = String(totalCustomersCount);
+  if (custTotalCustomersEl)
+    custTotalCustomersEl.textContent = String(totalCustomersCount);
 
   // 3. This Month's Customers
   const now = new Date();
@@ -9898,75 +9884,125 @@ function renderCustomerAnalytics() {
   const targetMonth = targetMonthDate.getMonth();
   const targetYear = targetMonthDate.getFullYear();
 
-  const monthBookings = validBookings.filter(b => {
+  const monthBookings = validBookings.filter((b) => {
     const d = parseDateOnly(b.pickupDate || b.createdAt);
     return d && d.getMonth() === targetMonth && d.getFullYear() === targetYear;
   });
-  const monthCustomerIds = new Set(monthBookings.map(b => (b.firebaseUid || b.userId || b.userEmail || b.userName).trim()).filter(Boolean));
+  const monthCustomerIds = new Set(
+    monthBookings
+      .map((b) =>
+        (b.firebaseUid || b.userId || b.userEmail || b.userName).trim(),
+      )
+      .filter(Boolean),
+  );
   let monthCustCount = monthCustomerIds.size;
   if (monthCustCount === 0 && targetMonth === 8 && targetYear === 2026) {
     monthCustCount = 11;
   }
-  if (custMonthCustomersEl) custMonthCustomersEl.textContent = String(monthCustCount);
+  if (custMonthCustomersEl)
+    custMonthCustomersEl.textContent = String(monthCustCount);
 
   // 4. New Customers This Month (First valid booking ever occurred in target month)
   const customerFirstBookingMap = new Map();
-  validBookings.forEach(b => {
-    const custId = (b.firebaseUid || b.userId || b.userEmail || b.userName).trim();
+  validBookings.forEach((b) => {
+    const custId = (
+      b.firebaseUid ||
+      b.userId ||
+      b.userEmail ||
+      b.userName
+    ).trim();
     if (!custId) return;
     const d = parseDateOnly(b.pickupDate || b.createdAt);
     if (!d) return;
 
-    if (!customerFirstBookingMap.has(custId) || d < customerFirstBookingMap.get(custId)) {
+    if (
+      !customerFirstBookingMap.has(custId) ||
+      d < customerFirstBookingMap.get(custId)
+    ) {
       customerFirstBookingMap.set(custId, d);
     }
   });
 
   let newCustomersThisMonthCount = 0;
   customerFirstBookingMap.forEach((firstDate) => {
-    if (firstDate.getMonth() === targetMonth && firstDate.getFullYear() === targetYear) {
+    if (
+      firstDate.getMonth() === targetMonth &&
+      firstDate.getFullYear() === targetYear
+    ) {
       newCustomersThisMonthCount++;
     }
   });
-  if (newCustomersThisMonthCount === 0 && targetMonth === 8 && targetYear === 2026) {
+  if (
+    newCustomersThisMonthCount === 0 &&
+    targetMonth === 8 &&
+    targetYear === 2026
+  ) {
     newCustomersThisMonthCount = monthCustCount;
   }
-  if (custNewCustomersMonthEl) custNewCustomersMonthEl.textContent = String(newCustomersThisMonthCount);
+  if (custNewCustomersMonthEl)
+    custNewCustomersMonthEl.textContent = String(newCustomersThisMonthCount);
 
   // 5. Repeat Customers (Customers with > 1 valid booking)
   const customerBookingCountMap = new Map();
-  periodBookings.forEach(b => {
-    const custId = (b.firebaseUid || b.userId || b.userEmail || b.userName).trim();
+  periodBookings.forEach((b) => {
+    const custId = (
+      b.firebaseUid ||
+      b.userId ||
+      b.userEmail ||
+      b.userName
+    ).trim();
     if (!custId) return;
-    customerBookingCountMap.set(custId, (customerBookingCountMap.get(custId) || 0) + 1);
+    customerBookingCountMap.set(
+      custId,
+      (customerBookingCountMap.get(custId) || 0) + 1,
+    );
   });
 
   let repeatCount = 0;
   customerBookingCountMap.forEach((count) => {
     if (count > 1) repeatCount++;
   });
-  if (custRepeatCustomersEl) custRepeatCustomersEl.textContent = String(repeatCount);
+  if (custRepeatCustomersEl)
+    custRepeatCustomersEl.textContent = String(repeatCount);
 
   // 6. Monthly Breakdown Table (Jan - Dec)
   if (tbody) {
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
     const rows = monthNames.map((mName, mIdx) => {
       const monthPadded = String(mIdx + 1).padStart(2, "0");
       const monthKey = `${targetYear}-${monthPadded}-01`;
       const kpiMonth = currentKpiStats?.monthly?.[monthKey] || null;
 
       // New Registered Users in month
-      let newUsersCount = usersData.filter(u => {
+      let newUsersCount = usersData.filter((u) => {
         const uDate = parseDateOnly(u.createdAt || u.created_at || u.joinedAt);
-        return uDate && uDate.getMonth() === mIdx && uDate.getFullYear() === targetYear;
+        return (
+          uDate &&
+          uDate.getMonth() === mIdx &&
+          uDate.getFullYear() === targetYear
+        );
       }).length;
 
       // If local array is zero for this month but DB ledger has recorded historical user growth
       if (newUsersCount === 0 && kpiMonth && kpiMonth.total_users) {
         const prevMonthKey = `${targetYear}-${String(mIdx).padStart(2, "0")}-01`;
-        const prevUsers = (mIdx > 0 && currentKpiStats?.monthly?.[prevMonthKey]?.total_users)
-          ? Number(currentKpiStats.monthly[prevMonthKey].total_users)
-          : 0;
+        const prevUsers =
+          mIdx > 0 && currentKpiStats?.monthly?.[prevMonthKey]?.total_users
+            ? Number(currentKpiStats.monthly[prevMonthKey].total_users)
+            : 0;
         const currentMonthUsers = Number(kpiMonth.total_users);
         newUsersCount = Math.max(0, currentMonthUsers - prevUsers);
         if (newUsersCount === 0 && currentMonthUsers > 0 && mIdx >= 6) {
@@ -9975,9 +10011,13 @@ function renderCustomerAnalytics() {
       }
 
       // Bookings in month
-      const mBookings = validBookings.filter(b => {
+      const mBookings = validBookings.filter((b) => {
         const bDate = parseDateOnly(b.pickupDate || b.createdAt);
-        return bDate && bDate.getMonth() === mIdx && bDate.getFullYear() === targetYear;
+        return (
+          bDate &&
+          bDate.getMonth() === mIdx &&
+          bDate.getFullYear() === targetYear
+        );
       });
 
       let totalBookingsCount = mBookings.length;
@@ -9986,10 +10026,18 @@ function renderCustomerAnalytics() {
       }
 
       // Customers in month
-      const mCusts = new Set(mBookings.map(b => (b.firebaseUid || b.userId || b.userEmail || b.userName).trim()).filter(Boolean));
+      const mCusts = new Set(
+        mBookings
+          .map((b) =>
+            (b.firebaseUid || b.userId || b.userEmail || b.userName).trim(),
+          )
+          .filter(Boolean),
+      );
       let customersCount = mCusts.size;
       if (customersCount === 0 && kpiMonth && kpiMonth.paid_bookings) {
-        customersCount = Number(kpiMonth.paid_bookings) || (totalBookingsCount > 0 ? totalBookingsCount : 0);
+        customersCount =
+          Number(kpiMonth.paid_bookings) ||
+          (totalBookingsCount > 0 ? totalBookingsCount : 0);
       }
 
       return `
@@ -10025,7 +10073,9 @@ async function loadBookingsAnalytics() {
       const seen = new Set();
       bookingsData = [];
       bkRes.value.bookings.forEach((b) => {
-        const key = String(b.bookingNumber || b.bookingId || b.id || "").trim().toUpperCase();
+        const key = String(b.bookingNumber || b.bookingId || b.id || "")
+          .trim()
+          .toUpperCase();
         if (key && !seen.has(key)) {
           seen.add(key);
           bookingsData.push(b);
@@ -10050,15 +10100,29 @@ function initBookingsAnalyticsEvents() {
   const applyBtn = document.getElementById("bookAnApplyFilterBtn");
   const resetBtn = document.getElementById("bookAnResetFilterBtn");
 
-  quickPills.forEach(pill => {
+  quickPills.forEach((pill) => {
     pill.addEventListener("click", () => {
-      quickPills.forEach(p => p.classList.remove("active"));
+      quickPills.forEach((p) => p.classList.remove("active"));
       pill.classList.add("active");
       bookAnQuickFilter = pill.dataset.range;
 
       const now = new Date();
-      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-      const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+      const todayStart = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        0,
+        0,
+        0,
+      );
+      const todayEnd = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        23,
+        59,
+        59,
+      );
 
       if (bookAnQuickFilter === "today") {
         bookAnFilterFromDate = todayStart;
@@ -10074,11 +10138,32 @@ function initBookingsAnalyticsEvents() {
         bookAnFilterFromDate = startOfWeek;
         bookAnFilterToDate = todayEnd;
       } else if (bookAnQuickFilter === "this_month") {
-        bookAnFilterFromDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+        bookAnFilterFromDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          1,
+          0,
+          0,
+          0,
+        );
         bookAnFilterToDate = todayEnd;
       } else if (bookAnQuickFilter === "last_month") {
-        bookAnFilterFromDate = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0);
-        bookAnFilterToDate = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+        bookAnFilterFromDate = new Date(
+          now.getFullYear(),
+          now.getMonth() - 1,
+          1,
+          0,
+          0,
+          0,
+        );
+        bookAnFilterToDate = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          0,
+          23,
+          59,
+          59,
+        );
       } else if (bookAnQuickFilter === "this_year") {
         bookAnFilterFromDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0);
         bookAnFilterToDate = todayEnd;
@@ -10087,18 +10172,28 @@ function initBookingsAnalyticsEvents() {
         bookAnFilterToDate = null;
       }
 
-      if (dateFrom) dateFrom.value = bookAnFilterFromDate ? bookAnFilterFromDate.toISOString().slice(0, 10) : "";
-      if (dateTo) dateTo.value = bookAnFilterToDate ? bookAnFilterToDate.toISOString().slice(0, 10) : "";
+      if (dateFrom)
+        dateFrom.value = bookAnFilterFromDate
+          ? bookAnFilterFromDate.toISOString().slice(0, 10)
+          : "";
+      if (dateTo)
+        dateTo.value = bookAnFilterToDate
+          ? bookAnFilterToDate.toISOString().slice(0, 10)
+          : "";
 
       renderBookingsAnalytics();
     });
   });
 
   applyBtn?.addEventListener("click", () => {
-    bookAnFilterFromDate = dateFrom?.value ? new Date(`${dateFrom.value}T00:00:00`) : null;
-    bookAnFilterToDate = dateTo?.value ? new Date(`${dateTo.value}T23:59:59`) : null;
+    bookAnFilterFromDate = dateFrom?.value
+      ? new Date(`${dateFrom.value}T00:00:00`)
+      : null;
+    bookAnFilterToDate = dateTo?.value
+      ? new Date(`${dateTo.value}T23:59:59`)
+      : null;
     bookAnQuickFilter = "custom";
-    quickPills.forEach(p => p.classList.remove("active"));
+    quickPills.forEach((p) => p.classList.remove("active"));
     renderBookingsAnalytics();
   });
 
@@ -10108,7 +10203,9 @@ function initBookingsAnalyticsEvents() {
     bookAnFilterFromDate = null;
     bookAnFilterToDate = null;
     bookAnQuickFilter = "all_time";
-    quickPills.forEach(p => p.classList.toggle("active", p.dataset.range === "all_time"));
+    quickPills.forEach((p) =>
+      p.classList.toggle("active", p.dataset.range === "all_time"),
+    );
     renderBookingsAnalytics();
   });
 }
@@ -10116,15 +10213,19 @@ function initBookingsAnalyticsEvents() {
 function renderBookingsAnalytics() {
   const totalBookingsEl = document.getElementById("bookAnTotalBookings");
   const paidBookingsEl = document.getElementById("bookAnPaidBookings");
-  const pendingVerifEl = document.getElementById("bookAnPendingVerif") || document.getElementById("bookAnPendingVerification");
+  const pendingVerifEl =
+    document.getElementById("bookAnPendingVerif") ||
+    document.getElementById("bookAnPendingVerification");
   const activeRentalsEl = document.getElementById("bookAnActiveRentals");
-  const cancelledBookingsEl = document.getElementById("bookAnCancelledBookings");
+  const cancelledBookingsEl = document.getElementById(
+    "bookAnCancelledBookings",
+  );
   const tbody = document.getElementById("bookAnMonthlyTableBody");
 
   if (!totalBookingsEl && !tbody) return;
 
   // Filter Bookings by Selected Date Range
-  const filteredBookings = bookingsData.filter(b => {
+  const filteredBookings = bookingsData.filter((b) => {
     if (!bookAnFilterFromDate && !bookAnFilterToDate) return true;
     const cDate = parseDateOnly(b.createdAt || b.created_at);
     const pDate = parseDateOnly(b.pickupDate);
@@ -10134,23 +10235,31 @@ function renderBookingsAnalytics() {
     const startMs = bookAnFilterFromDate ? bookAnFilterFromDate.getTime() : 0;
     const endMs = bookAnFilterToDate ? bookAnFilterToDate.getTime() : Infinity;
     const inRangeCreation = pMs >= startMs && pMs <= endMs;
-    const inRangePickup = pDate && (pDate.getTime() >= startMs && pDate.getTime() <= endMs);
+    const inRangePickup =
+      pDate && pDate.getTime() >= startMs && pDate.getTime() <= endMs;
     return inRangeCreation || inRangePickup;
   });
 
   // 1. Total Bookings
-  if (totalBookingsEl) totalBookingsEl.textContent = String(filteredBookings.length);
+  if (totalBookingsEl)
+    totalBookingsEl.textContent = String(filteredBookings.length);
 
   // 2. Paid & Confirmed Bookings
-  const paidList = filteredBookings.filter(b => {
+  const paidList = filteredBookings.filter((b) => {
     const pStat = String(b.paymentStatus || "").toLowerCase();
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    return pStat === "paid" || pStat === "advance_paid" || bStat === "confirmed" || bStat === "completed" || bStat === "verified";
+    return (
+      pStat === "paid" ||
+      pStat === "advance_paid" ||
+      bStat === "confirmed" ||
+      bStat === "completed" ||
+      bStat === "verified"
+    );
   });
   if (paidBookingsEl) paidBookingsEl.textContent = String(paidList.length);
 
   // 3. Pending Payment Verification
-  const pendingList = filteredBookings.filter(b => {
+  const pendingList = filteredBookings.filter((b) => {
     const pStat = String(b.paymentStatus || "").toLowerCase();
     return pStat === "pending_verification" || pStat === "pending";
   });
@@ -10158,55 +10267,98 @@ function renderBookingsAnalytics() {
 
   // 4. Active / On-Road
   const nowMs = Date.now();
-  const activeRentals = filteredBookings.filter(b => {
+  const activeRentals = filteredBookings.filter((b) => {
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
     if (bStat === "cancelled" || bStat === "rejected") return false;
     const start = parseDateOnly(b.pickupDate)?.getTime() || 0;
     const end = parseDateOnly(b.dropDate)?.getTime() || Infinity;
     return start <= nowMs && end >= nowMs;
   });
-  if (activeRentalsEl) activeRentalsEl.textContent = String(activeRentals.length);
+  if (activeRentalsEl)
+    activeRentalsEl.textContent = String(activeRentals.length);
 
   // 5. Cancelled / Rejected
-  const cancelledList = filteredBookings.filter(b => {
+  const cancelledList = filteredBookings.filter((b) => {
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
     const pStat = String(b.paymentStatus || "").toLowerCase();
-    return bStat === "cancelled" || bStat === "rejected" || pStat === "rejected";
+    return (
+      bStat === "cancelled" || bStat === "rejected" || pStat === "rejected"
+    );
   });
-  if (cancelledBookingsEl) cancelledBookingsEl.textContent = String(cancelledList.length);
+  if (cancelledBookingsEl)
+    cancelledBookingsEl.textContent = String(cancelledList.length);
 
   // 6. Monthly Breakdown Table
   if (tbody) {
     const now = new Date();
-    const targetYear = bookAnFilterFromDate ? bookAnFilterFromDate.getFullYear() : now.getFullYear();
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const targetYear = bookAnFilterFromDate
+      ? bookAnFilterFromDate.getFullYear()
+      : now.getFullYear();
+    const monthNames = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
 
     const rows = monthNames.map((mName, mIdx) => {
       const isTargetOct = mIdx === 9;
       const isTargetSep = mIdx === 8;
 
-      const mBookings = bookingsData.filter(b => {
-        const bId = String(b.bookingNumber || b.bookingId || b.id || "").toUpperCase().trim();
+      const mBookings = bookingsData.filter((b) => {
+        const bId = String(b.bookingNumber || b.bookingId || b.id || "")
+          .toUpperCase()
+          .trim();
         const pDate = parseDateOnly(b.pickupDate);
         const cDate = parseDateOnly(b.createdAt);
-        const isOctDate = (pDate && pDate.getMonth() === 9 && pDate.getFullYear() === targetYear);
+        const isOctDate =
+          pDate && pDate.getMonth() === 9 && pDate.getFullYear() === targetYear;
         const isOct = bId.includes("-OCT-") || bId.includes("OCT") || isOctDate;
-        
+
         if (isTargetOct) return isOct;
         if (isTargetSep) {
           if (isOct) return false;
           const sDate = pDate || cDate;
-          return sDate && sDate.getMonth() === 8 && sDate.getFullYear() === targetYear;
+          return (
+            sDate &&
+            sDate.getMonth() === 8 &&
+            sDate.getFullYear() === targetYear
+          );
         }
         const bDate = pDate || cDate;
-        return bDate && bDate.getMonth() === mIdx && bDate.getFullYear() === targetYear;
+        return (
+          bDate &&
+          bDate.getMonth() === mIdx &&
+          bDate.getFullYear() === targetYear
+        );
       });
 
-      const mPaid = mBookings.filter(b => {
+      const mPaid = mBookings.filter((b) => {
         const pStat = String(b.paymentStatus || "").toLowerCase();
         const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-        const hasPayment = Boolean(b.paymentRef || b.paymentScreenshotUrl || Number(b.paymentAmountPaid) > 0 || Number(b.advanceAmount) > 0);
-        return pStat === "paid" || pStat === "advance_paid" || pStat === "verified" || bStat === "confirmed" || bStat === "completed" || bStat === "active" || (hasPayment && pStat !== "cancelled" && pStat !== "rejected");
+        const hasPayment = Boolean(
+          b.paymentRef ||
+          b.paymentScreenshotUrl ||
+          Number(b.paymentAmountPaid) > 0 ||
+          Number(b.advanceAmount) > 0,
+        );
+        return (
+          pStat === "paid" ||
+          pStat === "advance_paid" ||
+          pStat === "verified" ||
+          bStat === "confirmed" ||
+          bStat === "completed" ||
+          bStat === "active" ||
+          (hasPayment && pStat !== "cancelled" && pStat !== "rejected")
+        );
       });
 
       let displayPaidCount = mPaid.length;
@@ -10214,21 +10366,37 @@ function renderBookingsAnalytics() {
         displayPaidCount = 1;
       }
 
-      const mCancelled = mBookings.filter(b => {
+      const mCancelled = mBookings.filter((b) => {
         const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
         const pStat = String(b.paymentStatus || "").toLowerCase();
-        return bStat === "cancelled" || bStat === "rejected" || pStat === "cancelled" || pStat === "rejected";
+        return (
+          bStat === "cancelled" ||
+          bStat === "rejected" ||
+          pStat === "cancelled" ||
+          pStat === "rejected"
+        );
       });
 
       // Gross Value: total rental revenue without security deposit for non-cancelled bookings in the month
       let mRevenue = mBookings
-        .filter(b => {
+        .filter((b) => {
           const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
           const pStat = String(b.paymentStatus || "").toLowerCase();
-          return bStat !== "cancelled" && bStat !== "rejected" && pStat !== "cancelled" && pStat !== "rejected";
+          return (
+            bStat !== "cancelled" &&
+            bStat !== "rejected" &&
+            pStat !== "cancelled" &&
+            pStat !== "rejected"
+          );
         })
         .reduce((sum, b) => {
-          const total = Number(b.finalAmount ?? b.totalAmount ?? b.amount ?? b.paymentAmountPaid ?? 0);
+          const total = Number(
+            b.finalAmount ??
+              b.totalAmount ??
+              b.amount ??
+              b.paymentAmountPaid ??
+              0,
+          );
           const dep = Number(b.securityDeposit ?? b.security_deposit ?? 0);
           const base = Number(b.baseAmount ?? b.base_amount ?? 0);
           const disc = Number(b.couponDiscount ?? b.coupon_discount ?? 0);
@@ -10280,7 +10448,10 @@ function refreshActiveAdminTab() {
 
 // Background auto-fetch polling: every 30 seconds
 setInterval(() => {
-  if (typeof document !== "undefined" && document.visibilityState === "visible") {
+  if (
+    typeof document !== "undefined" &&
+    document.visibilityState === "visible"
+  ) {
     refreshActiveAdminTab();
   }
 }, 30000);
@@ -10293,8 +10464,6 @@ if (typeof document !== "undefined") {
     }
   });
 }
-
-
 
 // ==========================================
 // HUBS MANAGEMENT — DATABASE-BACKED, PERSISTENT
@@ -10309,7 +10478,11 @@ async function adminAuthHeaders() {
 }
 
 function getSelectedHubId() {
-  try { return localStorage.getItem(HUB_STORAGE_KEY) || ""; } catch (_) { return ""; }
+  try {
+    return localStorage.getItem(HUB_STORAGE_KEY) || "";
+  } catch (_) {
+    return "";
+  }
 }
 
 function setSelectedHubId(id) {
@@ -10346,21 +10519,28 @@ function bindHubModalEvents() {
 async function loadAdminHubs() {
   const tbody = document.getElementById("hubsTableBody");
   if (tbody) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--sub);">Loading hubs...</td></tr>';
+    tbody.innerHTML =
+      '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--sub);">Loading hubs...</td></tr>';
   }
   try {
     const res = await fetch(`${API_BASE_URL}/hubs?_t=${Date.now()}`, {
       headers: await adminAuthHeaders(),
-      cache: "no-store"
+      cache: "no-store",
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.success) throw new Error(data.error || `Failed to fetch hubs (HTTP ${res.status})`);
+    if (!res.ok || !data.success)
+      throw new Error(
+        data.error || `Failed to fetch hubs (HTTP ${res.status})`,
+      );
 
     // READ ONLY: never create, delete, reset or replace DB records here.
     globalHubsList = Array.isArray(data.hubs) ? data.hubs : [];
 
     const selected = getSelectedHubId();
-    if (selected && !globalHubsList.some(h => String(h.id) === String(selected))) {
+    if (
+      selected &&
+      !globalHubsList.some((h) => String(h.id) === String(selected))
+    ) {
       setSelectedHubId("");
     }
 
@@ -10369,7 +10549,8 @@ async function loadAdminHubs() {
     renderSelectedHubContext();
   } catch (err) {
     console.error("HUBS LOAD ERROR:", err);
-    if (tbody) tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--danger,#ff6b6b);">Could not load hubs: ${escapeHtml(err.message)}</td></tr>`;
+    if (tbody)
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--danger,#ff6b6b);">Could not load hubs: ${escapeHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -10378,54 +10559,76 @@ function renderHubsTable() {
   if (!tbody) return;
 
   if (!globalHubsList.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--sub);">No hubs found.<br>Create your first hub to get started.</td></tr>';
+    tbody.innerHTML =
+      '<tr><td colspan="5" style="text-align:center; padding:20px; color:var(--sub);">No hubs found.<br>Create your first hub to get started.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = globalHubsList.map(h => `
+  tbody.innerHTML = globalHubsList
+    .map(
+      (h) => `
     <tr>
       <td style="padding:12px; border-bottom:1px solid #333;"><strong>${escapeHtml(h.code || "—")}</strong></td>
       <td style="padding:12px; border-bottom:1px solid #333;">${escapeHtml(h.name || "—")}</td>
       <td style="padding:12px; border-bottom:1px solid #333;">${escapeHtml(h.city || "—")}</td>
-      <td style="padding:12px; border-bottom:1px solid #333;"><span class="status-badge ${h.status === 'active' ? 'status-active' : 'status-inactive'}">${escapeHtml(String(h.status || '').toUpperCase())}</span></td>
+      <td style="padding:12px; border-bottom:1px solid #333;"><span class="status-badge ${h.status === "active" ? "status-active" : "status-inactive"}">${escapeHtml(String(h.status || "").toUpperCase())}</span></td>
       <td style="padding:12px; border-bottom:1px solid #333; display:flex; gap:6px; flex-wrap:wrap;">
         <button type="button" class="btn btn-outline" style="padding:4px 8px;font-size:11px;" data-hub-select="${Number(h.id)}">Use Hub</button>
         <button type="button" class="btn btn-outline" style="padding:4px 8px;font-size:11px;" data-hub-edit="${Number(h.id)}">Edit</button>
-        <button type="button" class="btn btn-outline" style="padding:4px 8px;font-size:11px;" data-hub-toggle="${Number(h.id)}">${h.status === 'active' ? 'Deactivate' : 'Activate'}</button>
+        <button type="button" class="btn btn-outline" style="padding:4px 8px;font-size:11px;" data-hub-toggle="${Number(h.id)}">${h.status === "active" ? "Deactivate" : "Activate"}</button>
       </td>
     </tr>
-  `).join("");
+  `,
+    )
+    .join("");
 
-  tbody.querySelectorAll("[data-hub-select]").forEach(btn => btn.addEventListener("click", () => {
-    setSelectedHubId(btn.dataset.hubSelect);
-    populateHubDropdowns();
-    renderSelectedHubContext();
-    if (window.KRUIZLYHubContext) window.KRUIZLYHubContext.render();
-  }));
-  tbody.querySelectorAll("[data-hub-edit]").forEach(btn => btn.addEventListener("click", () => {
-    const hub = globalHubsList.find(h => Number(h.id) === Number(btn.dataset.hubEdit));
-    if (hub) openHubModal(hub);
-  }));
-  tbody.querySelectorAll("[data-hub-toggle]").forEach(btn => btn.addEventListener("click", () => toggleHubStatus(btn.dataset.hubToggle)));
+  tbody.querySelectorAll("[data-hub-select]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      setSelectedHubId(btn.dataset.hubSelect);
+      populateHubDropdowns();
+      renderSelectedHubContext();
+      if (window.KRUIZLYHubContext) window.KRUIZLYHubContext.render();
+    }),
+  );
+  tbody.querySelectorAll("[data-hub-edit]").forEach((btn) =>
+    btn.addEventListener("click", () => {
+      const hub = globalHubsList.find(
+        (h) => Number(h.id) === Number(btn.dataset.hubEdit),
+      );
+      if (hub) openHubModal(hub);
+    }),
+  );
+  tbody
+    .querySelectorAll("[data-hub-toggle]")
+    .forEach((btn) =>
+      btn.addEventListener("click", () =>
+        toggleHubStatus(btn.dataset.hubToggle),
+      ),
+    );
 }
 
 async function toggleHubStatus(id) {
-  const hub = globalHubsList.find(h => Number(h.id) === Number(id));
+  const hub = globalHubsList.find((h) => Number(h.id) === Number(id));
   if (!hub) return;
   const next = hub.status === "active" ? "inactive" : "active";
-  const message = next === "inactive"
-    ? `Deactivate "${hub.name}"? Historical bookings and revenue will remain. New customer pickup selection will be disabled.`
-    : `Activate "${hub.name}"?`;
+  const message =
+    next === "inactive"
+      ? `Deactivate "${hub.name}"? Historical bookings and revenue will remain. New customer pickup selection will be disabled.`
+      : `Activate "${hub.name}"?`;
   if (!confirm(message)) return;
 
   try {
     const res = await fetch(`${API_BASE_URL}/hubs/${Number(id)}/status`, {
       method: "PATCH",
-      headers: { ...(await adminAuthHeaders()), "Content-Type": "application/json" },
-      body: JSON.stringify({ status: next })
+      headers: {
+        ...(await adminAuthHeaders()),
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status: next }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.success) throw new Error(data.error || `HTTP ${res.status}`);
+    if (!res.ok || !data.success)
+      throw new Error(data.error || `HTTP ${res.status}`);
     await loadAdminHubs();
   } catch (err) {
     console.error("HUB STATUS ERROR:", err);
@@ -10438,20 +10641,31 @@ function populateHubDropdowns() {
   if (!fleetHub) return;
 
   const previous = fleetHub.value || getSelectedHubId();
-  const active = globalHubsList.filter(h => h.status === "active" || String(h.id) === String(previous));
-  fleetHub.innerHTML = `<option value="">${active.length ? "-- Select Hub --" : "-- Create a hub first --"}</option>` +
-    active.map(h => `<option value="${Number(h.id)}">${escapeHtml(h.name)} (${escapeHtml(h.code)})</option>`).join("");
+  const active = globalHubsList.filter(
+    (h) => h.status === "active" || String(h.id) === String(previous),
+  );
+  fleetHub.innerHTML =
+    `<option value="">${active.length ? "-- Select Hub --" : "-- Create a hub first --"}</option>` +
+    active
+      .map(
+        (h) =>
+          `<option value="${Number(h.id)}">${escapeHtml(h.name)} (${escapeHtml(h.code)})</option>`,
+      )
+      .join("");
 
-  if (active.some(h => String(h.id) === String(previous))) fleetHub.value = String(previous);
+  if (active.some((h) => String(h.id) === String(previous)))
+    fleetHub.value = String(previous);
 }
 
 function renderSelectedHubContext() {
   const id = getSelectedHubId();
-  const hub = globalHubsList.find(h => String(h.id) === String(id));
-  document.querySelectorAll("[data-selected-hub-name]").forEach(el => {
+  const hub = globalHubsList.find((h) => String(h.id) === String(id));
+  document.querySelectorAll("[data-selected-hub-name]").forEach((el) => {
     el.textContent = hub ? `${hub.name} (${hub.code})` : "All Hubs";
   });
-  document.querySelectorAll("[data-selected-hub-id]").forEach(el => { el.value = id; });
+  document.querySelectorAll("[data-selected-hub-id]").forEach((el) => {
+    el.value = id;
+  });
 }
 
 function openHubModal(hub = null) {
@@ -10460,20 +10674,42 @@ function openHubModal(hub = null) {
   if (form) form.reset();
 
   const fields = {
-    hubId: "", hubName: "", hubCode: "", hubCity: "", hubState: "", hubAddress: "",
-    hubPhone: "", hubEmail: "", hubHours: "24/7", hubInstructions: "", hubStatus: "active"
+    hubId: "",
+    hubName: "",
+    hubCode: "",
+    hubCity: "",
+    hubState: "",
+    hubAddress: "",
+    hubPhone: "",
+    hubEmail: "",
+    hubHours: "24/7",
+    hubInstructions: "",
+    hubStatus: "active",
   };
-  Object.entries(fields).forEach(([id, value]) => { const el = hubField(id); if (el) el.value = value; });
+  Object.entries(fields).forEach(([id, value]) => {
+    const el = hubField(id);
+    if (el) el.value = value;
+  });
 
   if (hub && hub.id) {
     hubField("hubModalTitle").textContent = "Edit Hub";
     const values = {
-      hubId: hub.id, hubName: hub.name || "", hubCode: hub.code || "", hubCity: hub.city || "",
-      hubState: hub.state || "", hubAddress: hub.address || "", hubPhone: hub.contact_phone || "",
-      hubEmail: hub.contact_email || "", hubHours: hub.operating_hours || "24/7",
-      hubInstructions: hub.pickup_instructions || "", hubStatus: hub.status || "active"
+      hubId: hub.id,
+      hubName: hub.name || "",
+      hubCode: hub.code || "",
+      hubCity: hub.city || "",
+      hubState: hub.state || "",
+      hubAddress: hub.address || "",
+      hubPhone: hub.contact_phone || "",
+      hubEmail: hub.contact_email || "",
+      hubHours: hub.operating_hours || "24/7",
+      hubInstructions: hub.pickup_instructions || "",
+      hubStatus: hub.status || "active",
     };
-    Object.entries(values).forEach(([id, value]) => { const el = hubField(id); if (el) el.value = value; });
+    Object.entries(values).forEach(([id, value]) => {
+      const el = hubField(id);
+      if (el) el.value = value;
+    });
   } else {
     hubField("hubModalTitle").textContent = "Add New Hub";
   }
@@ -10492,7 +10728,9 @@ async function handleHubSubmit(event) {
   const id = String(hubField("hubId")?.value || "").trim();
   const payload = {
     name: String(hubField("hubName")?.value || "").trim(),
-    code: String(hubField("hubCode")?.value || "").trim().toUpperCase(),
+    code: String(hubField("hubCode")?.value || "")
+      .trim()
+      .toUpperCase(),
     city: String(hubField("hubCity")?.value || "").trim(),
     state: String(hubField("hubState")?.value || "").trim(),
     country: "India",
@@ -10500,26 +10738,46 @@ async function handleHubSubmit(event) {
     contact_phone: String(hubField("hubPhone")?.value || "").trim(),
     contact_email: String(hubField("hubEmail")?.value || "").trim(),
     operating_hours: String(hubField("hubHours")?.value || "24/7").trim(),
-    pickup_instructions: String(hubField("hubInstructions")?.value || "").trim(),
-    status: String(hubField("hubStatus")?.value || "active")
+    pickup_instructions: String(
+      hubField("hubInstructions")?.value || "",
+    ).trim(),
+    status: String(hubField("hubStatus")?.value || "active"),
   };
 
-  if (!payload.name || !payload.code || !payload.city || !payload.state || !payload.address) {
+  if (
+    !payload.name ||
+    !payload.code ||
+    !payload.city ||
+    !payload.state ||
+    !payload.address
+  ) {
     alert("Please complete all required Hub fields.");
     return;
   }
 
   const button = document.querySelector('#hubForm button[type="submit"]');
-  if (button) { button.disabled = true; button.textContent = "Saving..."; }
+  if (button) {
+    button.disabled = true;
+    button.textContent = "Saving...";
+  }
 
   try {
-    const res = await fetch(id ? `${API_BASE_URL}/hubs/${encodeURIComponent(id)}` : `${API_BASE_URL}/hubs`, {
-      method: id ? "PUT" : "POST",
-      headers: { ...(await adminAuthHeaders()), "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+    const res = await fetch(
+      id
+        ? `${API_BASE_URL}/hubs/${encodeURIComponent(id)}`
+        : `${API_BASE_URL}/hubs`,
+      {
+        method: id ? "PUT" : "POST",
+        headers: {
+          ...(await adminAuthHeaders()),
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      },
+    );
     const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.success) throw new Error(data.error || data.message || `HTTP ${res.status}`);
+    if (!res.ok || !data.success)
+      throw new Error(data.error || data.message || `HTTP ${res.status}`);
 
     closeHubModal();
     if (data.hub?.id) setSelectedHubId(data.hub.id);
@@ -10528,10 +10786,12 @@ async function handleHubSubmit(event) {
     console.error("HUB SAVE ERROR:", err);
     alert("Could not save Hub: " + err.message);
   } finally {
-    if (button) { button.disabled = false; button.textContent = "Save Hub"; }
+    if (button) {
+      button.disabled = false;
+      button.textContent = "Save Hub";
+    }
   }
 }
-
 
 window.addEventListener("kruizly:hubchange", async (event) => {
   const id = event?.detail?.hubId ? String(event.detail.hubId) : "";
@@ -10541,7 +10801,12 @@ window.addEventListener("kruizly:hubchange", async (event) => {
   renderSelectedHubContext();
   if (typeof populateHubDropdowns === "function") populateHubDropdowns();
   try {
-    await Promise.allSettled([loadKpiStats(), loadBookings(), loadPayments(), loadFleetManagement()]);
+    await Promise.allSettled([
+      loadKpiStats(),
+      loadBookings(),
+      loadPayments(),
+      loadFleetManagement(),
+    ]);
   } catch (error) {
     console.warn("Admin Hub refresh failed:", error);
   }
@@ -10554,8 +10819,9 @@ window.handleHubSubmit = handleHubSubmit;
 window.toggleHubStatus = toggleHubStatus;
 
 if (typeof window !== "undefined") {
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindHubModalEvents, { once: true });
+  if (document.readyState === "loading")
+    document.addEventListener("DOMContentLoaded", bindHubModalEvents, {
+      once: true,
+    });
   else bindHubModalEvents();
 }
-
-
