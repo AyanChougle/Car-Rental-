@@ -15,7 +15,7 @@ import { auth } from "./firebase-init.js";
 export const API_BASE_URL = 
   window.__KRUIZLY_API_URL__ || 
   localStorage.getItem("kruizly_api_url") || 
-  (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1")
+  (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname.includes("github.io"))
     ? "https://kruizly.com/api"
     : `${window.location.origin}/api`);
 
