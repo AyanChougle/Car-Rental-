@@ -282,7 +282,7 @@ let activeKycItem = null;
 let activeKycDocTab = "license";
 
 function getCarImage(car) {
-  if (!car) return "assets/fleet/BMW.png";
+  if (!car) return "assets/fleet/BMW 520D.png";
   if (typeof window !== "undefined" && typeof window.fleetImagePath === "function") {
     const path = window.fleetImagePath(car);
     if (path && !path.includes("BMW.png")) return path;
@@ -298,9 +298,9 @@ function getCarImage(car) {
   const model = (car.model || "").trim();
   const fullName = `${brand} ${model}`.trim();
   if (typeof window !== "undefined" && typeof window.fleetImagePath === "function") {
-    return window.fleetImagePath(fullName) || window.fleetImagePath(model) || "assets/fleet/BMW.png";
+    return window.fleetImagePath(fullName) || window.fleetImagePath(model) || "assets/fleet/BMW 520D.png";
   }
-  return "assets/fleet/BMW.png";
+  return "assets/fleet/BMW 520D.png";
 }
 
 function renderPaginationHtml(currentPage, totalPages, totalItems, itemLabel = "items", pageSize = 5, type = "bookings") {
@@ -1752,7 +1752,7 @@ function renderFleetGrid() {
       return `
         <div class="card" style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;">
           <div style="height: 140px; background: #000; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center;">
-            <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(car.brand)} ${escapeHtml(car.model)}" style="width: 100%; height: 100%; object-fit: contain; padding: 6px;" onerror="this.onerror=null;this.src='assets/fleet/BMW.png';" />
+            <img src="${escapeHtml(imgSrc)}" alt="${escapeHtml(car.brand)} ${escapeHtml(car.model)}" style="width: 100%; height: 100%; object-fit: contain; padding: 6px;" onerror="this.onerror=null;this.src='assets/fleet/BMW 520D.png';" />
             <div style="position: absolute; top: 10px; right: 10px;">${statusBadge}</div>
           </div>
           <div style="padding: 14px; flex-grow: 1; display: flex; flex-direction: column; justify-content: space-between;">

@@ -221,21 +221,22 @@ function normalizeCustomUrl(url) {
 
 function fleetImagePath(vehicle) {
   if (!vehicle) return "assets/fleet/BMW 520D.png";
+
   if (typeof vehicle === "string") {
-    const custom = normalizeCustomUrl(vehicle);
-    if (custom) return custom;
     if (vehicle.startsWith("assets/fleet/")) {
       const baseName = vehicle.replace(/^assets\/fleet\//, "").replace(/\.(png|jpg|jpeg|webp|avif)$/i, "").trim();
       const ov = findFleetImageOverride(baseName);
       if (ov) return encodeURI(ov);
       return encodeURI(vehicle);
     }
+    const custom = normalizeCustomUrl(vehicle);
+    if (custom) return custom;
     const ov = findFleetImageOverride(vehicle);
     if (ov) return encodeURI(ov);
-    return `assets/fleet/BMW 520D.png`;
+    return "assets/fleet/BMW 520D.png";
   }
 
-  // Check gallery array, imageUrl, image, photo for uploaded media or custom URLs
+  // 1. Check for real user-uploaded media (http, data, blob, api/media, uploads)
   const candidateImages = [
     Array.isArray(vehicle.gallery) ? vehicle.gallery[0] : null,
     vehicle.imageUrl,
@@ -244,20 +245,42 @@ function fleetImagePath(vehicle) {
   ];
 
   for (const candidate of candidateImages) {
-    const custom = normalizeCustomUrl(candidate);
-    if (custom) return custom;
+    if (!candidate || typeof candidate !== "string") continue;
+    const s = candidate.trim();
+    if (
+      s.startsWith("http://") ||
+      s.startsWith("https://") ||
+      s.startsWith("data:") ||
+      s.startsWith("blob:") ||
+      s.startsWith("api/") ||
+      s.startsWith("/api/") ||
+      s.startsWith("uploads/") ||
+      s.startsWith("/uploads/")
+    ) {
+      const custom = normalizeCustomUrl(s);
+      if (custom) return custom;
+    }
   }
 
+  // 2. Otherwise, match vehicle brand + model to catalog override
   const brand = (vehicle.brand || "").trim();
   const model = (vehicle.model || "").trim();
   const fullName = `${brand} ${model}`.trim();
 
-  const ov = findFleetImageOverride(fullName) ||
+  const ov =
+    findFleetImageOverride(fullName) ||
     findFleetImageOverride(model) ||
     (brand.toLowerCase() === "maruti" ? findFleetImageOverride(`Maruti Suzuki ${model}`) : null) ||
     (brand.toLowerCase() === "mg" ? findFleetImageOverride("mg hector") : null);
 
   if (ov) return encodeURI(ov);
+
+  // 3. Fallback to candidate if it starts with assets/
+  for (const candidate of candidateImages) {
+    if (candidate && typeof candidate === "string" && candidate.trim().startsWith("assets/")) {
+      return encodeURI(candidate.trim());
+    }
+  }
 
   return "assets/fleet/BMW 520D.png";
 }
