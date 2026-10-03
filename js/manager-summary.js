@@ -970,11 +970,9 @@ function renderDashboard() {
     .filter((b) => isVerifiedRevenue(b))
     .reduce((sum, b) => sum + bookingAmount(b), 0);
 
-  const grandCumulativeRevenue = Math.max(
-    Number(serverKpiStats?.live?.total_revenue || 0),
-    Number(dynamicTotalRevenue || 0),
-    allVerifiedRevenue,
-  );
+  const grandCumulativeRevenue = Number(serverKpiStats?.live?.total_revenue) || 
+    Number(dynamicTotalRevenue) || 
+    allVerifiedRevenue;
 
   const totalRevenue = isAllTime
     ? grandCumulativeRevenue
@@ -1002,10 +1000,9 @@ function renderDashboard() {
   // KPI 2: ACTIVE TRIPS (Auto-fetches the live on-road count)
   const activeTripsCount = selectedMonthKpi
     ? Number(selectedMonthKpi.active_trips || 0)
-    : Math.max(
-        onTripFleetCount,
-        Number(serverKpiStats?.effective?.active_trips || 0),
-      );
+    : (serverKpiStats?.effective?.active_trips !== undefined 
+        ? Number(serverKpiStats.effective.active_trips) 
+        : onTripFleetCount);
   const kpiActiveTripsEl = document.getElementById("kpiActiveTrips");
   if (kpiActiveTripsEl) kpiActiveTripsEl.textContent = String(activeTripsCount);
 
