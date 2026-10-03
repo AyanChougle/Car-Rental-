@@ -331,7 +331,14 @@ class KpiService
                 $calcRev = round((float)($monthlyRevenue[$monthStart] ?? 0.0), 2);
                 $existing = $existingMetrics[$monthStart] ?? null;
                 $existingRev = isset($existing['month_sales']) ? (float)$existing['month_sales'] : 0.0;
-                $mRev = max($calcRev, $existingRev);
+                
+                // Protect legacy manually-entered months (July, August 2026) which don't have live bookings
+                if ($monthStart < '2026-09-01') {
+                    $mRev = max($calcRev, $existingRev);
+                } else {
+                    // Allow precise sync for active months (enables KPI to drop on edits/cancellations)
+                    $mRev = $calcRev;
+                }
 
                 $mBookingsCount = isset($monthlyBookings[$monthStart])
                     ? count($monthlyBookings[$monthStart])
