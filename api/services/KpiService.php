@@ -388,19 +388,13 @@ class KpiService
                 ];
             }
 
-            // Total Whole Revenue: sum of all monthly revenue across company ledger (July + Aug + Sep + Oct + ongoing till date)
-            $grandTotalRevenue = 0.0;
-            foreach ($monthlyRows as $mKey => $r) {
-                $grandTotalRevenue += (float)$r['month_sales'];
-            }
-            $grandTotalRevenue = round($grandTotalRevenue, 2);
-
-            // Update total_revenue for current and subsequent months to reflect cumulative whole revenue
+            // Total Whole Revenue: running cumulative sum of all monthly revenue across company ledger
+            $runningTotal = 0.0;
             foreach (array_keys($monthlyRows) as $mKey) {
-                if ($mKey >= $currentMonthKey) {
-                    $monthlyRows[$mKey]['total_revenue'] = $grandTotalRevenue;
-                }
+                $runningTotal += (float)$monthlyRows[$mKey]['month_sales'];
+                $monthlyRows[$mKey]['total_revenue'] = round($runningTotal, 2);
             }
+            $grandTotalRevenue = round($runningTotal, 2);
 
             // Persist into MySQL kpi_metrics table
             foreach ($monthlyRows as $monthStart => $row) {
