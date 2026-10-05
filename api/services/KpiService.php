@@ -22,12 +22,7 @@ class KpiService
      */
     public static function getMetrics(): array
     {
-        // Always recompute from live bookings/users/vehicles so KPIs never go stale.
-        // syncMetrics() upserts with GREATEST(), so historical months are never downgraded.
-        $fresh = self::syncMetrics();
-        if (!empty($fresh['live'])) {
-            return $fresh;
-        }
+        // Fetch values directly from the kpi_metrics table to preserve manual edits from phpMyAdmin
         return self::getCachedMetrics();
     }
 
