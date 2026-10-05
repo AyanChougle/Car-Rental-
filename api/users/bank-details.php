@@ -2,9 +2,10 @@
 /**
  * api/users/bank-details.php
  * GET  /api/users/bank-details            - host: own bank details (account number masked)
- * GET  /api/users/bank-details?uid=XXX    - staff only: full details for a host
- * POST /api/users/bank-details            - host: save/update bank details
- * POST (staff) {uid, status, rejectionReason} - verify / reject a host's details
+ * GET  /api/users/bank-details?all=1      - staff: all host bank records for audit & verification
+ * GET  /api/users/bank-details?uid=XXX    - staff: full details for a specific host
+ * POST /api/users/bank-details            - host: submit/update bank details
+ * POST (staff) {uid, status, rejectionReason} - verify / reject a host's bank details
  */
 
 declare(strict_types=1);
@@ -14,151 +15,233 @@ require_once __DIR__ . '/../middleware/auth.php';
 $user = Auth::requireAuth();
 $role = strtolower((string)($user['role'] ?? 'customer'));
 $isStaff = in_array($role, ['admin', 'super_admin', 'manager', 'accountant', 'executive'], true);
-$isHost = ($role === 'host' || $role === 'admin');
+$isHost = ($role === 'host' || $role === 'admin' || $role === 'super_admin');
 
 if (!$isHost && !$isStaff) {
     sendErrorResponse('Bank details are only available for host accounts.', 403);
 }
 
-Database::execute("CREATE TABLE IF NOT EXISTS host_bank_details (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    firebase_uid VARCHAR(128) NOT NULL UNIQUE,
-    user_id INT DEFAULT NULL,
-    account_holder_name VARCHAR(255) NOT NULL,
-    account_number VARCHAR(32) NOT NULL,
-    ifsc_code VARCHAR(16) NOT NULL,\n    branch_name VARCHAR(255) DEFAULT NULL,
-    passbook_media_id VARCHAR(64) DEFAULT NULL,
-    status ENUM('pending','verified','rejected') NOT NULL DEFAULT 'pending',
-    rejection_reason TEXT DEFAULT NULL,
-    verified_by VARCHAR(128) DEFAULT NULL,
-    verified_at DATETIME DEFAULT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-
-try { Database::execute("ALTER TABLE host_bank_details ADD COLUMN branch_name VARCHAR(255) DEFAULT NULL AFTER ifsc_code"); } catch (Exception $e) {}
-
-
 function buildMediaUrl(?string $id): ?string {
-    if (!$id) return null;
-    return "https://kruizly.com/api/media/file.php?id=" . urlencode($id);
+    if (!$id || trim($id) === '') return null;
+    return "https://kruizly.com/api/media/file.php?id=" . urlencode(trim($id));
 }
 
 function bankMask(string $n): string {
+    $n = trim($n);
     $len = strlen($n);
-    return $len <= 4 ? $n : str_repeat('•', $len - 4) . substr($n, -4);
+    return $len <= 4 ? $n : str_repeat('•', max(0, $len - 4)) . substr($n, -4);
 }
 
 function bankPayload(?array $r, bool $full): ?array {
     if (!$r) return null;
+    $acct = (string)($r['account_number'] ?? '');
     return [
-        'firebaseUid' => $r['firebase_uid'],
-        'userId' => $r['user_id'],
-        'accountHolderName' => $r['account_holder_name'],
-        'accountNumber' => $full ? $r['account_number'] : bankMask((string)$r['account_number']),
-        'accountNumberMasked' => bankMask((string)$r['account_number']),
-        'ifscCode' => $r['ifsc_code'],
-        'passbookMediaId' => $r['passbook_media_id'],
-          'passbookUrl' => buildMediaUrl($r['passbook_media_id'] ?? null),
-        'status' => $r['status'],
-        'rejectionReason' => $r['rejection_reason'],
-        'updatedAt' => $r['updated_at'],
+        'id' => (int)($r['id'] ?? 0),
+        'firebaseUid' => (string)($r['firebase_uid'] ?? ''),
+        'userId' => !empty($r['user_id']) ? (int)$r['user_id'] : null,
+        'name' => (string)($r['user_name'] ?? $r['account_holder_name'] ?? ''),
+        'email' => (string)($r['user_email'] ?? ''),
+        'phone' => (string)($r['user_phone'] ?? ''),
+        'accountHolderName' => (string)($r['account_holder_name'] ?? ''),
+        'accountNumber' => $full ? $acct : bankMask($acct),
+        'accountNumberMasked' => bankMask($acct),
+        'ifscCode' => (string)($r['ifsc_code'] ?? ''),
+        'branchName' => (string)($r['branch_name'] ?? ''),
+        'passbookMediaId' => $r['passbook_media_id'] ?? null,
+        'passbookUrl' => buildMediaUrl($r['passbook_media_id'] ?? null),
+        'status' => (string)($r['status'] ?? 'pending'),
+        'rejectionReason' => $r['rejection_reason'] ?? null,
+        'verifiedBy' => $r['verified_by'] ?? null,
+        'verifiedAt' => $r['verified_at'] ?? null,
+        'updatedAt' => $r['updated_at'] ?? $r['verified_at'] ?? null,
     ];
 }
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 if ($method === 'GET') {
-    if ($isStaff && !empty($_GET['all'])) {
-        $rows = Database::fetchAll("SELECT * FROM host_bank_details ORDER BY created_at DESC");
-        $result = [];
-        foreach ($rows as $row) {
-            $result[] = bankPayload($row, true);
+    try {
+        if ($isStaff && !empty($_GET['all'])) {
+            $rows = Database::fetchAll(
+                "SELECT h.*, 
+                        COALESCE(NULLIF(u.name, ''), h.account_holder_name) AS user_name,
+                        u.email AS user_email,
+                        u.phone AS user_phone
+                 FROM host_bank_details h
+                 LEFT JOIN users u ON (h.firebase_uid = u.firebase_uid OR (h.user_id IS NOT NULL AND h.user_id = u.id))
+                 ORDER BY h.id DESC"
+            );
+            $result = [];
+            foreach ($rows as $row) {
+                $result[] = bankPayload($row, true);
+            }
+            sendJsonResponse(['success' => true, 'bankDetails' => $result]);
         }
-        sendJsonResponse(['success' => true, 'bankDetails' => $result]);
-    }
 
-    $uid = $user['firebase_uid'];
-    $full = false;
-    if ($isStaff && !empty($_GET['uid'])) {
-        $uid = trim((string)$_GET['uid']);
-        $full = true;
+        $uid = $user['firebase_uid'] ?? '';
+        $full = false;
+        if ($isStaff && !empty($_GET['uid'])) {
+            $uid = trim((string)$_GET['uid']);
+            $full = true;
+        }
+
+        $row = Database::fetchOne(
+            "SELECT h.*, 
+                    COALESCE(NULLIF(u.name, ''), h.account_holder_name) AS user_name,
+                    u.email AS user_email,
+                    u.phone AS user_phone
+             FROM host_bank_details h
+             LEFT JOIN users u ON (h.firebase_uid = u.firebase_uid OR (h.user_id IS NOT NULL AND h.user_id = u.id))
+             WHERE h.firebase_uid = ? OR (h.user_id IS NOT NULL AND h.user_id = ?)
+             ORDER BY h.id DESC LIMIT 1",
+            [$uid, !empty($user['id']) ? (int)$user['id'] : 0]
+        );
+
+        sendJsonResponse(['success' => true, 'bankDetails' => bankPayload($row, $full)]);
+    } catch (Throwable $e) {
+        error_log("[bank-details.php GET Error] " . $e->getMessage());
+        sendErrorResponse('Failed to load bank details: ' . $e->getMessage(), 500);
     }
-    $row = Database::fetchOne("SELECT * FROM host_bank_details WHERE firebase_uid = ? LIMIT 1", [$uid]);
-    sendJsonResponse(['success' => true, 'bankDetails' => bankPayload($row, $full)]);
 }
 
 if ($method === 'POST') {
-    $input = json_decode((string)file_get_contents('php://input'), true);
-    if (!is_array($input)) $input = $_POST;
+    try {
+        $raw = (string)file_get_contents('php://input');
+        $input = json_decode($raw, true);
+        if (!is_array($input)) $input = $_POST;
 
-    // Staff review action
-    if ($isStaff && !empty($input['uid']) && !empty($input['status'])) {
-        $status = strtolower(trim((string)$input['status']));
-        if (!in_array($status, ['pending', 'verified', 'rejected'], true)) {
-            sendErrorResponse('Invalid status.', 400);
+        // Staff review action (Approve / Reject)
+        if ($isStaff && (!empty($input['uid']) || !empty($input['id'])) && !empty($input['status'])) {
+            $status = strtolower(trim((string)$input['status']));
+            if (!in_array($status, ['pending', 'verified', 'rejected'], true)) {
+                sendErrorResponse('Invalid status value.', 400);
+            }
+
+            $targetUid = trim((string)($input['uid'] ?? ''));
+            $targetId = isset($input['id']) ? (int)$input['id'] : 0;
+            $reason = ($status === 'rejected') ? trim((string)($input['rejectionReason'] ?? '')) : null;
+            $verifier = $user['email'] ?? $user['name'] ?? ($user['firebase_uid'] ?? 'staff');
+            $verifiedAt = ($status === 'verified') ? date('Y-m-d H:i:s') : null;
+
+            $affected = Database::execute(
+                "UPDATE host_bank_details 
+                 SET status = ?, 
+                     rejection_reason = ?, 
+                     verified_by = ?, 
+                     verified_at = ? 
+                 WHERE (firebase_uid IS NOT NULL AND firebase_uid != '' AND firebase_uid = ?) 
+                    OR id = ?",
+                [
+                    $status,
+                    $reason,
+                    $verifier,
+                    $verifiedAt,
+                    $targetUid,
+                    $targetId
+                ]
+            );
+
+            // Audit log
+            try {
+                Database::execute(
+                    "INSERT INTO audit_logs (firebase_uid, action, resource_type, resource_id, details, ip_address) 
+                     VALUES (?, 'update_host_bank_status', 'host_bank_details', ?, ?, ?)",
+                    [
+                        $user['firebase_uid'] ?? 'staff',
+                        $targetUid ?: (string)$targetId,
+                        json_encode(['status' => $status, 'reason' => $reason, 'verified_by' => $verifier]),
+                        $_SERVER['REMOTE_ADDR'] ?? null
+                    ]
+                );
+            } catch (Throwable $_) {}
+
+            sendJsonResponse([
+                'success' => true, 
+                'message' => "Bank details status updated to '$status' successfully.",
+                'affected' => $affected
+            ]);
         }
+
+        // Host submitting/updating their bank details
+        if (!$isHost) {
+            sendErrorResponse('Only host accounts can submit bank details.', 403);
+        }
+
+        $name = trim(preg_replace('/\s+/', ' ', (string)($input['accountHolderName'] ?? $input['fullName'] ?? '')));
+        $acct = preg_replace('/\s+/', '', (string)($input['accountNumber'] ?? ''));
+        $ifsc = strtoupper(preg_replace('/\s+/', '', (string)($input['ifscCode'] ?? $input['ifsc'] ?? '')));
+        $branch = trim((string)($input['branchName'] ?? ''));
+        $passbook = trim((string)($input['passbookMediaId'] ?? ''));
+
+        $existing = Database::fetchOne(
+            "SELECT * FROM host_bank_details WHERE firebase_uid = ? LIMIT 1", 
+            [$user['firebase_uid']]
+        );
+
+        // Allow keeping the stored account number when masked string (••••) is echoed back
+        if ($existing && $acct !== '' && (strpos($acct, '•') !== false || strpos($acct, '*') !== false)) {
+            $acct = (string)$existing['account_number'];
+        }
+        if ($existing && $acct === '') {
+            $acct = (string)$existing['account_number'];
+        }
+        if ($passbook === '' && $existing) {
+            $passbook = (string)($existing['passbook_media_id'] ?? '');
+        }
+
+        if (mb_strlen($name) < 2 || mb_strlen($name) > 120) {
+            sendErrorResponse('Enter the full name exactly as printed on your bank passbook.', 400);
+        }
+        if (!preg_match('/^\d{9,18}$/', $acct)) {
+            sendErrorResponse('Account number must be 9 to 18 digits.', 400);
+        }
+        if (!preg_match('/^[A-Z0-9]{11}$/', $ifsc)) {
+            sendErrorResponse('Enter a valid 11-character IFSC code.', 400);
+        }
+        if ($passbook === '') {
+            sendErrorResponse('Upload a clear photo of your passbook front page.', 400);
+        }
+
         Database::execute(
-            "UPDATE host_bank_details SET status = ?, rejection_reason = ?, verified_by = ?, verified_at = ? WHERE firebase_uid = ?",
+            "INSERT INTO host_bank_details (
+                firebase_uid, user_id, account_holder_name, account_number, ifsc_code, branch_name, passbook_media_id, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+            ON DUPLICATE KEY UPDATE
+                user_id = VALUES(user_id),
+                account_holder_name = VALUES(account_holder_name),
+                account_number = VALUES(account_number),
+                ifsc_code = VALUES(ifsc_code),
+                branch_name = VALUES(branch_name),
+                passbook_media_id = VALUES(passbook_media_id),
+                status = 'pending', 
+                rejection_reason = NULL, 
+                verified_by = NULL, 
+                verified_at = NULL",
             [
-                $status,
-                $status === 'rejected' ? trim((string)($input['rejectionReason'] ?? '')) : null,
-                $user['email'] ?? $user['firebase_uid'],
-                $status === 'verified' ? date('Y-m-d H:i:s') : null,
-                trim((string)$input['uid']),
+                $user['firebase_uid'], 
+                !empty($user['id']) ? (int)$user['id'] : null, 
+                $name, 
+                $acct, 
+                $ifsc, 
+                $branch, 
+                $passbook
             ]
         );
-        sendJsonResponse(['success' => true, 'message' => 'Bank details status updated.']);
-    }
 
-    if (!$isHost) {
-        sendErrorResponse('Only host accounts can submit bank details.', 403);
-    }
+        $row = Database::fetchOne(
+            "SELECT * FROM host_bank_details WHERE firebase_uid = ? LIMIT 1", 
+            [$user['firebase_uid']]
+        );
 
-    $name = trim(preg_replace('/\s+/', ' ', (string)($input['accountHolderName'] ?? $input['fullName'] ?? '')));
-    $acct = preg_replace('/\s+/', '', (string)($input['accountNumber'] ?? ''));
-    $ifsc = strtoupper(preg_replace('/\s+/', '', (string)($input['ifscCode'] ?? $input['ifsc'] ?? '')));
-    $branch = trim((string)($input['branchName'] ?? ''));
-    $passbook = trim((string)($input['passbookMediaId'] ?? ''));
-
-    $existing = Database::fetchOne("SELECT * FROM host_bank_details WHERE firebase_uid = ? LIMIT 1", [$user['firebase_uid']]);
-
-    // Allow keeping the stored account number when the masked value is echoed back
-    if ($existing && $acct !== '' && strpos($acct, '•') !== false) {
-        $acct = (string)$existing['account_number'];
+        sendJsonResponse([
+            'success' => true, 
+            'message' => 'Bank details saved and submitted for verification successfully.', 
+            'bankDetails' => bankPayload($row, false)
+        ], 201);
+    } catch (Throwable $e) {
+        error_log("[bank-details.php POST Error] " . $e->getMessage());
+        sendErrorResponse('Failed to update bank details: ' . $e->getMessage(), 500);
     }
-    if ($existing && $acct === '') $acct = (string)$existing['account_number'];
-    if ($passbook === '' && $existing) $passbook = (string)($existing['passbook_media_id'] ?? '');
-
-    if (mb_strlen($name) < 3 || mb_strlen($name) > 120 || !preg_match('/^[\p{L}][\p{L}\s\.\'-]+$/u', $name)) {
-        sendErrorResponse('Enter the full name exactly as printed on your bank passbook.', 400);
-    }
-    if (!preg_match('/^\d{9,18}$/', $acct)) {
-        sendErrorResponse('Account number must be 9 to 18 digits.', 400);
-    }
-    if (!preg_match('/^[A-Z0-9]{11}$/', $ifsc)) {
-        sendErrorResponse('Enter a valid 11-character IFSC code.', 400);
-    }
-    if ($passbook === '') {
-        sendErrorResponse('Upload a clear photo of your passbook front page.', 400);
-    }
-
-    Database::execute(
-        "INSERT INTO host_bank_details (firebase_uid, user_id, account_holder_name, account_number, ifsc_code, branch_name, passbook_media_id, status)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
-         ON DUPLICATE KEY UPDATE
-            user_id = VALUES(user_id),
-            account_holder_name = VALUES(account_holder_name),
-            account_number = VALUES(account_number),
-            ifsc_code = VALUES(ifsc_code),
-            branch_name = VALUES(branch_name),
-            passbook_media_id = VALUES(passbook_media_id),
-            status = 'pending', rejection_reason = NULL, verified_by = NULL, verified_at = NULL",
-        [$user['firebase_uid'], !empty($user['id']) ? (int)$user['id'] : null, $name, $acct, $ifsc, $branch, $passbook]
-    );
-
-    $row = Database::fetchOne("SELECT * FROM host_bank_details WHERE firebase_uid = ? LIMIT 1", [$user['firebase_uid']]);
-    sendJsonResponse(['success' => true, 'message' => 'Bank details submitted for verification.', 'bankDetails' => bankPayload($row, false)], 201);
 }
 
 sendErrorResponse('Method not allowed.', 405);

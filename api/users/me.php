@@ -12,25 +12,7 @@ require_once __DIR__ . '/../middleware/auth.php';
 $user = Auth::requireAuth();
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Auto-heal missing columns in users table
-try {
-    Database::execute("ALTER TABLE users ADD COLUMN phone VARCHAR(32) NULL AFTER email");
-} catch (Throwable $_) {}
-try {
-    Database::execute("ALTER TABLE users ADD COLUMN age INT NULL AFTER phone");
-} catch (Throwable $_) {}
-try {
-    Database::execute("ALTER TABLE users ADD COLUMN metadata TEXT NULL");
-} catch (Throwable $_) {}
-try {
-    Database::execute("ALTER TABLE users ADD COLUMN license_status VARCHAR(32) DEFAULT 'not_submitted'");
-} catch (Throwable $_) {}
-try {
-    Database::execute("ALTER TABLE users ADD COLUMN aadhar_status VARCHAR(32) DEFAULT 'not_submitted'");
-} catch (Throwable $_) {}
-try {
-    Database::execute("ALTER TABLE users ADD COLUMN pan_status VARCHAR(32) DEFAULT 'not_submitted'");
-} catch (Throwable $_) {}
+
 
 if ($method === 'GET') {
     // Re-fetch fresh user record

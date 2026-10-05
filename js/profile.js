@@ -531,6 +531,10 @@ async function loadMyListings(userParam) {
     const res = await api.get("/users/partner-cars");
     let listings = Array.isArray(res?.partnerCars) ? res.partnerCars : [];
 
+    const isStaffOrAdmin = ["admin", "manager", "executive"].includes(
+      String(currentU.role || "").toLowerCase(),
+    );
+
     // Filter strictly to current user's listings
     if (currentUid || currentEmail) {
       const userFiltered = listings.filter((car) => {
@@ -544,7 +548,10 @@ async function loadMyListings(userParam) {
         if (currentU.id && cDbId && cDbId === String(currentU.id)) return true;
         return false;
       });
-      if (userFiltered.length > 0 || listings.length === 0) {
+
+      if (!isStaffOrAdmin) {
+        listings = userFiltered;
+      } else if (userFiltered.length > 0) {
         listings = userFiltered;
       }
     }
@@ -557,13 +564,17 @@ async function loadMyListings(userParam) {
       (sum, item) => sum + Number(item.totalRevenue || 0),
       0,
     );
+    const totalTripsCount = listings.reduce(
+      (sum, item) => sum + Number(item.completedTrips || item.totalTrips || 0),
+      0,
+    );
     const approvedCount = listings.filter(
       (listing) => listing.status === "approved",
     ).length;
 
     summary.innerHTML = `
       <div><strong>${listings.length}</strong><span>Hosted Cars</span></div>
-      <div><strong>${approvedCount}</strong><span>Approved</span></div>
+      <div><strong>${totalTripsCount}</strong><span>Total Trips</span></div>
       <div><strong style="color: #06d6a0;">${formatINR(totalMonthRevenue)}</strong><span>This Month Earnings</span></div>
       <div><strong style="color: var(--kr-cyan); font-weight: 700;">${formatINR(totalLifetimeRevenue)}</strong><span>Lifetime Revenue</span></div>
     `;
@@ -605,6 +616,60 @@ async function loadMyListings(userParam) {
           listing.reviewNote ||
           "";
 
+        const bookingsList = Array.isArray(listing.bookings) ? listing.bookings : [];
+        let bookingsHtml = "";
+        if (bookingsList.length === 0) {
+          bookingsHtml = `
+            <div style="font-size: 11.5px; color: var(--text-sub, #888); text-align: center; padding: 10px; background: rgba(255, 255, 255, 0.02); border-radius: 6px;">
+              No bookings recorded for this vehicle yet.
+            </div>
+          `;
+        } else {
+          bookingsHtml = bookingsList
+            .map((b) => {
+              const bStat = String(b.status || "confirmed").toLowerCase();
+              let badgeBg = "rgba(252, 163, 17, 0.15)";
+              let badgeColor = "#fca311";
+              if (bStat === "completed") {
+                badgeBg = "rgba(6, 214, 160, 0.15)";
+                badgeColor = "#06d6a0";
+              } else if (bStat === "active" || bStat === "in_trip" || bStat === "started") {
+                badgeBg = "rgba(79, 215, 255, 0.15)";
+                badgeColor = "#4fd7ff";
+              } else if (bStat === "cancelled") {
+                badgeBg = "rgba(239, 71, 111, 0.15)";
+                badgeColor = "#ef476f";
+              }
+
+              const pDate = b.pickupDate ? formatDate(b.pickupDate) : "—";
+              const dDate = b.dropDate ? formatDate(b.dropDate) : "—";
+              const odoInfo =
+                b.startOdometer || b.endOdometer
+                  ? `<div style="font-size: 10.5px; color: #adb5bd; margin-top: 2px;">Odometer: ${escapeHtml(String(b.startOdometer || "—"))} km &rarr; ${escapeHtml(String(b.endOdometer || "—"))} km</div>`
+                  : "";
+
+              return `
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); gap: 8px;">
+                  <div style="min-width: 0;">
+                    <div style="font-weight: 700; color: #fff; font-size: 12px; display: flex; align-items: center; gap: 6px;">
+                      <span>${escapeHtml(b.bookingRef || "#BK-" + b.id)}</span>
+                      <span style="font-size: 10px; font-weight: normal; color: var(--text-sub, #888);">${escapeHtml(b.duration || "1 Day")}</span>
+                    </div>
+                    <div style="font-size: 11px; color: var(--text-sub, #999); margin-top: 1px;">
+                      ${escapeHtml(pDate)} &rarr; ${escapeHtml(dDate)}
+                    </div>
+                    ${odoInfo}
+                  </div>
+                  <div style="text-align: right; flex-shrink: 0;">
+                    <div style="font-weight: 700; color: #06d6a0; font-size: 12.5px;">${formatINR(b.amount || 0)}</div>
+                    <span style="display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; background: ${badgeBg}; color: ${badgeColor}; margin-top: 2px;">${escapeHtml(b.status || "Confirmed")}</span>
+                  </div>
+                </div>
+              `;
+            })
+            .join("");
+        }
+
         return `
         <article class="profile-listing-card">
           <div class="profile-listing-card__media">
@@ -642,8 +707,21 @@ async function loadMyListings(userParam) {
               </div>
               <div>
                 <span style="font-size: 11px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Trips Done</span>
-                <strong style="font-size: 15px; color: #fff; font-weight: 700;">${listing.completedTrips || 0}</strong>
+                <strong style="font-size: 15px; color: #fff; font-weight: 700;">${listing.completedTrips || listing.totalTrips || 0}</strong>
               </div>
+            </div>
+
+            <!-- Trip History & Bookings for this Vehicle -->
+            <div class="profile-listing-trips-section" style="margin: 12px 0; background: rgba(0, 0, 0, 0.22); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 8px; overflow: hidden;">
+              <details ${bookingsList.length > 0 ? "open" : ""} style="padding: 0;">
+                <summary style="padding: 9px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.03); font-size: 12px; font-weight: 600; color: var(--text-sub, #ccc); user-select: none;">
+                  <span>Trip History & Bookings (${bookingsList.length})</span>
+                  <span style="font-size: 11px; color: var(--kr-cyan, #4fd7ff); font-weight: 600;">${bookingsList.length ? "View Trips ▾" : "No Trips"}</span>
+                </summary>
+                <div style="max-height: 220px; overflow-y: auto;">
+                  ${bookingsHtml}
+                </div>
+              </details>
             </div>
 
             ${

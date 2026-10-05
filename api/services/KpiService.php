@@ -32,11 +32,16 @@ class KpiService
     public static function getCachedMetrics(): array
     {
         try {
-            self::ensureSchema();
-
+            // Strictly read from kpi_metrics table without running DDL or ALTER TABLE
             $rows = Database::fetchAll("SELECT * FROM kpi_metrics ORDER BY metric_date ASC");
             if (empty($rows)) {
-                return self::syncMetrics();
+                return [
+                    'live' => [],
+                    'monthly' => [],
+                    'reporting_month' => date('Y-m-01'),
+                    'previous_month' => date('Y-m-01', strtotime('-1 month')),
+                    'revenue_ledger' => [],
+                ];
             }
 
             $currentMonthKey = date('Y-m-01');
@@ -57,8 +62,6 @@ class KpiService
                 }
             }
 
-            $maxTotalRevenue = max($maxTotalRevenue, round($sumMonthSales, 2));
-
             // Select current month row, or latest available month row
             $currentMonthRow = $monthlyRows[$currentMonthKey] ?? null;
             if (!$currentMonthRow && !empty($monthlyRows)) {
@@ -70,20 +73,18 @@ class KpiService
             $previousMonthRow = $monthlyRows[$previousMonthKey] ?? [];
 
             $totalUsers = (int)($currentMonthRow['total_users'] ?? 0);
-            if ($totalUsers === 0) {
-                $totalUsers = (int)(Database::fetchOne("SELECT COUNT(DISTINCT firebase_uid) AS c FROM users")['c'] ?? 0);
-            }
-
             $totalFleet = (int)($currentMonthRow['total_fleet'] ?? 0);
-            if ($totalFleet === 0) {
-                $totalFleet = (int)(Database::fetchOne("SELECT COUNT(*) AS c FROM vehicles WHERE status != 'removed'")['c'] ?? 39);
-            }
-
             $onRoadFleet = (int)($currentMonthRow['on_road_fleet'] ?? 0);
             $inYardFleet = (int)($currentMonthRow['in_yard_fleet'] ?? max(0, $totalFleet - $onRoadFleet));
             $occupancyPct = (float)($currentMonthRow['occupancy_pct'] ?? 0.0);
             $paidBookings = (int)($currentMonthRow['paid_bookings'] ?? 0);
-            $avgBooking = $paidBookings > 0 ? round($maxTotalRevenue / $paidBookings, 2) : 0.0;
+            
+            // Strictly preserve the user's total_revenue from the database row
+            $exactTotalRevenue = isset($currentMonthRow['total_revenue']) 
+                ? (float)$currentMonthRow['total_revenue'] 
+                : $maxTotalRevenue;
+
+            $avgBooking = $paidBookings > 0 ? round($exactTotalRevenue / $paidBookings, 2) : 0.0;
 
             $liveStats = [
                 'total_users' => $totalUsers,
@@ -92,7 +93,7 @@ class KpiService
                 'pending_payments' => (int)($currentMonthRow['pending_payments'] ?? 0),
                 'day_sales' => (float)($currentMonthRow['day_sales'] ?? 0.0),
                 'week_sales' => (float)($currentMonthRow['week_sales'] ?? 0.0),
-                'total_revenue' => $maxTotalRevenue,
+                'total_revenue' => $exactTotalRevenue,
                 'month_revenue' => (float)($currentMonthRow['month_sales'] ?? 0.0),
                 'last_month_revenue' => (float)($previousMonthRow['month_sales'] ?? 0.0),
                 'paid_bookings' => $paidBookings,
@@ -117,8 +118,14 @@ class KpiService
                 'revenue_ledger' => array_map(fn($r) => (float)($r['month_sales'] ?? 0), $monthlyRows),
             ];
         } catch (Throwable $e) {
-            error_log("[KpiService::getMetrics Exception] " . $e->getMessage());
-            return self::syncMetrics();
+            error_log("[KpiService::getCachedMetrics Exception] " . $e->getMessage());
+            return [
+                'live' => [],
+                'monthly' => [],
+                'reporting_month' => date('Y-m-01'),
+                'previous_month' => date('Y-m-01', strtotime('-1 month')),
+                'revenue_ledger' => [],
+            ];
         }
     }
 
@@ -391,54 +398,7 @@ class KpiService
             }
             $grandTotalRevenue = round($runningTotal, 2);
 
-            // Persist into MySQL kpi_metrics table
-            foreach ($monthlyRows as $monthStart => $row) {
-                try {
-                    Database::execute(
-                        "INSERT INTO kpi_metrics (
-                            metric_date, day_sales, week_sales, month_sales, total_revenue,
-                            total_bookings, paid_bookings, active_trips, completed_trips,
-                            total_fleet, on_road_fleet, in_yard_fleet, occupancy_pct,
-                            total_users, pending_payments, pending_docs
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON DUPLICATE KEY UPDATE
-                            day_sales = VALUES(day_sales),
-                            week_sales = VALUES(week_sales),
-                            month_sales = VALUES(month_sales),
-                            total_revenue = VALUES(total_revenue),
-                            total_bookings = VALUES(total_bookings),
-                            paid_bookings = VALUES(paid_bookings),
-                            active_trips = VALUES(active_trips),
-                            completed_trips = VALUES(completed_trips),
-                            total_fleet = VALUES(total_fleet),
-                            on_road_fleet = VALUES(on_road_fleet),
-                            in_yard_fleet = VALUES(in_yard_fleet),
-                            occupancy_pct = VALUES(occupancy_pct),
-                            total_users = VALUES(total_users),
-                            pending_payments = VALUES(pending_payments),
-                            pending_docs = VALUES(pending_docs),
-                            updated_at = CURRENT_TIMESTAMP",
-                        [
-                            $monthStart,
-                            $row['day_sales'],
-                            $row['week_sales'],
-                            $row['month_sales'],
-                            $row['total_revenue'],
-                            $row['total_bookings'],
-                            $row['paid_bookings'],
-                            $row['active_trips'],
-                            $row['completed_trips'],
-                            $totalFleet,
-                            $row['on_road_fleet'],
-                            $row['in_yard_fleet'],
-                            $row['occupancy_pct'],
-                            $row['total_users'],
-                            $row['pending_payments'],
-                            $row['pending_docs'],
-                        ]
-                    );
-                } catch (Throwable $_) {}
-            }
+            // Calculation complete. Do NOT persist or overwrite kpi_metrics table, so manual database edits are strictly preserved.
 
             $previousMonthKey = date('Y-m-01', strtotime('-1 month'));
             $currentMonthRevenue = (float)($monthlyRows[$currentMonthKey]['month_sales'] ?? 0.0);
@@ -545,31 +505,6 @@ class KpiService
      */
     private static function ensureSchema(): void
     {
-        try {
-            Database::execute("CREATE TABLE IF NOT EXISTS kpi_metrics (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                metric_date DATE NOT NULL UNIQUE,
-                day_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-                week_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-                month_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-                total_revenue DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-                total_bookings INT NOT NULL DEFAULT 0,
-                paid_bookings INT NOT NULL DEFAULT 0,
-                active_trips INT NOT NULL DEFAULT 0,
-                completed_trips INT NOT NULL DEFAULT 0,
-                total_fleet INT NOT NULL DEFAULT 7,
-                on_road_fleet INT NOT NULL DEFAULT 0,
-                in_yard_fleet INT NOT NULL DEFAULT 7,
-                occupancy_pct DECIMAL(5,2) NOT NULL DEFAULT 0.00,
-                total_users INT NOT NULL DEFAULT 0,
-                pending_payments INT NOT NULL DEFAULT 0,
-                pending_docs INT NOT NULL DEFAULT 0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-
-            try { Database::execute("ALTER TABLE kpi_metrics ADD COLUMN day_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER metric_date"); } catch (Throwable $_) {}
-            try { Database::execute("ALTER TABLE kpi_metrics ADD COLUMN week_sales DECIMAL(12,2) NOT NULL DEFAULT 0.00 AFTER day_sales"); } catch (Throwable $_) {}
-        } catch (Throwable $_) {}
+        // Schema is already provisioned in database; do not execute ALTER or CREATE TABLE queries on read.
     }
 }

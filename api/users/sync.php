@@ -11,16 +11,7 @@ require_once __DIR__ . '/../middleware/auth.php';
 $user = Auth::requireAuth();
 $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 
-// Auto-heal missing columns in users table
-try {
-    Database::execute("ALTER TABLE users ADD COLUMN phone VARCHAR(32) NULL AFTER email");
-} catch (Throwable $_) {}
-try {
-    Database::execute("ALTER TABLE users ADD COLUMN age INT NULL AFTER phone");
-} catch (Throwable $_) {}
-try {
-    Database::execute("ALTER TABLE users ADD COLUMN ip_address VARCHAR(64) NULL");
-} catch (Throwable $_) {}
+
 
 $name = trim((string)($input['name'] ?? ''));
 $phone = trim((string)($input['phone'] ?? ''));

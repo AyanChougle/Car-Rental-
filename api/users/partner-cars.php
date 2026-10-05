@@ -1,7 +1,7 @@
 <?php
 /**
  * api/users/partner-cars.php
- * GET /api/users/partner-cars - List host listings (customer gets their own, staff gets all)
+ * GET /api/users/partner-cars - List host listings with live trip counts and revenue from bookings
  * POST /api/users/partner-cars - Submit new host car listing / update status
  * PUT /api/users/partner-cars - Update host listing status (admin/manager)
  * DELETE /api/users/partner-cars - Delete host listing
@@ -12,102 +12,200 @@ declare(strict_types=1);
 require_once __DIR__ . '/../middleware/auth.php';
 
 $user = Auth::requireAuth();
-$isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive'], true);
+$role = strtolower((string)($user['role'] ?? 'customer'));
+$isStaff = in_array($role, ['admin', 'super_admin', 'manager', 'executive'], true);
 $method = $_SERVER['REQUEST_METHOD'];
 
-// Ensure partner_cars table exists
-try {
-    Database::execute("
-        CREATE TABLE IF NOT EXISTS partner_cars (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            car_id VARCHAR(64) UNIQUE,
-            user_id INT NULL,
-            firebase_uid VARCHAR(128) NULL,
-            user_name VARCHAR(128) NULL,
-            user_phone VARCHAR(32) NULL,
-            user_email VARCHAR(128) NULL,
-            brand VARCHAR(64) NOT NULL,
-            model VARCHAR(64) NOT NULL,
-            year INT DEFAULT 2024,
-            reg_no VARCHAR(32) NOT NULL,
-            transmission VARCHAR(32) DEFAULT 'Automatic',
-            fuel VARCHAR(32) DEFAULT 'Petrol',
-            city VARCHAR(128) DEFAULT 'Navi Mumbai',
-            expected_price DECIMAL(10,2) DEFAULT 0.00,
-            status VARCHAR(32) DEFAULT 'pending_approval',
-            photos TEXT NULL,
-            rejection_reason TEXT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX idx_partner_fb (firebase_uid),
-            INDEX idx_partner_email (user_email),
-            INDEX idx_partner_status (status)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    ");
-} catch (Throwable $_) {}
-
 if ($method === 'GET') {
-    // Auto-heal missing car_id in partner_cars
-    try {
-        $missing = Database::fetchAll("SELECT id FROM partner_cars WHERE car_id IS NULL OR car_id = ''");
-        foreach ($missing as $m) {
-            $genId = 'HC-' . strtoupper(bin2hex(random_bytes(4)));
-            Database::execute("UPDATE partner_cars SET car_id = ? WHERE id = ?", [$genId, $m['id']]);
-        }
-    } catch (Throwable $_) {}
-
     $scope = trim((string)($_GET['scope'] ?? $_GET['all'] ?? ''));
     $isAdminScope = $isStaff && ($scope === 'all' || $scope === '1' || $scope === 'true');
 
+    $uid = trim((string)($user['firebase_uid'] ?? ''));
+    $email = strtolower(trim((string)($user['email'] ?? '')));
+    $name = trim((string)($user['name'] ?? ''));
+    $dbId = (int)($user['id'] ?? 0);
+
+    // Auto-link legacy partner_cars to this user if email matches
+    if (!empty($email) && !empty($uid)) {
+        try {
+            Database::execute(
+                "UPDATE partner_cars 
+                 SET firebase_uid = ?, 
+                     user_id = COALESCE(NULLIF(user_id, 0), ?) 
+                 WHERE LOWER(TRIM(user_email)) = ? 
+                   AND (firebase_uid IS NULL OR firebase_uid = '' OR firebase_uid LIKE 'legacy_%')",
+                [$uid, $dbId ?: null, $email]
+            );
+        } catch (Throwable $_) {}
+    }
+
+    $rows = [];
     if ($isAdminScope) {
-        $rows = Database::fetchAll("SELECT * FROM partner_cars ORDER BY created_at DESC");
+        $rows = Database::fetchAll("SELECT * FROM partner_cars ORDER BY id DESC");
     } else {
-        $uid = trim((string)($user['firebase_uid'] ?? ''));
-        $email = strtolower(trim((string)($user['email'] ?? '')));
-        $dbId = (int)($user['id'] ?? 0);
         $rows = Database::fetchAll(
             "SELECT * FROM partner_cars 
              WHERE (firebase_uid IS NOT NULL AND firebase_uid != '' AND firebase_uid = ?) 
                 OR (user_email IS NOT NULL AND user_email != '' AND LOWER(TRIM(user_email)) = ?) 
                 OR (user_id IS NOT NULL AND user_id > 0 AND user_id = ?) 
-             ORDER BY created_at DESC", 
+             ORDER BY id DESC", 
             [$uid, $email, $dbId]
         );
+
+        // Also check if vehicles catalog has partner vehicles owned by this user
+        if (!empty($name) || !empty($email) || !empty($uid)) {
+            $knownRegs = [];
+            foreach ($rows as $r) {
+                $k = strtoupper(str_replace([' ', '-', '.'], '', (string)($r['reg_no'] ?? '')));
+                if ($k !== '') $knownRegs[$k] = true;
+            }
+
+            try {
+                $vehRows = Database::fetchAll(
+                    "SELECT v.* 
+                     FROM vehicles v
+                     WHERE v.status != 'removed'
+                       AND (
+                           LOWER(TRIM(v.acquisition_type)) = 'partner'
+                           OR (v.owner_name IS NOT NULL AND v.owner_name != '' AND v.owner_name != 'Kruizly Fleet Host')
+                       )
+                       AND (
+                           (v.owner_name IS NOT NULL AND v.owner_name != '' AND LOWER(TRIM(v.owner_name)) = LOWER(TRIM(?)))
+                           OR (v.created_by IS NOT NULL AND v.created_by = ?)
+                           OR (v.created_by IS NOT NULL AND LOWER(TRIM(v.created_by)) = LOWER(TRIM(?)))
+                       )
+                     ORDER BY v.id DESC",
+                    [$name, $uid, $email]
+                );
+
+                foreach ($vehRows as $v) {
+                    $vReg = strtoupper(str_replace([' ', '-', '.'], '', (string)($v['reg_no'] ?? '')));
+                    if ($vReg !== '' && !isset($knownRegs[$vReg])) {
+                        $knownRegs[$vReg] = true;
+                        $rows[] = [
+                            'id' => (int)$v['id'],
+                            'car_id' => $v['car_id'] ?? ('CRP-' . str_pad((string)$v['id'], 3, '0', STR_PAD_LEFT)),
+                            'user_id' => $dbId ?: null,
+                            'firebase_uid' => $uid,
+                            'user_name' => $v['owner_name'] ?: $name,
+                            'user_phone' => $user['phone'] ?? '',
+                            'user_email' => $email,
+                            'brand' => $v['brand'],
+                            'model' => $v['model'],
+                            'year' => (int)$v['year'],
+                            'reg_no' => $v['reg_no'],
+                            'transmission' => $v['transmission'],
+                            'fuel' => $v['fuel'],
+                            'city' => $v['location'] ?: 'Navi Mumbai',
+                            'expected_price' => (float)$v['price_day'],
+                            'status' => 'approved',
+                            'photos' => $v['gallery'],
+                            'rejection_reason' => null,
+                            'created_at' => $v['created_at'] ?? date('Y-m-d H:i:s'),
+                            'updated_at' => $v['updated_at'] ?? date('Y-m-d H:i:s'),
+                        ];
+                    }
+                }
+            } catch (Throwable $_) {}
+        }
+
+        // If staff/admin is viewing listings without personal entries, return all partner cars so admin can see the full hosted fleet
+        if (empty($rows) && $isStaff) {
+            $rows = Database::fetchAll("SELECT * FROM partner_cars ORDER BY id DESC");
+        }
     }
 
-    $partnerCars = array_map(function($c) {
+    $currentMonthStart = date('Y-m-01 00:00:00');
+
+    $partnerCars = array_map(function($c) use ($currentMonthStart) {
         $photos = [];
         if (!empty($c['photos'])) {
             $photos = is_string($c['photos']) ? json_decode($c['photos'], true) : $c['photos'];
             if (!is_array($photos)) $photos = [];
         }
         $identifier = !empty($c['car_id']) ? (string)$c['car_id'] : (!empty($c['id']) ? (string)$c['id'] : 'HC-' . ($c['reg_no'] ?? 'TEMP'));
-        $cleanReg = strtoupper(str_replace([' ', '-'], '', (string)$c['reg_no']));
-        $carNamePattern = '%' . trim(($c['brand'] ?? '') . ' ' . ($c['model'] ?? '')) . '%';
+        $rawReg = trim((string)($c['reg_no'] ?? ''));
+        $cleanReg = strtoupper(str_replace([' ', '-', '.'], '', $rawReg));
+
         $totalRevenue = 0.0;
         $monthRevenue = 0.0;
         $completedTrips = 0;
+        $activeTrips = 0;
         $totalTrips = 0;
+        $carBookings = [];
 
         try {
-            $revData = Database::fetchOne(
-                "SELECT 
-                    COALESCE(SUM(CASE WHEN (status IN ('completed', 'active', 'confirmed', 'in_trip') OR payment_status IN ('paid', 'advance_paid', 'verified')) THEN COALESCE(final_amount, total_amount, base_amount, 0) ELSE 0 END), 0) AS total_revenue,
-                    COALESCE(SUM(CASE WHEN (status IN ('completed', 'active', 'confirmed', 'in_trip') OR payment_status IN ('paid', 'advance_paid', 'verified')) AND created_at >= DATE_FORMAT(NOW(), '%Y-%m-01 00:00:00') THEN COALESCE(final_amount, total_amount, base_amount, 0) ELSE 0 END), 0) AS month_revenue,
-                    COUNT(CASE WHEN status = 'completed' THEN 1 ELSE NULL END) AS completed_trips,
-                    COUNT(CASE WHEN status IN ('completed', 'active', 'confirmed', 'in_trip') THEN 1 ELSE NULL END) AS total_trips
-                 FROM bookings 
-                 WHERE (REPLACE(REPLACE(UPPER(vehicle_reg), ' ', ''), '-', '') = ? AND vehicle_reg != '')
-                    OR (vehicle_name LIKE ? AND vehicle_name != '')",
-                [$cleanReg, $carNamePattern]
-            );
-            if ($revData) {
-                $totalRevenue = (float)($revData['total_revenue'] ?? 0);
-                $monthRevenue = (float)($revData['month_revenue'] ?? 0);
-                $completedTrips = (int)($revData['completed_trips'] ?? 0);
-                $totalTrips = (int)($revData['total_trips'] ?? 0);
+            // Find corresponding vehicle record in catalog
+            $vehId = 0;
+            if ($cleanReg !== '') {
+                $vRow = Database::fetchOne(
+                    "SELECT id, gallery, price_day FROM vehicles 
+                     WHERE REPLACE(REPLACE(REPLACE(UPPER(reg_no), ' ', ''), '-', ''), '.', '') = ? 
+                     LIMIT 1",
+                    [$cleanReg]
+                );
+                if ($vRow) {
+                    $vehId = (int)$vRow['id'];
+                    if (empty($photos) && !empty($vRow['gallery'])) {
+                        $photos = is_string($vRow['gallery']) ? json_decode($vRow['gallery'], true) : $vRow['gallery'];
+                        if (!is_array($photos)) $photos = [];
+                    }
+                }
             }
-        } catch (Throwable $_) {}
+
+            // Query live bookings specifically for this hosted car
+            $bSql = "SELECT id, booking_id, booking_number, user_name, user_phone, pickup_date, drop_date, 
+                            duration, days, total_amount, final_amount, status, booking_status, payment_status,
+                            start_odometer, end_odometer, location, created_at
+                     FROM bookings
+                     WHERE LOWER(COALESCE(status, '')) NOT IN ('cancelled', 'rejected')
+                       AND (
+                           (vehicle_reg IS NOT NULL AND vehicle_reg != '' AND REPLACE(REPLACE(REPLACE(UPPER(vehicle_reg), ' ', ''), '-', ''), '.', '') = ?)
+                           " . ($vehId > 0 ? " OR vehicle_id = $vehId" : "") . "
+                       )
+                     ORDER BY pickup_date DESC LIMIT 50";
+
+            $rawBookings = Database::fetchAll($bSql, [$cleanReg]);
+
+            foreach ($rawBookings as $b) {
+                $bStat = strtolower(trim((string)($b['status'] ?? '')));
+                $pStat = strtolower(trim((string)($b['payment_status'] ?? '')));
+                $amt = (float)($b['final_amount'] ?: ($b['total_amount'] ?: 0.0));
+                $pDate = !empty($b['pickup_date']) ? (string)$b['pickup_date'] : (string)($b['created_at'] ?? '');
+
+                $totalTrips++;
+                if ($bStat === 'completed') {
+                    $completedTrips++;
+                }
+                if (in_array($bStat, ['active', 'in_trip', 'started'], true)) {
+                    $activeTrips++;
+                }
+
+                $totalRevenue += $amt;
+                if ($pDate >= $currentMonthStart) {
+                    $monthRevenue += $amt;
+                }
+
+                $bRef = !empty($b['booking_number']) ? $b['booking_number'] : (!empty($b['booking_id']) ? $b['booking_id'] : ('#BK-' . $b['id']));
+
+                $carBookings[] = [
+                    'id' => $b['id'],
+                    'bookingRef' => $bRef,
+                    'customerName' => $b['user_name'] ?: 'Customer',
+                    'pickupDate' => $b['pickup_date'],
+                    'dropDate' => $b['drop_date'],
+                    'days' => (int)($b['days'] ?: 1),
+                    'duration' => $b['duration'] ?: '1 Day',
+                    'amount' => $amt,
+                    'status' => $b['status'],
+                    'paymentStatus' => $b['payment_status'],
+                    'startOdometer' => $b['start_odometer'] ?? null,
+                    'endOdometer' => $b['end_odometer'] ?? null,
+                ];
+            }
+        } catch (Throwable $e) {
+            error_log("[partner-cars.php Booking Lookup Error] " . $e->getMessage());
+        }
 
         return [
             'id' => $identifier,
@@ -132,11 +230,14 @@ if ($method === 'GET') {
             'expectedPrice' => (float)$c['expected_price'],
             'status' => $c['status'],
             'photos' => $photos,
+            'imageUrl' => !empty($photos[0]) ? (is_string($photos[0]) ? $photos[0] : ($photos[0]['url'] ?? '')) : ('assets/fleet/' . $c['brand'] . ' ' . $c['model'] . '.png'),
             'rejectionReason' => $c['rejection_reason'],
-            'totalRevenue' => $totalRevenue,
-            'monthRevenue' => $monthRevenue,
+            'totalRevenue' => round($totalRevenue, 2),
+            'monthRevenue' => round($monthRevenue, 2),
             'completedTrips' => $completedTrips,
+            'activeTrips' => $activeTrips,
             'totalTrips' => $totalTrips,
+            'bookings' => $carBookings,
             'createdAt' => $c['created_at'],
             'updatedAt' => $c['updated_at']
         ];
@@ -171,7 +272,7 @@ if ($method === 'POST') {
     $carId = 'HC-' . strtoupper(bin2hex(random_bytes(5)));
     $brand = trim((string)($input['brand'] ?? ''));
     $model = trim((string)($input['model'] ?? ''));
-    $year = (int)($input['year'] ?? 2024);
+    $year = (int)($input['year'] ?? 2026);
     $regNo = strtoupper(trim((string)($input['regNo'] ?? $input['regNumber'] ?? '')));
     $transmission = trim((string)($input['transmission'] ?? 'Automatic'));
     $fuel = trim((string)($input['fuel'] ?? 'Petrol'));

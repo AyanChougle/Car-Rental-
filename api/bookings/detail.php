@@ -165,8 +165,27 @@ if ($method === 'PUT' || $method === 'POST') {
         $params[] = (string)$input['vehicleName'];
     }
     if (isset($input['vehicleReg'])) {
+        $vReg = trim((string)$input['vehicleReg']);
         $updates[] = "vehicle_reg = ?";
-        $params[] = (string)$input['vehicleReg'];
+        $params[] = $vReg;
+
+        if ($vReg !== '' && $vReg !== 'TBD') {
+            try {
+                $vRow = Database::fetchOne("SELECT id, brand, model, category FROM vehicles WHERE reg_no = ? LIMIT 1", [$vReg]);
+                if ($vRow) {
+                    $updates[] = "vehicle_id = ?";
+                    $params[] = (int)$vRow['id'];
+                    if (empty($input['vehicleName'])) {
+                        $updates[] = "vehicle_name = ?";
+                        $params[] = trim($vRow['brand'] . ' ' . $vRow['model']);
+                    }
+                    if (empty($input['vehicleCategory'])) {
+                        $updates[] = "vehicle_category = ?";
+                        $params[] = (string)$vRow['category'];
+                    }
+                }
+            } catch (Throwable $_) {}
+        }
     }
     if (isset($input['vehicleCategory'])) {
         $updates[] = "vehicle_category = ?";
