@@ -143,12 +143,12 @@ const fleetImageOverrides = {
   "innova": "assets/fleet/Toyota Innova Crysta.png",
   "toyota rumion": "assets/fleet/Toyota Rumion.png",
   "rumion": "assets/fleet/Toyota Rumion.png",
-  "toyota urban cruiser": "assets/fleet/Toyota Urban Cruiser Taisor.png",
-  "toyota urban cruiser taisor": "assets/fleet/Toyota Urban Cruiser Taisor.png",
-  "urban cruiser taisor": "assets/fleet/Toyota Urban Cruiser Taisor.png",
-  "urban cruiser": "assets/fleet/Toyota Urban Cruiser Taisor.png",
-  "toyota taisor": "assets/fleet/Toyota Urban Cruiser Taisor.png",
-  "taisor": "assets/fleet/Toyota Urban Cruiser Taisor.png",
+  "toyota urban cruiser": "assets/fleet/Toyota Taisor.png",
+  "toyota urban cruiser taisor": "assets/fleet/Toyota Taisor.png",
+  "urban cruiser taisor": "assets/fleet/Toyota Taisor.png",
+  "urban cruiser": "assets/fleet/Toyota Taisor.png",
+  "toyota taisor": "assets/fleet/Toyota Taisor.png",
+  "taisor": "assets/fleet/Toyota Taisor.png",
   "toyota fortuner legender": "assets/fleet/Toyota Innova Crysta.png",
   "fortuner legender": "assets/fleet/Toyota Innova Crysta.png",
   "toyota fortuner": "assets/fleet/Toyota Innova Crysta.png",
@@ -230,39 +230,13 @@ function fleetImagePath(vehicle) {
       return encodeURI(vehicle);
     }
     const custom = normalizeCustomUrl(vehicle);
-    if (custom) return custom;
+    if (custom && !custom.includes("MED-") && !custom.includes("/api/media/")) return custom;
     const ov = findFleetImageOverride(vehicle);
     if (ov) return encodeURI(ov);
     return "assets/fleet/BMW 520D.png";
   }
 
-  // 1. Check for real user-uploaded media (http, data, blob, api/media, uploads)
-  const candidateImages = [
-    Array.isArray(vehicle.gallery) ? vehicle.gallery[0] : null,
-    vehicle.imageUrl,
-    vehicle.image,
-    vehicle.photo,
-  ];
-
-  for (const candidate of candidateImages) {
-    if (!candidate || typeof candidate !== "string") continue;
-    const s = candidate.trim();
-    if (
-      s.startsWith("http://") ||
-      s.startsWith("https://") ||
-      s.startsWith("data:") ||
-      s.startsWith("blob:") ||
-      s.startsWith("api/") ||
-      s.startsWith("/api/") ||
-      s.startsWith("uploads/") ||
-      s.startsWith("/uploads/")
-    ) {
-      const custom = normalizeCustomUrl(s);
-      if (custom) return custom;
-    }
-  }
-
-  // 2. Otherwise, match vehicle brand + model to catalog override
+  // 1. Check catalog asset override first by brand & model (studio transparent cutouts)
   const brand = (vehicle.brand || "").trim();
   const model = (vehicle.model || "").trim();
   const fullName = `${brand} ${model}`.trim();
@@ -274,6 +248,32 @@ function fleetImagePath(vehicle) {
     (brand.toLowerCase() === "mg" ? findFleetImageOverride("mg hector") : null);
 
   if (ov) return encodeURI(ov);
+
+  // 2. Check for real user-uploaded car photos (http, uploads, data, blob)
+  // Skip protected media document IDs (MED- / /api/media/) that return SVG document placeholders
+  const candidateImages = [
+    Array.isArray(vehicle.gallery) ? vehicle.gallery[0] : null,
+    vehicle.imageUrl,
+    vehicle.image,
+    vehicle.photo,
+  ];
+
+  for (const candidate of candidateImages) {
+    if (!candidate || typeof candidate !== "string") continue;
+    const s = candidate.trim();
+    if (s.includes("MED-") || s.includes("/api/media/")) continue;
+    if (
+      s.startsWith("http://") ||
+      s.startsWith("https://") ||
+      s.startsWith("data:") ||
+      s.startsWith("blob:") ||
+      s.startsWith("uploads/") ||
+      s.startsWith("/uploads/")
+    ) {
+      const custom = normalizeCustomUrl(s);
+      if (custom) return custom;
+    }
+  }
 
   // 3. Fallback to candidate if it starts with assets/
   for (const candidate of candidateImages) {

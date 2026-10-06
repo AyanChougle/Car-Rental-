@@ -1000,11 +1000,13 @@ function renderDashboard() {
   // KPI 2: ACTIVE TRIPS (Auto-fetches the live on-road count)
   const activeTripsCount = selectedMonthKpi
     ? Number(selectedMonthKpi.active_trips || 0)
-    : (serverKpiStats?.effective?.active_trips !== undefined 
+    : (serverKpiStats?.effective?.active_trips !== undefined && Number(serverKpiStats.effective.active_trips) > 0
         ? Number(serverKpiStats.effective.active_trips) 
         : onTripFleetCount);
   const kpiActiveTripsEl = document.getElementById("kpiActiveTrips");
-  if (kpiActiveTripsEl) kpiActiveTripsEl.textContent = String(activeTripsCount);
+  if (kpiActiveTripsEl) {
+    kpiActiveTripsEl.innerHTML = `${activeTripsCount} <span style="font-size: 13px; font-weight: 600; color: #4fd7ff; margin-left: 4px;">(${inYardFleetCount} in yard)</span>`;
+  }
 
   // KPI 3: COMPLETED TRIPS
   // Only bookings explicitly marked completed
@@ -1014,10 +1016,10 @@ function renderDashboard() {
     return bStat === "completed";
   }).length;
   const completedTripsCount = selectedMonthKpi
-    ? Number(selectedMonthKpi.completed_trips || 0)
-    : Number(
-        serverKpiStats?.effective?.completed_trips ??
-          calculatedCompletedTripsCount,
+    ? Number(selectedMonthKpi.completed_trips || calculatedCompletedTripsCount)
+    : Math.max(
+        Number(serverKpiStats?.effective?.completed_trips || 0),
+        calculatedCompletedTripsCount,
       );
   const kpiCompletedTripsEl = document.getElementById("kpiCompletedTrips");
   if (kpiCompletedTripsEl)
@@ -1056,10 +1058,10 @@ function renderDashboard() {
     (b) => !isBookingCancelled(b),
   ).length;
   const totalBookingsCount = selectedMonthKpi
-    ? Number(selectedMonthKpi.total_bookings || 0)
-    : Number(
-        serverKpiStats?.effective?.total_bookings ??
-          Math.max(calculatedTotalBookingsCount, 0),
+    ? Number(selectedMonthKpi.total_bookings || calculatedTotalBookingsCount)
+    : Math.max(
+        Number(serverKpiStats?.effective?.total_bookings || 0),
+        calculatedTotalBookingsCount,
       );
   const kpiTotalBookingsEl = document.getElementById("kpiTotalBookings");
   if (kpiTotalBookingsEl)
@@ -1091,7 +1093,7 @@ function renderDashboard() {
         ),
       );
   const kpiAvgOccupancyEl = document.getElementById("kpiAvgOccupancy");
-  if (kpiAvgOccupancyEl) kpiAvgOccupancyEl.textContent = `${occupancyPct}%`;
+  if (kpiAvgOccupancyEl) kpiAvgOccupancyEl.textContent = String(inYardFleetCount);
 
   let periodDays = 30;
   if (filterFromDate && filterToDate) {
@@ -1121,7 +1123,7 @@ function renderDashboard() {
     : 0;
   const kpiPerFleetAmountEl = document.getElementById("kpiPerFleetAmount");
   if (kpiPerFleetAmountEl) {
-    kpiPerFleetAmountEl.textContent = formatINR(perFleetAmount);
+    kpiPerFleetAmountEl.textContent = String(onTripFleetCount);
   }
 
   /* ============================================================

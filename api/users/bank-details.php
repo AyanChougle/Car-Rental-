@@ -62,40 +62,58 @@ $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 if ($method === 'GET') {
     try {
         if ($isStaff && !empty($_GET['all'])) {
-            $rows = Database::fetchAll(
-                "SELECT h.*, 
-                        COALESCE(NULLIF(u.name, ''), h.account_holder_name) AS user_name,
-                        u.email AS user_email,
-                        u.phone AS user_phone
-                 FROM host_bank_details h
-                 LEFT JOIN users u ON (h.firebase_uid = u.firebase_uid OR (h.user_id IS NOT NULL AND h.user_id = u.id))
-                 ORDER BY h.id DESC"
-            );
+            $rows = Database::fetchAll("SELECT * FROM host_bank_details ORDER BY id DESC");
+
+            $uMap = [];
+            try {
+                $allUsers = Database::fetchAll("SELECT id, firebase_uid, name, email, phone FROM users");
+                foreach ($allUsers as $u) {
+                    if (!empty($u['firebase_uid'])) $uMap['uid_' . trim((string)$u['firebase_uid'])] = $u;
+                    if (!empty($u['id'])) $uMap['id_' . (int)$u['id']] = $u;
+                }
+            } catch (Throwable $_) {}
+
             $result = [];
             foreach ($rows as $row) {
+                $matchedUser = null;
+                $rowUid = trim((string)($row['firebase_uid'] ?? ''));
+                $rowUserId = (int)($row['user_id'] ?? 0);
+                if ($rowUserId && isset($uMap['id_' . $rowUserId])) {
+                    $matchedUser = $uMap['id_' . $rowUserId];
+                } elseif ($rowUid && isset($uMap['uid_' . $rowUid])) {
+                    $matchedUser = $uMap['uid_' . $rowUid];
+                }
+
+                if ($matchedUser) {
+                    $row['user_name'] = $matchedUser['name'] ?? $row['account_holder_name'];
+                    $row['user_email'] = $matchedUser['email'] ?? '';
+                    $row['user_phone'] = $matchedUser['phone'] ?? '';
+                }
                 $result[] = bankPayload($row, true);
             }
             sendJsonResponse(['success' => true, 'bankDetails' => $result]);
         }
 
-        $uid = $user['firebase_uid'] ?? '';
+        $uid = trim((string)($user['firebase_uid'] ?? ''));
         $full = false;
         if ($isStaff && !empty($_GET['uid'])) {
             $uid = trim((string)$_GET['uid']);
             $full = true;
         }
 
-        $row = Database::fetchOne(
-            "SELECT h.*, 
-                    COALESCE(NULLIF(u.name, ''), h.account_holder_name) AS user_name,
-                    u.email AS user_email,
-                    u.phone AS user_phone
-             FROM host_bank_details h
-             LEFT JOIN users u ON (h.firebase_uid = u.firebase_uid OR (h.user_id IS NOT NULL AND h.user_id = u.id))
-             WHERE h.firebase_uid = ? OR (h.user_id IS NOT NULL AND h.user_id = ?)
-             ORDER BY h.id DESC LIMIT 1",
-            [$uid, !empty($user['id']) ? (int)$user['id'] : 0]
-        );
+        $row = null;
+        if (!empty($user['id'])) {
+            $row = Database::fetchOne("SELECT * FROM host_bank_details WHERE user_id = ? ORDER BY id DESC LIMIT 1", [(int)$user['id']]);
+        }
+        if (!$row && $uid !== '') {
+            $allRows = Database::fetchAll("SELECT * FROM host_bank_details ORDER BY id DESC");
+            foreach ($allRows as $r) {
+                if (trim((string)($r['firebase_uid'] ?? '')) === $uid) {
+                    $row = $r;
+                    break;
+                }
+            }
+        }
 
         sendJsonResponse(['success' => true, 'bankDetails' => bankPayload($row, $full)]);
     } catch (Throwable $e) {
@@ -129,15 +147,15 @@ if ($method === 'POST') {
                      rejection_reason = ?, 
                      verified_by = ?, 
                      verified_at = ? 
-                 WHERE (firebase_uid IS NOT NULL AND firebase_uid != '' AND firebase_uid = ?) 
-                    OR id = ?",
+                 WHERE id = ? 
+                    OR (firebase_uid IS NOT NULL AND firebase_uid != '' AND BINARY firebase_uid = BINARY ?)",
                 [
                     $status,
                     $reason,
                     $verifier,
                     $verifiedAt,
-                    $targetUid,
-                    $targetId
+                    $targetId,
+                    $targetUid
                 ]
             );
 

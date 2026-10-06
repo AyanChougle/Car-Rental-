@@ -103,8 +103,20 @@ if ($method === 'GET') {
             'available' => (int)$v['available'],
             'status' => $v['status'],
             'isActiveFleet' => (int)($v['is_active_fleet'] ?? 1),
-            'imageUrl' => $gallery[0] ?? 'assets/fleet/' . $v['brand'] . ' ' . $v['model'] . '.png',
-            'gallery' => $gallery,
+            'imageUrl' => (function() use ($gallery, $v) {
+                $img = !empty($gallery[0]) ? trim((string)$gallery[0]) : '';
+                if (!$img || str_contains($img, 'MED-') || str_contains($img, '/api/media/')) {
+                    return 'assets/fleet/' . $v['brand'] . ' ' . $v['model'] . '.png';
+                }
+                return $img;
+            })(),
+            'gallery' => (function() use ($gallery, $v) {
+                $filtered = array_values(array_filter($gallery, function($item) {
+                    $s = trim((string)$item);
+                    return !str_contains($s, 'MED-') && !str_contains($s, '/api/media/');
+                }));
+                return !empty($filtered) ? $filtered : ['assets/fleet/' . $v['brand'] . ' ' . $v['model'] . '.png'];
+            })(),
             'createdAt' => $v['created_at'],
             'updatedAt' => $v['updated_at']
         ];

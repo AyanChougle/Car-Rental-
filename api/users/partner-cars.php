@@ -229,8 +229,94 @@ if ($method === 'GET') {
             'location' => $c['city'],
             'expectedPrice' => (float)$c['expected_price'],
             'status' => $c['status'],
-            'photos' => $photos,
-            'imageUrl' => !empty($photos[0]) ? (is_string($photos[0]) ? $photos[0] : ($photos[0]['url'] ?? '')) : ('assets/fleet/' . $c['brand'] . ' ' . $c['model'] . '.png'),
+            'photos' => (function() use ($photos, $c) {
+                $brandModel = strtolower(trim(($c['brand'] ?? '') . ' ' . ($c['model'] ?? '')));
+                $imgMap = [
+                    'toyota taisor' => 'assets/fleet/Toyota Taisor.png',
+                    'urban cruiser taisor' => 'assets/fleet/Toyota Taisor.png',
+                    'toyota urban cruiser taisor' => 'assets/fleet/Toyota Taisor.png',
+                    'taisor' => 'assets/fleet/Toyota Taisor.png',
+                    'mahindra thar roxx' => 'assets/fleet/thar roxx.png',
+                    'thar roxx' => 'assets/fleet/thar roxx.png',
+                    'mg hector' => 'assets/fleet/MG hector.jpg',
+                    'mg hector plus' => 'assets/fleet/MG hector.jpg',
+                    'maruti suzuki baleno' => 'assets/fleet/Maruti Suzuki Baleno.png',
+                    'baleno' => 'assets/fleet/Maruti Suzuki Baleno.png',
+                    'toyota glanza' => 'assets/fleet/Toyota Glanza.png',
+                    'glanza' => 'assets/fleet/Toyota Glanza.png',
+                    'maruti suzuki fronx' => 'assets/fleet/Maruti Suzuki Fronx.png',
+                    'fronx' => 'assets/fleet/Maruti Suzuki Fronx.png',
+                    'tata punch' => 'assets/fleet/Tata Punch.png',
+                    'punch' => 'assets/fleet/Tata Punch.png',
+                    'maruti suzuki ertiga' => 'assets/fleet/Maruti Suzuki Ertiga.png',
+                    'ertiga' => 'assets/fleet/Maruti Suzuki Ertiga.png',
+                    'mahindra xuv700' => 'assets/fleet/Mahindra XUV700.png',
+                    'xuv700' => 'assets/fleet/Mahindra XUV700.png',
+                    'toyota innova crysta' => 'assets/fleet/Toyota Innova Crysta.png',
+                    'innova crysta' => 'assets/fleet/Toyota Innova Crysta.png',
+                    'mahindra scorpio n' => 'assets/fleet/Mahindra Scorpio N.png',
+                    'mahindra 7xo' => 'assets/fleet/Mahindra 7XO.png',
+                    'tata safari' => 'assets/fleet/Tata Safari.png',
+                ];
+                $cleanImg = $imgMap[$brandModel] ?? null;
+                if (!$cleanImg) {
+                    foreach ($imgMap as $k => $v) {
+                        if (str_contains($brandModel, $k)) { $cleanImg = $v; break; }
+                    }
+                }
+                if (!$cleanImg) {
+                    $cleanImg = 'assets/fleet/' . trim(($c['brand'] ?? 'Car') . ' ' . ($c['model'] ?? '')) . '.png';
+                }
+                $p0 = !empty($photos[0]) ? (is_string($photos[0]) ? $photos[0] : ($photos[0]['url'] ?? '')) : '';
+                if (!$p0 || str_contains($p0, 'MED-') || str_contains($p0, '/api/media/')) {
+                    $p0 = $cleanImg;
+                }
+                return [$p0];
+            })(),
+            'imageUrl' => (function() use ($photos, $c) {
+                $brandModel = strtolower(trim(($c['brand'] ?? '') . ' ' . ($c['model'] ?? '')));
+                $imgMap = [
+                    'toyota taisor' => 'assets/fleet/Toyota Taisor.png',
+                    'urban cruiser taisor' => 'assets/fleet/Toyota Taisor.png',
+                    'toyota urban cruiser taisor' => 'assets/fleet/Toyota Taisor.png',
+                    'taisor' => 'assets/fleet/Toyota Taisor.png',
+                    'mahindra thar roxx' => 'assets/fleet/thar roxx.png',
+                    'thar roxx' => 'assets/fleet/thar roxx.png',
+                    'mg hector' => 'assets/fleet/MG hector.jpg',
+                    'mg hector plus' => 'assets/fleet/MG hector.jpg',
+                    'maruti suzuki baleno' => 'assets/fleet/Maruti Suzuki Baleno.png',
+                    'baleno' => 'assets/fleet/Maruti Suzuki Baleno.png',
+                    'toyota glanza' => 'assets/fleet/Toyota Glanza.png',
+                    'glanza' => 'assets/fleet/Toyota Glanza.png',
+                    'maruti suzuki fronx' => 'assets/fleet/Maruti Suzuki Fronx.png',
+                    'fronx' => 'assets/fleet/Maruti Suzuki Fronx.png',
+                    'tata punch' => 'assets/fleet/Tata Punch.png',
+                    'punch' => 'assets/fleet/Tata Punch.png',
+                    'maruti suzuki ertiga' => 'assets/fleet/Maruti Suzuki Ertiga.png',
+                    'ertiga' => 'assets/fleet/Maruti Suzuki Ertiga.png',
+                    'mahindra xuv700' => 'assets/fleet/Mahindra XUV700.png',
+                    'xuv700' => 'assets/fleet/Mahindra XUV700.png',
+                    'toyota innova crysta' => 'assets/fleet/Toyota Innova Crysta.png',
+                    'innova crysta' => 'assets/fleet/Toyota Innova Crysta.png',
+                    'mahindra scorpio n' => 'assets/fleet/Mahindra Scorpio N.png',
+                    'mahindra 7xo' => 'assets/fleet/Mahindra 7XO.png',
+                    'tata safari' => 'assets/fleet/Tata Safari.png',
+                ];
+                $cleanImg = $imgMap[$brandModel] ?? null;
+                if (!$cleanImg) {
+                    foreach ($imgMap as $k => $v) {
+                        if (str_contains($brandModel, $k)) { $cleanImg = $v; break; }
+                    }
+                }
+                if (!$cleanImg) {
+                    $cleanImg = 'assets/fleet/' . trim(($c['brand'] ?? 'Car') . ' ' . ($c['model'] ?? '')) . '.png';
+                }
+                $p0 = !empty($photos[0]) ? (is_string($photos[0]) ? $photos[0] : ($photos[0]['url'] ?? '')) : '';
+                if (!$p0 || str_contains($p0, 'MED-') || str_contains($p0, '/api/media/')) {
+                    $p0 = $cleanImg;
+                }
+                return $p0;
+            })(),
             'rejectionReason' => $c['rejection_reason'],
             'totalRevenue' => round($totalRevenue, 2),
             'monthRevenue' => round($monthRevenue, 2),

@@ -599,15 +599,22 @@ async function loadMyListings(userParam) {
         const vehicleName =
           `${listing.brand || "Vehicle"} ${listing.model || ""}`.trim();
 
-        let firstPhoto = "";
-        if (Array.isArray(listing.photos) && listing.photos.length) {
-          const p0 = listing.photos[0];
-          firstPhoto =
-            typeof p0 === "object" && p0
-              ? p0.url || p0.mediaUrl || ""
-              : String(p0 || "");
-        } else if (typeof listing.imageUrl === "string") {
+        let firstPhoto = (typeof window !== "undefined" && window.fleetImagePath) ? window.fleetImagePath(listing) : "";
+        if (!firstPhoto || firstPhoto.includes("MED-") || firstPhoto.includes("/api/media/")) {
+          firstPhoto = (typeof window !== "undefined" && window.fleetImagePath) ? window.fleetImagePath(vehicleName) : "";
+        }
+        if (!firstPhoto && typeof listing.imageUrl === "string" && !listing.imageUrl.includes("MED-") && !listing.imageUrl.includes("/api/media/")) {
           firstPhoto = listing.imageUrl.trim();
+        }
+        if (!firstPhoto && Array.isArray(listing.photos) && listing.photos.length) {
+          const p0 = listing.photos[0];
+          const rawP = typeof p0 === "object" && p0 ? p0.url || p0.mediaUrl || "" : String(p0 || "");
+          if (rawP && !rawP.includes("MED-") && !rawP.includes("/api/media/")) {
+            firstPhoto = rawP;
+          }
+        }
+        if (!firstPhoto) {
+          firstPhoto = `assets/fleet/${vehicleName}.png`;
         }
 
         const rejectionNote =
@@ -670,12 +677,16 @@ async function loadMyListings(userParam) {
             .join("");
         }
 
+        const hostName = listing.userName || listing.ownerName || "Partner Host";
+        const hostPhone = listing.userPhone || "";
+        const hostEmail = listing.userEmail || "";
+
         return `
         <article class="profile-listing-card">
           <div class="profile-listing-card__media">
             ${
               firstPhoto
-                ? `<img src="${escapeHtml(firstPhoto)}" alt="${escapeHtml(vehicleName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\\'profile-listing-card__placeholder\\\'>CAR</div>';" />`
+                ? `<img src="${escapeHtml(firstPhoto)}" alt="${escapeHtml(vehicleName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.src='assets/fleet/BMW 520D.png';" />`
                 : `<div class="profile-listing-card__placeholder" aria-hidden="true">${escapeHtml(listing.brand || "CAR")}</div>`
             }
           </div>
@@ -688,6 +699,9 @@ async function loadMyListings(userParam) {
               <span class="profile-listing-status ${status.className}">${escapeHtml(status.label)}</span>
             </div>
             <dl class="profile-listing-meta">
+              <div><dt>Host Partner</dt><dd><strong style="color: #4fd7ff;">${escapeHtml(hostName)}</strong></dd></div>
+              ${hostPhone ? `<div><dt>Host Contact</dt><dd>${escapeHtml(hostPhone)}</dd></div>` : ""}
+              ${hostEmail ? `<div><dt>Host Email</dt><dd style="word-break: break-all;">${escapeHtml(hostEmail)}</dd></div>` : ""}
               <div><dt>Registration</dt><dd>${escapeHtml(listing.regNo || listing.regNumber || "Not provided")}</dd></div>
               <div><dt>Location</dt><dd>${escapeHtml(listing.city || listing.location || "Not provided")}</dd></div>
               <div><dt>Transmission</dt><dd>${escapeHtml(listing.transmission || "—")}</dd></div>
@@ -706,8 +720,9 @@ async function loadMyListings(userParam) {
                 <strong style="font-size: 15px; color: var(--kr-cyan, #4fd7ff); font-weight: 700;">${formatINR(listing.totalRevenue || 0)}</strong>
               </div>
               <div>
-                <span style="font-size: 11px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Trips Done</span>
-                <strong style="font-size: 15px; color: #fff; font-weight: 700;">${listing.completedTrips || listing.totalTrips || 0}</strong>
+                <span style="font-size: 11px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Trips</span>
+                <strong style="font-size: 15px; color: #fff; font-weight: 700;">${listing.totalTrips || listing.completedTrips || 0}</strong>
+                ${listing.activeTrips ? `<span style="display:block; font-size:10px; color:#4fd7ff; font-weight:600;">${listing.activeTrips} Active</span>` : ""}
               </div>
             </div>
 
