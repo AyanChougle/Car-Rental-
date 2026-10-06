@@ -132,9 +132,11 @@ sendJsonResponse([
         'total_fleet' => $fleetCount,
         'fleet_count' => $fleetCount,
         'on_road_fleet' => $onRoad,
+        'on_trip_fleet' => $onRoad,
         'active_rentals' => $onRoad,
         'available_fleet' => $available,
         'available_in_yard' => $available,
+        'in_yard_fleet' => $available,
         'fleet_utilization' => $occupancy,
         'occupancy_pct' => $occupancy
     ]

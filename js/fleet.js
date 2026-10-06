@@ -24,6 +24,16 @@ function formatCurrency(value) {
   }).format(amount);
 }
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function getVehicleBodyType(vehicle) {
   const cat = (vehicle.category || "").toLowerCase();
   const model = (vehicle.model || "").toLowerCase();
@@ -67,6 +77,7 @@ function renderFleetCards(records) {
       const bodyType = getVehicleBodyType(vehicle);
       const detailsId = `fleet-card-details-${index}`;
 
+      const hubLocationText = vehicle.hubName || vehicle.hub || vehicle.location || "Gavson Business Park, Ghansoli";
       return `
         <article
           class="fleet-card fleet-card--compact"
@@ -78,6 +89,8 @@ function renderFleetCards(records) {
           data-name="${vehicleName}"
           data-transmission="${vehicle.transmission}"
           data-fuel="${vehicle.fuel}"
+          data-hub-id="${vehicle.hubId || vehicle.hub_id || ''}"
+          data-hub-name="${escapeHtml(hubLocationText)}"
           data-index="${index}"
         >
           <div class="fleet-card__image">
@@ -118,6 +131,11 @@ function renderFleetCards(records) {
                   ${vehicle.year || 2026}
                   <span aria-hidden="true">•</span>
                   ${vehicle.category ? vehicle.category.toUpperCase() : "STANDARD"}
+                </div>
+
+                <div class="fleet-card__location" style="display:flex; align-items:center; gap:5px; font-size:11.5px; color:#4fd7ff; margin-top:5px; font-weight:600;">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                  <span>${escapeHtml(hubLocationText)}</span>
                 </div>
               </div>
 
@@ -361,8 +379,9 @@ function applyFilters() {
   const selectedFuels = [...document.querySelectorAll('input[name="filterFuel"]:checked')].map((el) => el.value.toLowerCase());
   const selectedBodyTypes = [...document.querySelectorAll('input[name="filterBodyType"]:checked')].map((el) => el.value.toLowerCase());
   const selectedSeats = [...document.querySelectorAll('input[name="filterSeats"]:checked')].map((el) => el.value);
+  const selectedHub = document.querySelector('input[name="filterHub"]:checked')?.value || "";
 
-  const activeCount = selectedTransmissions.length + selectedFuels.length + selectedBodyTypes.length + selectedSeats.length;
+  const activeCount = selectedTransmissions.length + selectedFuels.length + selectedBodyTypes.length + selectedSeats.length + (selectedHub ? 1 : 0);
   const badge = document.getElementById("filterActiveBadge");
   if (badge) {
     badge.textContent = activeCount;
@@ -376,6 +395,20 @@ function applyFilters() {
     const fuel = (card.dataset.fuel || "").toLowerCase();
     const bodyType = (card.dataset.bodytype || category).toLowerCase();
     const seats = Number(card.dataset.seats) || 5;
+    const cardHubId = String(card.dataset.hubId || "").trim();
+    const cardHubName = String(card.dataset.hubName || "").toLowerCase();
+
+    // Hub Filter
+    let matchesHub = true;
+    if (selectedHub) {
+      if (cardHubId) {
+        matchesHub = cardHubId === String(selectedHub);
+      } else {
+        if (selectedHub === "1") matchesHub = cardHubName.includes("gavson") || cardHubName.includes("ghansoli") || cardHubName.includes("navi mumbai");
+        else if (selectedHub === "2") matchesHub = cardHubName.includes("kandivali") || cardHubName.includes("mumbai");
+        else matchesHub = true;
+      }
+    }
 
     // Transmission Filter
     let matchesTransmission = true;
@@ -430,11 +463,13 @@ function applyFilters() {
       bodyType,
       transmission,
       fuel,
+      cardHubName,
       card.textContent.toLowerCase(),
     ];
     const matchesSearch = !query || searchableContent.some((value) => value.includes(query));
 
     const isMatch = Boolean(
+      matchesHub &&
       matchesBodyType &&
       matchesTransmission &&
       matchesFuel &&
@@ -451,6 +486,16 @@ function applyFilters() {
   if (fleetEmptyState) {
     fleetEmptyState.classList.toggle("hidden", anyMatching);
     fleetEmptyState.hidden = anyMatching;
+    const titleEl = fleetEmptyState.querySelector("h2");
+    const subEl = fleetEmptyState.querySelector("p");
+    if (selectedHub && selectedHub !== "") {
+      const hubLabel = document.querySelector(`input[name="filterHub"][value="${selectedHub}"]`)?.closest("label")?.textContent?.trim() || "this Hub";
+      if (titleEl) titleEl.textContent = `No vehicles currently stationed at ${hubLabel}`;
+      if (subEl) subEl.textContent = "Select 'All Hubs' or 'Gavson — Navi Mumbai' to browse available fleet vehicles.";
+    } else {
+      if (titleEl) titleEl.textContent = "No matching cars found";
+      if (subEl) subEl.textContent = "Try clearing your filters or changing your search terms.";
+    }
   }
   grid.classList.toggle("hidden", !anyMatching);
   grid.hidden = !anyMatching;
@@ -534,8 +579,17 @@ if (applyMobileFiltersBtn) {
   });
 }
 function resetAllFilters() {
-  document.querySelectorAll(".filter-check-input").forEach((chk) => (chk.checked = false));
+  document.querySelectorAll(".filter-check-input").forEach((chk) => {
+    if (chk.type === "radio") {
+      chk.checked = (chk.value === "");
+    } else {
+      chk.checked = false;
+    }
+  });
+  const allHubRadio = document.querySelector('input[name="filterHub"][value=""]');
+  if (allHubRadio) allHubRadio.checked = true;
   if (search) search.value = "";
+  try { localStorage.removeItem("kruizly_selected_hub_id"); } catch (_) {}
   applyFilters();
 }
 
@@ -610,52 +664,101 @@ function bookingDateParams() {
   const params = new URLSearchParams(window.location.search);
   let pickup = params.get("pickup");
   let drop = params.get("drop");
+  let hub = params.get("hub") || document.querySelector('input[name="filterHub"]:checked')?.value || "";
 
   if (pickup && drop) {
     try {
       sessionStorage.setItem("crp_pickupDate", pickup);
       sessionStorage.setItem("crp_dropDate", drop);
-    } catch (e) {
-      // sessionStorage unavailable (private browsing etc.) — fine, just skip caching
-    }
+    } catch (e) {}
   } else {
     try {
       pickup = pickup || sessionStorage.getItem("crp_pickupDate");
       drop = drop || sessionStorage.getItem("crp_dropDate");
-    } catch (e) {
-      // ignore
-    }
+    } catch (e) {}
   }
 
-  if (!pickup || !drop) return "";
-  return `&pickup=${encodeURIComponent(pickup)}&drop=${encodeURIComponent(drop)}`;
+  let res = "";
+  if (pickup && drop) res += `&pickup=${encodeURIComponent(pickup)}&drop=${encodeURIComponent(drop)}`;
+  if (hub) res += `&hub=${encodeURIComponent(hub)}`;
+  return res;
 }
 
 async function applyFleetAvailabilityOverrides() {
   try {
-    const res = await api.get("/vehicles", {});
-    const serverVehicles = Array.isArray(res.vehicles) ? res.vehicles : [];
+    const [vehRes, hubsRes] = await Promise.allSettled([
+      api.get("/vehicles", {}),
+      api.get("/hubs?active=1")
+    ]);
+
+    if (hubsRes.status === "fulfilled" && hubsRes.value?.success && Array.isArray(hubsRes.value.hubs) && hubsRes.value.hubs.length) {
+      const hubOptionsWrap = document.getElementById("fleetHubFilterOptions");
+      if (hubOptionsWrap) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlHub = urlParams.get("hub") || localStorage.getItem("kruizly_selected_hub_id") || "";
+        hubOptionsWrap.innerHTML = `
+          <label class="filter-check-row">
+            <input type="radio" class="filter-check-input" name="filterHub" value="" ${!urlHub ? "checked" : ""} />
+            <span class="filter-check-box"></span>
+            <span class="filter-check-text">All Hubs</span>
+          </label>
+        ` + hubsRes.value.hubs.map((h) => `
+          <label class="filter-check-row">
+            <input type="radio" class="filter-check-input" name="filterHub" value="${h.id}" ${String(h.id) === String(urlHub) ? "checked" : ""} />
+            <span class="filter-check-box"></span>
+            <span class="filter-check-text">${escapeHtml(h.name)}${h.city ? " (" + escapeHtml(h.city) + ")" : ""}</span>
+          </label>
+        `).join("");
+
+        hubOptionsWrap.querySelectorAll('input[name="filterHub"]').forEach((radio) => {
+          radio.addEventListener("change", () => {
+            if (radio.value) {
+              try { localStorage.setItem("kruizly_selected_hub_id", String(radio.value)); } catch (_) {}
+            }
+            applyFilters();
+          });
+        });
+      }
+    }
+
+    const serverVehicles = (vehRes.status === "fulfilled" && Array.isArray(vehRes.value?.vehicles) && vehRes.value.vehicles.length > 0)
+      ? vehRes.value.vehicles
+      : (window.DEFAULT_FLEET_VEHICLES || window.fleetVehicles || []);
     window.fleetVehicles = serverVehicles
       .filter(v => v && v.status !== "removed" && v.status !== "disabled");
   } catch (error) {
     console.warn("Could not load fleet:", error);
-    window.fleetVehicles = [];
+    window.fleetVehicles = (window.DEFAULT_FLEET_VEHICLES && window.DEFAULT_FLEET_VEHICLES.length)
+      ? window.DEFAULT_FLEET_VEHICLES
+      : (window.fleetVehicles || []);
   }
 }
 
-// Render the catalog immediately — it's already available from vehicles.js,
-// no need to wait on a network call for it. Live availability overrides
-// (from Firestore) are layered on top afterward and re-render the grid if
-// they succeed; if that call is slow, blocked by security rules, or fails
-// outright, the fleet is still visible instead of stuck on "Loading fleet...".
-// Do not render a hardcoded catalog. Load the selected Hub from the live database first.
-window.fleetVehicles = [];
-renderFleetCards([]);
+// Render catalog immediately — always have vehicles visible
+const initialFleet = (Array.isArray(window.fleetVehicles) && window.fleetVehicles.length > 0)
+  ? window.fleetVehicles
+  : (Array.isArray(window.DEFAULT_FLEET_VEHICLES) && window.DEFAULT_FLEET_VEHICLES.length > 0)
+    ? window.DEFAULT_FLEET_VEHICLES
+    : [];
+
+window.fleetVehicles = initialFleet;
+renderFleetCards(window.fleetVehicles);
 applyFilters();
 
 applyFleetAvailabilityOverrides().then(() => {
-  renderFleetCards(window.fleetVehicles || []);
-  applyFilters();
+  if (Array.isArray(window.fleetVehicles) && window.fleetVehicles.length > 0) {
+    renderFleetCards(window.fleetVehicles);
+    applyFilters();
+  }
+});
+
+window.addEventListener("kruizly:hubchange", (e) => {
+  const hubId = e?.detail?.hubId;
+  const radio = document.querySelector(`input[name="filterHub"][value="${hubId || ''}"]`);
+  if (radio) {
+    radio.checked = true;
+    applyFilters();
+  }
 });
 /* =========================================================
    CUSTOM SORT DROPDOWN

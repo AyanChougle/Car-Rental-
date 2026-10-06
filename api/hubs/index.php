@@ -27,6 +27,18 @@ function hubAudit(array $user, string $action, int $hubId, $before = null, $afte
 if ($method === 'GET') {
     $activeOnly = isset($_GET['active']) && in_array(strtolower((string)$_GET['active']), ['1','true','yes'], true);
 
+    try {
+        $count = (int)(Database::fetchOne("SELECT COUNT(*) AS c FROM hubs")['c'] ?? 0);
+        if ($count === 0) {
+            Database::execute(
+                "INSERT INTO `hubs` (`id`, `name`, `code`, `city`, `state`, `country`, `address`, `contact_phone`, `contact_email`, `operating_hours`, `pickup_instructions`, `status`) VALUES
+                 (1, 'Gavson Business Park, Ghansoli', 'GAV-01', 'Navi Mumbai', 'Maharashtra', 'India', 'Gavson Business Park, Ghansoli, Navi Mumbai, Maharashtra 400701', '+91 91671 64547', 'support@kruizly.com', '24/7', 'Report to Gate 1 / Parking Bay A. Executive will hand over keys and inspect vehicle.', 'active'),
+                 (2, 'Kandivali Hub, Mumbai', 'KAND-01', 'Mumbai', 'Maharashtra', 'India', 'Kandivali West, Link Road, Mumbai, Maharashtra 400067', '+91 91671 64547', 'support@kruizly.com', '24/7', 'Report to Kruizly Kandivali Hub Counter. Vehicle inspection and key handoff available 24/7.', 'active')
+                 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `city` = VALUES(`city`), `address` = VALUES(`address`)"
+            );
+        }
+    } catch (Throwable $_) {}
+
     $sql = "SELECT * FROM hubs";
     if ($activeOnly) {
         $sql .= " WHERE status = 'active'";

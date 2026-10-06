@@ -173,9 +173,9 @@ async function initBooking(vehicle) {
     driverRate.textContent = "₹" + formatCurrency(vehicle.driverPrice || 2000);
   if (deposit)
     deposit.textContent = "₹" + formatCurrency(vehicle.securityDeposit);
+  const resolvedHubName = vehicle.hubName || vehicle.location || (String(vehicle.hubId || vehicle.hub_id) === "2" ? "Kandivali Hub, Mumbai" : "Gavson Business Park, Ghansoli, Navi Mumbai");
   if (location)
-    location.textContent =
-      vehicle.hubName || vehicle.location || "Hub not assigned";
+    location.textContent = resolvedHubName;
 
   const imagePath = window.fleetImagePath ? window.fleetImagePath(vehicle) : "";
   if (imagePath && vehicleImage) {

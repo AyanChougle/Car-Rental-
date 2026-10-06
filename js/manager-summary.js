@@ -2299,6 +2299,13 @@ async function loadManagerData() {
       });
     }
 
+    if (rawVehicles.length === 0 && typeof window !== "undefined" && window.DEFAULT_FLEET_VEHICLES) {
+      const fallbackList = selectedHubId
+        ? window.DEFAULT_FLEET_VEHICLES.filter(v => String(v.hubId || v.hub_id) === String(selectedHubId))
+        : window.DEFAULT_FLEET_VEHICLES;
+      rawVehicles = [...fallbackList];
+    }
+
     let serverFleets = [];
     if (
       activeFleetsRes.status === "fulfilled" &&
@@ -2400,7 +2407,22 @@ async function loadManagerData() {
         };
       });
     } else {
-      activeFleetsRoster = [];
+      activeFleetsRoster = rawVehicles.map((v) => ({
+        ...v,
+        regNo: v.regNo || v.reg_no || "",
+        carId: v.carId || v.car_id || "",
+        brand: v.brand || "",
+        model: v.model || "",
+        year: v.year || 2026,
+        category: v.category || "Economy",
+        transmission: v.transmission || "Manual",
+        fuelType: v.fuel || v.fuelType || "Petrol",
+        seats: Number(v.seats || 5),
+        hub: v.hubName || v.hub || "",
+        priceDay: Number(v.priceDay || v.price_day || 0),
+        available: v.available !== undefined ? Number(v.available) : 1,
+        status: v.status || "available"
+      }));
     }
 
     if (bookingsRes.status === "fulfilled" && bookingsRes.value) {

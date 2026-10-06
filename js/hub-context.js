@@ -1,7 +1,7 @@
 /**
  * KRUIZLY Hub Context
  * Shared Hub selector for Admin, Manager, Executive, Fleet and Payment surfaces.
- * Hub records are always read from the live database API.
+ * Hub records are read from the live database API with fallback.
  */
 (function () {
   "use strict";
@@ -11,7 +11,12 @@
     ((location.hostname === "localhost" || location.hostname === "127.0.0.1")
       ? "https://kruizly.com/api" : location.origin + "/api")).replace(/\/$/, "");
 
-  let hubs = [];
+  const DEFAULT_HUBS = [
+    { id: 1, name: "Gavson Business Park, Ghansoli", code: "GAV-01", city: "Navi Mumbai", state: "Maharashtra", status: "active" },
+    { id: 2, name: "Kandivali Hub, Mumbai", code: "KAND-01", city: "Mumbai", state: "Maharashtra", status: "active" }
+  ];
+
+  let hubs = [...DEFAULT_HUBS];
   let selector = null;
 
   function getSelectedHubId() {
@@ -31,12 +36,20 @@
   }
 
   async function fetchHubs() {
-    const res = await fetch(API + "/hubs?active=1&_t=" + Date.now(), {
-      headers: { Accept: "application/json" },
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.success) throw new Error(data.error || data.message || "Could not load Hubs");
-    hubs = Array.isArray(data.hubs) ? data.hubs : [];
+    try {
+      const res = await fetch(API + "/hubs?active=1&_t=" + Date.now(), {
+        headers: { Accept: "application/json" },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success && Array.isArray(data.hubs) && data.hubs.length > 0) {
+        hubs = data.hubs;
+      } else if (!hubs.length) {
+        hubs = [...DEFAULT_HUBS];
+      }
+    } catch (err) {
+      console.warn("Hub context fetch note:", err);
+      if (!hubs.length) hubs = [...DEFAULT_HUBS];
+    }
     return hubs;
   }
 
@@ -47,6 +60,7 @@
     if (p.includes("executive")) return "executive";
     if (p.includes("manager")) return "manager";
     if (p.includes("admin")) return "admin";
+    if (p.includes("accounts")) return "accounts";
     return "customer";
   }
 
@@ -66,14 +80,18 @@
         <div class="hub-context-bar__control">
           <label for="kruizlyHubContextSelect">Select Hub</label>
           <select id="kruizlyHubContextSelect" class="hub-context-select">
-            <option value="">Loading Hubs...</option>
+            <option value="">All Hubs</option>
           </select>
         </div>
-        <div class="hub-context-bar__meta" id="kruizlyHubContextMeta">Live database context</div>
+        <div class="hub-context-bar__meta" id="kruizlyHubContextMeta">Operating across all hubs</div>
       </div>`;
+    
+    const container = document.querySelector("main .container") || document.querySelector(".container");
     const main = document.querySelector("main");
     const header = document.querySelector("header");
-    if (main) main.insertBefore(bar, main.firstChild);
+
+    if (container) container.insertBefore(bar, container.firstChild);
+    else if (main) main.insertBefore(bar, main.firstChild);
     else if (header && header.nextSibling) header.parentNode.insertBefore(bar, header.nextSibling);
     else document.body.insertBefore(bar, document.body.firstChild);
     selector = bar.querySelector("#kruizlyHubContextSelect");
@@ -86,7 +104,7 @@
     if (!selector) return;
 
     const mode = pageMode();
-    const allowAll = mode === "admin" || mode === "manager" || mode === "executive";
+    const allowAll = mode === "admin" || mode === "manager" || mode === "executive" || mode === "accounts" || mode === "customer" || mode === "fleet";
     const previous = getSelectedHubId();
 
     selector.innerHTML = "";
@@ -105,9 +123,9 @@
     });
 
     let value = previous;
-    if (!value || !hubs.some(h => String(h.id) === String(value))) {
-      value = allowAll ? "" : (hubs[0] ? String(hubs[0].id) : "");
-      setSelectedHubId(value);
+    if (value && !hubs.some(h => String(h.id) === String(value))) {
+      value = "";
+      setSelectedHubId("");
     }
     selector.value = value;
     const globalSelect = document.getElementById("kruizly-hub-select");
@@ -118,7 +136,7 @@
     if (meta) {
       meta.textContent = hub
         ? `${hub.code || "HUB"} · ${hub.city || ""}${hub.state ? ", " + hub.state : ""}`
-        : (hubs.length ? "All active Hubs" : "No active Hubs configured");
+        : (hubs.length ? "All active Hubs" : "All operating Hubs");
     }
 
     selector.onchange = function () {
@@ -151,20 +169,15 @@
 
   async function init() {
     try {
-      if (Array.isArray(window.KRUIZLY_HUBS) && window.KRUIZLY_HUBS.length) hubs = window.KRUIZLY_HUBS.slice();
-      else await fetchHubs();
+      await fetchHubs();
       render();
       const hub = selectedHub();
       window.dispatchEvent(new CustomEvent("kruizly:hubchange", {
         detail: { hubId: getSelectedHubId() ? Number(getSelectedHubId()) : null, hub: hub || null, hubs: hubs.slice(), initial: true }
       }));
     } catch (error) {
-      console.error("Hub context load error:", error);
-      const bar = ensureBar();
-      const s = bar.querySelector("select");
-      if (s) s.innerHTML = `<option value="">Unable to load Hubs</option>`;
-      const meta = bar.querySelector(".hub-context-bar__meta");
-      if (meta) meta.textContent = error.message || "Hub service unavailable";
+      console.warn("Hub context init error:", error);
+      render();
     }
   }
 

@@ -587,14 +587,38 @@ export function initAuthForms() {
 
   const quickBookBtn = document.getElementById("quickBookBtn");
   if (quickBookBtn) {
+    // Populate hubs into quickHub select if available
+    const quickHubSelect = document.getElementById("quickHub");
+    if (quickHubSelect) {
+      api.get("/hubs?active=1").then((res) => {
+        if (res?.success && Array.isArray(res.hubs) && res.hubs.length) {
+          const prevVal = quickHubSelect.value || localStorage.getItem("kruizly_selected_hub_id") || "";
+          quickHubSelect.innerHTML = '<option value="" style="background:#0d131f;color:#fff;">All Operating Hubs</option>' +
+            res.hubs.map((h) => `<option value="${h.id}" style="background:#0d131f;color:#fff;" ${String(h.id) === String(prevVal) ? "selected" : ""}>${h.name}${h.city ? " (" + h.city + ")" : ""}</option>`).join("");
+          if (prevVal && res.hubs.some((h) => String(h.id) === String(prevVal))) {
+            quickHubSelect.value = String(prevVal);
+          }
+        }
+      }).catch(() => {});
+    }
+
     quickBookBtn.addEventListener("click", () => {
       const p = document.getElementById("quickPickup")?.value;
       const d = document.getElementById("quickDrop")?.value;
-      let url = "fleet.html";
-      if (p && d) {
-        url += `?pickup=${encodeURIComponent(p)}&drop=${encodeURIComponent(d)}`;
+      const hub = document.getElementById("quickHub")?.value;
+      if (hub) {
+        try { localStorage.setItem("kruizly_selected_hub_id", String(hub)); } catch (_) {}
       }
-      window.location.href = url;
+      const params = new URLSearchParams();
+      if (p && d) {
+        params.set("pickup", p);
+        params.set("drop", d);
+      }
+      if (hub) {
+        params.set("hub", hub);
+      }
+      const qs = params.toString();
+      window.location.href = qs ? `fleet.html?${qs}` : "fleet.html";
     });
   }
 
