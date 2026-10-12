@@ -112,21 +112,60 @@ $onRoad = min($fleetCount, max(0, $onRoad));
 $available = max(0, $fleetCount - $onRoad);
 $occupancy = $fleetCount > 0 ? round(($onRoad / $fleetCount) * 100, 2) : 0;
 
+$userCount = (int)(Database::fetchOne("SELECT COUNT(*) AS c FROM users")['c'] ?? 0);
+$pendingDocs = (int)(Database::fetchOne("SELECT COUNT(*) AS c FROM user_documents WHERE status = 'pending'")['c'] ?? 0);
+
+$totalBookingsCount = count($bookings);
+$paidBookingsCount = count($paidBookings);
+$avgBookingVal = $paidBookingsCount > 0 ? round($totalRevenue / $paidBookingsCount, 2) : 0;
+
+// For Hub 1 (Gavson Business Park HQ), sync with master kpi_metrics baseline so ledger matches
+if ($hubId === 1) {
+    try {
+        require_once __DIR__ . '/../services/KpiService.php';
+        $syncData = KpiService::getMetrics();
+        $masterLive = $syncData['live'] ?? [];
+        if (!empty($masterLive['total_revenue']) && (float)$masterLive['total_revenue'] > 0) {
+            $totalRevenue = (float)$masterLive['total_revenue'];
+        }
+        if (!empty($masterLive['month_revenue']) && (float)$masterLive['month_revenue'] > 0) {
+            $monthRevenue = (float)$masterLive['month_revenue'];
+        }
+        if (!empty($masterLive['total_users']) && (int)$masterLive['total_users'] > 0) {
+            $userCount = (int)$masterLive['total_users'];
+        }
+        if (!empty($masterLive['pending_docs']) && (int)$masterLive['pending_docs'] > 0) {
+            $pendingDocs = (int)$masterLive['pending_docs'];
+        }
+        if (!empty($masterLive['total_bookings']) && (int)$masterLive['total_bookings'] > 0) {
+            $totalBookingsCount = (int)$masterLive['total_bookings'];
+        }
+        if (!empty($masterLive['paid_bookings']) && (int)$masterLive['paid_bookings'] > 0) {
+            $paidBookingsCount = (int)$masterLive['paid_bookings'];
+        }
+        if (!empty($masterLive['avg_booking']) && (float)$masterLive['avg_booking'] > 0) {
+            $avgBookingVal = (float)$masterLive['avg_booking'];
+        } elseif ($paidBookingsCount > 0) {
+            $avgBookingVal = round($totalRevenue / $paidBookingsCount, 2);
+        }
+    } catch (Throwable $_) {}
+}
+
 sendJsonResponse([
     'success' => true,
     'hub' => $hub,
     'data' => [
-        'total_users' => 0,
-        'total_bookings' => count($bookings),
-        'pending_docs' => 0,
+        'total_users' => $userCount,
+        'total_bookings' => $totalBookingsCount,
+        'pending_docs' => $pendingDocs,
         'pending_payments' => $pendingPayments,
         'day_sales' => round($dayRevenue, 2),
         'week_sales' => round($weekRevenue, 2),
         'total_revenue' => round($totalRevenue, 2),
         'month_revenue' => round($monthRevenue, 2),
         'last_month_revenue' => round($lastMonthRevenue, 2),
-        'paid_bookings' => count($paidBookings),
-        'avg_booking' => count($paidBookings) ? round($totalRevenue / count($paidBookings), 2) : 0,
+        'paid_bookings' => $paidBookingsCount,
+        'avg_booking' => $avgBookingVal,
         'active_trips' => $activeTrips,
         'completed_trips' => $completedTrips,
         'total_fleet' => $fleetCount,

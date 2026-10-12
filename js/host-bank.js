@@ -56,7 +56,16 @@ async function init() {
   const user = getCurrentUser();
   if (!ok || !user) return;
   const role = String(user.role || "").toLowerCase();
-  const isHost = role === "host" || role === "admin";
+  let isHost = role === "host" || role === "partner" || role === "admin" || role === "super_admin";
+
+  if (!isHost) {
+    try {
+      const pcRes = await api.get("/users/partner-cars");
+      if (Array.isArray(pcRes?.partnerCars) && pcRes.partnerCars.length > 0) {
+        isHost = true;
+      }
+    } catch (_) {}
+  }
 
   const btn = $("bankTabBtn");
   if (btn) btn.hidden = !isHost;

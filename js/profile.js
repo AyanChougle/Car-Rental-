@@ -520,12 +520,6 @@ async function loadMyListings(userParam) {
 
   const currentU =
     typeof userParam === "object" && userParam ? userParam : currentUser || {};
-  const currentUid = String(
-    currentU.uid || currentU.firebaseUid || currentU.id || "",
-  ).trim();
-  const currentEmail = String(currentU.email || "")
-    .trim()
-    .toLowerCase();
 
   try {
     const res = await api.get("/users/partner-cars");
@@ -535,25 +529,10 @@ async function loadMyListings(userParam) {
       String(currentU.role || "").toLowerCase(),
     );
 
-    // Filter strictly to current user's listings
-    if (currentUid || currentEmail) {
-      const userFiltered = listings.filter((car) => {
-        const cUid = String(car.userId || car.firebaseUid || "").trim();
-        const cEmail = String(car.userEmail || car.email || "")
-          .trim()
-          .toLowerCase();
-        const cDbId = String(car.dbUserId || car.user_id || "").trim();
-        if (currentEmail && cEmail && cEmail === currentEmail) return true;
-        if (currentUid && cUid && cUid === currentUid) return true;
-        if (currentU.id && cDbId && cDbId === String(currentU.id)) return true;
-        return false;
-      });
-
-      if (!isStaffOrAdmin) {
-        listings = userFiltered;
-      } else if (userFiltered.length > 0) {
-        listings = userFiltered;
-      }
+    // If host has listings, reveal bank details tab
+    if (listings.length > 0) {
+      const bankBtn = $("bankTabBtn");
+      if (bankBtn) bankBtn.hidden = false;
     }
 
     const totalMonthRevenue = listings.reduce(

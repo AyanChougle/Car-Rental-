@@ -24,58 +24,124 @@ if ($method === 'GET') {
     $email = strtolower(trim((string)($user['email'] ?? '')));
     $name = trim((string)($user['name'] ?? ''));
     $dbId = (int)($user['id'] ?? 0);
+    $phone = preg_replace('/\D/', '', (string)($user['phone'] ?? ''));
+    $phone10 = strlen($phone) >= 10 ? substr($phone, -10) : $phone;
 
-    // Auto-link legacy partner_cars to this user if email matches
-    if (!empty($email) && !empty($uid)) {
-        try {
-            Database::execute(
-                "UPDATE partner_cars 
-                 SET firebase_uid = ?, 
-                     user_id = COALESCE(NULLIF(user_id, 0), ?) 
-                 WHERE LOWER(TRIM(user_email)) = ? 
-                   AND (firebase_uid IS NULL OR firebase_uid = '' OR firebase_uid LIKE 'legacy_%')",
-                [$uid, $dbId ?: null, $email]
-            );
-        } catch (Throwable $_) {}
+    // Auto-link legacy / unlinked partner_cars to this user if email or phone matches
+    if (!empty($uid)) {
+        if (!empty($email)) {
+            try {
+                Database::execute(
+                    "UPDATE partner_cars 
+                     SET firebase_uid = ?, 
+                         user_id = COALESCE(NULLIF(user_id, 0), ?) 
+                     WHERE LOWER(TRIM(user_email)) = ? 
+                       AND (firebase_uid IS NULL OR firebase_uid = '' OR firebase_uid LIKE 'legacy_%' OR firebase_uid LIKE 'host_%')",
+                    [$uid, $dbId ?: null, $email]
+                );
+            } catch (Throwable $_) {}
+        }
+        if (!empty($phone10)) {
+            try {
+                Database::execute(
+                    "UPDATE partner_cars 
+                     SET firebase_uid = ?, 
+                         user_id = COALESCE(NULLIF(user_id, 0), ?) 
+                     WHERE user_phone IS NOT NULL AND user_phone != '' 
+                       AND REPLACE(REPLACE(REPLACE(user_phone, ' ', ''), '-', ''), '+91', '') LIKE ?
+                       AND (firebase_uid IS NULL OR firebase_uid = '' OR firebase_uid LIKE 'legacy_%' OR firebase_uid LIKE 'host_%')",
+                    [$uid, $dbId ?: null, '%' . $phone10]
+                );
+            } catch (Throwable $_) {}
+        }
+        if (!empty($name) && strtolower($name) !== 'user' && strtolower($name) !== 'kruizly user') {
+            try {
+                Database::execute(
+                    "UPDATE partner_cars 
+                     SET firebase_uid = ?, 
+                         user_id = COALESCE(NULLIF(user_id, 0), ?) 
+                     WHERE user_name IS NOT NULL AND user_name != '' 
+                       AND LOWER(TRIM(user_name)) = LOWER(TRIM(?))
+                       AND (firebase_uid IS NULL OR firebase_uid = '' OR firebase_uid LIKE 'legacy_%' OR firebase_uid LIKE 'host_%')",
+                    [$uid, $dbId ?: null, $name]
+                );
+            } catch (Throwable $_) {}
+        }
     }
 
     $rows = [];
     if ($isAdminScope) {
         $rows = Database::fetchAll("SELECT * FROM partner_cars ORDER BY id DESC");
     } else {
-        $rows = Database::fetchAll(
-            "SELECT * FROM partner_cars 
-             WHERE (firebase_uid IS NOT NULL AND firebase_uid != '' AND firebase_uid = ?) 
-                OR (user_email IS NOT NULL AND user_email != '' AND LOWER(TRIM(user_email)) = ?) 
-                OR (user_id IS NOT NULL AND user_id > 0 AND user_id = ?) 
-             ORDER BY id DESC", 
-            [$uid, $email, $dbId]
-        );
+        // Fetch matching partner_cars rows
+        $queryConditions = [];
+        $queryParams = [];
 
-        // Also check if vehicles catalog has partner vehicles owned by this user
-        if (!empty($name) || !empty($email) || !empty($uid)) {
-            $knownRegs = [];
-            foreach ($rows as $r) {
-                $k = strtoupper(str_replace([' ', '-', '.'], '', (string)($r['reg_no'] ?? '')));
-                if ($k !== '') $knownRegs[$k] = true;
+        if (!empty($uid)) {
+            $queryConditions[] = "firebase_uid = ?";
+            $queryParams[] = $uid;
+        }
+        if (!empty($email)) {
+            $queryConditions[] = "(user_email IS NOT NULL AND user_email != '' AND LOWER(TRIM(user_email)) = ?)";
+            $queryParams[] = $email;
+        }
+        if ($dbId > 0) {
+            $queryConditions[] = "user_id = ?";
+            $queryParams[] = $dbId;
+        }
+        if (!empty($phone10)) {
+            $queryConditions[] = "(user_phone IS NOT NULL AND user_phone != '' AND REPLACE(REPLACE(REPLACE(user_phone, ' ', ''), '-', ''), '+91', '') LIKE ?)";
+            $queryParams[] = '%' . $phone10;
+        }
+        if (!empty($name) && strtolower($name) !== 'user' && strtolower($name) !== 'kruizly user') {
+            $queryConditions[] = "(user_name IS NOT NULL AND user_name != '' AND LOWER(TRIM(user_name)) = LOWER(TRIM(?)))";
+            $queryParams[] = $name;
+        }
+
+        if (!empty($queryConditions)) {
+            $whereClause = implode(" OR ", $queryConditions);
+            $rows = Database::fetchAll("SELECT * FROM partner_cars WHERE $whereClause ORDER BY id DESC", $queryParams);
+        }
+
+        // Also check if vehicles catalog has partner vehicles owned by this host
+        $knownRegs = [];
+        foreach ($rows as $r) {
+            $k = strtoupper(str_replace([' ', '-', '.'], '', (string)($r['reg_no'] ?? '')));
+            if ($k !== '') $knownRegs[$k] = true;
+        }
+
+        try {
+            $vConditions = [];
+            $vParams = [];
+
+            if (!empty($name) && strtolower($name) !== 'user' && strtolower($name) !== 'kruizly user') {
+                $vConditions[] = "LOWER(TRIM(v.owner_name)) = LOWER(TRIM(?))";
+                $vParams[] = $name;
+                $vConditions[] = "LOWER(v.owner_name) LIKE ?";
+                $vParams[] = '%' . strtolower($name) . '%';
+            }
+            if (!empty($uid)) {
+                $vConditions[] = "v.created_by = ?";
+                $vParams[] = $uid;
+            }
+            if (!empty($email)) {
+                $vConditions[] = "LOWER(TRIM(v.created_by)) = LOWER(TRIM(?))";
+                $vParams[] = $email;
             }
 
-            try {
+            if (!empty($vConditions)) {
+                $vWhere = implode(" OR ", $vConditions);
                 $vehRows = Database::fetchAll(
                     "SELECT v.* 
                      FROM vehicles v
                      WHERE v.status != 'removed'
                        AND (
-                           LOWER(TRIM(v.acquisition_type)) = 'partner'
-                           OR (v.owner_name IS NOT NULL AND v.owner_name != '' AND v.owner_name != 'Kruizly Fleet Host')
+                           LOWER(TRIM(v.acquisition_type)) IN ('partner', 'host', 'hosted')
+                           OR (v.owner_name IS NOT NULL AND v.owner_name != '' AND v.owner_name NOT IN ('Kruizly Fleet Host', 'Fleet Catalog', 'KRUIZLY'))
                        )
-                       AND (
-                           (v.owner_name IS NOT NULL AND v.owner_name != '' AND LOWER(TRIM(v.owner_name)) = LOWER(TRIM(?)))
-                           OR (v.created_by IS NOT NULL AND v.created_by = ?)
-                           OR (v.created_by IS NOT NULL AND LOWER(TRIM(v.created_by)) = LOWER(TRIM(?)))
-                       )
+                       AND ($vWhere)
                      ORDER BY v.id DESC",
-                    [$name, $uid, $email]
+                    $vParams
                 );
 
                 foreach ($vehRows as $v) {
@@ -101,15 +167,15 @@ if ($method === 'GET') {
                             'status' => 'approved',
                             'photos' => $v['gallery'],
                             'rejection_reason' => null,
-                            'created_at' => $v['created_at'] ?? date('Y-m-d H:i:s'),
+                            'created_at' => $v['created_at'] ?? ($v['acquisition_date'] ? ($v['acquisition_date'] . ' 00:00:00') : date('Y-m-d H:i:s')),
                             'updated_at' => $v['updated_at'] ?? date('Y-m-d H:i:s'),
                         ];
                     }
                 }
-            } catch (Throwable $_) {}
-        }
+            }
+        } catch (Throwable $_) {}
 
-        // If staff/admin is viewing listings without personal entries, return all partner cars so admin can see the full hosted fleet
+        // If staff/admin is viewing listings without personal entries, return all partner cars
         if (empty($rows) && $isStaff) {
             $rows = Database::fetchAll("SELECT * FROM partner_cars ORDER BY id DESC");
         }
@@ -169,7 +235,6 @@ if ($method === 'GET') {
 
             foreach ($rawBookings as $b) {
                 $bStat = strtolower(trim((string)($b['status'] ?? '')));
-                $pStat = strtolower(trim((string)($b['payment_status'] ?? '')));
                 $amt = (float)($b['final_amount'] ?: ($b['total_amount'] ?: 0.0));
                 $pDate = !empty($b['pickup_date']) ? (string)$b['pickup_date'] : (string)($b['created_at'] ?? '');
 
@@ -216,6 +281,7 @@ if ($method === 'GET') {
             'dbUserId' => $c['user_id'],
             'user_id' => $c['user_id'],
             'userName' => $c['user_name'],
+            'ownerName' => $c['user_name'],
             'userPhone' => $c['user_phone'],
             'userEmail' => $c['user_email'],
             'brand' => $c['brand'],
@@ -241,17 +307,22 @@ if ($method === 'GET') {
                     'mg hector' => 'assets/fleet/MG hector.jpg',
                     'mg hector plus' => 'assets/fleet/MG hector.jpg',
                     'maruti suzuki baleno' => 'assets/fleet/Maruti Suzuki Baleno.png',
+                    'suzuki baleno' => 'assets/fleet/Maruti Suzuki Baleno.png',
                     'baleno' => 'assets/fleet/Maruti Suzuki Baleno.png',
                     'toyota glanza' => 'assets/fleet/Toyota Glanza.png',
                     'glanza' => 'assets/fleet/Toyota Glanza.png',
                     'maruti suzuki fronx' => 'assets/fleet/Maruti Suzuki Fronx.png',
+                    'suzuki fronx' => 'assets/fleet/Maruti Suzuki Fronx.png',
                     'fronx' => 'assets/fleet/Maruti Suzuki Fronx.png',
                     'tata punch' => 'assets/fleet/Tata Punch.png',
                     'punch' => 'assets/fleet/Tata Punch.png',
                     'maruti suzuki ertiga' => 'assets/fleet/Maruti Suzuki Ertiga.png',
+                    'suzuki ertiga' => 'assets/fleet/Maruti Suzuki Ertiga.png',
                     'ertiga' => 'assets/fleet/Maruti Suzuki Ertiga.png',
                     'mahindra xuv700' => 'assets/fleet/Mahindra XUV700.png',
+                    'mahindra xuv 700' => 'assets/fleet/Mahindra XUV700.png',
                     'xuv700' => 'assets/fleet/Mahindra XUV700.png',
+                    'xuv 700' => 'assets/fleet/Mahindra XUV700.png',
                     'toyota innova crysta' => 'assets/fleet/Toyota Innova Crysta.png',
                     'innova crysta' => 'assets/fleet/Toyota Innova Crysta.png',
                     'mahindra scorpio n' => 'assets/fleet/Mahindra Scorpio N.png',
@@ -285,17 +356,22 @@ if ($method === 'GET') {
                     'mg hector' => 'assets/fleet/MG hector.jpg',
                     'mg hector plus' => 'assets/fleet/MG hector.jpg',
                     'maruti suzuki baleno' => 'assets/fleet/Maruti Suzuki Baleno.png',
+                    'suzuki baleno' => 'assets/fleet/Maruti Suzuki Baleno.png',
                     'baleno' => 'assets/fleet/Maruti Suzuki Baleno.png',
                     'toyota glanza' => 'assets/fleet/Toyota Glanza.png',
                     'glanza' => 'assets/fleet/Toyota Glanza.png',
                     'maruti suzuki fronx' => 'assets/fleet/Maruti Suzuki Fronx.png',
+                    'suzuki fronx' => 'assets/fleet/Maruti Suzuki Fronx.png',
                     'fronx' => 'assets/fleet/Maruti Suzuki Fronx.png',
                     'tata punch' => 'assets/fleet/Tata Punch.png',
                     'punch' => 'assets/fleet/Tata Punch.png',
                     'maruti suzuki ertiga' => 'assets/fleet/Maruti Suzuki Ertiga.png',
+                    'suzuki ertiga' => 'assets/fleet/Maruti Suzuki Ertiga.png',
                     'ertiga' => 'assets/fleet/Maruti Suzuki Ertiga.png',
                     'mahindra xuv700' => 'assets/fleet/Mahindra XUV700.png',
+                    'mahindra xuv 700' => 'assets/fleet/Mahindra XUV700.png',
                     'xuv700' => 'assets/fleet/Mahindra XUV700.png',
+                    'xuv 700' => 'assets/fleet/Mahindra XUV700.png',
                     'toyota innova crysta' => 'assets/fleet/Toyota Innova Crysta.png',
                     'innova crysta' => 'assets/fleet/Toyota Innova Crysta.png',
                     'mahindra scorpio n' => 'assets/fleet/Mahindra Scorpio N.png',
@@ -399,6 +475,13 @@ if ($method === 'POST') {
         ]
     );
 
+    // Update user role to host if currently customer
+    if ($role === 'customer' && !empty($uid)) {
+        try {
+            Database::execute("UPDATE users SET role = 'host' WHERE firebase_uid = ? OR id = ?", [$uid, $userId]);
+        } catch (Throwable $_) {}
+    }
+
     sendJsonResponse([
         'success' => true,
         'message' => 'Host vehicle listing submitted for review.',
@@ -441,7 +524,8 @@ if ($method === 'DELETE') {
     } else {
         $uid = trim((string)($user['firebase_uid'] ?? ''));
         $email = trim((string)($user['email'] ?? ''));
-        Database::execute("DELETE FROM partner_cars WHERE (id = ? OR car_id = ?) AND (firebase_uid = ? OR user_email = ?)", [$id, $id, $uid, $email]);
+        $dbId = (int)($user['id'] ?? 0);
+        Database::execute("DELETE FROM partner_cars WHERE (id = ? OR car_id = ?) AND (firebase_uid = ? OR user_email = ? OR user_id = ?)", [$id, $id, $uid, $email, $dbId]);
     }
     sendJsonResponse(['success' => true, 'message' => 'Partner car deleted.']);
 }

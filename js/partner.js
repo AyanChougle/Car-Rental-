@@ -123,20 +123,6 @@ async function loadMyListings() {
     const res = await api.get("/users/partner-cars");
     let listings = Array.isArray(res?.partnerCars) ? res.partnerCars : [];
 
-    if (currentUser) {
-      const myUid = String(currentUser.id || currentUser.uid || currentUser.firebaseUid || "").trim();
-      const myEmail = String(currentUser.email || "").trim().toLowerCase();
-      listings = listings.filter(car => {
-        const cUid = String(car.userId || car.firebaseUid || "").trim();
-        const cEmail = String(car.userEmail || car.email || "").trim().toLowerCase();
-        const cDbId = String(car.dbUserId || car.user_id || "").trim();
-        if (myEmail && cEmail && cEmail === myEmail) return true;
-        if (myUid && cUid && cUid === myUid) return true;
-        if (currentUser.id && cDbId && cDbId === String(currentUser.id)) return true;
-        return false;
-      });
-    }
-
     if (!listings.length) {
       myListingsSection.hidden = true;
       return;

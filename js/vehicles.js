@@ -52,38 +52,27 @@ const DEFAULT_FLEET_VEHICLES = [
   { id: 45, carId: "CAT-038", regNo: "MH04KR0138", brand: "Mahindra", model: "XUV700", year: 2025, category: "suv", transmission: "Manual", fuel: "Diesel", seats: 7, priceDay: 6000, priceHour: 250, securityDeposit: 4000, freeKm: 250, extraKm: 16, hubId: 1, hubName: "Gavson Business Park, Ghansoli", hub: "Gavson Business Park, Ghansoli", available: 1, status: "available" },
   { id: 46, carId: "CAT-039", regNo: "MH04KR0139", brand: "Toyota", model: "Urban Cruiser Taisor", year: 2025, category: "compact-suv", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 3500, priceHour: 146, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 1, hubName: "Gavson Business Park, Ghansoli", hub: "Gavson Business Park, Ghansoli", available: 1, status: "available" },
 
-  // HUB 2: KANDIVALI HUB, MUMBAI (Matching/Similar Fleet)
-  { id: 101, carId: "KND-001", regNo: "MH02EL2001", brand: "Suzuki", model: "Fronx", year: 2026, category: "compact-suv", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 3500, priceHour: 146, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 102, carId: "KND-002", regNo: "MH02GJ2002", brand: "Suzuki", model: "Ertiga", year: 2026, category: "mpv", transmission: "Manual", fuel: "Petrol + CNG", seats: 7, priceDay: 4000, priceHour: 167, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 103, carId: "KND-003", regNo: "MH02CJ2003", brand: "Toyota", model: "Glanza", year: 2026, category: "hatchback", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3000, priceHour: 125, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 104, carId: "KND-004", regNo: "MH02FV2004", brand: "Tata", model: "Punch", year: 2026, category: "compact-suv", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3000, priceHour: 125, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 105, carId: "KND-005", regNo: "MH02CY2005", brand: "Suzuki", model: "Fronx", year: 2026, category: "compact-suv", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3200, priceHour: 133, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 106, carId: "KND-006", regNo: "MH02FU2006", brand: "Mahindra", model: "XUV 700", year: 2026, category: "suv", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 5500, priceHour: 229, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 107, carId: "KND-007", regNo: "MH02KR2101", brand: "BMW", model: "520D", year: 2017, category: "luxury", transmission: "Automatic", fuel: "Diesel", seats: 5, priceDay: 18000, priceHour: 750, securityDeposit: 15000, freeKm: 250, extraKm: 60, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 108, carId: "KND-008", regNo: "MH02KR2102", brand: "Mahindra", model: "7XO", year: 2026, category: "suv", transmission: "AMT", fuel: "Diesel", seats: 7, priceDay: 9000, priceHour: 375, securityDeposit: 7000, freeKm: 250, extraKm: 28, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 109, carId: "KND-009", regNo: "MH02KR2103", brand: "Tata", model: "Altroz", year: 2024, category: "economy", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 2600, priceHour: 108, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 110, carId: "KND-010", regNo: "MH02KR2104", brand: "Hyundai", model: "Aura", year: 2025, category: "economy", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 2600, priceHour: 108, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 111, carId: "KND-011", regNo: "MH02KR2105", brand: "Maruti Suzuki", model: "Baleno", year: 2025, category: "economy", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 2500, priceHour: 104, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 112, carId: "KND-012", regNo: "MH02KR2106", brand: "Maruti Suzuki", model: "Brezza", year: 2025, category: "suv", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3500, priceHour: 146, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 113, carId: "KND-013", regNo: "MH02KR2107", brand: "Kia", model: "Carens", year: 2025, category: "mpv", transmission: "Manual", fuel: "Diesel", seats: 7, priceDay: 4500, priceHour: 188, securityDeposit: 4000, freeKm: 250, extraKm: 16, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 114, carId: "KND-014", regNo: "MH02KR2108", brand: "Jeep", model: "Compass", year: 2020, category: "suv", transmission: "Manual", fuel: "Diesel", seats: 5, priceDay: 5500, priceHour: 229, securityDeposit: 4000, freeKm: 250, extraKm: 16, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 115, carId: "KND-015", regNo: "MH02KR2109", brand: "Hyundai", model: "Creta", year: 2024, category: "suv", transmission: "Manual", fuel: "Diesel", seats: 5, priceDay: 4500, priceHour: 188, securityDeposit: 3500, freeKm: 250, extraKm: 14, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 116, carId: "KND-016", regNo: "MH02KR2110", brand: "Maruti Suzuki", model: "Dzire", year: 2025, category: "economy", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 2600, priceHour: 108, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 117, carId: "KND-017", regNo: "MH02KR2111", brand: "Hyundai", model: "Exter", year: 2025, category: "suv", transmission: "AMT", fuel: "Petrol", seats: 5, priceDay: 3500, priceHour: 146, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 118, carId: "KND-018", regNo: "MH02KR2112", brand: "Toyota", model: "Glanza", year: 2025, category: "economy", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 2600, priceHour: 108, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 119, carId: "KND-019", regNo: "MH02KR2113", brand: "Maruti Suzuki", model: "Grand Vitara", year: 2025, category: "suv", transmission: "Manual", fuel: "Diesel", seats: 5, priceDay: 4000, priceHour: 167, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 120, carId: "KND-020", regNo: "MH02KR2114", brand: "Hyundai", model: "i20", year: 2025, category: "economy", transmission: "Manual", fuel: "Petrol", seats: 5, priceDay: 2600, priceHour: 108, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 121, carId: "KND-021", regNo: "MH02KR2115", brand: "Toyota", model: "Innova Crysta", year: 2018, category: "mpv", transmission: "Automatic", fuel: "Diesel", seats: 7, priceDay: 6000, priceHour: 250, securityDeposit: 4000, freeKm: 250, extraKm: 16, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 122, carId: "KND-022", regNo: "MH02KR2116", brand: "Tata", model: "Nexon", year: 2025, category: "suv", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 3000, priceHour: 125, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 123, carId: "KND-023", regNo: "MH02KR2117", brand: "Tata", model: "Safari", year: 2024, category: "suv", transmission: "Automatic", fuel: "Diesel", seats: 7, priceDay: 9000, priceHour: 375, securityDeposit: 7000, freeKm: 250, extraKm: 28, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 124, carId: "KND-024", regNo: "MH02KR2118", brand: "Mahindra", model: "Scorpio N", year: 2025, category: "suv", transmission: "Manual", fuel: "Diesel", seats: 7, priceDay: 6000, priceHour: 250, securityDeposit: 4000, freeKm: 250, extraKm: 16, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 125, carId: "KND-025", regNo: "MH02KR2119", brand: "Maruti Suzuki", model: "Swift", year: 2025, category: "economy", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 2500, priceHour: 104, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 126, carId: "KND-026", regNo: "MH02KR2120", brand: "Mahindra", model: "Thar", year: 2025, category: "suv", transmission: "Manual", fuel: "Diesel", seats: 4, priceDay: 5500, priceHour: 229, securityDeposit: 4000, freeKm: 250, extraKm: 16, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 127, carId: "KND-027", regNo: "MH02KR2121", brand: "Mahindra", model: "Thar Roxx", year: 2025, category: "suv", transmission: "Automatic", fuel: "Diesel", seats: 5, priceDay: 7000, priceHour: 292, securityDeposit: 5000, freeKm: 250, extraKm: 20, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 128, carId: "KND-028", regNo: "MH02KR2122", brand: "Toyota", model: "Urban Cruiser Taisor", year: 2025, category: "compact-suv", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 3500, priceHour: 146, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 129, carId: "KND-029", regNo: "MH02KR2123", brand: "Maruti Suzuki", model: "WagonR", year: 2023, category: "economy", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 2300, priceHour: 96, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 130, carId: "KND-030", regNo: "MH02KR2124", brand: "Maruti Suzuki", model: "XL6", year: 2023, category: "mpv", transmission: "Manual", fuel: "Petrol + CNG", seats: 7, priceDay: 3500, priceHour: 146, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
-  { id: 131, carId: "KND-031", regNo: "MH02KR2125", brand: "Mahindra", model: "XUV700", year: 2025, category: "suv", transmission: "Manual", fuel: "Diesel", seats: 7, priceDay: 6000, priceHour: 250, securityDeposit: 4000, freeKm: 250, extraKm: 16, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" }
+  // HUB 2: KANDIVALI HUB, MUMBAI (Exact Segment Fleet)
+  // 🔹 COMPACT & 5-SEATER SEGMENT:
+  { id: 101, carId: "KND-001", regNo: "MH02EX1001", brand: "Hyundai", model: "Exter", year: 2025, category: "compact-suv", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 2800, priceHour: 117, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+  { id: 102, carId: "KND-002", regNo: "MH02SW1002", brand: "Maruti Suzuki", model: "Swift VXI (O)", year: 2025, category: "economy", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 2600, priceHour: 108, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+  { id: 103, carId: "KND-003", regNo: "MH02TG1003", brand: "Tata", model: "Tigor", year: 2025, category: "economy", transmission: "Automatic", fuel: "Petrol + CNG", seats: 5, priceDay: 2600, priceHour: 108, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+  { id: 104, carId: "KND-004", regNo: "MH02DZ1004", brand: "Maruti Suzuki", model: "Dzire ZXI+ Sunroof", year: 2025, category: "economy", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 2800, priceHour: 117, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+  { id: 105, carId: "KND-005", regNo: "MH02AL1005", brand: "Tata", model: "Altroz", year: 2025, category: "economy", transmission: "Manual", fuel: "Petrol + CNG", seats: 5, priceDay: 2600, priceHour: 108, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+  { id: 106, carId: "KND-006", regNo: "MH02SL1006", brand: "Kia", model: "Seltos Sunroof", year: 2025, category: "suv", transmission: "Manual", fuel: "Petrol", seats: 5, priceDay: 4500, priceHour: 188, securityDeposit: 4000, freeKm: 250, extraKm: 16, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+
+  // 🔹 7 & 8-SEATER MPV SEGMENT:
+  { id: 107, carId: "KND-007", regNo: "MH02ER1007", brand: "Maruti Suzuki", model: "Ertiga (2023 Unit)", year: 2023, category: "mpv", transmission: "Manual", fuel: "Petrol + CNG", seats: 7, priceDay: 3500, priceHour: 146, securityDeposit: 3500, freeKm: 250, extraKm: 14, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+  { id: 108, carId: "KND-008", regNo: "MH02ER1008", brand: "Maruti Suzuki", model: "Ertiga (2025 Unit)", year: 2025, category: "mpv", transmission: "Manual", fuel: "Petrol + CNG", seats: 7, priceDay: 3800, priceHour: 158, securityDeposit: 3500, freeKm: 250, extraKm: 14, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+  { id: 109, carId: "KND-009", regNo: "MH02EH1009", brand: "Maruti Suzuki", model: "Ertiga Hybrid", year: 2025, category: "mpv", transmission: "Automatic", fuel: "Petrol", seats: 7, priceDay: 4000, priceHour: 167, securityDeposit: 3500, freeKm: 250, extraKm: 14, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+  { id: 110, carId: "KND-010", regNo: "MH02CR1010", brand: "Kia", model: "Carens", year: 2025, category: "mpv", transmission: "Manual", fuel: "Diesel", seats: 7, priceDay: 4500, priceHour: 188, securityDeposit: 4000, freeKm: 250, extraKm: 16, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+  { id: 111, carId: "KND-011", regNo: "MH02CR1011", brand: "Kia", model: "Carens", year: 2025, category: "mpv", transmission: "Automatic", fuel: "Petrol", seats: 7, priceDay: 4800, priceHour: 200, securityDeposit: 4000, freeKm: 250, extraKm: 16, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+  { id: 112, carId: "KND-012", regNo: "MH02XO1012", brand: "Mahindra", model: "7XO", year: 2026, category: "suv", transmission: "AMT", fuel: "Diesel", seats: 7, priceDay: 9000, priceHour: 375, securityDeposit: 7000, freeKm: 250, extraKm: 28, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+
+  // 🔹 PREMIUM & LUXURY SEGMENT:
+  { id: 113, carId: "KND-013", regNo: "MH02CP1013", brand: "Jeep", model: "Compass 4x4 Sunroof", year: 2024, category: "suv", transmission: "Automatic", fuel: "Diesel", seats: 5, priceDay: 6000, priceHour: 250, securityDeposit: 5000, freeKm: 250, extraKm: 18, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+  { id: 114, carId: "KND-014", regNo: "MH02TR1014", brand: "Mahindra", model: "Thar Roxx Sunroof", year: 2025, category: "suv", transmission: "Automatic", fuel: "Diesel", seats: 5, priceDay: 7000, priceHour: 292, securityDeposit: 5000, freeKm: 250, extraKm: 20, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" },
+  { id: 115, carId: "KND-015", regNo: "MH02BM1015", brand: "BMW", model: "M5 Modified Sunroof", year: 2022, category: "luxury", transmission: "Automatic", fuel: "Diesel", seats: 5, priceDay: 18000, priceHour: 750, securityDeposit: 15000, freeKm: 250, extraKm: 60, hubId: 2, hubName: "Kandivali Hub, Mumbai", hub: "Kandivali Hub, Mumbai", available: 1, status: "available" }
 ];
 
 let fleetVehicles = [...DEFAULT_FLEET_VEHICLES];
@@ -139,6 +128,10 @@ const fleetImageOverrides = {
   "maruti swift": "assets/fleet/Maruti Suzuki Swift.png",
   "maruti suzuki swift": "assets/fleet/Maruti Suzuki Swift.png",
   "swift": "assets/fleet/Maruti Suzuki Swift.png",
+  "swift vxi": "assets/fleet/Maruti Suzuki Swift.png",
+  "swift vxi (o)": "assets/fleet/Maruti Suzuki Swift.png",
+  "maruti swift vxi (o)": "assets/fleet/Maruti Suzuki Swift.png",
+  "maruti suzuki swift vxi (o)": "assets/fleet/Maruti Suzuki Swift.png",
   "maruti baleno": "assets/fleet/Maruti Suzuki Baleno.png",
   "maruti suzuki baleno": "assets/fleet/Maruti Suzuki Baleno.png",
   "baleno": "assets/fleet/Maruti Suzuki Baleno.png",
@@ -148,9 +141,16 @@ const fleetImageOverrides = {
   "maruti dzire": "assets/fleet/Maruti Suzuki Dzire.png",
   "maruti suzuki dzire": "assets/fleet/Maruti Suzuki Dzire.png",
   "dzire": "assets/fleet/Maruti Suzuki Dzire.png",
+  "dzire zxi+": "assets/fleet/Maruti Suzuki Dzire.png",
+  "dzire zxi+ sunroof": "assets/fleet/Maruti Suzuki Dzire.png",
+  "maruti dzire zxi+": "assets/fleet/Maruti Suzuki Dzire.png",
+  "maruti suzuki dzire zxi+": "assets/fleet/Maruti Suzuki Dzire.png",
   "maruti ertiga": "assets/fleet/Maruti Suzuki Ertiga.png",
   "maruti suzuki ertiga": "assets/fleet/Maruti Suzuki Ertiga.png",
   "ertiga": "assets/fleet/Maruti Suzuki Ertiga.png",
+  "ertiga hybrid": "assets/fleet/Maruti Suzuki Ertiga.png",
+  "maruti ertiga hybrid": "assets/fleet/Maruti Suzuki Ertiga.png",
+  "maruti suzuki ertiga hybrid": "assets/fleet/Maruti Suzuki Ertiga.png",
   "maruti fronx": "assets/fleet/Maruti Suzuki Fronx.png",
   "maruti suzuki fronx": "assets/fleet/Maruti Suzuki Fronx.png",
   "fronx": "assets/fleet/Maruti Suzuki Fronx.png",
@@ -187,6 +187,8 @@ const fleetImageOverrides = {
   // Tata models
   "tata altroz": "assets/fleet/Tata Altroz.png",
   "altroz": "assets/fleet/Tata Altroz.png",
+  "tata tigor": "assets/fleet/Tigor.jpg",
+  "tigor": "assets/fleet/Tigor.jpg",
   "tata nexon": "assets/fleet/Tata Nexon.png",
   "nexon": "assets/fleet/Tata Nexon.png",
   "tata punch": "assets/fleet/Tata Punch.png",
@@ -222,6 +224,7 @@ const fleetImageOverrides = {
   "thar": "assets/fleet/Mahindra Thar.png",
   "mahindra thar roxx": "assets/fleet/thar roxx.png",
   "thar roxx": "assets/fleet/thar roxx.png",
+  "thar roxx sunroof": "assets/fleet/thar roxx.png",
   "mahindra xuv500": "assets/fleet/Mahindra XUV500.png",
   "xuv500": "assets/fleet/Mahindra XUV500.png",
   "mahindra xuv 500": "assets/fleet/Mahindra XUV500.png",
@@ -248,13 +251,41 @@ const fleetImageOverrides = {
   "toyota fortuner": "assets/fleet/Toyota Innova Crysta.png",
   "fortuner": "assets/fleet/Toyota Innova Crysta.png",
 
+  // Kia models
+  "kia seltos": "assets/fleet/Seltos.png",
+  "seltos": "assets/fleet/Seltos.png",
+  "seltos sunroof": "assets/fleet/Seltos.png",
+  "kia seltos sunroof": "assets/fleet/Seltos.png",
+  "kia sonet": "assets/fleet/Hyundai Creta.png",
+  "sonet": "assets/fleet/Hyundai Creta.png",
+  "kia carens": "assets/fleet/Kia Carens.png",
+  "carens": "assets/fleet/Kia Carens.png",
+
+  // Jeep models
+  "jeep compass": "assets/fleet/Jeep Compass.png",
+  "compass": "assets/fleet/Jeep Compass.png",
+  "compass 4x4": "assets/fleet/Jeep Compass.png",
+  "compass 4x4 sunroof": "assets/fleet/Jeep Compass.png",
+  "jeep compass 4x4 sunroof": "assets/fleet/Jeep Compass.png",
+
+  // BMW models
+  "bmw 520d": "assets/fleet/BMW 520D.png",
+  "520d": "assets/fleet/BMW 520D.png",
+  "bmw m5": "assets/fleet/BMW.png",
+  "m5": "assets/fleet/BMW.png",
+  "bmw m5 modified": "assets/fleet/BMW.png",
+  "m5 modified": "assets/fleet/BMW.png",
+  "m5 modified sunroof": "assets/fleet/BMW.png",
+  "bmw m5 modified sunroof": "assets/fleet/BMW.png",
+  "bmw": "assets/fleet/BMW 520D.png",
+
   // MG models
   "mg hector": "assets/fleet/MG hector.jpg",
   "mg hector plus": "assets/fleet/MG hector.jpg",
   "hector": "assets/fleet/MG hector.jpg",
   "mg": "assets/fleet/MG hector.jpg",
 
-  // Honda, Skoda, VW, Kia, BMW, Jeep
+  // Honda, Skoda, VW, Mercedes
   "honda amaze": "assets/fleet/Hyundai Aura.png",
   "amaze": "assets/fleet/Hyundai Aura.png",
   "honda city": "assets/fleet/Hyundai Aura.png",
@@ -263,17 +294,6 @@ const fleetImageOverrides = {
   "slavia": "assets/fleet/BMW 520D.png",
   "volkswagen virtus": "assets/fleet/BMW 520D.png",
   "virtus": "assets/fleet/BMW 520D.png",
-  "kia seltos": "assets/fleet/Hyundai Creta.png",
-  "seltos": "assets/fleet/Hyundai Creta.png",
-  "kia sonet": "assets/fleet/Hyundai Creta.png",
-  "sonet": "assets/fleet/Hyundai Creta.png",
-  "kia carens": "assets/fleet/Kia Carens.png",
-  "carens": "assets/fleet/Kia Carens.png",
-  "jeep compass": "assets/fleet/Jeep Compass.png",
-  "compass": "assets/fleet/Jeep Compass.png",
-  "bmw 520d": "assets/fleet/BMW 520D.png",
-  "520d": "assets/fleet/BMW 520D.png",
-  "bmw": "assets/fleet/BMW 520D.png",
   "mercedes": "assets/fleet/BMW 520D.png",
   "mercedes-benz": "assets/fleet/BMW 520D.png"
 };
