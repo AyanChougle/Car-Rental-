@@ -67,33 +67,66 @@
   function ensureBar() {
     const duplicate = document.getElementById("global-hub-selector");
     if (duplicate) duplicate.remove();
-    if (document.querySelector(".hub-context-bar")) return document.querySelector(".hub-context-bar");
+
+    // Clean up any bar erroneously injected inside <header>
+    const mislocated = document.querySelector("header .hub-context-bar");
+    if (mislocated) mislocated.remove();
+
+    const existing = document.querySelector(".hub-context-bar");
+    if (existing) {
+      selector = existing.querySelector("#kruizlyHubContextSelect");
+      return existing;
+    }
+
     const bar = document.createElement("section");
     bar.className = "hub-context-bar";
     bar.setAttribute("aria-label", "KRUIZLY Hub context");
     bar.innerHTML = `
       <div class="hub-context-bar__inner">
         <div class="hub-context-bar__identity">
-          <span class="hub-context-bar__eyebrow">OPERATING HUB</span>
-          <strong class="hub-context-bar__title">Hub Context</strong>
+          <span class="hub-context-bar__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+              <circle cx="12" cy="10" r="3"></circle>
+            </svg>
+          </span>
+          <div class="hub-context-bar__titles">
+            <span class="hub-context-bar__eyebrow">OPERATING HUB</span>
+            <strong class="hub-context-bar__title">Hub Context</strong>
+          </div>
         </div>
         <div class="hub-context-bar__control">
-          <label for="kruizlyHubContextSelect">Select Hub</label>
-          <select id="kruizlyHubContextSelect" class="hub-context-select">
-            <option value="">All Hubs</option>
-          </select>
+          <label for="kruizlyHubContextSelect" class="hub-context-bar__control-label">Select Hub</label>
+          <div class="hub-context-select-wrap">
+            <select id="kruizlyHubContextSelect" class="hub-context-select" aria-label="Select Operating Hub">
+              <option value="">All Hubs</option>
+            </select>
+          </div>
         </div>
-        <div class="hub-context-bar__meta" id="kruizlyHubContextMeta">Operating across all hubs</div>
+        <div class="hub-context-bar__meta" id="kruizlyHubContextMeta">
+          <span class="hub-context-dot" aria-hidden="true"></span>
+          <span class="hub-context-meta-text">All active Hubs</span>
+        </div>
       </div>`;
     
-    const container = document.querySelector("main .container") || document.querySelector(".container");
-    const main = document.querySelector("main");
-    const header = document.querySelector("header");
+    // Strictly target main container: never insert into header!
+    const container =
+      document.querySelector("main .manager-container") ||
+      document.querySelector("main .container") ||
+      document.querySelector("main .admin-wrapper") ||
+      document.querySelector("main [class*='container']") ||
+      document.querySelector("main");
 
-    if (container) container.insertBefore(bar, container.firstChild);
-    else if (main) main.insertBefore(bar, main.firstChild);
-    else if (header && header.nextSibling) header.parentNode.insertBefore(bar, header.nextSibling);
-    else document.body.insertBefore(bar, document.body.firstChild);
+    if (container) {
+      container.insertBefore(bar, container.firstChild);
+    } else {
+      const header = document.querySelector("header.site-header") || document.querySelector("header");
+      if (header && header.nextSibling) {
+        header.parentNode.insertBefore(bar, header.nextSibling);
+      } else {
+        document.body.insertBefore(bar, document.body.firstChild);
+      }
+    }
     selector = bar.querySelector("#kruizlyHubContextSelect");
     return bar;
   }
@@ -133,20 +166,33 @@
 
     const meta = document.getElementById("kruizlyHubContextMeta");
     const hub = selectedHub();
+    const metaLabel = hub
+      ? `${hub.code || "HUB"} · ${hub.city || ""}${hub.state ? ", " + hub.state : ""}`
+      : (hubs.length ? "All active Hubs" : "All operating Hubs");
+
     if (meta) {
-      meta.textContent = hub
-        ? `${hub.code || "HUB"} · ${hub.city || ""}${hub.state ? ", " + hub.state : ""}`
-        : (hubs.length ? "All active Hubs" : "All operating Hubs");
+      const metaText = meta.querySelector(".hub-context-meta-text");
+      if (metaText) {
+        metaText.textContent = metaLabel;
+      } else {
+        meta.textContent = metaLabel;
+      }
     }
 
     selector.onchange = function () {
       const next = selector.value || "";
       setSelectedHubId(next);
       const hub = selectedHub();
+      const metaLabel = hub
+        ? `${hub.code || "HUB"} · ${hub.city || ""}${hub.state ? ", " + hub.state : ""}`
+        : "All active Hubs";
       if (meta) {
-        meta.textContent = hub
-          ? `${hub.code || "HUB"} · ${hub.city || ""}${hub.state ? ", " + hub.state : ""}`
-          : "All active Hubs";
+        const metaText = meta.querySelector(".hub-context-meta-text");
+        if (metaText) {
+          metaText.textContent = metaLabel;
+        } else {
+          meta.textContent = metaLabel;
+        }
       }
       const globalSelect = document.getElementById("kruizly-hub-select");
       if (globalSelect && globalSelect.value !== next) globalSelect.value = next;

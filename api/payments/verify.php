@@ -113,8 +113,9 @@ try {
 
     // Automated KPI metrics sync into MySQL kpi_metrics table
     try {
-        require_once __DIR__ . '/../services/KpiService.php';
-        KpiService::syncMetrics();
+        if ($action === 'approve') {
+            Database::execute("UPDATE kpi_metrics SET paid_bookings = paid_bookings + 1 WHERE metric_date = ?", [date('Y-m-01')]);
+        }
     } catch (Throwable $_) {}
 
     // Dispatch approval or cancellation notification

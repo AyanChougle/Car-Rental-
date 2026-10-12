@@ -137,4 +137,4 @@ if ($method === 'POST') {
 }
 
 http_response_code(405);
-echo json_encode(['status' => 'error', 'message' => 'Method Not Allowed']);
+echo json_encode(['status' => 'error', 'message' => 'Method Not Allowed']);  

@@ -1,15 +1,21 @@
 /**
  * js/accounts.js
- * 
+ *
  * Accounts & Financial Verification Console:
  * - Payment Audit Queue (UPI & Bank Transfers)
- * - Verifier Selection 
+ * - Verifier Selection
  * - Image & Screenshot Proof Preview
  * - Invoice Generation & Verification Tracking
  */
 
 import { auth } from "./firebase-init.js";
-import { checkAuth, getCurrentUser, setStoredUser, isAccountantUser, isAdminUser } from "./auth.js?v=20260908-v5";
+import {
+  checkAuth,
+  getCurrentUser,
+  setStoredUser,
+  isAccountantUser,
+  isAdminUser,
+} from "./auth.js?v=20260908-v5";
 import { api } from "./kruizly-api.js?v=20261001-v2";
 import "./nav-helper.js?v=20260928-v2";
 import { openImageLightbox } from "./image-lightbox.js?v=20260912-v1";
@@ -40,7 +46,7 @@ function formatDate(dateStr) {
     return new Intl.DateTimeFormat("en-IN", {
       day: "2-digit",
       month: "short",
-      year: "numeric"
+      year: "numeric",
     }).format(d);
   } catch {
     return dateStr;
@@ -104,7 +110,10 @@ async function initAccounts() {
 
   // Auto-fetch payments every 25 seconds
   setInterval(() => {
-    if (typeof document !== "undefined" && document.visibilityState === "visible") {
+    if (
+      typeof document !== "undefined" &&
+      document.visibilityState === "visible"
+    ) {
       loadPaymentsData();
     }
   }, 25000);
@@ -139,28 +148,39 @@ function initEvents() {
 
 async function loadPaymentsData() {
   const wrap = $("accountsTableWrap");
-  if (wrap) wrap.innerHTML = `<div class="manager-state" style="padding: 28px; text-align: center; color: var(--sub);">Loading payment records...</div>`;
+  if (wrap)
+    wrap.innerHTML = `<div class="manager-state" style="padding: 28px; text-align: center; color: var(--sub);">Loading payment records...</div>`;
 
   try {
     const [paymentsRes, bookingsRes] = await Promise.allSettled([
       api.get("/payments"),
-      api.get("/bookings")
+      api.get("/bookings"),
     ]);
 
     let payments = [];
-    if (paymentsRes.status === "fulfilled" && paymentsRes.value && Array.isArray(paymentsRes.value.payments)) {
+    if (
+      paymentsRes.status === "fulfilled" &&
+      paymentsRes.value &&
+      Array.isArray(paymentsRes.value.payments)
+    ) {
       payments = paymentsRes.value.payments;
     }
 
     let bookings = [];
-    if (bookingsRes.status === "fulfilled" && bookingsRes.value && Array.isArray(bookingsRes.value.bookings)) {
+    if (
+      bookingsRes.status === "fulfilled" &&
+      bookingsRes.value &&
+      Array.isArray(bookingsRes.value.bookings)
+    ) {
       bookings = bookingsRes.value.bookings;
     }
 
     // Merge fallback bookings if payments endpoint returned empty
     if (!payments.length && bookings.length) {
       payments = bookings
-        .filter((b) => b.paymentStatus || b.paymentRef || b.paymentScreenshotUrl)
+        .filter(
+          (b) => b.paymentStatus || b.paymentRef || b.paymentScreenshotUrl,
+        )
         .map((b) => ({
           id: b.id || b.bookingId,
           bookingId: b.id || b.bookingId,
@@ -170,13 +190,24 @@ async function loadPaymentsData() {
           userPhone: b.userPhone || b.phone || "",
           vehicleName: b.carName || b.vehicleName || "Vehicle",
           vehicleReg: b.vehicleReg || "",
-          amount: Number(b.paymentAmountPaid || b.advanceAmount || b.totalAmount || 0),
+          amount: Number(
+            b.paymentAmountPaid || b.advanceAmount || b.totalAmount || 0,
+          ),
           method: b.paymentMethod || "UPI",
           utr: b.paymentRef || "",
           screenshotUrl: b.paymentScreenshotUrl || "",
-          status: String(b.paymentStatus || b.status || "").toLowerCase() === "paid" || String(b.paymentStatus || b.status || "").toLowerCase() === "confirmed" ? "verified" : String(b.paymentStatus || b.status || "").toLowerCase() === "rejected" ? "rejected" : "pending",
+          status:
+            String(b.paymentStatus || b.status || "").toLowerCase() ===
+              "paid" ||
+            String(b.paymentStatus || b.status || "").toLowerCase() ===
+              "confirmed"
+              ? "verified"
+              : String(b.paymentStatus || b.status || "").toLowerCase() ===
+                  "rejected"
+                ? "rejected"
+                : "pending",
           verifiedBy: b.verifiedBy || "",
-          createdAt: b.createdAt || b.pickupDate || ""
+          createdAt: b.createdAt || b.pickupDate || "",
         }));
     }
 
@@ -184,18 +215,33 @@ async function loadPaymentsData() {
     const seenPay = new Set();
     const deduped = [];
     payments.forEach((p) => {
-      const key = String(p.paymentId || p.id || p.utr || p.bookingId || "").trim().toUpperCase();
+      const key = String(p.paymentId || p.id || p.utr || p.bookingId || "")
+        .trim()
+        .toUpperCase();
       if (key && !seenPay.has(key)) {
         seenPay.add(key);
         deduped.push(p);
       }
     });
-    payments = deduped;
+
+    // Filter out cancelled bookings and refunded payments so they are automatically removed from accounts panel
+    payments = deduped.filter((p) => {
+      const pStat = String(p.status || "").toLowerCase();
+      const bStat = String(p.bookingStatus || "").toLowerCase();
+      return (
+        !["cancelled", "refunded", "rejected"].includes(pStat) &&
+        !["cancelled", "rejected"].includes(bStat)
+      );
+    });
 
     allPayments = payments;
     updateStats(payments);
 
-    const pendingCount = payments.filter((p) => String(p.status || "").toLowerCase() === "pending" || String(p.status || "").toLowerCase() === "pending_verification").length;
+    const pendingCount = payments.filter(
+      (p) =>
+        String(p.status || "").toLowerCase() === "pending" ||
+        String(p.status || "").toLowerCase() === "pending_verification",
+    ).length;
     if (pendingCount === 0 && $("accountsStatusFilter")?.value === "pending") {
       const filterEl = $("accountsStatusFilter");
       if (filterEl) filterEl.value = "all";
@@ -204,23 +250,36 @@ async function loadPaymentsData() {
     renderPaymentsTable();
   } catch (err) {
     console.error("Error loading accounts payments:", err);
-    if (wrap) wrap.innerHTML = `<div class="manager-state" style="padding: 24px; text-align: center; color: #ef476f;">Error loading payments: ${escapeHtml(err.message)}</div>`;
+    if (wrap)
+      wrap.innerHTML = `<div class="manager-state" style="padding: 24px; text-align: center; color: #ef476f;">Error loading payments: ${escapeHtml(err.message)}</div>`;
   }
 }
 
 function updateStats(payments) {
-  const pendingCount = payments.filter((p) => String(p.status || "").toLowerCase() === "pending" || String(p.status || "").toLowerCase() === "pending_verification").length;
-  const verifiedCount = payments.filter((p) => ["verified", "approved", "paid"].includes(String(p.status || "").toLowerCase())).length;
+  const pendingCount = payments.filter(
+    (p) =>
+      String(p.status || "").toLowerCase() === "pending" ||
+      String(p.status || "").toLowerCase() === "pending_verification",
+  ).length;
+  const verifiedCount = payments.filter((p) =>
+    ["verified", "approved", "paid"].includes(
+      String(p.status || "").toLowerCase(),
+    ),
+  ).length;
 
-  if ($("accountsPendingCount")) $("accountsPendingCount").textContent = String(pendingCount);
-  if ($("accountsVerifiedCount")) $("accountsVerifiedCount").textContent = String(verifiedCount);
+  if ($("accountsPendingCount"))
+    $("accountsPendingCount").textContent = String(pendingCount);
+  if ($("accountsVerifiedCount"))
+    $("accountsVerifiedCount").textContent = String(verifiedCount);
 }
 
 function renderPaymentsTable() {
   const wrap = $("accountsTableWrap");
   if (!wrap) return;
 
-  const searchQuery = ($("accountsSearchInput")?.value || "").trim().toLowerCase();
+  const searchQuery = ($("accountsSearchInput")?.value || "")
+    .trim()
+    .toLowerCase();
   const statusFilter = $("accountsStatusFilter")?.value || "all";
 
   let filtered = allPayments.filter((p) => {
@@ -235,11 +294,21 @@ function renderPaymentsTable() {
 
     if (searchQuery) {
       const match =
-        String(p.bookingId || p.id || "").toLowerCase().includes(searchQuery) ||
-        String(p.userName || "").toLowerCase().includes(searchQuery) ||
-        String(p.userPhone || "").toLowerCase().includes(searchQuery) ||
-        String(p.utr || p.paymentRef || "").toLowerCase().includes(searchQuery) ||
-        String(p.vehicleName || "").toLowerCase().includes(searchQuery);
+        String(p.bookingId || p.id || "")
+          .toLowerCase()
+          .includes(searchQuery) ||
+        String(p.userName || "")
+          .toLowerCase()
+          .includes(searchQuery) ||
+        String(p.userPhone || "")
+          .toLowerCase()
+          .includes(searchQuery) ||
+        String(p.utr || p.paymentRef || "")
+          .toLowerCase()
+          .includes(searchQuery) ||
+        String(p.vehicleName || "")
+          .toLowerCase()
+          .includes(searchQuery);
       if (!match) return false;
     }
 
@@ -272,10 +341,19 @@ function renderPaymentsTable() {
     const rawStatus = String(p.status || "").toLowerCase();
     const isVerified = ["verified", "approved", "paid"].includes(rawStatus);
     const isRejected = ["rejected", "failed", "cancelled"].includes(rawStatus);
-    const statusClass = isVerified ? "verified" : isRejected ? "rejected" : "pending";
-    const statusLabel = isVerified ? "VERIFIED" : isRejected ? "REJECTED" : "PENDING";
+    const statusClass = isVerified
+      ? "verified"
+      : isRejected
+        ? "rejected"
+        : "pending";
+    const statusLabel = isVerified
+      ? "VERIFIED"
+      : isRejected
+        ? "REJECTED"
+        : "PENDING";
     const targetBid = p.bookingId || p.id || p.bookingNumber;
-    const verifierName = p.verifiedBy || p.verified_by || (isVerified ? "—" : "—");
+    const verifierName =
+      p.verifiedBy || p.verified_by || (isVerified ? "—" : "—");
 
     html += `
       <tr style="border-bottom:1px solid rgba(255,255,255,.06); font-size:13.5px;">
@@ -314,9 +392,15 @@ function renderPaymentsTable() {
     btn.addEventListener("click", () => {
       const idx = Number(btn.dataset.idx);
       const pid = btn.dataset.pid;
-      const item = (!Number.isNaN(idx) && filtered[idx])
-        ? filtered[idx]
-        : allPayments.find((p) => String(p.bookingId || p.id || p.bookingNumber || p.paymentId) === String(pid));
+      const item =
+        !Number.isNaN(idx) && filtered[idx]
+          ? filtered[idx]
+          : allPayments.find(
+              (p) =>
+                String(
+                  p.bookingId || p.id || p.bookingNumber || p.paymentId,
+                ) === String(pid),
+            );
       if (item) {
         openReviewModal(item);
       } else {
@@ -331,7 +415,8 @@ function openReviewModal(p) {
   const body = $("accountsReviewBody");
   if (!body) return;
 
-  const proofUrl = p.screenshotUrl || p.paymentScreenshotUrl || p.proofUrl || "";
+  const proofUrl =
+    p.screenshotUrl || p.paymentScreenshotUrl || p.proofUrl || "";
   const verifierSelect = $("accountsVerifierSelect");
   if (verifierSelect && p.verifiedBy) {
     verifierSelect.value = p.verifiedBy;
@@ -356,7 +441,9 @@ function openReviewModal(p) {
         <strong style="font-family:monospace; color:#4fd7ff;">${escapeHtml(p.utr || p.paymentRef || "N/A")}</strong>
       </div>
     </div>
-    ${proofUrl ? `
+    ${
+      proofUrl
+        ? `
       <div style="margin-top:14px;">
         <span style="color:var(--sub); font-size:12px; font-weight:700; display:block; margin-bottom:6px;">PAYMENT PROOF SCREENSHOT (CLICK TO ENLARGE)</span>
         <div id="accountsProofZoomWrap" style="position:relative; cursor:zoom-in; border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.15); background:#060a11;" role="button" tabindex="0" title="Click to enlarge payment screenshot">
@@ -367,19 +454,25 @@ function openReviewModal(p) {
           </div>
         </div>
       </div>
-    ` : `
+    `
+        : `
       <div style="margin-top:14px; background:rgba(79, 215, 255, 0.07); border:1px dashed rgba(79, 215, 255, 0.35); border-radius:8px; padding:14px; text-align:center;">
         <span style="display:block; color:#4fd7ff; font-weight:700; font-size:13px; margin-bottom:4px;">No Screenshot Attached by Customer</span>
         <p style="color:var(--sub); font-size:12px; margin:0 0 8px 0;">Customer submitted a direct UPI / Bank transfer with the UTR reference below:</p>
         <span style="display:inline-block; background:rgba(255,255,255,0.08); padding:4px 10px; border-radius:6px; font-family:monospace; font-weight:700; color:#06d6a0;">UTR: ${escapeHtml(p.utr || p.paymentRef || "N/A")}</span>
       </div>
-    `}
+    `
+    }
   `;
 
   const zoomWrap = $("accountsProofZoomWrap");
   if (zoomWrap && proofUrl) {
     zoomWrap.addEventListener("click", () => {
-      openImageLightbox(proofUrl, `Payment Proof — Booking #${p.bookingId || p.id}`, `${p.userName || "Customer"} · Ref: ${p.utr || p.paymentRef || "N/A"}`);
+      openImageLightbox(
+        proofUrl,
+        `Payment Proof — Booking #${p.bookingId || p.id}`,
+        `${p.userName || "Customer"} · Ref: ${p.utr || p.paymentRef || "N/A"}`,
+      );
     });
   }
 
@@ -388,17 +481,24 @@ function openReviewModal(p) {
 
 async function handleApprovePayment() {
   if (!activePaymentItem) return;
-  const targetId = activePaymentItem.bookingId || activePaymentItem.id || activePaymentItem.bookingNumber;
-  const verifierName = $("accountsVerifierSelect")?.value || (currentUser?.name) || "Admin";
+  const targetId =
+    activePaymentItem.bookingId ||
+    activePaymentItem.id ||
+    activePaymentItem.bookingNumber;
+  const verifierName =
+    $("accountsVerifierSelect")?.value || currentUser?.name || "Admin";
 
   const btn = $("accountsApproveBtn");
   if (btn) btn.disabled = true;
 
   try {
-    const res = await api.post(`/payments/${encodeURIComponent(targetId)}/verify`, {
-      action: "approve",
-      verifiedBy: verifierName
-    });
+    const res = await api.post(
+      `/payments/${encodeURIComponent(targetId)}/verify`,
+      {
+        action: "approve",
+        verifiedBy: verifierName,
+      },
+    );
 
     hideModal("accountsReviewModal");
     alert(`Payment #${targetId} verified & approved by ${verifierName}!`);
@@ -412,8 +512,12 @@ async function handleApprovePayment() {
 
 async function handleRejectPayment() {
   if (!activePaymentItem) return;
-  const targetId = activePaymentItem.bookingId || activePaymentItem.id || activePaymentItem.bookingNumber;
-  const verifierName = $("accountsVerifierSelect")?.value || (currentUser?.name) || "Admin";
+  const targetId =
+    activePaymentItem.bookingId ||
+    activePaymentItem.id ||
+    activePaymentItem.bookingNumber;
+  const verifierName =
+    $("accountsVerifierSelect")?.value || currentUser?.name || "Admin";
   const reasonWrap = $("accountsRejectionReasonWrap");
 
   if (reasonWrap && reasonWrap.style.display === "none") {
@@ -422,7 +526,9 @@ async function handleRejectPayment() {
     return;
   }
 
-  const reason = $("accountsRejectionReason")?.value?.trim() || "Payment receipt could not be verified.";
+  const reason =
+    $("accountsRejectionReason")?.value?.trim() ||
+    "Payment receipt could not be verified.";
   const btn = $("accountsRejectBtn");
   if (btn) btn.disabled = true;
 
@@ -430,7 +536,7 @@ async function handleRejectPayment() {
     await api.post(`/payments/${encodeURIComponent(targetId)}/verify`, {
       action: "reject",
       reason,
-      verifiedBy: verifierName
+      verifiedBy: verifierName,
     });
 
     if (reasonWrap) reasonWrap.style.display = "none";

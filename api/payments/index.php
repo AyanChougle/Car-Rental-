@@ -13,8 +13,6 @@ $isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive', 'acco
 $hubIdFilter = isset($_GET['hub_id']) && $_GET['hub_id'] !== '' ? (int)$_GET['hub_id'] : 0;
 
 
-
-
 if (!$isStaff) {
     // Return customer's own payments
     $rows = Database::fetchAll(
@@ -74,8 +72,11 @@ if (!$isStaff) {
              OR (b.vehicle_reg IS NOT NULL AND TRIM(b.vehicle_reg) <> '' AND b.vehicle_reg <> 'TBD' AND v.reg_no = b.vehicle_reg)
          )
          WHERE (? = 0 OR b.pickup_hub_id = ? OR b.drop_hub_id = ?)
-         ORDER BY p.created_at DESC"
-    , [$hubIdFilter, $hubIdFilter, $hubIdFilter]);
+           AND LOWER(COALESCE(b.status, '')) NOT IN ('cancelled', 'rejected')
+           AND LOWER(COALESCE(p.status, '')) NOT IN ('refunded', 'cancelled', 'rejected')
+         ORDER BY p.created_at DESC",
+        [$hubIdFilter, $hubIdFilter, $hubIdFilter]
+    );
 }
 
 // Bulletproof deduplication by payment_id or id

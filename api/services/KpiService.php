@@ -22,8 +22,54 @@ class KpiService
      */
     public static function getMetrics(): array
     {
-        // Fetch values directly from the kpi_metrics table to preserve manual edits from phpMyAdmin
+        // Strictly fetch values directly from the kpi_metrics table to preserve manual edits from phpMyAdmin
         return self::getCachedMetrics();
+    }
+
+    /**
+     * Increments the live month sales, total revenue, day sales, week sales and booking count
+     * when a new booking is reserved on the platform.
+     */
+    public static function incrementBookingMetrics(float $amount): void
+    {
+        $mKey = date('Y-m-01');
+        try {
+            Database::execute(
+                "UPDATE kpi_metrics 
+                 SET month_sales = month_sales + ?,
+                     total_revenue = total_revenue + ?,
+                     day_sales = day_sales + ?,
+                     week_sales = week_sales + ?,
+                     total_bookings = total_bookings + 1
+                 WHERE metric_date = ?",
+                [$amount, $amount, $amount, $amount, $mKey]
+            );
+        } catch (Throwable $e) {
+            error_log("[KpiService::incrementBookingMetrics] " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Decrements the live month sales, total revenue, day sales, week sales and booking count
+     * when a booking is cancelled.
+     */
+    public static function decrementBookingMetrics(float $amount): void
+    {
+        $mKey = date('Y-m-01');
+        try {
+            Database::execute(
+                "UPDATE kpi_metrics 
+                 SET month_sales = GREATEST(0, month_sales - ?),
+                     total_revenue = GREATEST(0, total_revenue - ?),
+                     day_sales = GREATEST(0, day_sales - ?),
+                     week_sales = GREATEST(0, week_sales - ?),
+                     total_bookings = GREATEST(0, total_bookings - 1)
+                 WHERE metric_date = ?",
+                [$amount, $amount, $amount, $amount, $mKey]
+            );
+        } catch (Throwable $e) {
+            error_log("[KpiService::decrementBookingMetrics] " . $e->getMessage());
+        }
     }
 
     /**
@@ -334,23 +380,21 @@ class KpiService
                 $existing = $existingMetrics[$monthStart] ?? null;
                 $existingRev = isset($existing['month_sales']) ? (float)$existing['month_sales'] : 0.0;
                 
-                // Protect legacy manually-entered months (July, August 2026) which don't have live bookings
-                if ($monthStart < '2026-09-01') {
-                    $mRev = max($calcRev, $existingRev);
-                } else {
-                    // Allow precise sync for active months (enables KPI to drop on edits/cancellations)
-                    $mRev = $calcRev;
-                }
+                // Master ledger protection: month_sales and counts must NEVER be downgraded below existing kpi_metrics database values
+                $mRev = max($calcRev, $existingRev);
 
-                $mBookingsCount = isset($monthlyBookings[$monthStart])
-                    ? count($monthlyBookings[$monthStart])
-                    : (int)($existing['total_bookings'] ?? 0);
-                $mPaidCount = isset($monthlyPaidBookings[$monthStart])
-                    ? count($monthlyPaidBookings[$monthStart])
-                    : (int)($existing['paid_bookings'] ?? 0);
-                $mCompletedCount = isset($monthlyCompletedTrips[$monthStart])
-                    ? (int)$monthlyCompletedTrips[$monthStart]
-                    : (int)($existing['completed_trips'] ?? 0);
+                $mBookingsCount = max(
+                    isset($monthlyBookings[$monthStart]) ? count($monthlyBookings[$monthStart]) : 0,
+                    (int)($existing['total_bookings'] ?? 0)
+                );
+                $mPaidCount = max(
+                    isset($monthlyPaidBookings[$monthStart]) ? count($monthlyPaidBookings[$monthStart]) : 0,
+                    (int)($existing['paid_bookings'] ?? 0)
+                );
+                $mCompletedCount = max(
+                    isset($monthlyCompletedTrips[$monthStart]) ? (int)$monthlyCompletedTrips[$monthStart] : 0,
+                    (int)($existing['completed_trips'] ?? 0)
+                );
 
                 $monthUsers = (int)(Database::fetchOne(
                     "SELECT COUNT(DISTINCT firebase_uid) AS c
@@ -394,11 +438,21 @@ class KpiService
             $runningTotal = 0.0;
             foreach (array_keys($monthlyRows) as $mKey) {
                 $runningTotal += (float)$monthlyRows[$mKey]['month_sales'];
-                $monthlyRows[$mKey]['total_revenue'] = round($runningTotal, 2);
+                $existingTot = (float)($existingMetrics[$mKey]['total_revenue'] ?? 0.0);
+                $monthlyRows[$mKey]['total_revenue'] = max(round($runningTotal, 2), $existingTot);
             }
             $grandTotalRevenue = round($runningTotal, 2);
+            if (!empty($existingMetrics)) {
+                $maxExistingTot = 0.0;
+                foreach ($existingMetrics as $em) {
+                    if ((float)($em['total_revenue'] ?? 0) > $maxExistingTot) {
+                        $maxExistingTot = (float)$em['total_revenue'];
+                    }
+                }
+                $grandTotalRevenue = max($grandTotalRevenue, $maxExistingTot);
+            }
 
-            // Calculation complete. Do NOT persist or overwrite kpi_metrics table, so manual database edits are strictly preserved.
+            // Calculation complete. Strictly do NOT persist or overwrite kpi_metrics table, so manual database edits from phpMyAdmin are 100% preserved.
 
             $previousMonthKey = date('Y-m-01', strtotime('-1 month'));
             $currentMonthRevenue = (float)($monthlyRows[$currentMonthKey]['month_sales'] ?? 0.0);

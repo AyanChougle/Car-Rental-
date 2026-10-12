@@ -1,5 +1,11 @@
 import { auth } from "./firebase-init.js";
-import { checkAuth, getCurrentUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260917-v1";
+import {
+  checkAuth,
+  getCurrentUser,
+  isExecutiveUser,
+  isManagerUser,
+  isAdminUser,
+} from "./auth.js?v=20260917-v1";
 import { api } from "./kruizly-api.js?v=20261001-v2";
 
 import "./nav-helper.js?v=20260928-v2";
@@ -9,7 +15,11 @@ import { formatBookingNumber } from "./booking-reference.js";
 
 async function getAuthToken() {
   try {
-    if (auth && auth.currentUser && typeof auth.currentUser.getIdToken === "function") {
+    if (
+      auth &&
+      auth.currentUser &&
+      typeof auth.currentUser.getIdToken === "function"
+    ) {
       return await auth.currentUser.getIdToken();
     }
     if (currentUser && typeof currentUser.getIdToken === "function") {
@@ -106,7 +116,11 @@ async function initManagerAuth() {
   }
 
   currentUser = getCurrentUser();
-  if (isExecutiveUser(currentUser) || isManagerUser(currentUser) || isAdminUser(currentUser)) {
+  if (
+    isExecutiveUser(currentUser) ||
+    isManagerUser(currentUser) ||
+    isAdminUser(currentUser)
+  ) {
     setVisible(accessDenied, false);
     setVisible(managerContent, true);
     await loadManagerData();
@@ -131,10 +145,7 @@ function showAccessDenied() {
 ========================================================= */
 
 async function loadManagerData() {
-  await Promise.all([
-    loadExecutiveProfiles(),
-    loadManagerBookings(),
-  ]);
+  await Promise.all([loadExecutiveProfiles(), loadManagerBookings()]);
 }
 
 async function loadExecutiveProfiles() {
@@ -151,17 +162,14 @@ async function loadExecutiveProfiles() {
 ========================================================= */
 
 function closeManagerPaymentModal() {
-  const modal =
-    document.getElementById("managerPaymentModal");
+  const modal = document.getElementById("managerPaymentModal");
 
   if (modal) {
     modal.hidden = true;
   }
 
   if (managerPaymentScreenshotObjectUrl) {
-    URL.revokeObjectURL(
-      managerPaymentScreenshotObjectUrl
-    );
+    URL.revokeObjectURL(managerPaymentScreenshotObjectUrl);
     managerPaymentScreenshotObjectUrl = null;
   }
 
@@ -181,49 +189,40 @@ async function fetchManagerPaymentScreenshot(mediaId) {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-    }
+    },
   );
 
   if (!response.ok) {
-    throw new Error(
-      `Could not load screenshot (${response.status}).`
-    );
+    throw new Error(`Could not load screenshot (${response.status}).`);
   }
 
-  return URL.createObjectURL(
-    await response.blob()
-  );
+  return URL.createObjectURL(await response.blob());
 }
 
 async function openManagerPaymentModal(booking) {
   closeManagerPaymentModal();
   activeManagerPaymentBooking = booking;
 
-  const modal =
-    document.getElementById("managerPaymentModal");
-  const title =
-    document.getElementById("managerPaymentModalTitle");
-  const body =
-    document.getElementById("managerPaymentModalBody");
+  const modal = document.getElementById("managerPaymentModal");
+  const title = document.getElementById("managerPaymentModalTitle");
+  const body = document.getElementById("managerPaymentModalBody");
 
   if (!modal || !body) return;
 
   if (title) {
-    title.textContent =
-      `Booking #${formatBookingNumber(booking)}`;
+    title.textContent = `Booking #${formatBookingNumber(booking)}`;
   }
 
-  const screenshotMarkup =
-    booking.paymentScreenshotURL
-      ? `
+  const screenshotMarkup = booking.paymentScreenshotURL
+    ? `
         <img
           src="${escapeHtml(booking.paymentScreenshotURL)}"
           alt="Payment screenshot"
           style="width:100%;max-height:400px;object-fit:contain;border-radius:10px;background:#000;"
         />
       `
-      : booking.paymentScreenshotMediaId
-        ? `
+    : booking.paymentScreenshotMediaId
+      ? `
           <div
             id="managerPaymentScreenshotPreview"
             style="min-height:120px;display:grid;place-items:center;color:var(--sub);border:1px solid var(--line);border-radius:10px;"
@@ -231,7 +230,7 @@ async function openManagerPaymentModal(booking) {
             Loading payment screenshot...
           </div>
         `
-        : `<p style="color:var(--sub);">No payment screenshot uploaded.</p>`;
+      : `<p style="color:var(--sub);">No payment screenshot uploaded.</p>`;
 
   body.innerHTML = `
     <div style="display:grid;gap:12px;">
@@ -261,24 +260,15 @@ async function openManagerPaymentModal(booking) {
 
   modal.hidden = false;
 
-  if (
-    booking.paymentScreenshotMediaId &&
-    !booking.paymentScreenshotURL
-  ) {
-    const preview = document.getElementById(
-      "managerPaymentScreenshotPreview"
-    );
+  if (booking.paymentScreenshotMediaId && !booking.paymentScreenshotURL) {
+    const preview = document.getElementById("managerPaymentScreenshotPreview");
 
     try {
-      const objectUrl =
-        await fetchManagerPaymentScreenshot(
-          booking.paymentScreenshotMediaId
-        );
+      const objectUrl = await fetchManagerPaymentScreenshot(
+        booking.paymentScreenshotMediaId,
+      );
 
-      if (
-        activeManagerPaymentBooking !== booking ||
-        !preview?.isConnected
-      ) {
+      if (activeManagerPaymentBooking !== booking || !preview?.isConnected) {
         URL.revokeObjectURL(objectUrl);
         return;
       }
@@ -309,8 +299,7 @@ function renderManagerPayments() {
   if (!paymentsWrap) return;
 
   const pending = currentManagerBookings.filter(
-    (booking) =>
-      booking.paymentStatus === "pending_verification"
+    (booking) => booking.paymentStatus === "pending_verification",
   );
 
   if (pendingPaymentCountEl) {
@@ -340,7 +329,9 @@ function renderManagerPayments() {
           </tr>
         </thead>
         <tbody>
-          ${pending.map((booking) => `
+          ${pending
+            .map(
+              (booking) => `
             <tr style="border-bottom:1px solid rgba(255,255,255,.06);">
               <td style="padding:12px;font-family:monospace;">#${escapeHtml(formatBookingNumber(booking))}</td>
               <td style="padding:12px;">${escapeHtml(booking.userName || "Customer")}</td>
@@ -353,7 +344,9 @@ function renderManagerPayments() {
                 </button>
               </td>
             </tr>
-          `).join("")}
+          `,
+            )
+            .join("")}
         </tbody>
       </table>
     </div>
@@ -364,7 +357,7 @@ function renderManagerPayments() {
     .forEach((button) => {
       button.addEventListener("click", () => {
         const booking = currentManagerBookings.find(
-          (item) => item.id === button.dataset.bookingId
+          (item) => item.id === button.dataset.bookingId,
         );
 
         if (booking) {
@@ -375,19 +368,12 @@ function renderManagerPayments() {
 }
 
 function initialiseManagerPaymentModal() {
-  const modal =
-    document.getElementById("managerPaymentModal");
-  const closeButton =
-    document.getElementById("closeManagerPaymentModal");
-  const approveButton =
-    document.getElementById("managerApprovePaymentBtn");
-  const rejectButton =
-    document.getElementById("managerRejectPaymentBtn");
+  const modal = document.getElementById("managerPaymentModal");
+  const closeButton = document.getElementById("closeManagerPaymentModal");
+  const approveButton = document.getElementById("managerApprovePaymentBtn");
+  const rejectButton = document.getElementById("managerRejectPaymentBtn");
 
-  closeButton?.addEventListener(
-    "click",
-    closeManagerPaymentModal
-  );
+  closeButton?.addEventListener("click", closeManagerPaymentModal);
 
   modal?.addEventListener("click", (event) => {
     if (event.target === modal) {
@@ -404,13 +390,15 @@ function initialiseManagerPaymentModal() {
 
     try {
       await api.post(`/payments/${booking.id}/verify`, {
-        status: "verified"
+        status: "verified",
       });
 
       closeManagerPaymentModal();
       await loadManagerBookings();
-      if (typeof window.loadManagerSummaryData === 'function') {
-        try { await window.loadManagerSummaryData(); } catch (_) {}
+      if (typeof window.loadManagerSummaryData === "function") {
+        try {
+          await window.loadManagerSummaryData();
+        } catch (_) {}
       }
     } catch (error) {
       console.error("Manager payment approval error:", error);
@@ -433,7 +421,7 @@ function initialiseManagerPaymentModal() {
     try {
       await api.post(`/payments/${booking.id}/verify`, {
         status: "rejected",
-        rejectionReason: reason || "Payment could not be verified."
+        rejectionReason: reason || "Payment could not be verified.",
       });
 
       closeManagerPaymentModal();
@@ -452,21 +440,15 @@ function initialiseManagerPaymentModal() {
 ========================================================= */
 
 function clearExecutivePickupPreviews() {
-  executivePickupPreviewUrls.forEach((url) =>
-    URL.revokeObjectURL(url)
-  );
+  executivePickupPreviewUrls.forEach((url) => URL.revokeObjectURL(url));
   executivePickupPreviewUrls = [];
 }
 
 function closeExecutivePickupModal() {
-  const modal =
-    document.getElementById("executivePickupModal");
-  const input =
-    document.getElementById("executivePickupPhotos");
-  const preview =
-    document.getElementById("executivePickupPreview");
-  const status =
-    document.getElementById("executivePickupStatus");
+  const modal = document.getElementById("executivePickupModal");
+  const input = document.getElementById("executivePickupPhotos");
+  const preview = document.getElementById("executivePickupPreview");
+  const status = document.getElementById("executivePickupStatus");
 
   if (modal) {
     modal.hidden = true;
@@ -483,49 +465,59 @@ function openExecutivePickupModal(booking) {
   closeExecutivePickupModal();
   activeExecutivePickupBooking = booking;
 
-  const modal =
-    document.getElementById("executivePickupModal");
-  const title =
-    document.getElementById("executivePickupModalTitle");
-  const notes =
-    document.getElementById("executivePickupNotes");
-  const odoInput =
-    document.getElementById("executivePickupOdo");
-  const fastagInput =
-    document.getElementById("executivePickupFastag");
-  const fuelSelect =
-    document.getElementById("executivePickupFuel");
+  const modal = document.getElementById("executivePickupModal");
+  const title = document.getElementById("executivePickupModalTitle");
+  const notes = document.getElementById("executivePickupNotes");
+  const odoInput = document.getElementById("executivePickupOdo");
+  const fastagInput = document.getElementById("executivePickupFastag");
+  const fuelSelect = document.getElementById("executivePickupFuel");
 
   if (!modal) {
-    alert("Pickup handover is unavailable on this page. Please refresh and try again.");
+    alert(
+      "Pickup handover is unavailable on this page. Please refresh and try again.",
+    );
     return;
   }
 
   if (title) {
-    title.textContent =
-      `Pickup  ${booking.vehicleName || "Vehicle"} (#${formatBookingNumber(booking)})`;
+    title.textContent = `Pickup  ${booking.vehicleName || "Vehicle"} (#${formatBookingNumber(booking)})`;
   }
 
   if (notes) notes.value = booking.pickupNotes || "";
-  if (odoInput) odoInput.value = booking.pickupOdometer != null ? booking.pickupOdometer : "";
-  if (fastagInput) fastagInput.value = booking.pickupFastagBalance != null ? booking.pickupFastagBalance : "";
+  if (odoInput)
+    odoInput.value =
+      booking.pickupOdometer != null ? booking.pickupOdometer : "";
+  if (fastagInput)
+    fastagInput.value =
+      booking.pickupFastagBalance != null ? booking.pickupFastagBalance : "";
   if (fuelSelect) fuelSelect.value = booking.pickupFuelLevel || "";
 
   const fullPaidCheck = document.getElementById("executivePickupFullPaidCheck");
-  const balanceDisplay = document.getElementById("executivePickupBalanceDisplay");
+  const balanceDisplay = document.getElementById(
+    "executivePickupBalanceDisplay",
+  );
   const payModeSelect = document.getElementById("executivePickupPayMode");
   const payRefInput = document.getElementById("executivePickupPayRef");
 
-  const totalAmount = Number(booking.finalAmount || booking.totalAmount || booking.rentalTotal || 0);
-  const paidSoFar = Number(booking.paymentAmountPaid || booking.advanceAmount || (booking.paymentStatus === "paid" ? totalAmount : 0));
-  const remaining = Math.max(0, Number(booking.remainingBalance ?? (totalAmount - paidSoFar)));
+  const totalAmount = Number(
+    booking.finalAmount || booking.totalAmount || booking.rentalTotal || 0,
+  );
+  const paidSoFar = Number(
+    booking.paymentAmountPaid ||
+      booking.advanceAmount ||
+      (booking.paymentStatus === "paid" ? totalAmount : 0),
+  );
+  const remaining = Math.max(
+    0,
+    Number(booking.remainingBalance ?? totalAmount - paidSoFar),
+  );
 
   if (balanceDisplay) {
     balanceDisplay.textContent = `?${Math.round(remaining).toLocaleString("en-IN")}`;
   }
 
   if (fullPaidCheck) {
-    fullPaidCheck.checked = (booking.paymentStatus === "paid" || remaining > 0);
+    fullPaidCheck.checked = booking.paymentStatus === "paid" || remaining > 0;
   }
 
   if (payModeSelect) {
@@ -547,23 +539,18 @@ async function uploadExecutivePickupPhoto(file, bookingId) {
   formData.append("category", "inspection_photo");
   formData.append("relatedId", bookingId);
 
-  const response = await fetch(
-    `${MEDIA_SERVER_URL}/api/media/upload`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-      body: formData,
-    }
-  );
+  const response = await fetch(`${MEDIA_SERVER_URL}/api/media/upload`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    body: formData,
+  });
 
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok || !data.id) {
-    throw new Error(
-      data.error || `Photo upload failed (${response.status}).`
-    );
+    throw new Error(data.error || `Photo upload failed (${response.status}).`);
   }
 
   return data;
@@ -579,7 +566,7 @@ async function removeExecutiveMedia(mediaId) {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      }
+      },
     );
   } catch (error) {
     console.warn("Could not clean up pickup photo:", error);
@@ -594,7 +581,7 @@ async function fetchExecutiveMedia(mediaId) {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-    }
+    },
   );
 
   if (!response.ok) {
@@ -605,26 +592,16 @@ async function fetchExecutiveMedia(mediaId) {
 }
 
 function initialiseExecutivePickupModal() {
-  const modal =
-    document.getElementById("executivePickupModal");
-  const closeButton =
-    document.getElementById("closeExecutivePickupModal");
-  const input =
-    document.getElementById("executivePickupPhotos");
-  const preview =
-    document.getElementById("executivePickupPreview");
-  const notes =
-    document.getElementById("executivePickupNotes");
-  const status =
-    document.getElementById("executivePickupStatus");
-  const saveButton =
-    document.getElementById("saveExecutivePickupBtn");
-  const odoInput =
-    document.getElementById("executivePickupOdo");
-  const fastagInput =
-    document.getElementById("executivePickupFastag");
-  const fuelSelect =
-    document.getElementById("executivePickupFuel");
+  const modal = document.getElementById("executivePickupModal");
+  const closeButton = document.getElementById("closeExecutivePickupModal");
+  const input = document.getElementById("executivePickupPhotos");
+  const preview = document.getElementById("executivePickupPreview");
+  const notes = document.getElementById("executivePickupNotes");
+  const status = document.getElementById("executivePickupStatus");
+  const saveButton = document.getElementById("saveExecutivePickupBtn");
+  const odoInput = document.getElementById("executivePickupOdo");
+  const fastagInput = document.getElementById("executivePickupFastag");
+  const fuelSelect = document.getElementById("executivePickupFuel");
 
   closeButton?.addEventListener("click", closeExecutivePickupModal);
   modal?.addEventListener("click", (event) => {
@@ -662,7 +639,7 @@ function initialiseExecutivePickupModal() {
       if (preview) {
         preview.insertAdjacentHTML(
           "beforeend",
-          `<img src="${escapeHtml(url)}" alt="Selected pickup condition" style="width:100%;height:110px;object-fit:cover;border-radius:10px;border:1px solid var(--line);" />`
+          `<img src="${escapeHtml(url)}" alt="Selected pickup condition" style="width:100%;height:110px;object-fit:cover;border-radius:10px;border:1px solid var(--line);" />`,
         );
       }
     });
@@ -676,14 +653,26 @@ function initialiseExecutivePickupModal() {
 
     if (!files.length) {
       if (status) {
-        status.textContent = "Upload at least one pickup-condition photo before confirming.";
+        status.textContent =
+          "Upload at least one pickup-condition photo before confirming.";
         status.style.color = "#ef476f";
       }
       input?.focus();
       return;
     }
 
-    const blocked = ["php", "exe", "bat", "cmd", "sh", "bash", "js", "vbs", "jar", "cgi"];
+    const blocked = [
+      "php",
+      "exe",
+      "bat",
+      "cmd",
+      "sh",
+      "bash",
+      "js",
+      "vbs",
+      "jar",
+      "cgi",
+    ];
     const invalidFile = files.find((file) => {
       if (file.size > 10 * 1024 * 1024) return true;
       const name = (file.name || "").toLowerCase();
@@ -704,8 +693,10 @@ function initialiseExecutivePickupModal() {
     const odoRaw = odoInput?.value?.trim();
     const fastagRaw = fastagInput?.value?.trim();
     const fuelLevel = fuelSelect?.value || "";
-    const pickupOdometer = odoRaw !== "" && !isNaN(Number(odoRaw)) ? Number(odoRaw) : null;
-    const pickupFastagBalance = fastagRaw !== "" && !isNaN(Number(fastagRaw)) ? Number(fastagRaw) : null;
+    const pickupOdometer =
+      odoRaw !== "" && !isNaN(Number(odoRaw)) ? Number(odoRaw) : null;
+    const pickupFastagBalance =
+      fastagRaw !== "" && !isNaN(Number(fastagRaw)) ? Number(fastagRaw) : null;
 
     const uploadedIds = [];
     saveButton.disabled = true;
@@ -726,16 +717,27 @@ function initialiseExecutivePickupModal() {
         updatedAt: new Date().toISOString(),
       };
 
-      if (pickupOdometer !== null) updatePayload.pickupOdometer = pickupOdometer;
-      if (pickupFastagBalance !== null) updatePayload.pickupFastagBalance = pickupFastagBalance;
+      if (pickupOdometer !== null)
+        updatePayload.pickupOdometer = pickupOdometer;
+      if (pickupFastagBalance !== null)
+        updatePayload.pickupFastagBalance = pickupFastagBalance;
       if (fuelLevel) updatePayload.pickupFuelLevel = fuelLevel;
 
-      const fullPaidChecked = document.getElementById("executivePickupFullPaidCheck")?.checked;
-      const payMode = document.getElementById("executivePickupPayMode")?.value || "UPI";
-      const payRef = document.getElementById("executivePickupPayRef")?.value.trim() || "";
+      const fullPaidChecked = document.getElementById(
+        "executivePickupFullPaidCheck",
+      )?.checked;
+      const payMode =
+        document.getElementById("executivePickupPayMode")?.value || "UPI";
+      const payRef =
+        document.getElementById("executivePickupPayRef")?.value.trim() || "";
 
       if (fullPaidChecked || payRef) {
-        const fullTotal = Number(booking.finalAmount || booking.totalAmount || booking.rentalTotal || 0);
+        const fullTotal = Number(
+          booking.finalAmount ||
+            booking.totalAmount ||
+            booking.rentalTotal ||
+            0,
+        );
         updatePayload.paymentPlan = "full";
         updatePayload.paymentStatus = "paid";
         updatePayload.paymentAmountPaid = fullTotal;
@@ -747,7 +749,11 @@ function initialiseExecutivePickupModal() {
         if (payRef) updatePayload.paymentRef = payRef;
         updatePayload.pickupPaymentCollected = true;
         updatePayload.pickupPaymentCollectedAt = new Date().toISOString();
-        updatePayload.pickupPaymentCollectedBy = currentUser?.displayName || currentUser?.email || currentUser?.uid || "Executive";
+        updatePayload.pickupPaymentCollectedBy =
+          currentUser?.displayName ||
+          currentUser?.email ||
+          currentUser?.uid ||
+          "Executive";
       }
 
       await api.put(`/bookings/${booking.id}`, updatePayload);
@@ -755,9 +761,7 @@ function initialiseExecutivePickupModal() {
       closeExecutivePickupModal();
       await loadManagerBookings();
     } catch (error) {
-      await Promise.all(
-        uploadedIds.map((id) => removeExecutiveMedia(id))
-      );
+      await Promise.all(uploadedIds.map((id) => removeExecutiveMedia(id)));
       console.error("Executive pickup error:", error);
 
       if (status) {
@@ -776,25 +780,35 @@ initialiseExecutivePickupModal();
 async function openExecutiveBookingDetails(booking) {
   document.getElementById("executiveBookingDetails")?.remove();
 
-  const customer = currentManagerUsers.find(
-    (user) => user.id === booking.userId || user.uid === booking.userId || user.id === booking.firebaseUid || user.uid === booking.firebaseUid || (user.email && booking.userEmail && user.email.toLowerCase() === booking.userEmail.toLowerCase())
-  ) || {};
+  const customer =
+    currentManagerUsers.find(
+      (user) =>
+        user.id === booking.userId ||
+        user.uid === booking.userId ||
+        user.id === booking.firebaseUid ||
+        user.uid === booking.firebaseUid ||
+        (user.email &&
+          booking.userEmail &&
+          user.email.toLowerCase() === booking.userEmail.toLowerCase()),
+    ) || {};
   const mediaIds = Array.isArray(booking.pickupPhotoMediaIds)
     ? booking.pickupPhotoMediaIds
     : [];
 
   const returnInspection = booking.returnInspection || {};
-  const returnMediaIds = Array.isArray(returnInspection.returnPhotoMediaIds) && returnInspection.returnPhotoMediaIds.length
-    ? returnInspection.returnPhotoMediaIds
-    : Array.isArray(returnInspection.photos)
-      ? returnInspection.photos.map((p) => p.mediaId || p.url).filter(Boolean)
-      : Array.isArray(returnInspection.returnPhotos)
-        ? returnInspection.returnPhotos
-        : [];
+  const returnMediaIds =
+    Array.isArray(returnInspection.returnPhotoMediaIds) &&
+    returnInspection.returnPhotoMediaIds.length
+      ? returnInspection.returnPhotoMediaIds
+      : Array.isArray(returnInspection.photos)
+        ? returnInspection.photos.map((p) => p.mediaId || p.url).filter(Boolean)
+        : Array.isArray(returnInspection.returnPhotos)
+          ? returnInspection.returnPhotos
+          : [];
 
-  const returnItems = (Array.isArray(returnInspection.items) ? returnInspection.items : []).filter(
-    (i) => i.checked === true || i.checked === "true"
-  );
+  const returnItems = (
+    Array.isArray(returnInspection.items) ? returnInspection.items : []
+  ).filter((i) => i.checked === true || i.checked === "true");
   const returnNotes = returnInspection.notes || booking.returnNotes || "";
 
   const overlay = document.createElement("div");
@@ -819,60 +833,160 @@ async function openExecutiveBookingDetails(booking) {
         <button type="button" role="tab" id="executivePhotosTab" aria-controls="executivePhotosPanel" aria-selected="false" tabindex="-1" data-details-tab="photos">
           Pickup Photos <span>${mediaIds.length}</span>
         </button>
-        ${returnMediaIds.length ? `
+        ${
+          returnMediaIds.length
+            ? `
         <button type="button" role="tab" id="executiveReturnPhotosTab" aria-controls="executiveReturnPhotosPanel" aria-selected="false" tabindex="-1" data-details-tab="return-photos">
           Return Photos <span>${returnMediaIds.length}</span>
         </button>
-        ` : ""}
+        `
+            : ""
+        }
       </div>
 
       <section id="executiveOverviewPanel" class="executive-details-panel" role="tabpanel" aria-labelledby="executiveOverviewTab" data-details-panel="overview">
         <div class="executive-details-grid">
           ${[
-            ["Customer", customer.name || customer.fullName || customer.displayName || booking.userName || booking.customerName || "Customer"],
-            ["Email", customer.email || booking.userEmail || booking.customerEmail || "�"],
-            ["Phone", customer.phone || customer.phoneNumber || booking.userPhone || booking.customerPhone || booking.phone || "�"],
+            [
+              "Customer",
+              customer.name ||
+                customer.fullName ||
+                customer.displayName ||
+                booking.userName ||
+                booking.customerName ||
+                "Customer",
+            ],
+            [
+              "Email",
+              customer.email ||
+                booking.userEmail ||
+                booking.customerEmail ||
+                "�",
+            ],
+            [
+              "Phone",
+              customer.phone ||
+                customer.phoneNumber ||
+                booking.userPhone ||
+                booking.customerPhone ||
+                booking.phone ||
+                "�",
+            ],
             ["Age", customer.age || booking.userAge || booking.age || "�"],
             ["Vehicle", booking.vehicleName || "Vehicle"],
-            ["Registration", booking.vehicleReg || booking.registration || booking.vehicleRegistration || booking.regNo || booking.regNumber || "�"],
+            [
+              "Registration",
+              booking.vehicleReg ||
+                booking.registration ||
+                booking.vehicleRegistration ||
+                booking.regNo ||
+                booking.regNumber ||
+                "�",
+            ],
             ["Pickup", formatDisplayDate(booking.pickupDate)],
             ["Drop", formatDisplayDate(booking.dropDate)],
-            ["Booking status", formatStatus(booking.status || booking.bookingStatus)],
-            ["Pickup status", formatStatus(booking.pickupStatus || (booking.status === "in_trip" || booking.status === "completed" ? "picked_up" : "awaiting pickup"))],
-            ["Pickup Odometer", booking.pickupOdometer != null ? `${Number(booking.pickupOdometer).toLocaleString("en-IN")} km` : (booking.startOdometer != null ? `${Number(booking.startOdometer).toLocaleString("en-IN")} km` : "�")],
-            ["Return Odometer", returnInspection.returnOdometer != null ? `${Number(returnInspection.returnOdometer).toLocaleString("en-IN")} km` : (booking.endOdometer != null ? `${Number(booking.endOdometer).toLocaleString("en-IN")} km` : "�")],
-            ["Pickup FASTag", booking.pickupFastagBalance != null ? `?${Number(booking.pickupFastagBalance).toLocaleString("en-IN")}` : (booking.startFastag != null ? `?${Number(booking.startFastag).toLocaleString("en-IN")}` : "�")],
-            ["Return FASTag", returnInspection.returnFastagBalance != null ? `?${Number(returnInspection.returnFastagBalance).toLocaleString("en-IN")}` : (booking.returnFastag != null ? `?${Number(booking.returnFastag).toLocaleString("en-IN")}` : "�")],
-            ["Fuel Level", booking.pickupFuelLevel || booking.fuelLevel || returnInspection.fuelLevel || "�"],
-          ].map(([label, value]) => `
+            [
+              "Booking status",
+              formatStatus(booking.status || booking.bookingStatus),
+            ],
+            [
+              "Pickup status",
+              formatStatus(
+                booking.pickupStatus ||
+                  (booking.status === "in_trip" ||
+                  booking.status === "completed"
+                    ? "picked_up"
+                    : "awaiting pickup"),
+              ),
+            ],
+            [
+              "Pickup Odometer",
+              booking.pickupOdometer != null
+                ? `${Number(booking.pickupOdometer).toLocaleString("en-IN")} km`
+                : booking.startOdometer != null
+                  ? `${Number(booking.startOdometer).toLocaleString("en-IN")} km`
+                  : "�",
+            ],
+            [
+              "Return Odometer",
+              returnInspection.returnOdometer != null
+                ? `${Number(returnInspection.returnOdometer).toLocaleString("en-IN")} km`
+                : booking.endOdometer != null
+                  ? `${Number(booking.endOdometer).toLocaleString("en-IN")} km`
+                  : "�",
+            ],
+            [
+              "Pickup FASTag",
+              booking.pickupFastagBalance != null
+                ? `?${Number(booking.pickupFastagBalance).toLocaleString("en-IN")}`
+                : booking.startFastag != null
+                  ? `?${Number(booking.startFastag).toLocaleString("en-IN")}`
+                  : "�",
+            ],
+            [
+              "Return FASTag",
+              returnInspection.returnFastagBalance != null
+                ? `?${Number(returnInspection.returnFastagBalance).toLocaleString("en-IN")}`
+                : booking.returnFastag != null
+                  ? `?${Number(booking.returnFastag).toLocaleString("en-IN")}`
+                  : "�",
+            ],
+            [
+              "Fuel Level",
+              booking.pickupFuelLevel ||
+                booking.fuelLevel ||
+                returnInspection.fuelLevel ||
+                "�",
+            ],
+          ]
+            .map(
+              ([label, value]) => `
             <div class="executive-detail-item">
               <span>${escapeHtml(label)}</span>
               <strong>${escapeHtml(value)}</strong>
             </div>
-          `).join("")}
+          `,
+            )
+            .join("")}
         </div>
         ${booking.pickupNotes ? `<div class="executive-detail-notes"><span>Pickup notes</span><p>${escapeHtml(booking.pickupNotes)}</p></div>` : ""}
         ${returnNotes ? `<div class="executive-detail-notes" style="margin-top:10px;"><span>Return notes</span><p>${escapeHtml(returnNotes)}</p></div>` : ""}
 
-        ${(returnInspection && (returnInspection.processedAt || returnInspection.returnOdometer != null || returnItems.length > 0 || returnInspection.deductionTotal > 0)) ? `
+        ${
+          returnInspection &&
+          (returnInspection.processedAt ||
+            returnInspection.returnOdometer != null ||
+            returnItems.length > 0 ||
+            returnInspection.deductionTotal > 0)
+            ? `
         <div class="executive-detail-notes" style="margin-top:14px; border:1px solid rgba(79,215,255,0.25); background:rgba(79,215,255,0.03); border-radius:10px; padding:14px;">
           <span style="color:#4fd7ff; font-weight:800; text-transform:uppercase; font-size:0.75rem; letter-spacing:0.05em; display:block; margin-bottom:8px;">Return Inspection &amp; Deductions</span>
-          ${returnItems.length ? `
+          ${
+            returnItems.length
+              ? `
             <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:10px;">
-              ${returnItems.map((item) => `
+              ${returnItems
+                .map(
+                  (item) => `
                 <div style="display:flex; justify-content:space-between; font-size:0.85rem; padding:4px 0; border-bottom:1px dashed var(--line);">
                   <span>${escapeHtml(item.label || item.name || item.key)}</span>
                   <strong style="color:#ef476f;">?${Number(item.amount || 0).toLocaleString("en-IN")}</strong>
                 </div>
-              `).join("")}
+              `,
+                )
+                .join("")}
             </div>
-          ` : `<p style="margin:0 0 8px; color:var(--sub); font-size:0.85rem;">No damage deductions recorded.</p>`}
+          `
+              : `<p style="margin:0 0 8px; color:var(--sub); font-size:0.85rem;">No damage deductions recorded.</p>`
+          }
           <div style="display:flex; justify-content:space-between; font-size:0.85rem; border-top:1px solid var(--line); padding-top:8px;">
             <span>Total Deductions: <strong style="color:#ef476f;">?${Number(returnInspection.deductionTotal || 0).toLocaleString("en-IN")}</strong></span>
             <span>Deposit Refund: <strong style="color:#34d399;">?${Number(returnInspection.depositRefund ?? Math.max(0, (booking.securityDeposit || 0) - (returnInspection.deductionTotal || 0))).toLocaleString("en-IN")}</strong></span>
           </div>
         </div>
-        ` : ""}
+        `
+            : ""
+        }
       </section>
 
       <section id="executivePhotosPanel" class="executive-details-panel" role="tabpanel" aria-labelledby="executivePhotosTab" data-details-panel="photos" hidden>
@@ -881,13 +995,17 @@ async function openExecutiveBookingDetails(booking) {
         </div>
       </section>
 
-      ${returnMediaIds.length ? `
+      ${
+        returnMediaIds.length
+          ? `
       <section id="executiveReturnPhotosPanel" class="executive-details-panel" role="tabpanel" aria-labelledby="executiveReturnPhotosTab" data-details-panel="return-photos" hidden>
         <div id="executiveReturnPhotoGallery" class="executive-details-gallery">
           <div class="manager-state">Loading return photos...</div>
         </div>
       </section>
-      ` : ""}
+      `
+          : ""
+      }
     </div>
   `;
 
@@ -908,17 +1026,17 @@ async function openExecutiveBookingDetails(booking) {
     overlay.remove();
   };
 
-  overlay.querySelector("#closeExecutiveBookingDetails")?.addEventListener("click", close);
+  overlay
+    .querySelector("#closeExecutiveBookingDetails")
+    ?.addEventListener("click", close);
   overlay.addEventListener("click", (event) => {
     if (event.target === overlay) close();
   });
   document.addEventListener("keydown", handleDetailsKeydown);
 
-  const detailTabs = Array.from(
-    overlay.querySelectorAll("[data-details-tab]")
-  );
+  const detailTabs = Array.from(overlay.querySelectorAll("[data-details-tab]"));
   const detailPanels = Array.from(
-    overlay.querySelectorAll("[data-details-panel]")
+    overlay.querySelectorAll("[data-details-panel]"),
   );
 
   detailTabs.forEach((tab) => {
@@ -955,7 +1073,7 @@ async function openExecutiveBookingDetails(booking) {
         } catch {
           return `<div class="executive-details-photo-error">Photo unavailable</div>`;
         }
-      })
+      }),
     );
 
     if (gallery?.isConnected) {
@@ -969,10 +1087,18 @@ async function openExecutiveBookingDetails(booking) {
       returnMediaIds.map(async (mediaRef) => {
         try {
           let url = "";
-          if (typeof mediaRef === "string" && (mediaRef.startsWith("http") || mediaRef.startsWith("blob:") || mediaRef.startsWith("data:"))) {
+          if (
+            typeof mediaRef === "string" &&
+            (mediaRef.startsWith("http") ||
+              mediaRef.startsWith("blob:") ||
+              mediaRef.startsWith("data:"))
+          ) {
             url = mediaRef;
           } else {
-            const mediaId = typeof mediaRef === "object" ? (mediaRef.mediaId || mediaRef.url) : mediaRef;
+            const mediaId =
+              typeof mediaRef === "object"
+                ? mediaRef.mediaId || mediaRef.url
+                : mediaRef;
             url = await fetchExecutiveMedia(mediaId);
             if (closed) {
               URL.revokeObjectURL(url);
@@ -984,7 +1110,7 @@ async function openExecutiveBookingDetails(booking) {
         } catch {
           return `<div class="executive-details-photo-error">Photo unavailable</div>`;
         }
-      })
+      }),
     );
 
     if (returnGallery?.isConnected) {
@@ -998,7 +1124,11 @@ async function openExecutiveBookingDetails(booking) {
 ========================================================= */
 
 window.addEventListener("kruizly:hubchange", async () => {
-  try { await loadManagerBookings(); } catch (error) { console.error("Manager Hub refresh failed:", error); }
+  try {
+    await loadManagerBookings();
+  } catch (error) {
+    console.error("Manager Hub refresh failed:", error);
+  }
 });
 
 async function loadManagerBookings() {
@@ -1011,8 +1141,13 @@ async function loadManagerBookings() {
   `;
 
   try {
-    const selectedHubId = window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : "";
-    const res = await api.get("/bookings", selectedHubId ? { hub_id: selectedHubId } : {});
+    const selectedHubId = window.getKruizlySelectedHubId
+      ? window.getKruizlySelectedHubId()
+      : "";
+    const res = await api.get(
+      "/bookings",
+      selectedHubId ? { hub_id: selectedHubId } : {},
+    );
     const bookings = Array.isArray(res.bookings) ? res.bookings : [];
     currentManagerBookings = bookings;
 
@@ -1022,13 +1157,11 @@ async function loadManagerBookings() {
 
     const activeTrips = bookings.filter(
       (booking) =>
-        booking.status === "confirmed" &&
-        booking.pickupStatus === "picked_up"
+        booking.status === "confirmed" && booking.pickupStatus === "picked_up",
     );
 
     if (activeCountEl) {
-      activeCountEl.textContent =
-        activeTrips.length;
+      activeCountEl.textContent = activeTrips.length;
     }
 
     /* =====================================================
@@ -1048,19 +1181,19 @@ async function loadManagerBookings() {
       (booking) =>
         booking.pickupDate === todayISO &&
         booking.status === "confirmed" &&
-        booking.pickupStatus !== "picked_up"
+        booking.pickupStatus !== "picked_up",
     );
 
     if (pickupCountEl) {
-      pickupCountEl.textContent =
-        pickupsToday.length;
+      pickupCountEl.textContent = pickupsToday.length;
     }
 
     const returnsToday = bookings.filter(
       (booking) =>
-        (booking.dropDate || booking.returnDate || booking.endDate) === todayISO &&
+        (booking.dropDate || booking.returnDate || booking.endDate) ===
+          todayISO &&
         booking.status === "confirmed" &&
-        booking.pickupStatus === "picked_up"
+        booking.pickupStatus === "picked_up",
     );
 
     if (returnCountEl) {
@@ -1068,12 +1201,8 @@ async function loadManagerBookings() {
     }
 
     renderManagerBookingsTable(getSortedManagerBookings());
-
   } catch (error) {
-    console.error(
-      "Error loading manager bookings:",
-      error
-    );
+    console.error("Error loading manager bookings:", error);
 
     bookingsWrap.innerHTML = `
       <div style="
@@ -1090,9 +1219,7 @@ async function loadManagerBookings() {
         </p>
 
         <small style="color: var(--sub);">
-          ${escapeHtml(
-            error.message || "Unknown error"
-          )}
+          ${escapeHtml(error.message || "Unknown error")}
         </small>
 
       </div>
@@ -1165,19 +1292,25 @@ function getSortedManagerBookings() {
     ? new Date(`${managerBookingDateTo}T23:59:59.999`).getTime()
     : null;
 
-  return currentManagerBookings.filter((booking) => {
-    const date = getManagerBookingDateMillis(booking);
-    return (!from || date >= from) && (!to || date <= to);
-  }).sort((a, b) => {
-    const dateDifference =
-      getManagerBookingDateMillis(a) - getManagerBookingDateMillis(b);
+  return currentManagerBookings
+    .filter((booking) => {
+      const status = String(
+        booking.status || booking.bookingStatus || "",
+      ).toLowerCase();
+      if (status === "cancelled" || status === "rejected") return false;
+      const date = getManagerBookingDateMillis(booking);
+      return (!from || date >= from) && (!to || date <= to);
+    })
+    .sort((a, b) => {
+      const dateDifference =
+        getManagerBookingDateMillis(a) - getManagerBookingDateMillis(b);
 
-    if (dateDifference !== 0) {
-      return dateDifference * direction;
-    }
+      if (dateDifference !== 0) {
+        return dateDifference * direction;
+      }
 
-    return String(a.id).localeCompare(String(b.id)) * direction;
-  });
+      return String(a.id).localeCompare(String(b.id)) * direction;
+    });
 }
 
 /* =========================================================
@@ -1203,14 +1336,13 @@ function renderManagerBookingsTable(bookings) {
 
   const totalPages = Math.max(
     1,
-    Math.ceil(bookings.length / MANAGER_BOOKINGS_PER_PAGE)
+    Math.ceil(bookings.length / MANAGER_BOOKINGS_PER_PAGE),
   );
   managerBookingPage = Math.min(managerBookingPage, totalPages);
-  const pageStart =
-    (managerBookingPage - 1) * MANAGER_BOOKINGS_PER_PAGE;
+  const pageStart = (managerBookingPage - 1) * MANAGER_BOOKINGS_PER_PAGE;
   const pageBookings = bookings.slice(
     pageStart,
-    pageStart + MANAGER_BOOKINGS_PER_PAGE
+    pageStart + MANAGER_BOOKINGS_PER_PAGE,
   );
 
   let html = `
@@ -1273,9 +1405,7 @@ function renderManagerBookingsTable(bookings) {
   `;
 
   pageBookings.forEach((booking) => {
-    const status = String(
-      booking.status || "unknown"
-    )
+    const status = String(booking.status || "unknown")
       .trim()
       .toLowerCase();
 
@@ -1284,10 +1414,7 @@ function renderManagerBookingsTable(bookings) {
     ===================================================== */
 
     const customer =
-      booking.userName ||
-      booking.customerName ||
-      booking.name ||
-      "Customer";
+      booking.userName || booking.customerName || booking.name || "Customer";
 
     const phone =
       booking.userPhone ||
@@ -1301,39 +1428,28 @@ function renderManagerBookingsTable(bookings) {
     ===================================================== */
 
     const vehicle =
-      booking.vehicleName ||
-      booking.carName ||
-      booking.vehicle ||
-      "Vehicle";
+      booking.vehicleName || booking.carName || booking.vehicle || "Vehicle";
 
     const registration =
-      booking.vehicleReg ||
-      booking.regNumber ||
-      booking.registration ||
-      "�";
+      booking.vehicleReg || booking.regNumber || booking.registration || "�";
 
     /* =====================================================
        DATES
     ===================================================== */
 
     const pickup = formatDisplayDate(
-      booking.pickupDate ||
-      booking.startDate ||
-      ""
+      booking.pickupDate || booking.startDate || "",
     );
 
     const drop = formatDisplayDate(
-      booking.dropDate ||
-      booking.returnDate ||
-      booking.endDate ||
-      ""
+      booking.dropDate || booking.returnDate || booking.endDate || "",
     );
 
     const paymentStatus = formatStatus(
-      booking.paymentStatus || "payment pending"
+      booking.paymentStatus || "payment pending",
     );
     const paymentAmount = Number(
-      booking.totalAmount ?? booking.amount ?? booking.total ?? 0
+      booking.totalAmount ?? booking.amount ?? booking.total ?? 0,
     );
 
     /* =====================================================
@@ -1343,10 +1459,7 @@ function renderManagerBookingsTable(bookings) {
     let statusClass = "pending";
     let displayBookingStatus = formatStatus(status);
 
-    if (
-      status === "confirmed" ||
-      status === "completed"
-    ) {
+    if (status === "confirmed" || status === "completed") {
       statusClass = "verified";
     }
 
@@ -1384,8 +1497,7 @@ function renderManagerBookingsTable(bookings) {
     ----------------------------------------------------- */
 
     if (status === "confirmed") {
-      const pickupComplete =
-        booking.pickupStatus === "picked_up";
+      const pickupComplete = booking.pickupStatus === "picked_up";
 
       actionCell = `
         <div style="
@@ -1398,8 +1510,9 @@ function renderManagerBookingsTable(bookings) {
 
           ${detailsButton}
 
-          ${pickupComplete
-            ? `
+          ${
+            pickupComplete
+              ? `
               <button
                 type="button"
                 class="btn btn-dark process-return-btn"
@@ -1409,7 +1522,7 @@ function renderManagerBookingsTable(bookings) {
                 Process Drop
               </button>
             `
-            : `
+              : `
               <button
                 type="button"
                 class="btn btn-dark executive-pickup-btn"
@@ -1418,7 +1531,8 @@ function renderManagerBookingsTable(bookings) {
               >
                 Start Pickup
               </button>
-            `}
+            `
+          }
 
           <button
             type="button"
@@ -1528,11 +1642,15 @@ function renderManagerBookingsTable(bookings) {
             ${escapeHtml(displayBookingStatus)}
           </span>
 
-          ${status === "confirmed" ? `
+          ${
+            status === "confirmed"
+              ? `
             <div style="margin-top:6px;color:var(--sub);font-size:.75rem;">
               ${escapeHtml(formatStatus(booking.pickupStatus || "awaiting pickup"))}
             </div>
-          ` : ""}
+          `
+              : ""
+          }
 
         </td>
 
@@ -1597,171 +1715,117 @@ function renderManagerPagination(totalPages, totalItems) {
 ========================================================= */
 
 function attachBookingButtonEvents() {
-
   bookingsWrap
     .querySelectorAll(".executive-booking-details-btn")
     .forEach((button) => {
       button.addEventListener("click", () => {
         const booking = currentManagerBookings.find(
-          (item) => item.id === button.dataset.bookingId
+          (item) => item.id === button.dataset.bookingId,
         );
 
         if (booking) openExecutiveBookingDetails(booking);
       });
     });
 
-  bookingsWrap
-    .querySelectorAll(".executive-pickup-btn")
-    .forEach((button) => {
-      button.addEventListener("click", () => {
-        const booking = currentManagerBookings.find(
-          (item) => item.id === button.dataset.bookingId
-        );
+  bookingsWrap.querySelectorAll(".executive-pickup-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const booking = currentManagerBookings.find(
+        (item) => item.id === button.dataset.bookingId,
+      );
 
-        if (booking) openExecutivePickupModal(booking);
-      });
+      if (booking) openExecutivePickupModal(booking);
     });
+  });
 
   /* =====================================================
      CANCEL BUTTONS
   ===================================================== */
 
-  const statusButtons =
-    bookingsWrap.querySelectorAll(
-      ".mgr-status-btn"
-    );
+  const statusButtons = bookingsWrap.querySelectorAll(".mgr-status-btn");
 
   statusButtons.forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
 
-    button.addEventListener(
-      "click",
-      async (event) => {
+      const bookingId = button.dataset.bookingId;
 
-        event.preventDefault();
+      const newStatus = button.dataset.status;
 
-        const bookingId =
-          button.dataset.bookingId;
-
-        const newStatus =
-          button.dataset.status;
-
-        if (!bookingId) {
-          alert(
-            "This booking does not have a valid ID."
-          );
-          return;
-        }
-
-        const confirmed =
-          window.confirm(
-            "Are you sure you want to cancel this booking?"
-          );
-
-        if (!confirmed) return;
-
-        const originalText =
-          button.textContent;
-
-        button.disabled = true;
-        button.textContent =
-          "Cancelling...";
-
-        try {
-
-          await api.post("/bookings/cancel", {
-            bookingId: bookingId,
-            reason: "Cancelled from Manager/Executive panel"
-          });
-
-          await loadManagerBookings();
-
-        } catch (error) {
-
-          console.error(
-            "Failed to cancel booking:",
-            error
-          );
-
-          alert(
-            "Failed to cancel booking.\n\n" +
-            error.message
-          );
-
-          button.disabled = false;
-          button.textContent =
-            originalText;
-        }
+      if (!bookingId) {
+        alert("This booking does not have a valid ID.");
+        return;
       }
-    );
 
+      const confirmed = window.confirm(
+        "Are you sure you want to cancel this booking?",
+      );
+
+      if (!confirmed) return;
+
+      const originalText = button.textContent;
+
+      button.disabled = true;
+      button.textContent = "Cancelling...";
+
+      try {
+        await api.post("/bookings/cancel", {
+          bookingId: bookingId,
+          reason: "Cancelled from Manager/Executive panel",
+        });
+
+        await loadManagerBookings();
+      } catch (error) {
+        console.error("Failed to cancel booking:", error);
+
+        alert("Failed to cancel booking.\n\n" + error.message);
+
+        button.disabled = false;
+        button.textContent = originalText;
+      }
+    });
   });
 
   /* =====================================================
      PROCESS RETURN BUTTONS
   ===================================================== */
 
-  const returnButtons =
-    bookingsWrap.querySelectorAll(
-      ".process-return-btn"
-    );
+  const returnButtons = bookingsWrap.querySelectorAll(".process-return-btn");
 
   returnButtons.forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
 
-    button.addEventListener(
-      "click",
-      async (event) => {
+      const bookingId = button.dataset.bookingId;
 
-        event.preventDefault();
-
-        const bookingId =
-          button.dataset.bookingId;
-
-        if (!bookingId) {
-          alert(
-            "This booking does not have a valid ID."
-          );
-          return;
-        }
-
-        const booking =
-          currentManagerBookings.find(
-            (item) =>
-              item.id === bookingId
-          );
-
-        if (!booking) {
-          alert(
-            "Could not find this booking."
-          );
-          return;
-        }
-
-        try {
-
-          openReturnModal({
-            booking,
-            currentUser,
-
-            onSaved: async () => {
-              await loadManagerBookings();
-            },
-          });
-
-        } catch (error) {
-
-          console.error(
-            "Failed to open return inspection:",
-            error
-          );
-
-          alert(
-            "Could not open the return inspection.\n\n" +
-            error.message
-          );
-        }
+      if (!bookingId) {
+        alert("This booking does not have a valid ID.");
+        return;
       }
-    );
 
+      const booking = currentManagerBookings.find(
+        (item) => item.id === bookingId,
+      );
+
+      if (!booking) {
+        alert("Could not find this booking.");
+        return;
+      }
+
+      try {
+        openReturnModal({
+          booking,
+          currentUser,
+
+          onSaved: async () => {
+            await loadManagerBookings();
+          },
+        });
+      } catch (error) {
+        console.error("Failed to open return inspection:", error);
+
+        alert("Could not open the return inspection.\n\n" + error.message);
+      }
+    });
   });
 
   /* =====================================================
@@ -1770,46 +1834,32 @@ function attachBookingButtonEvents() {
      THIS IS THE IMPORTANT FIX.
   ===================================================== */
 
-  const reportButtons =
-    bookingsWrap.querySelectorAll(
-      ".view-return-report-btn"
-    );
+  const reportButtons = bookingsWrap.querySelectorAll(
+    ".view-return-report-btn",
+  );
 
   reportButtons.forEach((button) => {
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
 
-    button.addEventListener(
-      "click",
-      async (event) => {
+      const bookingId = button.dataset.bookingId;
 
-        event.preventDefault();
-
-        const bookingId =
-          button.dataset.bookingId;
-
-        if (!bookingId) {
-          alert(
-            "This booking does not have a valid ID."
-          );
-          return;
-        }
-
-        const booking =
-          currentManagerBookings.find(
-            (item) =>
-              item.id === bookingId
-          );
-
-        if (!booking) {
-          alert(
-            "Could not find this booking."
-          );
-          return;
-        }
-
-        openReturnReport(booking);
+      if (!bookingId) {
+        alert("This booking does not have a valid ID.");
+        return;
       }
-    );
 
+      const booking = currentManagerBookings.find(
+        (item) => item.id === bookingId,
+      );
+
+      if (!booking) {
+        alert("Could not find this booking.");
+        return;
+      }
+
+      openReturnReport(booking);
+    });
   });
 }
 
@@ -1818,52 +1868,35 @@ function attachBookingButtonEvents() {
 ========================================================= */
 
 function openReturnReport(booking) {
+  const inspection = booking.returnInspection || {};
 
-  const inspection =
-    booking.returnInspection || {};
+  const overlay = document.createElement("div");
 
-  const overlay =
-    document.createElement("div");
-
-  overlay.id =
-    "managerReturnReportOverlay";
+  overlay.id = "managerReturnReportOverlay";
 
   overlay.className = "manager-modal";
 
-  const vehicleName =
-    booking.vehicleName ||
-    booking.carName ||
-    "Vehicle";
+  const vehicleName = booking.vehicleName || booking.carName || "Vehicle";
 
   const registration =
-    booking.vehicleReg ||
-    booking.regNumber ||
-    booking.registration ||
-    "�";
+    booking.vehicleReg || booking.regNumber || booking.registration || "�";
 
-  const customer =
-    booking.userName ||
-    booking.customerName ||
-    "Customer";
+  const customer = booking.userName || booking.customerName || "Customer";
 
-  const deposit =
-    getNumber(
-      inspection.securityDeposit ??
+  const deposit = getNumber(
+    inspection.securityDeposit ??
       inspection.deposit ??
       booking.securityDeposit ??
       booking.deposit ??
-      0
-    );
+      0,
+  );
 
   /* =====================================================
      INSPECTION ITEMS (ONLY CHECKED ITEMS ARE DEDUCTED)
   ===================================================== */
 
   const rawItems =
-    inspection.items ||
-    inspection.checklist ||
-    inspection.damageItems ||
-    [];
+    inspection.items || inspection.checklist || inspection.damageItems || [];
 
   const items = (Array.isArray(rawItems) ? rawItems : []).filter((item) => {
     if (typeof item === "string") return true;
@@ -1877,18 +1910,17 @@ function openReturnReport(booking) {
 
   const deductions = getNumber(
     inspection.totalDeductions ??
-    inspection.deductions ??
-    inspection.deductionTotal ??
-    calculatedDeductions
+      inspection.deductions ??
+      inspection.deductionTotal ??
+      calculatedDeductions,
   );
 
-  const refund =
-    getNumber(
-      inspection.refundableAmount ??
+  const refund = getNumber(
+    inspection.refundableAmount ??
       inspection.depositRefund ??
       inspection.refundAmount ??
-      Math.max(deposit - deductions, 0)
-    );
+      Math.max(deposit - deductions, 0),
+  );
 
   const notes =
     inspection.invoiceNotes ||
@@ -1897,7 +1929,8 @@ function openReturnReport(booking) {
     "No inspection notes were added.";
 
   const returnPhotoRefs =
-    Array.isArray(inspection.returnPhotoMediaIds) && inspection.returnPhotoMediaIds.length
+    Array.isArray(inspection.returnPhotoMediaIds) &&
+    inspection.returnPhotoMediaIds.length
       ? inspection.returnPhotoMediaIds.map((mediaId, index) => ({
           mediaId,
           name: `Photo ${index + 1}`,
@@ -1906,12 +1939,9 @@ function openReturnReport(booking) {
         ? inspection.photos
         : [];
 
-  const completedAt =
-    formatDateTime(
-      inspection.completedAt ||
-      inspection.returnedAt ||
-      booking.completedAt
-    );
+  const completedAt = formatDateTime(
+    inspection.completedAt || inspection.returnedAt || booking.completedAt,
+  );
 
   const inspectedBy =
     inspection.inspectedByName ||
@@ -1922,7 +1952,6 @@ function openReturnReport(booking) {
   let itemsHtml = "";
 
   if (Array.isArray(items) && items.length) {
-
     itemsHtml = `
       <div style="
         margin-top: 24px;
@@ -1941,12 +1970,10 @@ function openReturnReport(booking) {
           gap: 8px;
         ">
 
-          ${items.map((item) => {
-
-            if (
-              typeof item === "string"
-            ) {
-              return `
+          ${items
+            .map((item) => {
+              if (typeof item === "string") {
+                return `
                 <div style="
                   padding: 12px;
                   border: 1px solid var(--line);
@@ -1955,31 +1982,25 @@ function openReturnReport(booking) {
                   ${escapeHtml(item)}
                 </div>
               `;
-            }
+              }
 
-            const title =
-              item.name ||
-              item.title ||
-              item.label ||
-              item.description ||
-              "Inspection item";
+              const title =
+                item.name ||
+                item.title ||
+                item.label ||
+                item.description ||
+                "Inspection item";
 
-            const amount =
-              getNumber(
-                item.amount ??
-                item.deduction ??
-                item.cost ??
-                0
+              const amount = getNumber(
+                item.amount ?? item.deduction ?? item.cost ?? 0,
               );
 
-            const status =
-              item.status ||
-              item.condition ||
-              (item.checked
-                ? "Checked"
-                : "");
+              const status =
+                item.status ||
+                item.condition ||
+                (item.checked ? "Checked" : "");
 
-            return `
+              return `
               <div style="
                 display: flex;
                 align-items: center;
@@ -2029,15 +2050,14 @@ function openReturnReport(booking) {
 
               </div>
             `;
-          }).join("")}
+            })
+            .join("")}
 
         </div>
 
       </div>
     `;
-
   } else {
-
     itemsHtml = `
       <div style="
         margin-top: 24px;
@@ -2096,7 +2116,7 @@ function openReturnReport(booking) {
         </div>
         <div class="rr-info-cell">
           <span class="rr-info-key">Distance Driven</span>
-          <strong class="rr-info-val">${(inspection.returnOdometer != null && booking.pickupOdometer != null && Number(inspection.returnOdometer) >= Number(booking.pickupOdometer)) ? `${(Number(inspection.returnOdometer) - Number(booking.pickupOdometer)).toLocaleString("en-IN")} km` : "�"}</strong>
+          <strong class="rr-info-val">${inspection.returnOdometer != null && booking.pickupOdometer != null && Number(inspection.returnOdometer) >= Number(booking.pickupOdometer) ? `${(Number(inspection.returnOdometer) - Number(booking.pickupOdometer)).toLocaleString("en-IN")} km` : "�"}</strong>
         </div>
         <div class="rr-info-cell">
           <span class="rr-info-key">Pickup FASTag</span>
@@ -2131,38 +2151,55 @@ function openReturnReport(booking) {
       <!-- INSPECTION ITEMS -->
       <div class="rr-section">
         <span class="rr-section-title">Inspection Items</span>
-        ${items.length ? `
+        ${
+          items.length
+            ? `
         <div class="rr-items-list">
-          ${items.map((item) => {
-            if (typeof item === "string") {
-              return `<div class="rr-item"><span class="rr-item-name">${escapeHtml(item)}</span></div>`;
-            }
-            const title = item.name || item.title || item.label || item.description || "Inspection item";
-            const amount = getNumber(item.amount ?? item.deduction ?? item.cost ?? 0);
-            return `
+          ${items
+            .map((item) => {
+              if (typeof item === "string") {
+                return `<div class="rr-item"><span class="rr-item-name">${escapeHtml(item)}</span></div>`;
+              }
+              const title =
+                item.name ||
+                item.title ||
+                item.label ||
+                item.description ||
+                "Inspection item";
+              const amount = getNumber(
+                item.amount ?? item.deduction ?? item.cost ?? 0,
+              );
+              return `
               <div class="rr-item">
                 <span class="rr-item-name">${escapeHtml(title)}</span>
                 ${amount > 0 ? `<span class="rr-item-amount">?${formatMoney(amount)}</span>` : `<span class="rr-item-nil">�</span>`}
               </div>
             `;
-          }).join("")}
+            })
+            .join("")}
         </div>
-        ` : `
+        `
+            : `
         <div style="padding: 14px; border: 1px solid var(--line); border-radius: 10px; color: var(--sub); font-size: 0.88rem;">
           No damage or extra deductions recorded.
         </div>
-        `}
+        `
+        }
       </div>
 
       <!-- RETURN PHOTOS -->
-      ${returnPhotoRefs.length ? `
+      ${
+        returnPhotoRefs.length
+          ? `
       <div class="rr-section">
         <span class="rr-section-title">Return Photos</span>
         <div id="managerReturnPhotosGrid" class="rr-photos-grid">
           <div class="manager-state">Loading return photos...</div>
         </div>
       </div>
-      ` : ""}
+      `
+          : ""
+      }
 
       <!-- NOTES -->
       <div class="rr-section">
@@ -2218,7 +2255,7 @@ function openReturnReport(booking) {
           } catch {
             return null;
           }
-        })
+        }),
       );
 
       if (!grid.isConnected) return;
@@ -2243,11 +2280,13 @@ function openReturnReport(booking) {
                 text-transform: uppercase;
               ">${escapeHtml(photo.name || `Photo ${index + 1}`)}</figcaption>
             </figure>
-          `
+          `,
         )
         .join("");
 
-      grid.innerHTML = rendered || `<div class="manager-state">No return photos available.</div>`;
+      grid.innerHTML =
+        rendered ||
+        `<div class="manager-state">No return photos available.</div>`;
     })();
   }
 
@@ -2256,62 +2295,36 @@ function openReturnReport(booking) {
   ===================================================== */
 
   const closeReport = () => {
-
     overlay.remove();
-
   };
 
   document
-    .getElementById(
-      "closeManagerReturnReport"
-    )
-    ?.addEventListener(
-      "click",
-      closeReport
-    );
+    .getElementById("closeManagerReturnReport")
+    ?.addEventListener("click", closeReport);
 
   document
-    .getElementById(
-      "closeManagerReturnReportBtn"
-    )
-    ?.addEventListener(
-      "click",
-      closeReport
-    );
+    .getElementById("closeManagerReturnReportBtn")
+    ?.addEventListener("click", closeReport);
 
   /* Click outside modal */
 
-  overlay.addEventListener(
-    "click",
-    (event) => {
-
-      if (event.target === overlay) {
-        closeReport();
-      }
-
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      closeReport();
     }
-  );
+  });
 
   /* ESC */
 
   const escHandler = (event) => {
-
     if (event.key === "Escape") {
-
       closeReport();
 
-      document.removeEventListener(
-        "keydown",
-        escHandler
-      );
+      document.removeEventListener("keydown", escHandler);
     }
-
   };
 
-  document.addEventListener(
-    "keydown",
-    escHandler
-  );
+  document.addEventListener("keydown", escHandler);
 }
 
 /* =========================================================
@@ -2319,8 +2332,7 @@ function openReturnReport(booking) {
 ========================================================= */
 
 function closeManagerDocumentModal() {
-  const modal =
-    document.getElementById("managerDocumentModal");
+  const modal = document.getElementById("managerDocumentModal");
 
   if (modal) {
     modal.hidden = true;
@@ -2354,13 +2366,12 @@ async function fetchManagerDocumentPreview(mediaUrl) {
   });
 
   if (!response.ok) {
-    throw new Error(
-      `Could not load document (${response.status}).`
-    );
+    throw new Error(`Could not load document (${response.status}).`);
   }
 
   const blob = await response.blob();
-  const isPdf = blob.type === "application/pdf" || url.toLowerCase().includes(".pdf");
+  const isPdf =
+    blob.type === "application/pdf" || url.toLowerCase().includes(".pdf");
   return { url: URL.createObjectURL(blob), isPdf };
 }
 
@@ -2368,34 +2379,28 @@ async function openManagerDocumentModal(user, type) {
   closeManagerDocumentModal();
   activeManagerDocument = { user, type };
 
-  const modal =
-    document.getElementById("managerDocumentModal");
-  const title =
-    document.getElementById("managerDocumentModalTitle");
-  const body =
-    document.getElementById("managerDocumentModalBody");
-  const approveButton =
-    document.getElementById("managerApproveDocumentBtn");
-  const rejectButton =
-    document.getElementById("managerRejectDocumentBtn");
+  const modal = document.getElementById("managerDocumentModal");
+  const title = document.getElementById("managerDocumentModalTitle");
+  const body = document.getElementById("managerDocumentModalBody");
+  const approveButton = document.getElementById("managerApproveDocumentBtn");
+  const rejectButton = document.getElementById("managerRejectDocumentBtn");
 
   if (!modal || !body) return;
 
   const isLicense = type === "license";
-  const documentLabel = isLicense
-    ? "Driving Licence"
-    : "Aadhaar Card";
+  const documentLabel = isLicense ? "Driving Licence" : "Aadhaar Card";
   const mediaUrls = isLicense
-    ? [user.licenseFrontURL || user.licenseURL, user.licenseBackURL].filter(Boolean)
-    : [user.aadharFrontURL || user.aadharURL, user.aadharBackURL].filter(Boolean);
+    ? [user.licenseFrontURL || user.licenseURL, user.licenseBackURL].filter(
+        Boolean,
+      )
+    : [user.aadharFrontURL || user.aadharURL, user.aadharBackURL].filter(
+        Boolean,
+      );
   const mediaUrl = mediaUrls[0];
-  const status = isLicense
-    ? user.licenseStatus
-    : user.aadharStatus;
+  const status = isLicense ? user.licenseStatus : user.aadharStatus;
 
   if (title) {
-    title.textContent =
-      `${user.name || "Customer"} � ${documentLabel}`;
+    title.textContent = `${user.name || "Customer"}  ${documentLabel}`;
   }
 
   const isComplete = isLicense ? mediaUrls.length === 2 : mediaUrls.length > 0;
@@ -2429,12 +2434,10 @@ async function openManagerDocumentModal(user, type) {
 
   if (!mediaUrl) return;
 
-  const preview =
-    document.getElementById("managerDocumentPreview");
+  const preview = document.getElementById("managerDocumentPreview");
 
   try {
-    const previewRes =
-      await fetchManagerDocumentPreview(mediaUrl);
+    const previewRes = await fetchManagerDocumentPreview(mediaUrl);
     const objectUrl = previewRes.url;
     const isPdf = previewRes.isPdf;
 
@@ -2475,18 +2478,24 @@ async function openManagerDocumentModal(user, type) {
       managerDocumentObjectUrls.push(backObjectUrl);
 
       if (backIsPdf) {
-        preview.insertAdjacentHTML("beforeend", `
+        preview.insertAdjacentHTML(
+          "beforeend",
+          `
           <div style="width:100%;background:#fff;border-radius:8px;overflow:hidden;margin-top:12px;position:relative;">
             <iframe src="${escapeHtml(backObjectUrl)}#toolbar=0" style="display:block;width:100%;height:450px;border:none;" title="Driving licence back"></iframe>
             <div style="padding:6px 12px;background:#0c121d;text-align:right;border-top:1px solid rgba(255,255,255,0.1);">
               <a href="${escapeHtml(backObjectUrl)}" target="_blank" rel="noopener" style="color:#4fd7ff;font-size:12px;font-weight:700;text-decoration:none;">Open Back PDF in New Tab</a>
             </div>
           </div>
-        `);
+        `,
+        );
       } else {
-        preview.insertAdjacentHTML("beforeend", `
+        preview.insertAdjacentHTML(
+          "beforeend",
+          `
           <img src="${escapeHtml(backObjectUrl)}" alt="Driving licence back uploaded by ${escapeHtml(user.name || "customer")}" style="display:block;width:100%;max-height:520px;object-fit:contain;background:#080909;border-top:1px solid var(--line);" />
-        `);
+        `,
+        );
       }
     }
   } catch (error) {
@@ -2512,12 +2521,11 @@ async function setManagerDocumentStatus(status) {
 
   if (status === "rejected") {
     const enteredReason = prompt(
-      `Reason for rejecting this ${type === "license" ? "driving licence" : "Aadhaar card"}:`
+      `Reason for rejecting this ${type === "license" ? "driving licence" : "Aadhaar card"}:`,
     );
 
     if (enteredReason === null) return false;
-    rejectionReason =
-      enteredReason.trim() || "Document could not be verified.";
+    rejectionReason = enteredReason.trim() || "Document could not be verified.";
   }
 
   const updates = {
@@ -2527,9 +2535,8 @@ async function setManagerDocumentStatus(status) {
     [`${type}ReviewedBy`]: currentUser?.uid || null,
   };
 
-  const otherStatus = type === "license"
-    ? user.aadharStatus
-    : user.licenseStatus;
+  const otherStatus =
+    type === "license" ? user.aadharStatus : user.licenseStatus;
 
   if (status === "verified" && otherStatus === "verified") {
     updates.documentsVerifiedAt = new Date().toISOString();
@@ -2541,7 +2548,7 @@ async function setManagerDocumentStatus(status) {
       userId: user.id || user.uid,
       documentType: type,
       status: status,
-      rejectionReason: status === "rejected" ? rejectionReason : null
+      rejectionReason: status === "rejected" ? rejectionReason : null,
     });
 
     user[statusField] = status;
@@ -2554,19 +2561,12 @@ async function setManagerDocumentStatus(status) {
 }
 
 function initialiseManagerDocumentModal() {
-  const modal =
-    document.getElementById("managerDocumentModal");
-  const closeButton =
-    document.getElementById("closeManagerDocumentModal");
-  const approveButton =
-    document.getElementById("managerApproveDocumentBtn");
-  const rejectButton =
-    document.getElementById("managerRejectDocumentBtn");
+  const modal = document.getElementById("managerDocumentModal");
+  const closeButton = document.getElementById("closeManagerDocumentModal");
+  const approveButton = document.getElementById("managerApproveDocumentBtn");
+  const rejectButton = document.getElementById("managerRejectDocumentBtn");
 
-  closeButton?.addEventListener(
-    "click",
-    closeManagerDocumentModal
-  );
+  closeButton?.addEventListener("click", closeManagerDocumentModal);
 
   modal?.addEventListener("click", (event) => {
     if (event.target === modal) {
@@ -2579,8 +2579,7 @@ function initialiseManagerDocumentModal() {
     approveButton.textContent = "Approving...";
 
     try {
-      const updated =
-        await setManagerDocumentStatus("verified");
+      const updated = await setManagerDocumentStatus("verified");
 
       if (updated) {
         closeManagerDocumentModal();
@@ -2600,8 +2599,7 @@ function initialiseManagerDocumentModal() {
     rejectButton.textContent = "Rejecting...";
 
     try {
-      const updated =
-        await setManagerDocumentStatus("rejected");
+      const updated = await setManagerDocumentStatus("rejected");
 
       if (updated) {
         closeManagerDocumentModal();
@@ -2618,7 +2616,6 @@ function initialiseManagerDocumentModal() {
 }
 
 async function loadManagerDocs() {
-
   if (!docsWrap) return;
 
   docsWrap.innerHTML = `
@@ -2628,39 +2625,24 @@ async function loadManagerDocs() {
   `;
 
   try {
-
     const res = await api.get("/users");
     const users = res.users || [];
 
     currentManagerUsers = users;
 
-    const pendingDocs =
-      users.filter((user) => {
-
-        return (
-          user.licenseStatus === "pending" ||
-          user.aadharStatus === "pending"
-        );
-
-      });
+    const pendingDocs = users.filter((user) => {
+      return (
+        user.licenseStatus === "pending" || user.aadharStatus === "pending"
+      );
+    });
 
     if (pendingDocCountEl) {
-
-      pendingDocCountEl.textContent =
-        pendingDocs.length;
-
+      pendingDocCountEl.textContent = pendingDocs.length;
     }
 
-    renderManagerDocsList(
-      pendingDocs
-    );
-
+    renderManagerDocsList(pendingDocs);
   } catch (error) {
-
-    console.error(
-      "Error loading manager documents:",
-      error
-    );
+    console.error("Error loading manager documents:", error);
 
     docsWrap.innerHTML = `
       <div style="
@@ -2675,10 +2657,7 @@ async function loadManagerDocs() {
         </p>
 
         <small style="color: var(--sub);">
-          ${escapeHtml(
-            error.message ||
-            "Unknown error"
-          )}
+          ${escapeHtml(error.message || "Unknown error")}
         </small>
 
       </div>
@@ -2691,11 +2670,9 @@ async function loadManagerDocs() {
 ========================================================= */
 
 function renderManagerDocsList(users) {
-
   if (!docsWrap) return;
 
   if (!users.length) {
-
     docsWrap.innerHTML = `
       <div style="
         padding: 30px;
@@ -2766,14 +2743,9 @@ function renderManagerDocsList(users) {
   `;
 
   users.forEach((user) => {
+    const licenseStatus = user.licenseStatus || "unknown";
 
-    const licenseStatus =
-      user.licenseStatus ||
-      "unknown";
-
-    const aadharStatus =
-      user.aadharStatus ||
-      "unknown";
+    const aadharStatus = user.aadharStatus || "unknown";
 
     const documentActions = [
       licenseStatus === "pending"
@@ -2800,7 +2772,9 @@ function renderManagerDocsList(users) {
           </button>
         `
         : "",
-    ].filter(Boolean).join("");
+    ]
+      .filter(Boolean)
+      .join("");
 
     html += `
 
@@ -2812,20 +2786,14 @@ function renderManagerDocsList(users) {
         <td style="padding: 14px;">
 
           <strong>
-            ${escapeHtml(
-              user.name ||
-              "User"
-            )}
+            ${escapeHtml(user.name || "User")}
           </strong>
 
         </td>
 
         <td style="padding: 14px;">
 
-          ${escapeHtml(
-            user.email ||
-            "�"
-          )}
+          ${escapeHtml(user.email || "�")}
 
           <br>
 
@@ -2833,10 +2801,7 @@ function renderManagerDocsList(users) {
             color: var(--sub);
             font-size: 0.8rem;
           ">
-            ${escapeHtml(
-              user.phone ||
-              "�"
-            )}
+            ${escapeHtml(user.phone || "�")}
           </span>
 
         </td>
@@ -2845,15 +2810,9 @@ function renderManagerDocsList(users) {
 
           <span class="
             fleet-status
-            ${getDocumentStatusClass(
-              licenseStatus
-            )}
+            ${getDocumentStatusClass(licenseStatus)}
           ">
-            ${escapeHtml(
-              formatStatus(
-                licenseStatus
-              )
-            )}
+            ${escapeHtml(formatStatus(licenseStatus))}
           </span>
 
         </td>
@@ -2862,15 +2821,9 @@ function renderManagerDocsList(users) {
 
           <span class="
             fleet-status
-            ${getDocumentStatusClass(
-              aadharStatus
-            )}
+            ${getDocumentStatusClass(aadharStatus)}
           ">
-            ${escapeHtml(
-              formatStatus(
-                aadharStatus
-              )
-            )}
+            ${escapeHtml(formatStatus(aadharStatus))}
           </span>
 
         </td>
@@ -2909,53 +2862,36 @@ function renderManagerDocsList(users) {
 ========================================================= */
 
 function attachDocumentButtonEvents() {
-
-  const verifyButtons =
-    docsWrap.querySelectorAll(
-      ".mgr-review-document-btn"
-    );
+  const verifyButtons = docsWrap.querySelectorAll(".mgr-review-document-btn");
 
   verifyButtons.forEach((button) => {
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
 
-    button.addEventListener(
-      "click",
-      (event) => {
+      const userId = button.dataset.userId;
 
-        event.preventDefault();
+      const type = button.dataset.documentType;
 
-        const userId =
-          button.dataset.userId;
+      if (!userId) {
+        alert("Missing user ID.");
 
-        const type =
-          button.dataset.documentType;
-
-        if (!userId) {
-
-          alert(
-            "Missing user ID."
-          );
-
-          return;
-        }
-
-        if (!type) {
-          alert("Missing document type.");
-          return;
-        }
-
-        const user = currentManagerUsers.find(
-          (item) => item.id === userId
-        );
-
-        if (!user) {
-          alert("Could not find this user account.");
-          return;
-        }
-
-        openManagerDocumentModal(user, type);
+        return;
       }
-    );
 
+      if (!type) {
+        alert("Missing document type.");
+        return;
+      }
+
+      const user = currentManagerUsers.find((item) => item.id === userId);
+
+      if (!user) {
+        alert("Could not find this user account.");
+        return;
+      }
+
+      openManagerDocumentModal(user, type);
+    });
   });
 }
 
@@ -2964,19 +2900,13 @@ function attachDocumentButtonEvents() {
 ========================================================= */
 
 function getDocumentStatusClass(status) {
-
-  const value =
-    String(status || "")
-      .toLowerCase();
+  const value = String(status || "").toLowerCase();
 
   if (value === "verified") {
     return "verified";
   }
 
-  if (
-    value === "rejected" ||
-    value === "failed"
-  ) {
+  if (value === "rejected" || value === "failed") {
     return "rejected";
   }
 
@@ -2988,12 +2918,9 @@ function getDocumentStatusClass(status) {
 ========================================================= */
 
 function formatStatus(status) {
-
   return String(status || "unknown")
     .replaceAll("_", " ")
-    .replace(/\b\w/g, (letter) =>
-      letter.toUpperCase()
-    );
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 /* =========================================================
@@ -3001,13 +2928,9 @@ function formatStatus(status) {
 ========================================================= */
 
 function getNumber(value) {
+  const number = Number(value);
 
-  const number =
-    Number(value);
-
-  return Number.isFinite(number)
-    ? number
-    : 0;
+  return Number.isFinite(number) ? number : 0;
 }
 
 /* =========================================================
@@ -3015,14 +2938,9 @@ function getNumber(value) {
 ========================================================= */
 
 function formatMoney(value) {
-
-  return getNumber(value)
-    .toLocaleString(
-      "en-IN",
-      {
-        maximumFractionDigits: 2,
-      }
-    );
+  return getNumber(value).toLocaleString("en-IN", {
+    maximumFractionDigits: 2,
+  });
 }
 
 /* =========================================================
@@ -3030,42 +2948,25 @@ function formatMoney(value) {
 ========================================================= */
 
 function formatDateTime(value) {
-
   if (!value) {
     return "Not recorded";
   }
 
   try {
-
     /* Firestore Timestamp */
 
-    if (
-      value &&
-      typeof value.toDate ===
-        "function"
-    ) {
-      return value
-        .toDate()
-        .toLocaleString("en-IN");
+    if (value && typeof value.toDate === "function") {
+      return value.toDate().toLocaleString("en-IN");
     }
 
-    const date =
-      new Date(value);
+    const date = new Date(value);
 
-    if (
-      Number.isNaN(
-        date.getTime()
-      )
-    ) {
+    if (Number.isNaN(date.getTime())) {
       return String(value);
     }
 
-    return date.toLocaleString(
-      "en-IN"
-    );
-
+    return date.toLocaleString("en-IN");
   } catch {
-
     return String(value);
   }
 }
@@ -3075,26 +2976,10 @@ function formatDateTime(value) {
 ========================================================= */
 
 function escapeHtml(value) {
-
   return String(value ?? "")
-    .replaceAll(
-      "&",
-      "&amp;"
-    )
-    .replaceAll(
-      "<",
-      "&lt;"
-    )
-    .replaceAll(
-      ">",
-      "&gt;"
-    )
-    .replaceAll(
-      '"',
-      "&quot;"
-    )
-    .replaceAll(
-      "'",
-      "&#039;"
-    );
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
