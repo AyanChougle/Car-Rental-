@@ -474,84 +474,8 @@ class KpiService
             $lastMonthRevenue = (float)($monthlyRows[$previousMonthKey]['month_sales'] ?? 0.0);
             $avgBooking = $runningPaidBookings > 0 ? round($grandTotalRevenue / $runningPaidBookings, 2) : 0.0;
 
-            // Auto-synchronize live metrics to kpi_hub_metrics (Hub 0) and kpi_metrics (October row only)
-            try {
-                Database::execute(
-                    "INSERT INTO `kpi_hub_metrics` 
-                     (`hub_id`, `hub_name`, `total_revenue`, `month_revenue`, `total_bookings`, `paid_bookings`, `active_trips`, `total_fleet`, `on_road_fleet`, `available_fleet`, `occupancy_pct`, `total_users`, `pending_docs`, `pending_payments`, `day_sales`, `week_sales`)
-                     VALUES
-                     (0, 'All Operating Hubs', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                     ON DUPLICATE KEY UPDATE 
-                         `total_revenue` = VALUES(`total_revenue`),
-                         `month_revenue` = VALUES(`month_revenue`),
-                         `total_bookings` = VALUES(`total_bookings`),
-                         `paid_bookings` = VALUES(`paid_bookings`),
-                         `active_trips` = VALUES(`active_trips`),
-                         `total_fleet` = VALUES(`total_fleet`),
-                         `on_road_fleet` = VALUES(`on_road_fleet`),
-                         `available_fleet` = VALUES(`available_fleet`),
-                         `occupancy_pct` = VALUES(`occupancy_pct`),
-                         `total_users` = VALUES(`total_users`),
-                         `pending_docs` = VALUES(`pending_docs`),
-                         `pending_payments` = VALUES(`pending_payments`),
-                         `day_sales` = VALUES(`day_sales`),
-                         `week_sales` = VALUES(`week_sales`)",
-                    [
-                        $grandTotalRevenue,
-                        $currentMonthRevenue,
-                        $runningBookings,
-                        $runningPaidBookings,
-                        $onRoadFleet,
-                        $totalFleet,
-                        $onRoadFleet,
-                        $availableInYard,
-                        $fleetUtilization,
-                        $totalUsers,
-                        $pendingDocs,
-                        $pendingPayments,
-                        $daySales,
-                        $weekSales
-                    ]
-                );
-
-                // Update ONLY the October row in kpi_metrics (never touching July, August, September)
-                Database::execute(
-                    "INSERT INTO `kpi_metrics` 
-                     (`metric_date`, `day_sales`, `week_sales`, `month_sales`, `total_revenue`, `total_bookings`, `paid_bookings`, `active_trips`, `completed_trips`, `total_fleet`, `on_road_fleet`, `in_yard_fleet`, `occupancy_pct`, `total_users`)
-                     VALUES
-                     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                     ON DUPLICATE KEY UPDATE 
-                         `day_sales` = VALUES(`day_sales`),
-                         `week_sales` = VALUES(`week_sales`),
-                         `month_sales` = VALUES(`month_sales`),
-                         `total_revenue` = VALUES(`total_revenue`),
-                         `total_bookings` = VALUES(`total_bookings`),
-                         `paid_bookings` = VALUES(`paid_bookings`),
-                         `active_trips` = VALUES(`active_trips`),
-                         `completed_trips` = VALUES(`completed_trips`),
-                         `total_fleet` = VALUES(`total_fleet`),
-                         `on_road_fleet` = VALUES(`on_road_fleet`),
-                         `in_yard_fleet` = VALUES(`in_yard_fleet`),
-                         `occupancy_pct` = VALUES(`occupancy_pct`),
-                         `total_users` = VALUES(`total_users`)",
-                    [
-                        $currentMonthKey,
-                        $daySales,
-                        $weekSales,
-                        $currentMonthRevenue,
-                        $grandTotalRevenue,
-                        (int)($monthlyRows[$currentMonthKey]['total_bookings'] ?? 0),
-                        (int)($monthlyRows[$currentMonthKey]['paid_bookings'] ?? 0),
-                        $onRoadFleet,
-                        $completedTrips,
-                        $totalFleet,
-                        $onRoadFleet,
-                        $availableInYard,
-                        $fleetUtilization,
-                        $totalUsers
-                    ]
-                );
-            } catch (Throwable $_) {}
+            // Calculation complete. Strictly do NOT overwrite kpi_hub_metrics or kpi_metrics tables,
+            // so manual database changes made in phpMyAdmin / MySQL remain the 100% single source of truth.
 
 
             $liveStats = [
