@@ -6659,6 +6659,10 @@ async function openPaymentModal(booking) {
     screenshotSrc = `/api/media/file.php?id=${encodeURIComponent(screenshotSrc)}`;
   }
 
+  const proofRef = escapeHtml(booking.paymentRef || booking.id || "");
+  const proofSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="260" viewBox="0 0 400 260"><rect width="100%" height="100%" fill="#121926" rx="12"/><text x="50%" y="46%" fill="#48d7ff" font-family="sans-serif" font-size="14" font-weight="bold" text-anchor="middle">Protected Payment Proof</text><text x="50%" y="58%" fill="#7b8798" font-family="sans-serif" font-size="12" text-anchor="middle">Ref: ${proofRef}</text></svg>`;
+  const proofFallbackSvg = "data:image/svg+xml," + encodeURIComponent(proofSvg);
+
   const body = $("paymentModalBody");
 
   if (body) {
@@ -6803,7 +6807,7 @@ async function openPaymentModal(booking) {
               <img
                 src="${escapeHtml(screenshotSrc)}"
                 alt="Payment screenshot"
-                onerror="this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' width=\\'400\\' height=\\'260\\' viewBox=\\'0 0 400 260\\'%3E%3Crect width=\\'100%25\\' height=\\'100%25\\' fill=\\'%23121926\\' rx=\\'12\\'/%3E%3Ctext x=\\'50%25\\' y=\\'46%25\\' fill=\\'%2348d7ff\\' font-family=\\'sans-serif\\' font-size=\\'14\\' font-weight=\\'bold\\' text-anchor=\\'middle\\'%3EProtected Payment Proof%3C/text%3E%3Ctext x=\\'50%25\\' y=\\'58%25\\' fill=\\'%237b8798\\' font-family=\\'sans-serif\\' font-size=\\'12\\' text-anchor=\\'middle\\'%3ERef: ${escapeHtml(booking.paymentRef || booking.id || "")}%3C/text%3E%3C/svg%3E';"
+                onerror="this.onerror=null;this.src='${proofFallbackSvg}';"
                 style="
                   width:100%;
                   max-height:400px;
@@ -7531,24 +7535,34 @@ function renderHostDetail(label, value) {
     </div>`;
 }
 
-// Old Firebase Storage photos: public URL, no fetch needed, plain <img>.
+// Old Firebase Storage / catalog photos: public URL, fleet image or media fallback
 function renderLegacyHostPhotos(carId, urls) {
   if (!urls.length) return "";
 
   return urls
     .map((url, index) => {
+      const cleanUrl = String(url || "").trim();
+      let srcUrl = cleanUrl;
       const isDirect =
-        typeof url === "string" &&
-        (url.startsWith("http://") ||
-          url.startsWith("https://") ||
-          url.startsWith("data:") ||
-          url.startsWith("blob:") ||
-          url.startsWith("assets/") ||
-          url.startsWith("images/"));
-      const srcUrl = isDirect
-        ? url
-        : `/api/media/file.php?id=${encodeURIComponent(url)}`;
-      const fallbackSvg = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='90' viewBox='0 0 120 90'%3E%3Crect width='100%25' height='100%25' fill='%23121926' rx='8'/%3E%3Ctext x='50%25' y='50%25' fill='%237b8798' font-family='sans-serif' font-size='10' text-anchor='middle' dy='.3em'%3E${encodeURIComponent(url)}%3C/text%3E%3C/svg%3E`;
+        cleanUrl.startsWith("http://") ||
+        cleanUrl.startsWith("https://") ||
+        cleanUrl.startsWith("data:") ||
+        cleanUrl.startsWith("blob:") ||
+        cleanUrl.startsWith("assets/") ||
+        cleanUrl.startsWith("images/");
+
+      if (!isDirect) {
+        if (typeof window !== "undefined" && typeof window.fleetImagePath === "function") {
+          const resolved = window.fleetImagePath(cleanUrl);
+          srcUrl = (resolved && !resolved.includes("MED-")) ? resolved : `/api/media/file.php?id=${encodeURIComponent(cleanUrl)}`;
+        } else {
+          srcUrl = `/api/media/file.php?id=${encodeURIComponent(cleanUrl)}`;
+        }
+      }
+
+      const cleanLabel = cleanUrl.replace(/[^a-zA-Z0-9 ._-]/g, "");
+      const svgXml = `<svg xmlns="http://www.w3.org/2000/svg" width="120" height="90" viewBox="0 0 120 90"><rect width="100%" height="100%" fill="#121926" rx="8"/><text x="50%" y="50%" fill="#7b8798" font-family="sans-serif" font-size="10" text-anchor="middle" dy=".3em">${cleanLabel}</text></svg>`;
+      const fallbackSvg = "data:image/svg+xml," + encodeURIComponent(svgXml);
 
       return `
         <div

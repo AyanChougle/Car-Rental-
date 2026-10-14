@@ -14,26 +14,46 @@ class Database {
 
     public static function getConnection(): PDO {
         if (self::$instance === null) {
-            $dsn = sprintf(
-                'mysql:host=%s;port=%s;dbname=%s;charset=%s',
-                DB_HOST,
-                DB_PORT,
-                DB_NAME,
-                DB_CHARSET
-            );
+            $hosts = array_values(array_unique([DB_HOST, '127.0.0.1', 'localhost']));
+            $lastException = null;
 
             $options = [
+                PDO::ATTR_PERSISTENT => true,
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
+                PDO::ATTR_TIMEOUT => 5,
                 PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES " . DB_CHARSET . ", time_zone = '+05:30'",
             ];
 
-            try {
-                self::$instance = new PDO($dsn, DB_USER, DB_PASS, $options);
-            } catch (PDOException $e) {
-                error_log("[Database Connection Error] " . $e->getMessage());
-                sendErrorResponse("Database connection failed: " . $e->getMessage(), 500);
+            foreach ($hosts as $host) {
+                for ($attempt = 1; $attempt <= 3; $attempt++) {
+                    try {
+                        $dsn = sprintf(
+                            'mysql:host=%s;port=%s;dbname=%s;charset=%s',
+                            $host,
+                            DB_PORT,
+                            DB_NAME,
+                            DB_CHARSET
+                        );
+                        self::$instance = new PDO($dsn, DB_USER, DB_PASS, $options);
+                        return self::$instance;
+                    } catch (PDOException $e) {
+                        $lastException = $e;
+                        // If Hostinger connection rate limit hit (SQLSTATE 2002 Operation not permitted), wait and retry
+                        if (str_contains($e->getMessage(), '2002') || (int)$e->getCode() === 2002) {
+                            usleep(120000); // 120ms
+                            continue;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            if (self::$instance === null) {
+                $msg = $lastException ? $lastException->getMessage() : 'Unknown error';
+                error_log("[Database Connection Error] " . $msg);
+                sendErrorResponse("Database connection failed: " . $msg, 500);
             }
         }
 
