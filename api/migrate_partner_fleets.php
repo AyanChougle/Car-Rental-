@@ -54,7 +54,7 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
 
-    // 3. Ensure partner_leads table exists
+    // 3. Ensure partner_leads table exists and has name column
     Database::execute("
         CREATE TABLE IF NOT EXISTS `partner_leads` (
           `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -77,6 +77,9 @@ try {
           INDEX `idx_partner_leads_email` (`email`)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
+    try {
+        Database::execute("ALTER TABLE `partner_leads` ADD COLUMN IF NOT EXISTS `name` VARCHAR(191) DEFAULT NULL AFTER `legacy_post_id`");
+    } catch (Throwable $_) {}
 
     // 4. Update owner_email and owner_phone directly in vehicles table
     $vehiclesUpdated = Database::execute("

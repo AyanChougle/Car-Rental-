@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS `partner_cars` (
   INDEX `idx_partner_cars_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- 3. Ensure partner_leads table exists and has proper columns
+-- 3. Ensure partner_leads table exists and has name column
 CREATE TABLE IF NOT EXISTS `partner_leads` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `legacy_post_id` VARCHAR(64) DEFAULT NULL,
@@ -57,6 +57,8 @@ CREATE TABLE IF NOT EXISTS `partner_leads` (
   INDEX `idx_partner_leads_phone` (`phone`),
   INDEX `idx_partner_leads_email` (`email`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+ALTER TABLE `partner_leads` ADD COLUMN IF NOT EXISTS `name` VARCHAR(191) DEFAULT NULL AFTER `legacy_post_id`;
 
 -- 4. Update owner_email and owner_phone directly in vehicles table
 UPDATE `vehicles`
