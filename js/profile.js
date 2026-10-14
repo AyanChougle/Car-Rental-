@@ -554,12 +554,8 @@ async function loadMyListings(userParam) {
       return false;
     });
 
-    // Check if an admin toggled to view all partner cars
+    // Strictly isolate to the current user's own cars only (never leak or dump all partner cars on personal profile)
     let displayedListings = myListings;
-    const adminViewAll = window._profAdminViewAllFleet && isStaffOrAdmin;
-    if (adminViewAll) {
-      displayedListings = listings;
-    }
 
     // If host has listings, reveal bank details tab
     if (displayedListings.length > 0) {
@@ -570,7 +566,7 @@ async function loadMyListings(userParam) {
     const totalMonthHostPayout = displayedListings.reduce((sum, item) => {
       const isFixed = item.payoutModel === "fixed_monthly" || String(item.payoutModel || "").includes("fixed");
       const amt = isFixed
-        ? Number(item.fixedMonthlyAmount || 25000)
+        ? Number(item.fixedMonthlyAmount || 0)
         : Number(item.hostMonthEarnings || (Number(item.monthRevenue || 0) * 0.60));
       return sum + amt;
     }, 0);
@@ -578,38 +574,17 @@ async function loadMyListings(userParam) {
     const totalLifetimeHostPayout = displayedListings.reduce((sum, item) => {
       const isFixed = item.payoutModel === "fixed_monthly" || String(item.payoutModel || "").includes("fixed");
       const amt = isFixed
-        ? Number(item.hostTotalEarnings || item.fixedMonthlyAmount || 25000)
+        ? Number(item.hostTotalEarnings || item.fixedMonthlyAmount || 0)
         : Number(item.hostTotalEarnings || (Number(item.totalRevenue || 0) * 0.60));
       return sum + amt;
     }, 0);
 
-    let adminToggleHtml = "";
-    if (isStaffOrAdmin) {
-      adminToggleHtml = `
-        <div style="display: flex; gap: 8px; margin-bottom: 14px; width: 100%;">
-          <button type="button" id="profBtnMyListings" style="padding: 6px 14px; border-radius: 20px; font-size: 11.5px; font-weight: 700; cursor: pointer; border: 1px solid ${!adminViewAll ? '#06d6a0' : 'rgba(255,255,255,0.15)'}; background: ${!adminViewAll ? 'rgba(6,214,160,0.15)' : 'transparent'}; color: ${!adminViewAll ? '#06d6a0' : '#888'};">
-            My Listed Cars (${myListings.length})
-          </button>
-          <button type="button" id="profBtnAllFleet" style="padding: 6px 14px; border-radius: 20px; font-size: 11.5px; font-weight: 700; cursor: pointer; border: 1px solid ${adminViewAll ? '#4fd7ff' : 'rgba(255,255,255,0.15)'}; background: ${adminViewAll ? 'rgba(79,215,255,0.15)' : 'transparent'}; color: ${adminViewAll ? '#4fd7ff' : '#888'};">
-            Admin View: All Partner Fleet (${listings.length})
-          </button>
-        </div>
-      `;
-    }
-
+    // Summary reflects ONLY what this particular user is earning from their own car(s)
     summary.innerHTML = `
-      ${adminToggleHtml}
-      <div><strong>${displayedListings.length}</strong><span>Hosted Cars</span></div>
+      <div><strong>${displayedListings.length}</strong><span>My Hosted Cars</span></div>
       <div><strong style="color: #06d6a0;">${formatINR(totalMonthHostPayout)}</strong><span>This Month Host Payout</span></div>
       <div><strong style="color: var(--kr-cyan); font-weight: 700;">${formatINR(totalLifetimeHostPayout)}</strong><span>Lifetime Earnings</span></div>
     `;
-
-    if (isStaffOrAdmin) {
-      const bMy = $("profBtnMyListings");
-      const bAll = $("profBtnAllFleet");
-      if (bMy) bMy.onclick = () => { window._profAdminViewAllFleet = false; loadMyListings(currentU); };
-      if (bAll) bAll.onclick = () => { window._profAdminViewAllFleet = true; loadMyListings(currentU); };
-    }
 
     if (!displayedListings.length) {
       grid.innerHTML = `
@@ -767,70 +742,60 @@ async function loadMyListings(userParam) {
                 </span>
               </div>
             </div>
+            <!-- Card Footer: Listing ID and Edit Details Button -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.06); margin-top: 4px;">
+              <span style="font-size: 11px; color: #777; font-weight: 700; letter-spacing: 0.04em;">
+                LISTING ID #${escapeHtml(String(listing.id || listing.carId || "").slice(0, 10).toUpperCase())}
+              </span>
+              <button type="button" class="btn-edit-listing" 
+                data-id="${escapeHtml(listing.id || listing.carId || '')}"
+                data-title="${escapeHtml(vehicleName)} (${escapeHtml(regNo)})"
+                data-payout-model="${isFixed ? 'fixed_monthly' : 'revenue_share'}"
+                data-fixed-amount="${fixedAmt}"
+                data-city="${escapeHtml(locationVal)}"
+                data-price="${escapeHtml(listing.expectedPrice || 2600)}"
+                data-phone="${escapeHtml(hostPhone)}"
+                data-email="${escapeHtml(hostEmail)}"
+                style="padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; background: rgba(79, 215, 255, 0.12); color: #4fd7ff; border: 1px solid rgba(79, 215, 255, 0.3); cursor: pointer;">
+                ✏️ Edit Listing Details
+              </button>
+            </div>
           </div>
         </article>`;
       })
       .join("");
 
-    // Withdraw Fleet mailto handler
-    grid.querySelectorAll(".btn-withdraw-listing").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.preventDefault();
-        const vName = btn.dataset.vehicleName || "Vehicle";
-        const vReg = btn.dataset.regNo || "N/A";
-        const vId = btn.dataset.listingId || "";
-        const uName = currentU.name || currentU.displayName || "Host Partner";
-        const uEmail = currentU.email || "";
-        const uPhone = currentU.phone || "";
+    // Edit listing modal trigger
+    grid.querySelectorAll(".btn-edit-listing").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const modal = $("editListingModal");
+        if (!modal) return;
+        const id = btn.dataset.id;
+        const title = btn.dataset.title;
+        const payoutModel = btn.dataset.payoutModel;
+        const fixedAmount = btn.dataset.fixedAmount;
+        const city = btn.dataset.city;
+        const price = btn.dataset.price;
+        const phone = btn.dataset.phone;
+        const email = btn.dataset.email;
 
-        const subject = encodeURIComponent(
-          `Fleet Withdrawal Request: ${vName} (${vReg})`,
-        );
-        const body = encodeURIComponent(
-          `Hello Kruizly Fleet Operations,
-
-I am writing to formally request the withdrawal of my vehicle from the Kruizly hosting fleet.
-
-Vehicle Details:
-• Vehicle Name: ${vName}
-• Registration Number: ${vReg}
-• Listing ID: ${vId}
-
-Host Details:
-• Host Name: ${uName}
-• Registered Email: ${uEmail}
-• Contact Phone: ${uPhone}
-
-Reason for Withdrawal:
-[Please enter your reason or effective date here]
-
-Thank you,
-${uName}`,
-        );
-
-        window.location.href = `mailto:support@kruizly.com?subject=${subject}&body=${body}`;
-      });
-    });
-
-    // Delete listing handler
-    grid.querySelectorAll(".btn-delete-listing").forEach((btn) => {
-      btn.addEventListener("click", async (e) => {
-        e.preventDefault();
-        const id = btn.dataset.listingId;
-        if (!id) return;
-        if (!confirm("Are you sure you want to delete this vehicle listing?"))
-          return;
-        btn.disabled = true;
-        btn.textContent = "Deleting...";
-        try {
-          await api.delete(`/users/partner-cars/${encodeURIComponent(id)}`);
-          loadMyListings(currentU);
-        } catch (err) {
-          console.error("Delete listing error:", err);
-          alert(`Could not delete listing: ${err.message}`);
-          btn.disabled = false;
-          btn.textContent = "Delete";
+        if ($("editListingId")) $("editListingId").value = id || "";
+        if ($("editListingTitle")) $("editListingTitle").textContent = title || "Edit Vehicle Listing";
+        if (payoutModel === "fixed_monthly") {
+          if ($("radioPayoutFixed")) $("radioPayoutFixed").checked = true;
+          if ($("groupFixedAmount")) $("groupFixedAmount").style.display = "block";
+        } else {
+          if ($("radioPayoutShare")) $("radioPayoutShare").checked = true;
+          if ($("groupFixedAmount")) $("groupFixedAmount").style.display = "none";
         }
+        if ($("editFixedAmount")) $("editFixedAmount").value = fixedAmount || 25000;
+        if ($("editListingCity")) $("editListingCity").value = city || "";
+        if ($("editListingPrice")) $("editListingPrice").value = price || "";
+        if ($("editListingPhone")) $("editListingPhone").value = phone || "";
+        if ($("editListingEmail")) $("editListingEmail").value = email || "";
+
+        modal.hidden = false;
+        modal.style.display = "flex";
       });
     });
   } catch (error) {
@@ -2392,6 +2357,7 @@ async function initProfileAuth() {
   try {
     initTabs();
     initUserCancellationModal();
+    initEditListingModal();
     const profileData = await loadProfile(user);
     initEditProfile(user, profileData || {});
     loadBookings(user.id || user.uid);
@@ -2654,7 +2620,95 @@ async function loadUserMedia(user) {
   }
 }
 
-// Ensure cancel modal is strictly hidden on load
+function initEditListingModal() {
+  const modal = $("editListingModal");
+  const closeBtn = $("closeEditListingModal");
+  const cancelBtn = $("btnCancelEditListing");
+  const form = $("editListingForm");
+  const radioFixed = $("radioPayoutFixed");
+  const radioShare = $("radioPayoutShare");
+  const groupFixed = $("groupFixedAmount");
+  const statusMsg = $("editListingStatusMsg");
+
+  if (!modal || !form) return;
+
+  function closeModal() {
+    modal.hidden = true;
+    modal.style.display = "none";
+    if (statusMsg) statusMsg.style.display = "none";
+  }
+
+  function updateFixedGroupVisibility() {
+    if (groupFixed) {
+      groupFixed.style.display = radioFixed && radioFixed.checked ? "block" : "none";
+    }
+  }
+
+  if (radioFixed) radioFixed.addEventListener("change", updateFixedGroupVisibility);
+  if (radioShare) radioShare.addEventListener("change", updateFixedGroupVisibility);
+  if (closeBtn) closeBtn.addEventListener("click", closeModal);
+  if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const saveBtn = $("btnSaveEditListing");
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving to Database...";
+    }
+    if (statusMsg) statusMsg.style.display = "none";
+
+    const id = $("editListingId")?.value;
+    const isFixed = radioFixed && radioFixed.checked;
+    const payload = {
+      id: id,
+      payout_model: isFixed ? "fixed_monthly" : "revenue_share",
+      fixed_monthly_amount: parseFloat($("editFixedAmount")?.value || 0),
+      city: $("editListingCity")?.value?.trim() || "Navi Mumbai",
+      expected_price: parseFloat($("editListingPrice")?.value || 0),
+      user_phone: $("editListingPhone")?.value?.trim() || "",
+      user_email: $("editListingEmail")?.value?.trim() || "",
+    };
+
+    try {
+      const res = await api.put("/users/partner-cars", payload);
+      if (!res?.success) throw new Error(res?.message || "Failed to save changes");
+
+      if (statusMsg) {
+        statusMsg.style.display = "block";
+        statusMsg.style.color = "#06d6a0";
+        statusMsg.textContent = "✓ Saved directly to MySQL database!";
+      }
+
+      await loadMyListings(currentUser);
+
+      setTimeout(() => {
+        closeModal();
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Save Changes to Database";
+        }
+      }, 700);
+    } catch (err) {
+      console.error("Edit listing save error:", err);
+      if (statusMsg) {
+        statusMsg.style.display = "block";
+        statusMsg.style.color = "#ef476f";
+        statusMsg.textContent = "✗ Error: " + err.message;
+      }
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save Changes to Database";
+      }
+    }
+  });
+}
+
+// Ensure modals are initialized on load
 document.addEventListener("DOMContentLoaded", () => {
   const cancelModal = $("cancelBookingModal");
   if (cancelModal) {
@@ -2663,5 +2717,8 @@ document.addEventListener("DOMContentLoaded", () => {
     cancelModal.style.setProperty("display", "none", "important");
   }
   initUserCancellationModal();
+  initEditListingModal();
 });
 initUserCancellationModal();
+initEditListingModal();
+

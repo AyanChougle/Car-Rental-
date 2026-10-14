@@ -112,7 +112,17 @@ ON DUPLICATE KEY UPDATE
   `role` = CASE WHEN `role` IN ('admin', 'super_admin', 'manager', 'executive') THEN `role` ELSE 'host' END,
   `updated_at` = NOW();
 
--- 6. Seed partner leads into partner_leads table
+-- 6. Seed partner leads into partner_leads table (deletes legacy NULL-email duplicates first)
+DELETE FROM `partner_leads` 
+WHERE `email` IS NULL 
+   OR `email` = '' 
+   OR `source` = 'fleet_partner'
+   OR `name` IN (
+     'Aditi Lotankar', 'Ajay Vishwakarma', 'Kundan Singh', 'Amol Gole', 
+     'Tai Phad', 'Saif Feroz Shaikh', 'Omkar Tapshale', 'Anil Vishwakarma', 
+     'Anil Kumar Gupta', 'Viran Gupta'
+   );
+
 INSERT INTO `partner_leads` (`name`, `phone`, `email`, `status`, `priority`, `source`, `city`, `car_owned`, `purchase_year`, `remark`, `created_at`)
 VALUES
   ('Aditi Lotankar', '9867539466', 'aditilotankar03@gmail.com', 'active_partner', 'high', 'fleet_partner', 'Navi Mumbai', 'Maruti Suzuki Fronx', 2026, 'Active host fleet partner', NOW()),
@@ -124,12 +134,7 @@ VALUES
   ('Omkar Tapshale', '8898948642', 'otapshale@gmail.com', 'active_partner', 'high', 'fleet_partner', 'Navi Mumbai', 'Hyundai Creta', 2024, 'Active host fleet partner', NOW()),
   ('Anil Vishwakarma', '9819863286', 'anil.vishwakarma@partner.kruizly.com', 'active_partner', 'high', 'fleet_partner', 'Navi Mumbai', 'Maruti Suzuki Ertiga', 2024, 'Active host fleet partner', NOW()),
   ('Anil Kumar Gupta', '9820019727', 'anil.gupta@partner.kruizly.com', 'active_partner', 'high', 'fleet_partner', 'Navi Mumbai', 'Maruti Suzuki Swift', 2024, 'Active host fleet partner', NOW()),
-  ('Viran Gupta', '9820585577', 'viran.gupta@partner.kruizly.com', 'active_partner', 'high', 'fleet_partner', 'Navi Mumbai', 'Maruti Suzuki Ertiga', 2024, 'Active host fleet partner', NOW())
-ON DUPLICATE KEY UPDATE
-  `phone` = VALUES(`phone`),
-  `email` = VALUES(`email`),
-  `status` = VALUES(`status`),
-  `car_owned` = VALUES(`car_owned`);
+  ('Viran Gupta', '9820585577', 'viran.gupta@partner.kruizly.com', 'active_partner', 'high', 'fleet_partner', 'Navi Mumbai', 'Maruti Suzuki Ertiga', 2024, 'Active host fleet partner', NOW());
 
 -- 7. Add payout model columns to partner_cars and vehicles
 ALTER TABLE `partner_cars` 
@@ -140,6 +145,18 @@ ALTER TABLE `partner_cars`
 ALTER TABLE `vehicles`
   ADD COLUMN IF NOT EXISTS `payout_model` ENUM('revenue_share', 'fixed_monthly') NOT NULL DEFAULT 'revenue_share' AFTER `acquisition_type`,
   ADD COLUMN IF NOT EXISTS `fixed_monthly_amount` DECIMAL(10,2) DEFAULT 25000.00 AFTER `payout_model`;
+
+UPDATE `vehicles`
+SET `payout_model` = CASE 
+    WHEN LOWER(TRIM(`owner_name`)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma', 'anil kumar gupta') THEN 'fixed_monthly'
+    ELSE 'revenue_share'
+  END,
+  `fixed_monthly_amount` = CASE 
+    WHEN LOWER(TRIM(`owner_name`)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma') THEN 28000.00
+    WHEN LOWER(TRIM(`owner_name`)) = 'anil kumar gupta' THEN 25000.00
+    ELSE 25000.00
+  END
+WHERE `owner_name` IS NOT NULL AND `owner_name` != '';
 
 -- 8. Populate partner_cars from vehicles table with resolved host user credentials and payout models
 INSERT INTO `partner_cars` (
@@ -193,6 +210,22 @@ ON DUPLICATE KEY UPDATE
   `brand` = VALUES(`brand`),
   `model` = VALUES(`model`),
   `photos` = VALUES(`photos`);
+
+UPDATE `partner_cars` pc
+JOIN `vehicles` v ON (pc.reg_no = v.reg_no OR pc.car_id = v.car_id)
+SET 
+  pc.payout_model = CASE 
+    WHEN LOWER(TRIM(v.owner_name)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma', 'anil kumar gupta') THEN 'fixed_monthly'
+    ELSE 'revenue_share'
+  END,
+  pc.fixed_monthly_amount = CASE 
+    WHEN LOWER(TRIM(v.owner_name)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma') THEN 28000.00
+    WHEN LOWER(TRIM(v.owner_name)) = 'anil kumar gupta' THEN 25000.00
+    ELSE 25000.00
+  END,
+  pc.user_name = COALESCE(NULLIF(v.owner_name, ''), pc.user_name),
+  pc.user_email = COALESCE(NULLIF(v.owner_email, ''), pc.user_email),
+  pc.user_phone = COALESCE(NULLIF(v.owner_phone, ''), pc.user_phone);
 
 -- ============================================================================
 -- 5. KPI HUB METRICS (Single Source of Truth for KPIs across Hubs & Admin)

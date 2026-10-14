@@ -1260,16 +1260,75 @@
       </div>
     </footer>
 
+    <!-- MODAL: EDIT HOST VEHICLE LISTING -->
+    <div id="editListingModal" class="modal admin-modal" hidden style="display:none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 99999; align-items: center; justify-content: center; padding: 20px;">
+      <div class="card admin-inspect-modal-card" style="max-width: 520px; width: 100%; position: relative; background: #111418; border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.8);">
+        <button type="button" id="closeEditListingModal" class="admin-inspect-close" style="position: absolute; top: 16px; right: 16px; background: none; border: none; font-size: 24px; color: #888; cursor: pointer;">&times;</button>
+        <span style="color: #4fd7ff; font-weight: 800; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;">VEHICLE LISTING</span>
+        <h3 id="editListingTitle" style="font-size: 1.4rem; color: #fff; margin: 4px 0 16px;">Edit Listing Details</h3>
+        
+        <form id="editListingForm">
+          <input type="hidden" id="editListingId" />
+
+          <div style="margin-bottom: 16px;">
+            <label style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #aaa; margin-bottom: 8px;">Payout Model (Choose One Option)</label>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.03); cursor: pointer;">
+                <input type="radio" name="editPayoutModel" value="fixed_monthly" id="radioPayoutFixed" style="accent-color: #06d6a0;" />
+                <span style="font-size: 13px; font-weight: 700; color: #fff;">Fixed Monthly</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.03); cursor: pointer;">
+                <input type="radio" name="editPayoutModel" value="revenue_share" id="radioPayoutShare" style="accent-color: #4fd7ff;" />
+                <span style="font-size: 13px; font-weight: 700; color: #fff;">60% Rev Share</span>
+              </label>
+            </div>
+          </div>
+
+          <div id="groupFixedAmount" style="margin-bottom: 14px;">
+            <label for="editFixedAmount" style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #aaa; margin-bottom: 6px;">Fixed Monthly Retainer Amount (₹)</label>
+            <input type="number" step="100" id="editFixedAmount" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px;" placeholder="e.g. 25000" />
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px;">
+            <div>
+              <label for="editListingCity" style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #aaa; margin-bottom: 6px;">Location / City</label>
+              <input type="text" id="editListingCity" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px;" placeholder="Navi Mumbai" />
+            </div>
+            <div>
+              <label for="editListingPrice" style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #aaa; margin-bottom: 6px;">Expected Daily Price (₹)</label>
+              <input type="number" id="editListingPrice" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px;" placeholder="2600" />
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+            <div>
+              <label for="editListingPhone" style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #aaa; margin-bottom: 6px;">Host Phone</label>
+              <input type="text" id="editListingPhone" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px;" />
+            </div>
+            <div>
+              <label for="editListingEmail" style="display: block; font-size: 11px; font-weight: 800; text-transform: uppercase; color: #aaa; margin-bottom: 6px;">Host Email</label>
+              <input type="email" id="editListingEmail" style="width: 100%; padding: 10px 12px; background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.15); border-radius: 8px; color: #fff; font-size: 14px;" />
+            </div>
+          </div>
+
+          <div id="editListingStatusMsg" style="display:none; font-size: 13px; font-weight: 700; margin-bottom: 12px;"></div>
+
+          <div style="display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" id="btnCancelEditListing" class="btn btn-outline" style="border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 10px 20px; border-radius: 8px; background: transparent; cursor: pointer;">Cancel</button>
+            <button type="submit" id="btnSaveEditListing" class="btn btn-primary" style="background: #06d6a0; color: #000; font-weight: 800; border: none; padding: 10px 22px; border-radius: 8px; cursor: pointer;">Save Changes to Database</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
     <!-- =========================================================
        SCRIPTS
   ========================================================== -->
 
-    <script type="module" src="js/vehicles.js?v=20260917-v1"></script>
-
-    <script type="module" src="js/profile.js?v=20261014-v1"></script>
-    <script type="module" src="js/host-bank.js?v=20260930-v1"></script>
-
-    <script src="js/glass-ui.js?v=20260917-v1"></script>
-    <script src="js/kruizly-motion.js?v=20260917-v1"></script>
+    <script type="module" src="js/vehicles.js?v=20261014-v9"></script>
+    <script type="module" src="js/profile.js?v=20261014-v9"></script>
+    <script type="module" src="js/host-bank.js?v=20261014-v9"></script>
+    <script src="js/glass-ui.js?v=20261014-v9"></script>
+    <script src="js/kruizly-motion.js?v=20261014-v9"></script>
   </body>
 </html>

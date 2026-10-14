@@ -18,7 +18,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
     $scope = trim((string)($_GET['scope'] ?? $_GET['all'] ?? ''));
-    $isAdminScope = $isStaff;
+    $isAdminScope = $isStaff && in_array(strtolower($scope), ['all', '1', 'true', 'fleet'], true);
 
     $uid = trim((string)($user['firebase_uid'] ?? ''));
     $email = strtolower(trim((string)($user['email'] ?? '')));
@@ -179,8 +179,8 @@ if ($method === 'GET') {
                     "INSERT INTO partner_leads (name, phone, email, status, priority, source, city, car_owned, purchase_year, remark, created_at)
                      SELECT 
                          v.owner_name,
-                         COALESCE(NULLIF(v.owner_phone, ''), u.phone, '9867539466'),
-                         COALESCE(NULLIF(v.owner_email, ''), u.email, 'partner@kruizly.com'),
+                         COALESCE(NULLIF(v.owner_phone, ''), u.phone, ''),
+                         COALESCE(NULLIF(v.owner_email, ''), u.email, ''),
                          'active_partner', 'high', 'fleet_partner', 
                          COALESCE(NULLIF(v.location, ''), 'Navi Mumbai'),
                          CONCAT(v.brand, ' ', v.model),
@@ -486,8 +486,7 @@ if ($method === 'GET') {
                 $rawPayout = strtolower(trim((string)($vRow['payout_model'] ?? $vRow['acquisition_type'] ?? 'revenue_share')));
             }
             $isFixedMonthly = ($rawPayout === 'fixed_monthly' || str_contains($rawPayout, 'fixed'));
-            $fixedMonthlyAmount = (float)($c['fixed_monthly_amount'] ?? $vRow['fixed_monthly_amount'] ?? 25000.0);
-            if ($fixedMonthlyAmount <= 0) $fixedMonthlyAmount = 25000.0;
+            $fixedMonthlyAmount = (float)($c['fixed_monthly_amount'] ?? $vRow['fixed_monthly_amount'] ?? 0.0);
 
             // Query live bookings specifically for this hosted car
             $bSql = "SELECT id, booking_id, booking_number, user_name, user_phone, pickup_date, drop_date, 
@@ -756,10 +755,10 @@ if ($method === 'GET') {
             'rejectionReason' => $c['rejection_reason'],
             'totalRevenue' => round($totalRevenue, 2),
             'monthRevenue' => round($monthRevenue, 2),
-            'completedTrips' => $completedTrips,
-            'activeTrips' => $activeTrips,
-            'totalTrips' => $totalTrips,
-            'bookings' => $carBookings,
+            'completedTrips' => $isAdminScope ? $completedTrips : 0,
+            'activeTrips' => $isAdminScope ? $activeTrips : 0,
+            'totalTrips' => $isAdminScope ? $totalTrips : 0,
+            'bookings' => $isAdminScope ? $carBookings : [],
             'createdAt' => $c['created_at'],
             'updatedAt' => $c['updated_at']
         ];
@@ -850,28 +849,95 @@ if ($method === 'POST') {
 }
 
 if ($method === 'PUT') {
-    Auth::requireRole('admin', 'manager');
     $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
     $id = trim((string)($_GET['id'] ?? $input['id'] ?? $input['carId'] ?? ''));
-    $status = trim((string)($input['status'] ?? ''));
-    $reason = trim((string)($input['rejectionReason'] ?? ''));
-    $photos = isset($input['photos']) ? (is_array($input['photos']) ? json_encode($input['photos']) : $input['photos']) : null;
-
     if (!$id) {
         sendErrorResponse('Host car ID is required.', 400);
     }
 
+    $existingCar = Database::fetchOne("SELECT * FROM partner_cars WHERE id = ? OR car_id = ?", [$id, $id]);
+    if (!$existingCar) {
+        sendErrorResponse('Listing not found.', 404);
+    }
+
+    // Permission: owner or staff
+    $uid = trim((string)($user['firebase_uid'] ?? ''));
+    $email = strtolower(trim((string)($user['email'] ?? '')));
+    $dbId = (int)($user['id'] ?? 0);
+    $isOwner = (
+        (!empty($uid) && $existingCar['firebase_uid'] === $uid) ||
+        (!empty($email) && strtolower(trim((string)$existingCar['user_email'])) === $email) ||
+        (!empty($dbId) && (int)$existingCar['user_id'] === $dbId)
+    );
+
+    if (!$isStaff && !$isOwner) {
+        sendErrorResponse('Permission denied.', 403);
+    }
+
+    $payoutModel = isset($input['payout_model']) ? trim((string)$input['payout_model']) : (isset($input['payoutModel']) ? trim((string)$input['payoutModel']) : null);
+    $fixedMonthlyAmount = isset($input['fixed_monthly_amount']) ? (float)$input['fixed_monthly_amount'] : (isset($input['fixedMonthlyAmount']) ? (float)$input['fixedMonthlyAmount'] : null);
+    $city = isset($input['city']) ? trim((string)$input['city']) : (isset($input['location']) ? trim((string)$input['location']) : null);
+    $expectedPrice = isset($input['expected_price']) ? (float)$input['expected_price'] : (isset($input['expectedPrice']) ? (float)$input['expectedPrice'] : null);
+    $userPhone = isset($input['user_phone']) ? trim((string)$input['user_phone']) : (isset($input['userPhone']) ? trim((string)$input['userPhone']) : null);
+    $userEmail = isset($input['user_email']) ? trim((string)$input['user_email']) : (isset($input['userEmail']) ? trim((string)$input['userEmail']) : null);
+    $status = $isStaff && isset($input['status']) ? trim((string)$input['status']) : null;
+    $reason = $isStaff && isset($input['rejectionReason']) ? trim((string)$input['rejectionReason']) : null;
+    $photos = isset($input['photos']) ? (is_array($input['photos']) ? json_encode($input['photos']) : $input['photos']) : null;
+
     Database::execute(
         "UPDATE partner_cars SET
+            payout_model = COALESCE(NULLIF(?, ''), payout_model),
+            fixed_monthly_amount = COALESCE(?, fixed_monthly_amount),
+            city = COALESCE(NULLIF(?, ''), city),
+            expected_price = COALESCE(?, expected_price),
+            user_phone = COALESCE(NULLIF(?, ''), user_phone),
+            user_email = COALESCE(NULLIF(?, ''), user_email),
             status = COALESCE(NULLIF(?, ''), status),
             rejection_reason = COALESCE(NULLIF(?, ''), rejection_reason),
             photos = COALESCE(?, photos),
             updated_at = CURRENT_TIMESTAMP
          WHERE id = ? OR car_id = ?",
-        [$status, $reason, $photos, $id, $id]
+        [
+            $payoutModel,
+            $fixedMonthlyAmount,
+            $city,
+            $expectedPrice,
+            $userPhone,
+            $userEmail,
+            $status,
+            $reason,
+            $photos,
+            $id,
+            $id
+        ]
     );
 
-    sendJsonResponse(['success' => true, 'message' => 'Partner car updated.']);
+    // Sync to vehicles table if reg_no exists
+    if (!empty($existingCar['reg_no'])) {
+        try {
+            Database::execute(
+                "UPDATE vehicles SET
+                    payout_model = COALESCE(NULLIF(?, ''), payout_model),
+                    fixed_monthly_amount = COALESCE(?, fixed_monthly_amount),
+                    location = COALESCE(NULLIF(?, ''), location),
+                    price_day = COALESCE(?, price_day),
+                    owner_phone = COALESCE(NULLIF(?, ''), owner_phone),
+                    owner_email = COALESCE(NULLIF(?, ''), owner_email)
+                 WHERE reg_no = ?",
+                [
+                    $payoutModel,
+                    $fixedMonthlyAmount,
+                    $city,
+                    $expectedPrice,
+                    $userPhone,
+                    $userEmail,
+                    $existingCar['reg_no']
+                ]
+            );
+        } catch (Throwable $_) {}
+    }
+
+    sendJsonResponse(['success' => true, 'message' => 'Partner car updated successfully.']);
 }
 
 if ($method === 'DELETE') {
