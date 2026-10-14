@@ -71,15 +71,6 @@ foreach ($bookings as $b) {
     $deposit = (float)($b['security_deposit'] ?? 0);
     if ($amount > 0 && $deposit > 0 && $amount >= $deposit) $amount -= $deposit;
 
-    $totalRevenue += max(0, $amount);
-
-    $date = !empty($b['pickup_date']) ? date('Y-m-d', strtotime((string)$b['pickup_date'])) : date('Y-m-d', strtotime((string)$b['created_at']));
-    $month = date('Y-m-01', strtotime($date));
-    if ($month === $currentMonth) $monthRevenue += max(0, $amount);
-    if ($month === $previousMonth) $lastMonthRevenue += max(0, $amount);
-    if ($date === $today) $dayRevenue += max(0, $amount);
-    if ($date >= $weekStart && $date <= $weekEnd) $weekRevenue += max(0, $amount);
-
     $status = strtolower((string)($b['status'] ?? ''));
     $payment = strtolower((string)($b['payment_status'] ?? ''));
     $isPaid = in_array($payment, ['paid','advance_paid','verified'], true)
@@ -87,7 +78,19 @@ foreach ($bookings as $b) {
         || trim((string)($b['payment_ref'] ?? '')) !== '';
 
     $key = (string)($b['booking_number'] ?? $b['booking_id'] ?? $b['id']);
-    if ($isPaid) $paidBookings[$key] = true;
+    if ($isPaid) {
+        $paidBookings[$key] = true;
+        $cleanAmt = max(0, $amount);
+        $totalRevenue += $cleanAmt;
+
+        $date = !empty($b['pickup_date']) ? date('Y-m-d', strtotime((string)$b['pickup_date'])) : date('Y-m-d', strtotime((string)$b['created_at']));
+        $month = date('Y-m-01', strtotime($date));
+        if ($month === $currentMonth) $monthRevenue += $cleanAmt;
+        if ($month === $previousMonth) $lastMonthRevenue += $cleanAmt;
+        if ($date === $today) $dayRevenue += $cleanAmt;
+        if ($date >= $weekStart && $date <= $weekEnd) $weekRevenue += $cleanAmt;
+    }
+
     if (in_array($status, ['active','in_trip','started'], true)) $activeTrips++;
     if ($status === 'completed') $completedTrips++;
     if ($payment === 'pending_verification') $pendingPayments++;
@@ -122,38 +125,6 @@ try {
 $totalBookingsCount = count($bookings);
 $paidBookingsCount = count($paidBookings);
 $avgBookingVal = $paidBookingsCount > 0 ? round($totalRevenue / $paidBookingsCount, 2) : 0;
-
-// For Hub 1 (Gavson Business Park HQ), sync with master kpi_metrics baseline so ledger matches
-if ($hubId === 1) {
-    try {
-        require_once __DIR__ . '/../services/KpiService.php';
-        $syncData = KpiService::getMetrics();
-        $masterLive = $syncData['live'] ?? [];
-        if (!empty($masterLive['total_revenue']) && (float)$masterLive['total_revenue'] > 0) {
-            $totalRevenue = (float)$masterLive['total_revenue'];
-        }
-        if (!empty($masterLive['month_revenue']) && (float)$masterLive['month_revenue'] > 0) {
-            $monthRevenue = (float)$masterLive['month_revenue'];
-        }
-        if (!empty($masterLive['total_users']) && (int)$masterLive['total_users'] > 0) {
-            $userCount = (int)$masterLive['total_users'];
-        }
-        if (!empty($masterLive['pending_docs']) && (int)$masterLive['pending_docs'] > 0) {
-            $pendingDocs = (int)$masterLive['pending_docs'];
-        }
-        if (!empty($masterLive['total_bookings']) && (int)$masterLive['total_bookings'] > 0) {
-            $totalBookingsCount = (int)$masterLive['total_bookings'];
-        }
-        if (!empty($masterLive['paid_bookings']) && (int)$masterLive['paid_bookings'] > 0) {
-            $paidBookingsCount = (int)$masterLive['paid_bookings'];
-        }
-        if (!empty($masterLive['avg_booking']) && (float)$masterLive['avg_booking'] > 0) {
-            $avgBookingVal = (float)$masterLive['avg_booking'];
-        } elseif ($paidBookingsCount > 0) {
-            $avgBookingVal = round($totalRevenue / $paidBookingsCount, 2);
-        }
-    } catch (Throwable $_) {}
-}
 
 sendJsonResponse([
     'success' => true,

@@ -535,27 +535,37 @@ async function loadMyListings(userParam) {
       if (bankBtn) bankBtn.hidden = false;
     }
 
-    const totalMonthRevenue = listings.reduce(
-      (sum, item) => sum + Number(item.monthRevenue || 0),
+    const totalMonthHostPayout = listings.reduce((sum, item) => {
+      const isFixed = item.isFixedMonthly || String(item.payoutModel || "").includes("fixed");
+      const amt = isFixed
+        ? Number(item.fixedMonthlyAmount || 25000)
+        : Number(item.hostMonthEarnings || (Number(item.monthRevenue || 0) * 0.60));
+      return sum + amt;
+    }, 0);
+
+    const totalLifetimeHostPayout = listings.reduce((sum, item) => {
+      const isFixed = item.isFixedMonthly || String(item.payoutModel || "").includes("fixed");
+      const amt = isFixed
+        ? Number(item.hostTotalEarnings || item.fixedMonthlyAmount || 25000)
+        : Number(item.hostTotalEarnings || (Number(item.totalRevenue || 0) * 0.60));
+      return sum + amt;
+    }, 0);
+
+    const totalGrossGenerated = listings.reduce(
+      (sum, item) => sum + Number(item.grossMonthRevenue || item.monthRevenue || 0),
       0,
     );
-    const totalLifetimeRevenue = listings.reduce(
-      (sum, item) => sum + Number(item.totalRevenue || 0),
-      0,
-    );
+
     const totalTripsCount = listings.reduce(
       (sum, item) => sum + Number(item.completedTrips || item.totalTrips || 0),
       0,
     );
-    const approvedCount = listings.filter(
-      (listing) => listing.status === "approved",
-    ).length;
 
     summary.innerHTML = `
       <div><strong>${listings.length}</strong><span>Hosted Cars</span></div>
       <div><strong>${totalTripsCount}</strong><span>Total Trips</span></div>
-      <div><strong style="color: #06d6a0;">${formatINR(totalMonthRevenue)}</strong><span>This Month Earnings</span></div>
-      <div><strong style="color: var(--kr-cyan); font-weight: 700;">${formatINR(totalLifetimeRevenue)}</strong><span>Lifetime Revenue</span></div>
+      <div><strong style="color: #06d6a0;">${formatINR(totalMonthHostPayout)}</strong><span>This Month Host Payout</span></div>
+      <div><strong style="color: var(--kr-cyan); font-weight: 700;">${formatINR(totalLifetimeHostPayout)}</strong><span>Lifetime Earnings (60% + Fixed)</span></div>
     `;
 
     if (!listings.length) {
@@ -602,6 +612,20 @@ async function loadMyListings(userParam) {
           listing.reviewNote ||
           "";
 
+        const isFixed = listing.isFixedMonthly || String(listing.payoutModel || "").includes("fixed");
+        const fixedAmt = Number(listing.fixedMonthlyAmount || 25000);
+        const grossMonthVal = Number(listing.grossMonthRevenue || listing.monthRevenue || 0);
+        const grossTotalVal = Number(listing.grossTotalRevenue || listing.totalRevenue || 0);
+        const hostMonthPay = isFixed
+          ? fixedAmt
+          : Number(listing.hostMonthEarnings || (grossMonthVal * 0.60));
+        const hostTotalPay = isFixed
+          ? Number(listing.hostTotalEarnings || fixedAmt)
+          : Number(listing.hostTotalEarnings || (grossTotalVal * 0.60));
+        const coMonthShare = isFixed
+          ? Math.max(0, grossMonthVal - fixedAmt)
+          : Math.round(grossMonthVal * 0.40);
+
         const bookingsList = Array.isArray(listing.bookings) ? listing.bookings : [];
         let bookingsHtml = "";
         if (bookingsList.length === 0) {
@@ -634,6 +658,10 @@ async function loadMyListings(userParam) {
                   ? `<div style="font-size: 10.5px; color: #adb5bd; margin-top: 2px;">Odometer: ${escapeHtml(String(b.startOdometer || "—"))} km &rarr; ${escapeHtml(String(b.endOdometer || "—"))} km</div>`
                   : "";
 
+              const bAmt = Number(b.amount || 0);
+              const bHostShare = b.hostShare !== undefined ? Number(b.hostShare) : Math.round(bAmt * 0.60);
+              const bCoShare = b.companyShare !== undefined ? Number(b.companyShare) : Math.round(bAmt * 0.40);
+
               return `
                 <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); gap: 8px;">
                   <div style="min-width: 0;">
@@ -647,8 +675,12 @@ async function loadMyListings(userParam) {
                     ${odoInfo}
                   </div>
                   <div style="text-align: right; flex-shrink: 0;">
-                    <div style="font-weight: 700; color: #06d6a0; font-size: 12.5px;">${formatINR(b.amount || 0)}</div>
-                    <span style="display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; background: ${badgeBg}; color: ${badgeColor}; margin-top: 2px;">${escapeHtml(b.status || "Confirmed")}</span>
+                    <div style="font-weight: 700; color: #fff; font-size: 12px;">Trip: ${formatINR(bAmt)}</div>
+                    <div style="font-size: 11px; color: #06d6a0; font-weight: 700; margin-top: 1px;">
+                      Host (60%): ${formatINR(bHostShare)}
+                    </div>
+                    <div style="font-size: 9.5px; color: var(--text-sub, #888);">Company (40%): ${formatINR(bCoShare)}</div>
+                    <span style="display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; text-transform: uppercase; background: ${badgeBg}; color: ${badgeColor}; margin-top: 2px;">${escapeHtml(b.status || "Confirmed")}</span>
                   </div>
                 </div>
               `;
@@ -682,6 +714,20 @@ async function loadMyListings(userParam) {
               </div>
               <span class="profile-listing-status ${status.className}">${escapeHtml(status.label)}</span>
             </div>
+
+            <!-- Acquisition Payout Model Badge -->
+            <div style="margin: 8px 0 10px;">
+              ${isFixed ? `
+                <span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; background: rgba(6, 214, 160, 0.12); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.3);">
+                  <span style="font-size: 8px;">&#9679;</span> Fixed Monthly Retainer &bull; ${formatINR(fixedAmt)} / mo
+                </span>
+              ` : `
+                <span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; background: rgba(79, 215, 255, 0.12); color: #4fd7ff; border: 1px solid rgba(79, 215, 255, 0.3);">
+                  <span style="font-size: 8px;">&#9679;</span> Trip Revenue Share &bull; 60% User Payout / 40% Company
+                </span>
+              `}
+            </div>
+
             <dl class="profile-listing-meta">
               <div><dt>Host Partner</dt><dd><strong style="color: #4fd7ff;">${escapeHtml(hostName)}</strong></dd></div>
               ${hostPhone ? `<div><dt>Host Contact</dt><dd>${escapeHtml(hostPhone)}</dd></div>` : ""}
@@ -696,17 +742,27 @@ async function loadMyListings(userParam) {
             <!-- Revenue and Trip Performance -->
             <div class="profile-listing-revenue" style="margin: 14px 0 10px; padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center;">
               <div>
-                <span style="font-size: 11px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">This Month</span>
-                <strong style="font-size: 15px; color: #06d6a0; font-weight: 700;">${formatINR(listing.monthRevenue || 0)}</strong>
+                <span style="font-size: 10.5px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">
+                  ${isFixed ? "Fixed Monthly Given" : "This Month (60%)"}
+                </span>
+                <strong style="font-size: 15px; color: #06d6a0; font-weight: 700;">${formatINR(hostMonthPay)}</strong>
+                <span style="display: block; font-size: 10px; color: var(--text-sub, #888); margin-top: 2px;">
+                  ${isFixed ? "Company Guaranteed" : `Fleet Gross: ${formatINR(grossMonthVal)}`}
+                </span>
               </div>
               <div>
-                <span style="font-size: 11px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Total Revenue</span>
-                <strong style="font-size: 15px; color: var(--kr-cyan, #4fd7ff); font-weight: 700;">${formatINR(listing.totalRevenue || 0)}</strong>
+                <span style="font-size: 10.5px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">
+                  ${isFixed ? "Overall Payouts" : "Lifetime (60%)"}
+                </span>
+                <strong style="font-size: 15px; color: var(--kr-cyan, #4fd7ff); font-weight: 700;">${formatINR(hostTotalPay)}</strong>
+                <span style="display: block; font-size: 10px; color: var(--text-sub, #888); margin-top: 2px;">
+                  ${isFixed ? `Gross: ${formatINR(grossTotalVal)}` : `Host Payouts`}
+                </span>
               </div>
               <div>
-                <span style="font-size: 11px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Trips</span>
+                <span style="font-size: 10.5px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Trips</span>
                 <strong style="font-size: 15px; color: #fff; font-weight: 700;">${listing.totalTrips || listing.completedTrips || 0}</strong>
-                ${listing.activeTrips ? `<span style="display:block; font-size:10px; color:#4fd7ff; font-weight:600;">${listing.activeTrips} Active</span>` : ""}
+                ${listing.activeTrips ? `<span style="display:block; font-size:10px; color:#4fd7ff; font-weight:600;">${listing.activeTrips} Active</span>` : `<span style="display:block; font-size:10px; color:#888;">Completed</span>`}
               </div>
             </div>
 

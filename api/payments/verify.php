@@ -114,7 +114,18 @@ try {
     // Automated KPI metrics sync into MySQL kpi_metrics table
     try {
         if ($action === 'approve') {
-            Database::execute("UPDATE kpi_metrics SET paid_bookings = paid_bookings + 1 WHERE metric_date = ?", [date('Y-m-01')]);
+            require_once __DIR__ . '/../services/KpiService.php';
+            $bk = Database::fetchOne(
+                "SELECT final_amount, total_amount, advance_amount, security_deposit FROM bookings 
+                 WHERE booking_id = ? OR booking_number = ? OR id = ? LIMIT 1",
+                [$id, $id, is_numeric($id) ? (int)$id : 0]
+            );
+            if ($bk) {
+                $netRental = KpiService::getBookingNetRental($bk);
+                if ($netRental > 0) {
+                    KpiService::incrementBookingMetrics($netRental);
+                }
+            }
         }
     } catch (Throwable $_) {}
 

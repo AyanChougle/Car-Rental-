@@ -22,7 +22,11 @@ class KpiService
      */
     public static function getMetrics(): array
     {
-        // Strictly fetch values directly from the kpi_metrics table to preserve manual edits from phpMyAdmin
+        // Calculate dynamic live metrics (merges database bookings with kpi_metrics baseline)
+        $synced = self::syncMetrics();
+        if (!empty($synced) && !empty($synced['live'])) {
+            return $synced;
+        }
         return self::getCachedMetrics();
     }
 
@@ -32,17 +36,21 @@ class KpiService
      */
     public static function incrementBookingMetrics(float $amount): void
     {
+        if ($amount <= 0) return;
         $mKey = date('Y-m-01');
         try {
             Database::execute(
-                "UPDATE kpi_metrics 
-                 SET month_sales = month_sales + ?,
-                     total_revenue = total_revenue + ?,
-                     day_sales = day_sales + ?,
-                     week_sales = week_sales + ?,
-                     total_bookings = total_bookings + 1
-                 WHERE metric_date = ?",
-                [$amount, $amount, $amount, $amount, $mKey]
+                "INSERT INTO kpi_metrics (metric_date, day_sales, week_sales, month_sales, total_revenue, total_bookings, paid_bookings)
+                 VALUES (?, ?, ?, ?, ?, 1, 1)
+                 ON DUPLICATE KEY UPDATE 
+                     month_sales = month_sales + VALUES(month_sales),
+                     total_revenue = total_revenue + VALUES(total_revenue),
+                     day_sales = day_sales + VALUES(day_sales),
+                     week_sales = week_sales + VALUES(week_sales),
+                     total_bookings = total_bookings + 1,
+                     paid_bookings = paid_bookings + 1,
+                     updated_at = CURRENT_TIMESTAMP",
+                [$mKey, $amount, $amount, $amount, $amount]
             );
         } catch (Throwable $e) {
             error_log("[KpiService::incrementBookingMetrics] " . $e->getMessage());
@@ -308,7 +316,9 @@ class KpiService
                 $dailyRate = $totalDays > 0 ? ($netRental / $totalDays) : 0.0;
                 $startTs = strtotime($dateInfo['start_date']);
 
-                $overallRevenue += $netRental;
+                if ($isPaid) {
+                    $overallRevenue += $netRental;
+                }
 
                 // Day Sales: Prorate if operational today
                 $todayTs = strtotime($todayStr);
@@ -327,7 +337,9 @@ class KpiService
                         $monthlyPaidBookings[$curMonth] = [];
                     }
 
-                    $monthlyRevenue[$curMonth] += $dailyRate;
+                    if ($isPaid) {
+                        $monthlyRevenue[$curMonth] += $dailyRate;
+                    }
                     if ($bId !== '') {
                         $monthlyBookings[$curMonth][$bId] = true;
                         if ($isPaid) {
@@ -336,12 +348,12 @@ class KpiService
                     }
 
                     // Check Today
-                    if ($curDate === $todayStr) {
+                    if ($isPaid && $curDate === $todayStr) {
                         $daySales += $dailyRate;
                     }
 
                     // Check Week
-                    if ($curDate >= $weekStartStr && $curDate <= $weekEndStr) {
+                    if ($isPaid && $curDate >= $weekStartStr && $curDate <= $weekEndStr) {
                         $weekSales += $dailyRate;
                     }
                 }

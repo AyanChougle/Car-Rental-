@@ -188,6 +188,9 @@ async function getAuthToken(forceRefresh = false) {
   if (auth?.currentUser) {
     try {
       token = await auth.currentUser.getIdToken(forceRefresh);
+      if (token) {
+        localStorage.setItem("kruizly_token", token);
+      }
     } catch (err) {
       console.warn("Could not get Firebase ID token:", err);
     }
@@ -199,15 +202,18 @@ async function getAuthToken(forceRefresh = false) {
   }
 
   if (!token && auth) {
-    // Wait up to 1000ms for Firebase Auth hydration
+    // Wait up to 1500ms for Firebase Auth hydration
     token = await new Promise((resolve) => {
-      const timeout = setTimeout(() => resolve(""), 1000);
+      const timeout = setTimeout(() => resolve(""), 1500);
       const unsubscribe = auth.onAuthStateChanged(async (user) => {
         clearTimeout(timeout);
         unsubscribe();
         if (user) {
           try {
             const t = await user.getIdToken(forceRefresh);
+            if (t) {
+              localStorage.setItem("kruizly_token", t);
+            }
             resolve(t || "");
           } catch {
             resolve("");
@@ -261,7 +267,7 @@ export const api = {
       }
     });
 
-    if (response.status === 401 && retry && auth?.currentUser) {
+    if (response.status === 401 && retry) {
       const { token: freshToken, headers: freshHeaders } = await getAuthHeader(true);
       if (freshToken) {
         const retryUrl = buildUrl(resolveEndpoint(endpoint, params), freshToken);

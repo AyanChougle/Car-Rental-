@@ -265,19 +265,26 @@ try {
         }
     });
 
-    // Automated KPI metrics sync into MySQL kpi_metrics table: adds new booking revenue to current month
-    try {
-        require_once __DIR__ . '/../services/KpiService.php';
-        $netRental = 0.0;
-        if (!empty($finalAmount) && (float)$finalAmount > 0) {
-            $netRental = max(0.0, (float)$finalAmount - (float)$securityDeposit);
-        } elseif (!empty($totalAmount) && (float)$totalAmount > 0) {
-            $netRental = max(0.0, (float)$totalAmount - (float)$securityDeposit);
-        } elseif (!empty($advanceAmount) && (float)$advanceAmount > 0) {
-            $netRental = (float)$advanceAmount;
-        }
-        KpiService::incrementBookingMetrics($netRental);
-    } catch (Throwable $_) {}
+    // Automated KPI metrics sync: only increment revenue if the booking is verified/paid/confirmed immediately
+    $isPaidOrConfirmed = in_array(strtolower($paymentStatus), ['paid', 'advance_paid', 'verified'], true)
+        || in_array(strtolower($status), ['confirmed', 'active', 'in_trip', 'started', 'completed'], true);
+
+    if ($isPaidOrConfirmed) {
+        try {
+            require_once __DIR__ . '/../services/KpiService.php';
+            $netRental = 0.0;
+            if (!empty($finalAmount) && (float)$finalAmount > 0) {
+                $netRental = max(0.0, (float)$finalAmount - (float)$securityDeposit);
+            } elseif (!empty($totalAmount) && (float)$totalAmount > 0) {
+                $netRental = max(0.0, (float)$totalAmount - (float)$securityDeposit);
+            } elseif (!empty($advanceAmount) && (float)$advanceAmount > 0) {
+                $netRental = (float)$advanceAmount;
+            }
+            if ($netRental > 0) {
+                KpiService::incrementBookingMetrics($netRental);
+            }
+        } catch (Throwable $_) {}
+    }
 
     sendJsonResponse([
         'success' => true,
