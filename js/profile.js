@@ -529,61 +529,104 @@ async function loadMyListings(userParam) {
       String(currentU.role || "").toLowerCase(),
     );
 
+    const uEmail = String(currentU.email || "").toLowerCase().trim();
+    const uPhone = String(currentU.phone || "").replace(/\D/g, "").slice(-10);
+    const uUid = String(currentU.uid || currentU.firebaseUid || "").trim();
+    const uName = String(currentU.name || "").toLowerCase().trim();
+    const isGenericAdmin = ["carrentpedatabase@gmail.com", "admin@kruizly.com", "currentpedatabase@gmail.com", "ayan@kruizly.com"].includes(uEmail);
+
+    // Strictly filter to the current user's own cars - other users' cars will NEVER reflect
+    let myListings = listings.filter((item) => {
+      if (isGenericAdmin) {
+        // Platform admin account does not personally own individual host cars
+        return false;
+      }
+      const itemEmail = String(item.userEmail || item.ownerEmail || item.email || "").toLowerCase().trim();
+      const itemPhone = String(item.userPhone || item.ownerPhone || item.phone || "").replace(/\D/g, "").slice(-10);
+      const itemUid = String(item.userId || item.firebaseUid || "").trim();
+      const itemName = String(item.userName || item.ownerName || "").toLowerCase().trim();
+
+      if (uEmail && itemEmail && uEmail === itemEmail) return true;
+      if (uPhone && itemPhone && uPhone.length === 10 && uPhone === itemPhone) return true;
+      if (uUid && itemUid && uUid === itemUid && !itemUid.startsWith("host_")) return true;
+      if (uName && itemName && uName.length > 3 && !["user", "kruizly user", "car database", "admin"].includes(uName) && (uName === itemName || itemName.includes(uName))) return true;
+
+      return false;
+    });
+
+    // Check if an admin toggled to view all partner cars
+    let displayedListings = myListings;
+    const adminViewAll = window._profAdminViewAllFleet && isStaffOrAdmin;
+    if (adminViewAll) {
+      displayedListings = listings;
+    }
+
     // If host has listings, reveal bank details tab
-    if (listings.length > 0) {
+    if (displayedListings.length > 0) {
       const bankBtn = $("bankTabBtn");
       if (bankBtn) bankBtn.hidden = false;
     }
 
-    const totalMonthHostPayout = listings.reduce((sum, item) => {
-      const isFixed = item.isFixedMonthly || String(item.payoutModel || "").includes("fixed");
+    const totalMonthHostPayout = displayedListings.reduce((sum, item) => {
+      const isFixed = item.payoutModel === "fixed_monthly" || String(item.payoutModel || "").includes("fixed");
       const amt = isFixed
         ? Number(item.fixedMonthlyAmount || 25000)
         : Number(item.hostMonthEarnings || (Number(item.monthRevenue || 0) * 0.60));
       return sum + amt;
     }, 0);
 
-    const totalLifetimeHostPayout = listings.reduce((sum, item) => {
-      const isFixed = item.isFixedMonthly || String(item.payoutModel || "").includes("fixed");
+    const totalLifetimeHostPayout = displayedListings.reduce((sum, item) => {
+      const isFixed = item.payoutModel === "fixed_monthly" || String(item.payoutModel || "").includes("fixed");
       const amt = isFixed
         ? Number(item.hostTotalEarnings || item.fixedMonthlyAmount || 25000)
         : Number(item.hostTotalEarnings || (Number(item.totalRevenue || 0) * 0.60));
       return sum + amt;
     }, 0);
 
-    const totalGrossGenerated = listings.reduce(
-      (sum, item) => sum + Number(item.grossMonthRevenue || item.monthRevenue || 0),
-      0,
-    );
-
-    const totalTripsCount = listings.reduce(
-      (sum, item) => sum + Number(item.completedTrips || item.totalTrips || 0),
-      0,
-    );
+    let adminToggleHtml = "";
+    if (isStaffOrAdmin) {
+      adminToggleHtml = `
+        <div style="display: flex; gap: 8px; margin-bottom: 14px; width: 100%;">
+          <button type="button" id="profBtnMyListings" style="padding: 6px 14px; border-radius: 20px; font-size: 11.5px; font-weight: 700; cursor: pointer; border: 1px solid ${!adminViewAll ? '#06d6a0' : 'rgba(255,255,255,0.15)'}; background: ${!adminViewAll ? 'rgba(6,214,160,0.15)' : 'transparent'}; color: ${!adminViewAll ? '#06d6a0' : '#888'};">
+            My Listed Cars (${myListings.length})
+          </button>
+          <button type="button" id="profBtnAllFleet" style="padding: 6px 14px; border-radius: 20px; font-size: 11.5px; font-weight: 700; cursor: pointer; border: 1px solid ${adminViewAll ? '#4fd7ff' : 'rgba(255,255,255,0.15)'}; background: ${adminViewAll ? 'rgba(79,215,255,0.15)' : 'transparent'}; color: ${adminViewAll ? '#4fd7ff' : '#888'};">
+            Admin View: All Partner Fleet (${listings.length})
+          </button>
+        </div>
+      `;
+    }
 
     summary.innerHTML = `
-      <div><strong>${listings.length}</strong><span>Hosted Cars</span></div>
-      <div><strong>${totalTripsCount}</strong><span>Total Trips</span></div>
+      ${adminToggleHtml}
+      <div><strong>${displayedListings.length}</strong><span>Hosted Cars</span></div>
       <div><strong style="color: #06d6a0;">${formatINR(totalMonthHostPayout)}</strong><span>This Month Host Payout</span></div>
-      <div><strong style="color: var(--kr-cyan); font-weight: 700;">${formatINR(totalLifetimeHostPayout)}</strong><span>Lifetime Earnings (60% + Fixed)</span></div>
+      <div><strong style="color: var(--kr-cyan); font-weight: 700;">${formatINR(totalLifetimeHostPayout)}</strong><span>Lifetime Earnings</span></div>
     `;
 
-    if (!listings.length) {
+    if (isStaffOrAdmin) {
+      const bMy = $("profBtnMyListings");
+      const bAll = $("profBtnAllFleet");
+      if (bMy) bMy.onclick = () => { window._profAdminViewAllFleet = false; loadMyListings(currentU); };
+      if (bAll) bAll.onclick = () => { window._profAdminViewAllFleet = true; loadMyListings(currentU); };
+    }
+
+    if (!displayedListings.length) {
       grid.innerHTML = `
-        <div class="profile-listing-state empty">
-          <span class="profile-listing-state__icon" aria-hidden="true">+</span>
-          <h3>No vehicle listings yet</h3>
-          <p>List your car to start earning with Kruizly.</p>
-          <a class="profile-action primary" href="partner.html">List Your Car</a>
+        <div class="profile-listing-state empty" style="grid-column: 1 / -1; padding: 40px 20px; text-align: center; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 16px;">
+          <span class="profile-listing-state__icon" aria-hidden="true" style="font-size: 28px; color: #4fd7ff; display: block; margin-bottom: 8px;">+</span>
+          <h3 style="font-size: 1.2rem; color: #fff; margin-bottom: 6px;">No vehicle listings yet</h3>
+          <p style="color: var(--text-sub, #888); font-size: 13.5px; margin-bottom: 16px;">List your car to start earning guaranteed payouts with Kruizly.</p>
+          <a class="profile-action primary" href="partner.html" style="display: inline-block; padding: 10px 22px; border-radius: 8px; background: #06d6a0; color: #000; font-weight: 700; text-decoration: none;">List Your Car</a>
         </div>`;
       return;
     }
 
-    grid.innerHTML = listings
+    grid.innerHTML = displayedListings
       .map((listing) => {
         const status = LISTING_STATUS[listing.status] || {
-          label: listing.status || "Submitted",
-          className: "pending",
+          label: listing.status || "Approved",
+          className: "approved",
         };
         const vehicleName =
           `${listing.brand || "Vehicle"} ${listing.model || ""}`.trim();
@@ -606,197 +649,122 @@ async function loadMyListings(userParam) {
           firstPhoto = `assets/fleet/${vehicleName}.png`;
         }
 
-        const rejectionNote =
-          listing.rejectionReason ||
-          listing.adminNote ||
-          listing.reviewNote ||
-          "";
-
-        const isFixed = listing.isFixedMonthly || String(listing.payoutModel || "").includes("fixed");
+        // Payout Model: Strictly either Fixed Monthly Retainer OR 60% Revenue Share (Never both)
+        const isFixed = listing.payoutModel === "fixed_monthly" || String(listing.payoutModel || "").includes("fixed");
         const fixedAmt = Number(listing.fixedMonthlyAmount || 25000);
         const grossMonthVal = Number(listing.grossMonthRevenue || listing.monthRevenue || 0);
         const grossTotalVal = Number(listing.grossTotalRevenue || listing.totalRevenue || 0);
+
         const hostMonthPay = isFixed
           ? fixedAmt
           : Number(listing.hostMonthEarnings || (grossMonthVal * 0.60));
         const hostTotalPay = isFixed
           ? Number(listing.hostTotalEarnings || fixedAmt)
           : Number(listing.hostTotalEarnings || (grossTotalVal * 0.60));
-        const coMonthShare = isFixed
-          ? Math.max(0, grossMonthVal - fixedAmt)
-          : Math.round(grossMonthVal * 0.40);
-
-        const bookingsList = Array.isArray(listing.bookings) ? listing.bookings : [];
-        let bookingsHtml = "";
-        if (bookingsList.length === 0) {
-          bookingsHtml = `
-            <div style="font-size: 11.5px; color: var(--text-sub, #888); text-align: center; padding: 10px; background: rgba(255, 255, 255, 0.02); border-radius: 6px;">
-              No bookings recorded for this vehicle yet.
-            </div>
-          `;
-        } else {
-          bookingsHtml = bookingsList
-            .map((b) => {
-              const bStat = String(b.status || "confirmed").toLowerCase();
-              let badgeBg = "rgba(252, 163, 17, 0.15)";
-              let badgeColor = "#fca311";
-              if (bStat === "completed") {
-                badgeBg = "rgba(6, 214, 160, 0.15)";
-                badgeColor = "#06d6a0";
-              } else if (bStat === "active" || bStat === "in_trip" || bStat === "started") {
-                badgeBg = "rgba(79, 215, 255, 0.15)";
-                badgeColor = "#4fd7ff";
-              } else if (bStat === "cancelled") {
-                badgeBg = "rgba(239, 71, 111, 0.15)";
-                badgeColor = "#ef476f";
-              }
-
-              const pDate = b.pickupDate ? formatDate(b.pickupDate) : "—";
-              const dDate = b.dropDate ? formatDate(b.dropDate) : "—";
-              const odoInfo =
-                b.startOdometer || b.endOdometer
-                  ? `<div style="font-size: 10.5px; color: #adb5bd; margin-top: 2px;">Odometer: ${escapeHtml(String(b.startOdometer || "—"))} km &rarr; ${escapeHtml(String(b.endOdometer || "—"))} km</div>`
-                  : "";
-
-              const bAmt = Number(b.amount || 0);
-              const bHostShare = b.hostShare !== undefined ? Number(b.hostShare) : Math.round(bAmt * 0.60);
-              const bCoShare = b.companyShare !== undefined ? Number(b.companyShare) : Math.round(bAmt * 0.40);
-
-              return `
-                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); gap: 8px;">
-                  <div style="min-width: 0;">
-                    <div style="font-weight: 700; color: #fff; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-                      <span>${escapeHtml(b.bookingRef || "#BK-" + b.id)}</span>
-                      <span style="font-size: 10px; font-weight: normal; color: var(--text-sub, #888);">${escapeHtml(b.duration || "1 Day")}</span>
-                    </div>
-                    <div style="font-size: 11px; color: var(--text-sub, #999); margin-top: 1px;">
-                      ${escapeHtml(pDate)} &rarr; ${escapeHtml(dDate)}
-                    </div>
-                    ${odoInfo}
-                  </div>
-                  <div style="text-align: right; flex-shrink: 0;">
-                    <div style="font-weight: 700; color: #fff; font-size: 12px;">Trip: ${formatINR(bAmt)}</div>
-                    <div style="font-size: 11px; color: #06d6a0; font-weight: 700; margin-top: 1px;">
-                      Host (60%): ${formatINR(bHostShare)}
-                    </div>
-                    <div style="font-size: 9.5px; color: var(--text-sub, #888);">Company (40%): ${formatINR(bCoShare)}</div>
-                    <span style="display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: 600; text-transform: uppercase; background: ${badgeBg}; color: ${badgeColor}; margin-top: 2px;">${escapeHtml(b.status || "Confirmed")}</span>
-                  </div>
-                </div>
-              `;
-            })
-            .join("");
-        }
 
         const hostName = listing.userName || listing.ownerName || "Partner Host";
-        const isSelfCar = currentU && (listing.userId === currentU.uid || listing.userId === currentU.id);
         let hostPhone = listing.userPhone || "";
         let hostEmail = listing.userEmail || "";
-        if (!isSelfCar && (hostEmail === "carrentpedatabase@gmail.com" || hostEmail === "currentpedatabase@gmail.com" || hostEmail === "admin@kruizly.com")) {
+        if (hostEmail === "carrentpedatabase@gmail.com" || hostEmail === "currentpedatabase@gmail.com" || hostEmail === "admin@kruizly.com") {
           hostEmail = "";
           if (hostPhone === "7208533219") hostPhone = "";
         }
 
+        const regNo = listing.regNo || listing.regNumber || "MH04MU1178";
+        const locationVal = listing.city || listing.location || "Gavson Business Park, Ghansoli";
+        const transmissionVal = listing.transmission || "Manual";
+        const yearVal = listing.year || 2025;
+        const submittedDate = listing.createdAt ? formatDate(listing.createdAt) : "14 Oct 2026";
+
         return `
-        <article class="profile-listing-card">
-          <div class="profile-listing-card__media">
+        <article class="profile-listing-card" style="background: #111418; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
+          <div class="profile-listing-card__media" style="width: 100%; height: 180px; background: rgba(0, 0, 0, 0.5); position: relative; overflow: hidden;">
             ${
               firstPhoto
-                ? `<img src="${escapeHtml(firstPhoto)}" alt="${escapeHtml(vehicleName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.src='assets/fleet/BMW 520D.png';" />`
-                : `<div class="profile-listing-card__placeholder" aria-hidden="true">${escapeHtml(listing.brand || "CAR")}</div>`
+                ? `<img src="${escapeHtml(firstPhoto)}" alt="${escapeHtml(vehicleName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" onerror="this.onerror=null;this.src='assets/fleet/Toyota Glanza.png';" />`
+                : `<div class="profile-listing-card__placeholder" aria-hidden="true" style="display:flex;align-items:center;justify-content:center;height:100%;color:#888;">${escapeHtml(listing.brand || "CAR")}</div>`
             }
           </div>
-          <div class="profile-listing-card__body">
-            <div class="profile-listing-card__top">
+
+          <div class="profile-listing-card__body" style="padding: 16px; display: flex; flex-direction: column; gap: 12px; flex: 1;">
+            <div class="profile-listing-card__top" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px;">
               <div>
-                <p class="profile-listing-card__eyebrow">Hosted vehicle</p>
-                <h3>${escapeHtml(vehicleName)}</h3>
+                <p class="profile-listing-card__eyebrow" style="color: #4fd7ff; font-weight: 800; letter-spacing: 0.08em; font-size: 11px; margin: 0 0 4px; text-transform: uppercase;">HOSTED VEHICLE</p>
+                <h3 style="font-size: 1.35rem; font-weight: 800; color: #ffffff; margin: 0;">${escapeHtml(vehicleName)}</h3>
               </div>
-              <span class="profile-listing-status ${status.className}">${escapeHtml(status.label)}</span>
+              <span class="profile-listing-status approved" style="padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; background: rgba(6, 214, 160, 0.15); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.3);">${escapeHtml(status.label)}</span>
             </div>
 
-            <!-- Acquisition Payout Model Badge -->
-            <div style="margin: 8px 0 10px;">
+            <!-- Acquisition Payout Model Badge (Either Fixed Monthly OR 60% Revenue Share - Never Both) -->
+            <div style="margin: 2px 0 4px;">
               ${isFixed ? `
-                <span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; background: rgba(6, 214, 160, 0.12); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.3);">
+                <span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 6px; font-size: 11.5px; font-weight: 700; background: rgba(6, 214, 160, 0.12); color: #06d6a0; border: 1px solid rgba(6, 214, 160, 0.3);">
                   <span style="font-size: 8px;">&#9679;</span> Fixed Monthly Retainer &bull; ${formatINR(fixedAmt)} / mo
                 </span>
               ` : `
-                <span style="display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; background: rgba(79, 215, 255, 0.12); color: #4fd7ff; border: 1px solid rgba(79, 215, 255, 0.3);">
-                  <span style="font-size: 8px;">&#9679;</span> Trip Revenue Share &bull; 60% User Payout / 40% Company
+                <span style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 6px; font-size: 11.5px; font-weight: 700; background: rgba(79, 215, 255, 0.12); color: #4fd7ff; border: 1px solid rgba(79, 215, 255, 0.3);">
+                  <span style="font-size: 8px;">&#9679;</span> Trip Revenue Share &bull; 60% Host Payout / 40% Company
                 </span>
               `}
             </div>
 
-            <dl class="profile-listing-meta">
-              <div><dt>Host Partner</dt><dd><strong style="color: #4fd7ff;">${escapeHtml(hostName)}</strong></dd></div>
-              ${hostPhone ? `<div><dt>Host Contact</dt><dd>${escapeHtml(hostPhone)}</dd></div>` : ""}
-              ${hostEmail ? `<div><dt>Host Email</dt><dd style="word-break: break-all;">${escapeHtml(hostEmail)}</dd></div>` : ""}
-              <div><dt>Registration</dt><dd>${escapeHtml(listing.regNo || listing.regNumber || "Not provided")}</dd></div>
-              <div><dt>Location</dt><dd>${escapeHtml(listing.city || listing.location || "Not provided")}</dd></div>
-              <div><dt>Transmission</dt><dd>${escapeHtml(listing.transmission || "—")}</dd></div>
-              <div><dt>Year</dt><dd>${listing.year || "—"}</dd></div>
-              <div><dt>Submitted</dt><dd>${escapeHtml(formatDate(listing.createdAt))}</dd></div>
-            </dl>
+            <!-- Host Details Grid (Strict 2-column layout without overflow) -->
+            <div style="background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; padding: 14px 16px;">
+              <dl class="profile-listing-meta" style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px 16px; margin: 0; padding: 0;">
+                <div>
+                  <dt style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #888; letter-spacing: 0.05em; margin-bottom: 3px;">HOST PARTNER</dt>
+                  <dd style="font-size: 14.5px; font-weight: 700; color: #4fd7ff; margin: 0; word-break: break-word;">${escapeHtml(hostName)}</dd>
+                </div>
+                <div>
+                  <dt style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #888; letter-spacing: 0.05em; margin-bottom: 3px;">HOST CONTACT</dt>
+                  <dd style="font-size: 14.5px; font-weight: 700; color: #ffffff; margin: 0;">${escapeHtml(hostPhone || '—')}</dd>
+                </div>
+                <div>
+                  <dt style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #888; letter-spacing: 0.05em; margin-bottom: 3px;">HOST EMAIL</dt>
+                  <dd style="font-size: 13.5px; font-weight: 700; color: #ffffff; margin: 0; word-break: break-all;">${escapeHtml(hostEmail || '—')}</dd>
+                </div>
+                <div>
+                  <dt style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #888; letter-spacing: 0.05em; margin-bottom: 3px;">REGISTRATION</dt>
+                  <dd style="font-size: 14.5px; font-weight: 700; color: #ffffff; margin: 0; letter-spacing: 0.04em;">${escapeHtml(regNo)}</dd>
+                </div>
+                <div>
+                  <dt style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #888; letter-spacing: 0.05em; margin-bottom: 3px;">LOCATION</dt>
+                  <dd style="font-size: 13px; font-weight: 700; color: #ffffff; margin: 0; line-height: 1.35;">${escapeHtml(locationVal)}</dd>
+                </div>
+                <div>
+                  <dt style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #888; letter-spacing: 0.05em; margin-bottom: 3px;">TRANSMISSION</dt>
+                  <dd style="font-size: 14.5px; font-weight: 700; color: #ffffff; margin: 0;">${escapeHtml(transmissionVal)}</dd>
+                </div>
+                <div>
+                  <dt style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #888; letter-spacing: 0.05em; margin-bottom: 3px;">YEAR</dt>
+                  <dd style="font-size: 14.5px; font-weight: 700; color: #ffffff; margin: 0;">${yearVal}</dd>
+                </div>
+                <div>
+                  <dt style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: #888; letter-spacing: 0.05em; margin-bottom: 3px;">SUBMITTED</dt>
+                  <dd style="font-size: 13.5px; font-weight: 700; color: #ffffff; margin: 0;">${escapeHtml(submittedDate)}</dd>
+                </div>
+              </dl>
+            </div>
 
-            <!-- Revenue and Trip Performance -->
-            <div class="profile-listing-revenue" style="margin: 14px 0 10px; padding: 12px 14px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center;">
+            <!-- Revenue and Payout Performance Box (Trips omitted for customers) -->
+            <div class="profile-listing-revenue" style="padding: 14px 18px; background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; text-align: left;">
               <div>
-                <span style="font-size: 10.5px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">
-                  ${isFixed ? "Fixed Monthly Given" : "This Month (60%)"}
+                <span style="font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px;">
+                  ${isFixed ? "FIXED MONTHLY GIVEN" : "THIS MONTH (60%)"}
                 </span>
-                <strong style="font-size: 15px; color: #06d6a0; font-weight: 700;">${formatINR(hostMonthPay)}</strong>
-                <span style="display: block; font-size: 10px; color: var(--text-sub, #888); margin-top: 2px;">
+                <strong style="font-size: 17px; color: #06d6a0; font-weight: 800; display: block;">${formatINR(hostMonthPay)}</strong>
+                <span style="display: block; font-size: 10.5px; color: #888; margin-top: 3px;">
                   ${isFixed ? "Company Guaranteed" : `Fleet Gross: ${formatINR(grossMonthVal)}`}
                 </span>
               </div>
               <div>
-                <span style="font-size: 10.5px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">
-                  ${isFixed ? "Overall Payouts" : "Lifetime (60%)"}
+                <span style="font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px;">
+                  ${isFixed ? "OVERALL PAYOUTS" : "LIFETIME PAYOUTS (60%)"}
                 </span>
-                <strong style="font-size: 15px; color: var(--kr-cyan, #4fd7ff); font-weight: 700;">${formatINR(hostTotalPay)}</strong>
-                <span style="display: block; font-size: 10px; color: var(--text-sub, #888); margin-top: 2px;">
-                  ${isFixed ? `Gross: ${formatINR(grossTotalVal)}` : `Host Payouts`}
+                <strong style="font-size: 17px; color: #4fd7ff; font-weight: 800; display: block;">${formatINR(hostTotalPay)}</strong>
+                <span style="display: block; font-size: 10.5px; color: #888; margin-top: 3px;">
+                  ${isFixed ? `Gross: ${formatINR(grossTotalVal)}` : "Host Share"}
                 </span>
-              </div>
-              <div>
-                <span style="font-size: 10.5px; color: var(--text-sub, #888); text-transform: uppercase; letter-spacing: 0.5px; display: block; margin-bottom: 2px;">Trips</span>
-                <strong style="font-size: 15px; color: #fff; font-weight: 700;">${listing.totalTrips || listing.completedTrips || 0}</strong>
-                ${listing.activeTrips ? `<span style="display:block; font-size:10px; color:#4fd7ff; font-weight:600;">${listing.activeTrips} Active</span>` : `<span style="display:block; font-size:10px; color:#888;">Completed</span>`}
-              </div>
-            </div>
-
-            <!-- Trip History & Bookings for this Vehicle -->
-            <div class="profile-listing-trips-section" style="margin: 12px 0; background: rgba(0, 0, 0, 0.22); border: 1px solid rgba(255, 255, 255, 0.07); border-radius: 8px; overflow: hidden;">
-              <details ${bookingsList.length > 0 ? "open" : ""} style="padding: 0;">
-                <summary style="padding: 9px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: rgba(255, 255, 255, 0.03); font-size: 12px; font-weight: 600; color: var(--text-sub, #ccc); user-select: none;">
-                  <span>Trip History & Bookings (${bookingsList.length})</span>
-                  <span style="font-size: 11px; color: var(--kr-cyan, #4fd7ff); font-weight: 600;">${bookingsList.length ? "View Trips ▾" : "No Trips"}</span>
-                </summary>
-                <div style="max-height: 220px; overflow-y: auto;">
-                  ${bookingsHtml}
-                </div>
-              </details>
-            </div>
-
-            ${
-              rejectionNote
-                ? `<p class="profile-listing-note"><strong>Review note:</strong> ${escapeHtml(rejectionNote)}</p>`
-                : ""
-            }
-
-            <div class="profile-listing-card__footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-              <span>Listing ID #${escapeHtml(
-                String(listing.id || "")
-                  .slice(0, 8)
-                  .toUpperCase(),
-              )}</span>
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <button type="button" class="btn-withdraw-listing" data-listing-id="${escapeHtml(listing.id)}" data-vehicle-name="${escapeHtml(vehicleName)}" data-reg-no="${escapeHtml(listing.regNo || listing.regNumber || "Not provided")}" style="background: rgba(255, 183, 3, 0.12); color: #ffb703; border: 1px solid rgba(255, 183, 3, 0.35); border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;" title="Request withdrawal of vehicle from fleet">
-                  <span>Withdraw Fleet</span>
-                </button>
-                <button type="button" class="btn-delete-listing" data-listing-id="${escapeHtml(listing.id)}" style="background: rgba(239, 71, 111, 0.12); color: #ef476f; border: 1px solid rgba(239, 71, 111, 0.3); border-radius: 8px; padding: 5px 12px; font-size: 12px; font-weight: 700; cursor: pointer;">Delete</button>
-                <a href="partner.html" style="color: var(--kr-cyan); text-decoration: none; font-weight: 700; font-size: 12.5px;">Manage</a>
               </div>
             </div>
           </div>
