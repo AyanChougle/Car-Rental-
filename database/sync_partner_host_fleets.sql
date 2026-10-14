@@ -131,10 +131,21 @@ ON DUPLICATE KEY UPDATE
   `status` = VALUES(`status`),
   `car_owned` = VALUES(`car_owned`);
 
--- 7. Populate partner_cars from vehicles table with resolved host user credentials
+-- 7. Add payout model columns to partner_cars and vehicles
+ALTER TABLE `partner_cars` 
+  ADD COLUMN IF NOT EXISTS `payout_model` ENUM('revenue_share', 'fixed_monthly') NOT NULL DEFAULT 'revenue_share' AFTER `expected_price`,
+  ADD COLUMN IF NOT EXISTS `fixed_monthly_amount` DECIMAL(10,2) DEFAULT 25000.00 AFTER `payout_model`,
+  ADD COLUMN IF NOT EXISTS `revenue_share_pct` DECIMAL(5,2) DEFAULT 60.00 AFTER `fixed_monthly_amount`;
+
+ALTER TABLE `vehicles`
+  ADD COLUMN IF NOT EXISTS `payout_model` ENUM('revenue_share', 'fixed_monthly') NOT NULL DEFAULT 'revenue_share' AFTER `acquisition_type`,
+  ADD COLUMN IF NOT EXISTS `fixed_monthly_amount` DECIMAL(10,2) DEFAULT 25000.00 AFTER `payout_model`;
+
+-- 8. Populate partner_cars from vehicles table with resolved host user credentials and payout models
 INSERT INTO `partner_cars` (
   `car_id`, `user_id`, `firebase_uid`, `user_name`, `user_phone`, `user_email`,
   `brand`, `model`, `year`, `reg_no`, `transmission`, `fuel`, `city`, `expected_price`,
+  `payout_model`, `fixed_monthly_amount`, `revenue_share_pct`,
   `status`, `photos`
 )
 SELECT 
@@ -152,6 +163,16 @@ SELECT
   v.fuel,
   COALESCE(NULLIF(v.location, ''), 'Navi Mumbai') AS `city`,
   v.price_day AS `expected_price`,
+  CASE 
+    WHEN LOWER(TRIM(v.owner_name)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma', 'anil kumar gupta') THEN 'fixed_monthly'
+    ELSE 'revenue_share'
+  END AS `payout_model`,
+  CASE 
+    WHEN LOWER(TRIM(v.owner_name)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma') THEN 28000.00
+    WHEN LOWER(TRIM(v.owner_name)) = 'anil kumar gupta' THEN 25000.00
+    ELSE 25000.00
+  END AS `fixed_monthly_amount`,
+  60.00 AS `revenue_share_pct`,
   'approved' AS `status`,
   v.gallery AS `photos`
 FROM `vehicles` v
@@ -165,6 +186,9 @@ ON DUPLICATE KEY UPDATE
   `user_name` = VALUES(`user_name`),
   `user_phone` = COALESCE(NULLIF(VALUES(`user_phone`), ''), `user_phone`),
   `user_email` = COALESCE(NULLIF(VALUES(`user_email`), ''), `user_email`),
+  `payout_model` = VALUES(`payout_model`),
+  `fixed_monthly_amount` = VALUES(`fixed_monthly_amount`),
+  `revenue_share_pct` = VALUES(`revenue_share_pct`),
   `status` = 'approved',
   `brand` = VALUES(`brand`),
   `model` = VALUES(`model`),
