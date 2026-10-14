@@ -27,9 +27,136 @@ if ($method === 'GET') {
     $phone = preg_replace('/\D/', '', (string)($user['phone'] ?? ''));
     $phone10 = strlen($phone) >= 10 ? substr($phone, -10) : $phone;
 
+    // Helper to resolve genuine host information for any partner car
+    if (!function_exists('resolveHostInfo')) {
+        function resolveHostInfo(?string $ownerName, ?string $carReg = ''): array {
+            $cleanName = trim((string)$ownerName);
+            if ($cleanName === '' || in_array($cleanName, ['Kruizly Fleet Host', 'Fleet Catalog', 'KRUIZLY', 'User', 'Kruizly User'])) {
+                return [
+                    'name' => 'Kruizly Fleet Host',
+                    'email' => 'host@kruizly.com',
+                    'phone' => '+91 93240 21200',
+                    'uid' => 'kruizly_fleet_host',
+                    'user_id' => null
+                ];
+            }
+
+            // Try matching in users table (exclude admin emails)
+            try {
+                $uRow = Database::fetchOne(
+                    "SELECT id, firebase_uid, email, phone, name 
+                     FROM users 
+                     WHERE (LOWER(TRIM(name)) = LOWER(TRIM(?)) OR (name LIKE ? AND LENGTH(name) > 3))
+                       AND LOWER(TRIM(email)) NOT IN ('carrentpedatabase@gmail.com', 'admin@kruizly.com', 'ayan@kruizly.com', 'currentpedatabase@gmail.com')
+                     ORDER BY CASE WHEN LOWER(TRIM(name)) = LOWER(TRIM(?)) THEN 1 ELSE 2 END, id DESC 
+                     LIMIT 1",
+                    [$cleanName, '%' . $cleanName . '%', $cleanName]
+                );
+                if ($uRow && (!empty($uRow['email']) || !empty($uRow['phone']))) {
+                    return [
+                        'name' => $uRow['name'] ?: $cleanName,
+                        'email' => $uRow['email'] ?: '',
+                        'phone' => $uRow['phone'] ?: '',
+                        'uid' => $uRow['firebase_uid'] ?: ('host_' . md5($cleanName)),
+                        'user_id' => (int)$uRow['id']
+                    ];
+                }
+            } catch (Throwable $_) {}
+
+            // Known hosts directory for partner fleets
+            $knownHosts = [
+                'aditi lotankar'    => ['email' => 'aditilotankar03@gmail.com', 'phone' => '9867539466'],
+                'ajay vishwakarma'  => ['email' => 'ajay.karma2026@gmail.com',  'phone' => '9351445570'],
+                'kundan singh'      => ['email' => 'kundand7376@gmail.com',     'phone' => '9028076662'],
+                'amol gole'         => ['email' => 'amol3656@gmail.com',        'phone' => '7977759416'],
+                'tai phad'          => ['email' => 'tusharphad1995@gmail.com',  'phone' => '9136431378'],
+                'tai tushar phad'   => ['email' => 'tusharphad1995@gmail.com',  'phone' => '9136431378'],
+                'saif feroz shaikh' => ['email' => 'ferozshaikh93240@gmail.com','phone' => '9324021200'],
+                'omkar tapshale'    => ['email' => 'otapshale@gmail.com',       'phone' => '8898948642'],
+                'anil vishwakarma'  => ['email' => 'anil.vishwakarma@partner.kruizly.com', 'phone' => '9819863286'],
+                'anil kumar gupta'  => ['email' => 'anil.gupta@partner.kruizly.com',       'phone' => '9820019727'],
+                'viran gupta'       => ['email' => 'viran.gupta@partner.kruizly.com',      'phone' => '9820585577'],
+                'viren gupta'       => ['email' => 'viran.gupta@partner.kruizly.com',      'phone' => '9820585577']
+            ];
+
+            $k = strtolower(trim($cleanName));
+            if (isset($knownHosts[$k])) {
+                return [
+                    'name' => $cleanName,
+                    'email' => $knownHosts[$k]['email'],
+                    'phone' => $knownHosts[$k]['phone'],
+                    'uid' => 'host_' . md5($cleanName),
+                    'user_id' => null
+                ];
+            }
+
+            return [
+                'name' => $cleanName,
+                'email' => '',
+                'phone' => '',
+                'uid' => 'host_' . md5($cleanName),
+                'user_id' => null
+            ];
+        }
+    }
+
+    // Auto-seed partner_cars table if empty from catalog vehicles
+    try {
+        $tableExists = Database::fetchOne("SHOW TABLES LIKE 'partner_cars'");
+        if ($tableExists) {
+            $pcCount = (int)Database::fetchValue("SELECT COUNT(*) FROM partner_cars");
+            if ($pcCount === 0) {
+                $vPartners = Database::fetchAll(
+                    "SELECT * FROM vehicles 
+                     WHERE status != 'removed' 
+                       AND (
+                           LOWER(TRIM(acquisition_type)) IN ('partner', 'host', 'hosted')
+                           OR (owner_name IS NOT NULL AND owner_name != '' AND owner_name NOT IN ('Fleet Catalog', 'KRUIZLY'))
+                       )
+                     ORDER BY id ASC"
+                );
+                foreach ($vPartners as $vp) {
+                    $hostInfo = resolveHostInfo($vp['owner_name'], $vp['reg_no'] ?? '');
+                    $cId = !empty($vp['car_id']) ? $vp['car_id'] : ('CRP-' . str_pad((string)$vp['id'], 3, '0', STR_PAD_LEFT));
+                    Database::execute(
+                        "INSERT INTO partner_cars (
+                            car_id, user_id, firebase_uid, user_name, user_phone, user_email,
+                            brand, model, year, reg_no, transmission, fuel, city, expected_price,
+                            status, photos, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'approved', ?, NOW(), NOW())
+                        ON DUPLICATE KEY UPDATE 
+                            user_name = VALUES(user_name),
+                            user_phone = COALESCE(NULLIF(VALUES(user_phone), ''), user_phone),
+                            user_email = COALESCE(NULLIF(VALUES(user_email), ''), user_email),
+                            brand = VALUES(brand),
+                            model = VALUES(model),
+                            photos = VALUES(photos)",
+                        [
+                            $cId,
+                            $hostInfo['user_id'] ?? null,
+                            $hostInfo['uid'],
+                            $hostInfo['name'],
+                            $hostInfo['phone'],
+                            $hostInfo['email'],
+                            $vp['brand'],
+                            $vp['model'],
+                            (int)($vp['year'] ?: 2026),
+                            $vp['reg_no'],
+                            $vp['transmission'] ?: 'Manual',
+                            $vp['fuel'] ?: 'Petrol',
+                            $vp['location'] ?: 'Navi Mumbai',
+                            (float)($vp['price_day'] ?: 3000),
+                            $vp['gallery']
+                        ]
+                    );
+                }
+            }
+        }
+    } catch (Throwable $_) {}
+
     // Auto-link legacy / unlinked partner_cars to this user if email or phone matches
     if (!empty($uid)) {
-        if (!empty($email)) {
+        if (!empty($email) && !in_array($email, ['carrentpedatabase@gmail.com', 'admin@kruizly.com', 'currentpedatabase@gmail.com', 'ayan@kruizly.com'], true)) {
             try {
                 Database::execute(
                     "UPDATE partner_cars 
@@ -41,7 +168,7 @@ if ($method === 'GET') {
                 );
             } catch (Throwable $_) {}
         }
-        if (!empty($phone10)) {
+        if (!empty($phone10) && $phone10 !== '7208533219') {
             try {
                 Database::execute(
                     "UPDATE partner_cars 
@@ -54,7 +181,7 @@ if ($method === 'GET') {
                 );
             } catch (Throwable $_) {}
         }
-        if (!empty($name) && strtolower($name) !== 'user' && strtolower($name) !== 'kruizly user') {
+        if (!empty($name) && !in_array(strtolower($name), ['user', 'kruizly user', 'car database', 'admin', 'kruizly fleet host'], true)) {
             try {
                 Database::execute(
                     "UPDATE partner_cars 
@@ -70,10 +197,50 @@ if ($method === 'GET') {
     }
 
     $rows = [];
-    if ($isAdminScope) {
+    if ($isAdminScope || $isStaff) {
         $rows = Database::fetchAll("SELECT * FROM partner_cars ORDER BY id DESC");
+        // If partner_cars is still empty, synthesize directly from vehicles table
+        if (empty($rows)) {
+            try {
+                $vehAll = Database::fetchAll(
+                    "SELECT v.* FROM vehicles v
+                     WHERE v.status != 'removed'
+                       AND (
+                           LOWER(TRIM(v.acquisition_type)) IN ('partner', 'host', 'hosted')
+                           OR (v.owner_name IS NOT NULL AND v.owner_name != '' AND v.owner_name NOT IN ('Fleet Catalog', 'KRUIZLY'))
+                       )
+                     ORDER BY v.id DESC"
+                );
+                foreach ($vehAll as $v) {
+                    $vReg = strtoupper(str_replace([' ', '-', '.'], '', (string)($v['reg_no'] ?? '')));
+                    $hInfo = resolveHostInfo($v['owner_name'] ?? '', $vReg);
+                    $rows[] = [
+                        'id' => (int)$v['id'],
+                        'car_id' => $v['car_id'] ?? ('CRP-' . str_pad((string)$v['id'], 3, '0', STR_PAD_LEFT)),
+                        'user_id' => $hInfo['user_id'] ?? null,
+                        'firebase_uid' => $hInfo['uid'],
+                        'user_name' => $hInfo['name'],
+                        'user_phone' => $hInfo['phone'],
+                        'user_email' => $hInfo['email'],
+                        'brand' => $v['brand'],
+                        'model' => $v['model'],
+                        'year' => (int)$v['year'],
+                        'reg_no' => $v['reg_no'],
+                        'transmission' => $v['transmission'],
+                        'fuel' => $v['fuel'],
+                        'city' => $v['location'] ?: 'Navi Mumbai',
+                        'expected_price' => (float)$v['price_day'],
+                        'status' => 'approved',
+                        'photos' => $v['gallery'],
+                        'rejection_reason' => null,
+                        'created_at' => $v['created_at'] ?? ($v['acquisition_date'] ? ($v['acquisition_date'] . ' 00:00:00') : date('Y-m-d H:i:s')),
+                        'updated_at' => $v['updated_at'] ?? date('Y-m-d H:i:s'),
+                    ];
+                }
+            } catch (Throwable $_) {}
+        }
     } else {
-        // Fetch matching partner_cars rows
+        // Fetch matching partner_cars rows for this host user
         $queryConditions = [];
         $queryParams = [];
 
@@ -93,7 +260,7 @@ if ($method === 'GET') {
             $queryConditions[] = "(user_phone IS NOT NULL AND user_phone != '' AND REPLACE(REPLACE(REPLACE(user_phone, ' ', ''), '-', ''), '+91', '') LIKE ?)";
             $queryParams[] = '%' . $phone10;
         }
-        if (!empty($name) && strtolower($name) !== 'user' && strtolower($name) !== 'kruizly user') {
+        if (!empty($name) && !in_array(strtolower($name), ['user', 'kruizly user', 'car database'], true)) {
             $queryConditions[] = "(user_name IS NOT NULL AND user_name != '' AND LOWER(TRIM(user_name)) = LOWER(TRIM(?)))";
             $queryParams[] = $name;
         }
@@ -114,19 +281,11 @@ if ($method === 'GET') {
             $vConditions = [];
             $vParams = [];
 
-            if (!empty($name) && strtolower($name) !== 'user' && strtolower($name) !== 'kruizly user') {
+            if (!empty($name) && !in_array(strtolower($name), ['user', 'kruizly user'], true)) {
                 $vConditions[] = "LOWER(TRIM(v.owner_name)) = LOWER(TRIM(?))";
                 $vParams[] = $name;
                 $vConditions[] = "LOWER(v.owner_name) LIKE ?";
                 $vParams[] = '%' . strtolower($name) . '%';
-            }
-            if (!empty($uid)) {
-                $vConditions[] = "v.created_by = ?";
-                $vParams[] = $uid;
-            }
-            if (!empty($email)) {
-                $vConditions[] = "LOWER(TRIM(v.created_by)) = LOWER(TRIM(?))";
-                $vParams[] = $email;
             }
 
             if (!empty($vConditions)) {
@@ -148,14 +307,15 @@ if ($method === 'GET') {
                     $vReg = strtoupper(str_replace([' ', '-', '.'], '', (string)($v['reg_no'] ?? '')));
                     if ($vReg !== '' && !isset($knownRegs[$vReg])) {
                         $knownRegs[$vReg] = true;
+                        $hInfo = resolveHostInfo($v['owner_name'] ?: $name, $vReg);
                         $rows[] = [
                             'id' => (int)$v['id'],
                             'car_id' => $v['car_id'] ?? ('CRP-' . str_pad((string)$v['id'], 3, '0', STR_PAD_LEFT)),
-                            'user_id' => $dbId ?: null,
-                            'firebase_uid' => $uid,
-                            'user_name' => $v['owner_name'] ?: $name,
-                            'user_phone' => $user['phone'] ?? '',
-                            'user_email' => $email,
+                            'user_id' => $hInfo['user_id'] ?? ($dbId ?: null),
+                            'firebase_uid' => $hInfo['uid'] ?: $uid,
+                            'user_name' => $hInfo['name'],
+                            'user_phone' => $hInfo['phone'] ?: ($user['phone'] ?? ''),
+                            'user_email' => $hInfo['email'] ?: $email,
                             'brand' => $v['brand'],
                             'model' => $v['model'],
                             'year' => (int)$v['year'],
@@ -174,11 +334,6 @@ if ($method === 'GET') {
                 }
             }
         } catch (Throwable $_) {}
-
-        // If staff/admin is viewing listings without personal entries, return all partner cars
-        if (empty($rows) && $isStaff) {
-            $rows = Database::fetchAll("SELECT * FROM partner_cars ORDER BY id DESC");
-        }
     }
 
     $currentMonthStart = date('Y-m-01 00:00:00');
@@ -272,6 +427,25 @@ if ($method === 'GET') {
             error_log("[partner-cars.php Booking Lookup Error] " . $e->getMessage());
         }
 
+        $rawHostName = trim((string)($c['user_name'] ?? ''));
+        $rawHostPhone = trim((string)($c['user_phone'] ?? ''));
+        $rawHostEmail = trim((string)($c['user_email'] ?? ''));
+
+        // If email or phone is missing, or contaminated by admin/viewer fallback, resolve real host details
+        $adminContaminated = in_array(strtolower($rawHostEmail), ['carrentpedatabase@gmail.com', 'admin@kruizly.com', 'currentpedatabase@gmail.com', 'ayan@kruizly.com'], true);
+        if (empty($rawHostEmail) || empty($rawHostPhone) || $adminContaminated) {
+            $hostResolved = resolveHostInfo($rawHostName, $cleanReg);
+            if (!empty($hostResolved['email']) && ($adminContaminated || empty($rawHostEmail))) {
+                $rawHostEmail = $hostResolved['email'];
+            }
+            if (!empty($hostResolved['phone']) && ($rawHostPhone === '7208533219' || empty($rawHostPhone))) {
+                $rawHostPhone = $hostResolved['phone'];
+            }
+            if (empty($rawHostName) || $rawHostName === 'User' || $rawHostName === 'Kruizly User') {
+                $rawHostName = $hostResolved['name'];
+            }
+        }
+
         return [
             'id' => $identifier,
             'carId' => $identifier,
@@ -280,10 +454,10 @@ if ($method === 'GET') {
             'firebaseUid' => $c['firebase_uid'],
             'dbUserId' => $c['user_id'],
             'user_id' => $c['user_id'],
-            'userName' => $c['user_name'],
-            'ownerName' => $c['user_name'],
-            'userPhone' => $c['user_phone'],
-            'userEmail' => $c['user_email'],
+            'userName' => $rawHostName,
+            'ownerName' => $rawHostName,
+            'userPhone' => $rawHostPhone,
+            'userEmail' => $rawHostEmail,
             'brand' => $c['brand'],
             'model' => $c['model'],
             'year' => (int)$c['year'],

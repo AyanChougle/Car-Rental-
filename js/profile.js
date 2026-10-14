@@ -820,34 +820,35 @@ ${uName}`,
    ============================================================ */
 
 async function loadProfile(user) {
+  const currentU = user || currentUser || getCurrentUser() || {};
   const emailElement = $("profileEmail");
   if (emailElement) {
-    emailElement.textContent = user.email || "—";
+    emailElement.textContent = currentU.email || "—";
   }
 
-  // Pre-fill UI with local auth user details
-  if (user) {
-    renderProfileData(
-      {
-        name: user.name || user.displayName || "",
-        email: user.email || "",
-        phone: user.phone || user.phoneNumber || "",
-        status: "active",
-      },
-      user,
-    );
-  }
+  // Pre-fill UI with local auth user details immediately
+  renderProfileData(
+    {
+      name: currentU.name || currentU.displayName || "",
+      email: currentU.email || "",
+      phone: currentU.phone || currentU.phoneNumber || "",
+      status: currentU.status || "active",
+      ...currentU
+    },
+    currentU,
+  );
 
   try {
     const res = await api.get("/users/me");
-    const data = res.user || {};
+    const data = res?.user || {};
 
     console.log("KRUZLY profile loaded:", data);
-    renderProfileData(data, user);
+    renderProfileData(data, currentU);
     return data;
   } catch (error) {
     console.warn("Profile server load notice:", error);
-    return {};
+    renderProfileData(currentU, currentU);
+    return currentU;
   }
 }
 
@@ -856,14 +857,16 @@ async function loadProfile(user) {
    ============================================================ */
 
 async function renderProfileData(data, user) {
+  const currentU = user || currentUser || getCurrentUser() || {};
   const name =
-    data.name ||
-    user.displayName ||
-    (user.email ? user.email.split("@")[0] : "KRUZLY Member");
+    data?.name ||
+    currentU?.displayName ||
+    currentU?.name ||
+    (currentU?.email ? currentU.email.split("@")[0] : "") ||
+    "KRUZLY Member";
 
-  const phone = data.phone || "";
-
-  const age = data.age || "";
+  const phone = data?.phone || currentU?.phone || "";
+  const age = data?.age || currentU?.age || "";
 
   const hasLicense = Boolean(data.licenseFrontURL || data.licenseURL);
   const hasAadhar = Boolean(data.aadharFrontURL || data.aadharURL);

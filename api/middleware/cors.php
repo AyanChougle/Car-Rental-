@@ -12,13 +12,17 @@ $allowedOrigins = [
     'https://ayanchougle.github.io',
     'https://kruizly.com',
     'https://www.kruizly.com',
-    'http://localhost:5502',
+    'http://localhost:5500',
     'http://localhost:5501',
+    'http://localhost:5502',
+    'http://127.0.0.1:5500',
+    'http://127.0.0.1:5501',
     'http://127.0.0.1:5502',
-    'http://127.0.0.1:5501'
 ];
 
-if (in_array($origin, $allowedOrigins, true)) {
+$isLocalOrigin = (bool)preg_match('/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i', $origin);
+
+if ($isLocalOrigin || in_array($origin, $allowedOrigins, true)) {
     header("Access-Control-Allow-Origin: $origin");
     header("Access-Control-Allow-Credentials: true");
 } else {

@@ -101,8 +101,26 @@ export function isLoggedIn() {
 }
 
 export async function checkAuth() {
+  const stored = getStoredUser();
   return new Promise((resolve) => {
+    let resolved = false;
+
+    // Safety timeout: Never let the page hang indefinitely on localhost or slow networks
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        if (stored && (stored.uid || stored.id || stored.email)) {
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      }
+    }, 2500);
+
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (resolved) return;
+      resolved = true;
+      clearTimeout(timer);
       unsubscribe();
       if (user) {
         const isAdmin = isAdminUser({ email: user.email });
@@ -110,8 +128,10 @@ export async function checkAuth() {
           uid: user.uid,
           id: user.uid,
           email: user.email,
-          name: user.displayName || "User",
-          role: isAdmin ? "admin" : "customer"
+          name: user.displayName || stored?.name || "User",
+          role: isAdmin ? "admin" : (stored?.role || "customer"),
+          status: stored?.status || "active",
+          ...stored
         };
         
         if (!getStoredUser() || (isAdmin && getStoredUser()?.role !== "admin")) {
@@ -120,8 +140,8 @@ export async function checkAuth() {
 
         try {
           const syncRes = await api.post("/users/sync", {
-            name: user.displayName || "",
-            email: user.email || ""
+            name: user.displayName || initialUser.name,
+            email: user.email || initialUser.email
           }).catch(() => null);
 
           if (syncRes && syncRes.user) {
@@ -131,8 +151,13 @@ export async function checkAuth() {
         } catch (_) {}
         resolve(true);
       } else {
-        clearStoredUser();
-        resolve(false);
+        // If Firebase auth is unhydrated on localhost, but we have a valid stored session, preserve it
+        if (stored && (stored.uid || stored.id || stored.email)) {
+          resolve(true);
+        } else {
+          clearStoredUser();
+          resolve(false);
+        }
       }
     });
   });
