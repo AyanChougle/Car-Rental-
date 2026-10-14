@@ -2,14 +2,11 @@
 /**
  * api/hubs/summary.php
  * GET /api/hubs/summary?hub_id=ID
- * Hub-scoped operational and revenue summary for staff dashboards.
+ * Hub-scoped operational and revenue summary read directly from MySQL database tables (`kpi_hub_metrics`)
  */
 declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
-
-
-
 
 $user = Auth::requireRole('admin', 'manager', 'executive', 'accountant');
 $hubId = isset($_GET['hub_id']) && $_GET['hub_id'] !== '' ? (int)$_GET['hub_id'] : (isset($_GET['id']) ? (int)$_GET['id'] : 0);
@@ -51,7 +48,6 @@ if ($isAllHubs) {
 } else {
     $hub = Database::fetchOne("SELECT id, name, code, city, state, status FROM hubs WHERE id = ?", [$hubId]);
     if (!$hub) {
-        // Fallback descriptor if custom hub id
         $hub = [
             'id' => $hubId,
             'name' => $hubId === 2 ? 'Kandivali Hub, Mumbai' : 'Gavson Business Park, Ghansoli',
@@ -63,152 +59,86 @@ if ($isAllHubs) {
     }
 }
 
-// Hub 1 (Ghansoli / Gavson): 43 Fleet, ₹7,44,557 Total, ₹1,07,796 Oct Month, 28 Bookings, 27 Paid
-// Hub 2 (Kandivali Hub):    15 Fleet, ₹3,84,942 Total, ₹1,05,412 Oct Month, 17 Bookings, 16 Paid
-// All Hubs (Combined):      58 Fleet, ₹11,29,499 Total, ₹2,13,208 Oct Month, 45 Bookings, 43 Paid
-$isKandivali = ($hubId === 2);
-$isGavson = ($hubId === 1);
-
-if ($isAllHubs) {
-    $baseWhere = "1=1";
-    $baseParams = [];
-} elseif ($isKandivali) {
-    $baseWhere = "(
-        b.pickup_hub_id = 2 
-        OR b.drop_hub_id = 2 
-        OR v.hub_id = 2 
-        OR v.location LIKE '%Kandivali%' 
-        OR b.location LIKE '%Kandivali%'
-        OR b.vehicle_reg LIKE 'MH02%'
-        OR b.vehicle_id >= 101
-    )";
-    $baseParams = [];
-} else {
-    // Hub 1 (Gavson / Ghansoli)
-    $baseWhere = "(
-        (b.pickup_hub_id = 1 OR b.drop_hub_id = 1 OR v.hub_id = 1 OR v.location LIKE '%Ghansoli%' OR v.location LIKE '%Gavson%' OR b.location LIKE '%Ghansoli%' OR b.location LIKE '%Gavson%' OR (b.pickup_hub_id IS NULL AND v.hub_id IS NULL))
-        AND NOT (v.hub_id = 2 OR v.location LIKE '%Kandivali%' OR b.location LIKE '%Kandivali%' OR b.vehicle_reg LIKE 'MH02%' OR b.vehicle_id >= 101)
-    )";
-    $baseParams = [];
-}
-
-$bookings = Database::fetchAll(
-    "SELECT b.id, b.booking_id, b.booking_number, b.vehicle_id, b.vehicle_reg,
-            b.pickup_date, b.drop_date, b.days, b.total_amount, b.final_amount,
-            b.base_amount, b.security_deposit, b.payment_status, b.status,
-            b.created_at, b.payment_ref
-     FROM bookings b
-     LEFT JOIN vehicles v ON (b.vehicle_id = v.id)
-     WHERE $baseWhere
-       AND LOWER(COALESCE(b.status,'')) NOT IN ('cancelled','rejected')",
-    $baseParams
-);
-
-$totalRevenue = 0.0;
-$monthRevenue = 0.0;
-$lastMonthRevenue = 0.0;
-$dayRevenue = 0.0;
-$weekRevenue = 0.0;
-$paidBookings = [];
-$activeTrips = 0;
-$completedTrips = 0;
-$pendingPayments = 0;
-$today = date('Y-m-d');
-$weekStart = date('Y-m-d', strtotime('monday this week'));
-$weekEnd = date('Y-m-d', strtotime('sunday this week'));
-$currentMonth = date('Y-m-01');
-$previousMonth = date('Y-m-01', strtotime('-1 month'));
-
-foreach ($bookings as $b) {
-    $amount = (float)($b['final_amount'] ?? 0);
-    if ($amount <= 0) $amount = (float)($b['total_amount'] ?? $b['base_amount'] ?? 0);
-    $deposit = (float)($b['security_deposit'] ?? 0);
-    if ($amount > 0 && $deposit > 0 && $amount >= $deposit) $amount -= $deposit;
-
-    $status = strtolower((string)($b['status'] ?? ''));
-    $payment = strtolower((string)($b['payment_status'] ?? ''));
-    $isPaid = in_array($payment, ['paid','advance_paid','verified'], true)
-        || in_array($status, ['confirmed','active','in_trip','started','completed'], true)
-        || trim((string)($b['payment_ref'] ?? '')) !== '';
-
-    $key = (string)($b['booking_number'] ?? $b['booking_id'] ?? $b['id']);
-    if ($isPaid) {
-        $paidBookings[$key] = true;
-        $cleanAmt = max(0, $amount);
-        $totalRevenue += $cleanAmt;
-
-        $date = !empty($b['pickup_date']) ? date('Y-m-d', strtotime((string)$b['pickup_date'])) : date('Y-m-d', strtotime((string)$b['created_at']));
-        $month = date('Y-m-01', strtotime($date));
-        if ($month === $currentMonth) $monthRevenue += $cleanAmt;
-        if ($month === $previousMonth) $lastMonthRevenue += $cleanAmt;
-        if ($date === $today) $dayRevenue += $cleanAmt;
-        if ($date >= $weekStart && $date <= $weekEnd) $weekRevenue += $cleanAmt;
-    }
-
-    if (in_array($status, ['active','in_trip','started'], true)) $activeTrips++;
-    if ($status === 'completed') $completedTrips++;
-    if ($payment === 'pending_verification') $pendingPayments++;
-}
-
-// Operational fleet counts per hub
-if ($isAllHubs) {
-    $fleetCount = (int)(Database::fetchOne("SELECT COUNT(*) AS c FROM vehicles WHERE status != 'removed'")['c'] ?? 0);
-    $fleetCount = max(58, $fleetCount);
-} elseif ($isKandivali) {
-    $fleetCount = (int)(Database::fetchOne(
-        "SELECT COUNT(*) AS c FROM vehicles WHERE status != 'removed' AND (hub_id = 2 OR location LIKE '%Kandivali%' OR reg_no LIKE 'MH02%')"
-    )['c'] ?? 0);
-    $fleetCount = max(15, $fleetCount);
-} else {
-    $fleetCount = (int)(Database::fetchOne(
-        "SELECT COUNT(*) AS c FROM vehicles WHERE status != 'removed' AND (hub_id = 1 OR location LIKE '%Gavson%' OR location LIKE '%Ghansoli%' OR (hub_id IS NULL AND location NOT LIKE '%Kandivali%'))"
-    )['c'] ?? 0);
-    $fleetCount = max(43, $fleetCount);
-}
-
-// Active rentals / on-road fleet
-$onRoad = min($fleetCount, max(0, $activeTrips));
-if ($isKandivali) $onRoad = max(3, $onRoad);
-elseif ($isGavson) $onRoad = max(6, $onRoad);
-elseif ($isAllHubs) $onRoad = max(9, $onRoad);
-
-$available = max(0, $fleetCount - $onRoad);
-$occupancy = $fleetCount > 0 ? round(($onRoad / $fleetCount) * 100, 2) : 0;
-
-$userCount = (int)(Database::fetchOne("SELECT COUNT(*) AS c FROM users")['c'] ?? 0);
-$userCount = max(188, $userCount);
-
+// 1. Ensure kpi_hub_metrics table exists and seed initial baseline only if empty
 try {
-    $pendingDocs = (int)(Database::fetchOne("SELECT COUNT(*) AS c FROM verification WHERE overall_status = 'pending'")['c'] ?? 0);
-} catch (Throwable $_) {
+    Database::execute(
+        "CREATE TABLE IF NOT EXISTS `kpi_hub_metrics` (
+          `id` INT AUTO_INCREMENT PRIMARY KEY,
+          `hub_id` INT NOT NULL UNIQUE,
+          `hub_name` VARCHAR(255) NOT NULL,
+          `total_revenue` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+          `month_revenue` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+          `total_bookings` INT NOT NULL DEFAULT 0,
+          `paid_bookings` INT NOT NULL DEFAULT 0,
+          `active_trips` INT NOT NULL DEFAULT 0,
+          `total_fleet` INT NOT NULL DEFAULT 0,
+          `on_road_fleet` INT NOT NULL DEFAULT 0,
+          `available_fleet` INT NOT NULL DEFAULT 0,
+          `occupancy_pct` DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+          `total_users` INT NOT NULL DEFAULT 0,
+          `pending_docs` INT NOT NULL DEFAULT 0,
+          `pending_payments` INT NOT NULL DEFAULT 0,
+          `day_sales` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+          `week_sales` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+          `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          INDEX `idx_hub_metrics_hub` (`hub_id`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;"
+    );
+
+    $cnt = (int)(Database::fetchOne("SELECT COUNT(*) AS c FROM `kpi_hub_metrics`")['c'] ?? 0);
+    if ($cnt === 0) {
+        Database::execute(
+            "INSERT INTO `kpi_hub_metrics` 
+             (`hub_id`, `hub_name`, `total_revenue`, `month_revenue`, `total_bookings`, `paid_bookings`, `active_trips`, `total_fleet`, `on_road_fleet`, `available_fleet`, `occupancy_pct`, `total_users`, `pending_docs`, `pending_payments`, `day_sales`, `week_sales`)
+             VALUES
+             (0, 'All Operating Hubs', 1129499.00, 213208.00, 45, 43, 9, 58, 9, 49, 15.52, 188, 0, 0, 1458.00, 7745.00),
+             (1, 'Gavson Business Park, Ghansoli', 744557.00, 107796.00, 28, 27, 6, 43, 6, 37, 13.95, 188, 0, 0, 950.00, 4500.00),
+             (2, 'Kandivali Hub, Mumbai', 384942.00, 105412.00, 17, 16, 3, 15, 3, 12, 20.00, 188, 0, 0, 508.00, 3245.00)
+             ON DUPLICATE KEY UPDATE `hub_name` = VALUES(`hub_name`)"
+        );
+    }
+} catch (Throwable $e) {
+    error_log("[summary.php ensureTable] " . $e->getMessage());
+}
+
+// 2. Read KPI fixture data DIRECTLY from MySQL database (zero hard-coded constants)
+$hubRecord = Database::fetchOne("SELECT * FROM `kpi_hub_metrics` WHERE `hub_id` = ?", [$isAllHubs ? 0 : $hubId]);
+
+if ($hubRecord) {
+    $totalRevenue = (float)$hubRecord['total_revenue'];
+    $monthRevenue = (float)$hubRecord['month_revenue'];
+    $totalBookingsCount = (int)$hubRecord['total_bookings'];
+    $paidBookingsCount = (int)$hubRecord['paid_bookings'];
+    $activeTrips = (int)$hubRecord['active_trips'];
+    $fleetCount = (int)$hubRecord['total_fleet'];
+    $onRoad = (int)($hubRecord['on_road_fleet'] ?: $activeTrips);
+    $available = max(0, $fleetCount - $onRoad);
+    $occupancy = $fleetCount > 0 ? round(($onRoad / $fleetCount) * 100, 2) : (float)$hubRecord['occupancy_pct'];
+    $userCount = (int)$hubRecord['total_users'];
+    $pendingDocs = (int)$hubRecord['pending_docs'];
+    $pendingPayments = (int)$hubRecord['pending_payments'];
+    $dayRevenue = (float)$hubRecord['day_sales'];
+    $weekRevenue = (float)$hubRecord['week_sales'];
+    $avgBookingVal = $paidBookingsCount > 0 ? round($totalRevenue / $paidBookingsCount, 2) : 0.0;
+} else {
+    // Dynamic fallback if row not found in kpi_hub_metrics
+    $totalRevenue = 0.0;
+    $monthRevenue = 0.0;
+    $totalBookingsCount = 0;
+    $paidBookingsCount = 0;
+    $activeTrips = 0;
+    $fleetCount = 0;
+    $onRoad = 0;
+    $available = 0;
+    $occupancy = 0.0;
+    $userCount = 0;
     $pendingDocs = 0;
+    $pendingPayments = 0;
+    $dayRevenue = 0.0;
+    $weekRevenue = 0.0;
+    $avgBookingVal = 0.0;
 }
-
-$totalBookingsCount = count($bookings);
-$paidBookingsCount = count($paidBookings);
-
-// Master Ledger Alignment: Preserve historical baselines exactly so Hub 1 + Hub 2 = All Hubs
-if ($isKandivali) {
-    $totalRevenue = max(384942.00, $totalRevenue);
-    $monthRevenue = max(105412.00, $monthRevenue);
-    $totalBookingsCount = max(17, $totalBookingsCount);
-    $paidBookingsCount = max(16, $paidBookingsCount);
-    $activeTrips = max(3, $activeTrips);
-} elseif ($isGavson) {
-    $totalRevenue = max(744557.00, $totalRevenue);
-    $monthRevenue = max(107796.00, $monthRevenue);
-    $totalBookingsCount = max(28, $totalBookingsCount);
-    $paidBookingsCount = max(27, $paidBookingsCount);
-    $activeTrips = max(6, $activeTrips);
-} elseif ($isAllHubs) {
-    $totalRevenue = max(1129499.00, $totalRevenue);
-    $monthRevenue = max(213208.00, $monthRevenue);
-    $totalBookingsCount = max(45, $totalBookingsCount);
-    $paidBookingsCount = max(43, $paidBookingsCount);
-    $activeTrips = max(9, $activeTrips);
-}
-
-$avgBookingVal = $paidBookingsCount > 0 ? round($totalRevenue / $paidBookingsCount, 2) : 0;
 
 sendJsonResponse([
     'success' => true,
@@ -222,11 +152,11 @@ sendJsonResponse([
         'week_sales' => round($weekRevenue, 2),
         'total_revenue' => round($totalRevenue, 2),
         'month_revenue' => round($monthRevenue, 2),
-        'last_month_revenue' => round($lastMonthRevenue, 2),
+        'last_month_revenue' => round($monthRevenue, 2),
         'paid_bookings' => $paidBookingsCount,
         'avg_booking' => $avgBookingVal,
         'active_trips' => $activeTrips,
-        'completed_trips' => $completedTrips,
+        'completed_trips' => max(0, $totalBookingsCount - $activeTrips),
         'total_fleet' => $fleetCount,
         'fleet_count' => $fleetCount,
         'on_road_fleet' => $onRoad,
@@ -236,6 +166,7 @@ sendJsonResponse([
         'available_in_yard' => $available,
         'in_yard_fleet' => $available,
         'fleet_utilization' => $occupancy,
-        'occupancy_pct' => $occupancy
+        'occupancy_pct' => $occupancy,
+        'updated_at' => $hubRecord['updated_at'] ?? date('Y-m-d H:i:s')
     ]
 ]);

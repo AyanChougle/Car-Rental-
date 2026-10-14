@@ -725,6 +725,130 @@ document.addEventListener("DOMContentLoaded", () => {
   initKpiCategoryTabs();
 });
 
+function initialiseKpiEditModal() {
+  const openBtn = $("btnOpenKpiEditModal");
+  const modal = $("kpiEditModal");
+  const closeBtn = $("btnCloseKpiModal");
+  const cancelBtn = $("btnCancelKpiModal");
+  const form = $("kpiEditForm");
+  const targetHubSelect = $("kpiTargetHub");
+  const statusMsg = $("kpiModalStatusMsg");
+
+  if (!openBtn || !modal || !form) return;
+
+  function closeModal() {
+    modal.hidden = true;
+    modal.style.display = "none";
+    if (statusMsg) statusMsg.style.display = "none";
+  }
+
+  function populateModalFields(hubId) {
+    hubId = Number(hubId || 0);
+    let data = null;
+
+    if (currentKpiStats?.hubs && currentKpiStats.hubs[hubId]) {
+      data = currentKpiStats.hubs[hubId];
+    } else if (hubId === 0) {
+      data = currentKpiStats?.effective || currentKpiStats?.live || {};
+    }
+
+    if (data) {
+      if ($("kpiTotalRevenue")) $("kpiTotalRevenue").value = data.total_revenue ?? 0;
+      if ($("kpiMonthRevenue")) $("kpiMonthRevenue").value = data.month_revenue ?? 0;
+      if ($("kpiTotalBookings")) $("kpiTotalBookings").value = data.total_bookings ?? 0;
+      if ($("kpiPaidBookings")) $("kpiPaidBookings").value = data.paid_bookings ?? 0;
+      if ($("kpiTotalFleet")) $("kpiTotalFleet").value = data.total_fleet ?? 0;
+      if ($("kpiActiveRentals")) $("kpiActiveRentals").value = data.active_trips ?? data.on_road_fleet ?? 0;
+      if ($("kpiTotalUsers")) $("kpiTotalUsers").value = data.total_users ?? 0;
+      if ($("kpiPendingDocs")) $("kpiPendingDocs").value = data.pending_docs ?? 0;
+      if ($("kpiPendingPayments")) $("kpiPendingPayments").value = data.pending_payments ?? 0;
+      if ($("kpiDaySales")) $("kpiDaySales").value = data.day_sales ?? 0;
+    }
+  }
+
+  openBtn.addEventListener("click", () => {
+    modal.hidden = false;
+    modal.style.display = "flex";
+    const currentHub = Number(getSelectedHubId() || 0);
+    if (targetHubSelect) targetHubSelect.value = String(currentHub);
+    populateModalFields(currentHub);
+  });
+
+  if (closeBtn) closeBtn.addEventListener("click", closeModal);
+  if (cancelBtn) cancelBtn.addEventListener("click", closeModal);
+
+  if (targetHubSelect) {
+    targetHubSelect.addEventListener("change", () => {
+      populateModalFields(targetHubSelect.value);
+    });
+  }
+
+  modal.addEventListener("click", (e) => {
+    if (e.target === modal) closeModal();
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const saveBtn = $("btnSaveKpiModal");
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving to Database...";
+    }
+    if (statusMsg) statusMsg.style.display = "none";
+
+    const hubId = Number(targetHubSelect ? targetHubSelect.value : 0);
+    const payload = {
+      hub_id: hubId,
+      total_revenue: parseFloat($("kpiTotalRevenue")?.value || 0),
+      month_revenue: parseFloat($("kpiMonthRevenue")?.value || 0),
+      total_bookings: parseInt($("kpiTotalBookings")?.value || 0, 10),
+      paid_bookings: parseInt($("kpiPaidBookings")?.value || 0, 10),
+      total_fleet: parseInt($("kpiTotalFleet")?.value || 0, 10),
+      on_road_fleet: parseInt($("kpiActiveRentals")?.value || 0, 10),
+      active_trips: parseInt($("kpiActiveRentals")?.value || 0, 10),
+      total_users: parseInt($("kpiTotalUsers")?.value || 0, 10),
+      pending_docs: parseInt($("kpiPendingDocs")?.value || 0, 10),
+      pending_payments: parseInt($("kpiPendingPayments")?.value || 0, 10),
+      day_sales: parseFloat($("kpiDaySales")?.value || 0),
+    };
+
+    try {
+      const res = await api.post("/admin/stats", payload);
+      if (!res?.success && res?.status !== "success") {
+        throw new Error(res?.message || "Failed to save KPI metrics");
+      }
+
+      if (statusMsg) {
+        statusMsg.style.display = "block";
+        statusMsg.style.color = "#06d6a0";
+        statusMsg.textContent = "✓ Saved directly to MySQL database!";
+      }
+
+      // Re-fetch live stats so dashboard immediately updates from MySQL
+      await loadKpiStats();
+
+      setTimeout(() => {
+        closeModal();
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.textContent = "Save to Database";
+        }
+      }, 700);
+    } catch (err) {
+      console.error("Save KPI error:", err);
+      if (statusMsg) {
+        statusMsg.style.display = "block";
+        statusMsg.style.color = "#ef476f";
+        statusMsg.textContent = "✗ Error: " + err.message;
+      }
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save to Database";
+      }
+    }
+  });
+}
+
 // Initialize UI listeners immediately so tabs and controls work on page load
 function initialiseAdmin() {
   initialiseTabs();
@@ -737,6 +861,7 @@ function initialiseAdmin() {
   initialiseFleetUpload();
   initialiseCouponManagement();
   initialiseAdminCalendar();
+  initialiseKpiEditModal();
 }
 
 if (

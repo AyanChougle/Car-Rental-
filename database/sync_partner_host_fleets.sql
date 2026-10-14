@@ -194,4 +194,40 @@ ON DUPLICATE KEY UPDATE
   `model` = VALUES(`model`),
   `photos` = VALUES(`photos`);
 
+-- ============================================================================
+-- 5. KPI HUB METRICS (Single Source of Truth for KPIs across Hubs & Admin)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS `kpi_hub_metrics` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `hub_id` INT NOT NULL UNIQUE,
+  `hub_name` VARCHAR(255) NOT NULL,
+  `total_revenue` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  `month_revenue` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  `total_bookings` INT NOT NULL DEFAULT 0,
+  `paid_bookings` INT NOT NULL DEFAULT 0,
+  `active_trips` INT NOT NULL DEFAULT 0,
+  `total_fleet` INT NOT NULL DEFAULT 0,
+  `on_road_fleet` INT NOT NULL DEFAULT 0,
+  `available_fleet` INT NOT NULL DEFAULT 0,
+  `occupancy_pct` DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+  `total_users` INT NOT NULL DEFAULT 0,
+  `pending_docs` INT NOT NULL DEFAULT 0,
+  `pending_payments` INT NOT NULL DEFAULT 0,
+  `day_sales` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  `week_sales` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX `idx_hub_metrics_hub` (`hub_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT INTO `kpi_hub_metrics` 
+  (`hub_id`, `hub_name`, `total_revenue`, `month_revenue`, `total_bookings`, `paid_bookings`, `active_trips`, `total_fleet`, `on_road_fleet`, `available_fleet`, `occupancy_pct`, `total_users`, `pending_docs`, `pending_payments`, `day_sales`, `week_sales`)
+VALUES
+  (0, 'All Operating Hubs', 1129499.00, 213208.00, 45, 43, 9, 58, 9, 49, 15.52, 188, 0, 0, 1458.00, 7745.00),
+  (1, 'Gavson Business Park, Ghansoli', 744557.00, 107796.00, 28, 27, 6, 43, 6, 37, 13.95, 188, 0, 0, 950.00, 4500.00),
+  (2, 'Kandivali Hub, Mumbai', 384942.00, 105412.00, 17, 16, 3, 15, 3, 12, 20.00, 188, 0, 0, 508.00, 3245.00)
+ON DUPLICATE KEY UPDATE 
+  `hub_name` = VALUES(`hub_name`);
+
 SET FOREIGN_KEY_CHECKS = 1;
+

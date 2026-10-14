@@ -18,7 +18,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
     $scope = trim((string)($_GET['scope'] ?? $_GET['all'] ?? ''));
-    $isAdminScope = $isStaff && ($scope === 'all' || $scope === '1' || $scope === 'true');
+    $isAdminScope = $isStaff;
 
     $uid = trim((string)($user['firebase_uid'] ?? ''));
     $email = strtolower(trim((string)($user['email'] ?? '')));
