@@ -82,9 +82,8 @@
 </IfModule>
 
 # Security: Deny direct access to config and services files
-<FilesMatch "(?i)\.(inc|json|lock|env|md|sql|log)$">
-    Order Deny,Allow
-    Deny from all
+<FilesMatch "(?i)\.(inc|json|lock|env|md|sql|log|txt|zip|bak|dist)$">
+    Require all denied
 </FilesMatch>
 
 Options -Indexes

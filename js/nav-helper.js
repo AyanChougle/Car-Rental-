@@ -148,17 +148,39 @@ export function initDynamicNav() {
     document.getElementById("mainNav") || document.querySelector("header .nav");
 
   if (toggleBtn && navMenu) {
+    if (toggleBtn.dataset.navBound === "1") return;
+    toggleBtn.dataset.navBound = "1";
+
+    const closeNav = () => {
+      navMenu.classList.remove("is-open");
+      toggleBtn.classList.remove("is-open");
+      toggleBtn.setAttribute("aria-expanded", "false");
+      toggleBtn.setAttribute("aria-label", "Open navigation menu");
+    };
+
     toggleBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       const isOpen = navMenu.classList.toggle("is-open");
+      toggleBtn.classList.toggle("is-open", isOpen);
       toggleBtn.setAttribute("aria-expanded", String(isOpen));
+      toggleBtn.setAttribute(
+        "aria-label",
+        isOpen ? "Close navigation menu" : "Open navigation menu"
+      );
+    });
+
+    navMenu.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", closeNav);
     });
 
     document.addEventListener("click", (e) => {
       if (!navMenu.contains(e.target) && !toggleBtn.contains(e.target)) {
-        navMenu.classList.remove("is-open");
-        toggleBtn.setAttribute("aria-expanded", "false");
+        closeNav();
       }
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth > 991) closeNav();
     });
   }
 }

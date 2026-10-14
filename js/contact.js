@@ -83,10 +83,10 @@ if (form && status) {
 
     // Show success status with quick WhatsApp fallback
     status.innerHTML = `
-      <span style="color: #4fd7ff; font-weight: 700;">? Opening your email client to send to support@kruizly.com...</span>
+      <span style="color: #4fd7ff; font-weight: 700;">✓ Opening your email client to send to support@kruizly.com...</span>
       <div style="margin-top: 8px;">
         <a href="${waLink}" target="_blank" rel="noopener noreferrer" style="color: #25d366; font-size: 13px; font-weight: 700; text-decoration: underline;">
-          Or click here to send via WhatsApp ?
+          Or click here to send via WhatsApp →
         </a>
       </div>
     `;

@@ -22,6 +22,7 @@ const myListingsSection = document.getElementById("myListingsSection");
 const myListingsWrap = document.getElementById("myListingsWrap");
 
 const MAX_HOST_PHOTOS = 6;
+const MAX_HOST_PHOTO_BYTES = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_PARTNER_EXTS = [
   "jpg", "jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "svg", "avif", "heic", "heif",
   "zip", "zipx", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "tar.gz", "tar.bz2", "tar.xz",

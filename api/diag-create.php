@@ -1,5 +1,6 @@
 <?php
-// TEMPORARY: open https://kruizly.com/api/diag-create.php then DELETE this file.
+require_once __DIR__ . '/middleware/auth.php';
+Auth::requireRole('admin');
 header('Content-Type: application/json');
 $f = __DIR__ . '/bookings/create.php';
 $src = @file_get_contents($f);

@@ -1554,10 +1554,10 @@ function renderBooking(booking) {
   } else if (status !== "cancelled" && status !== "rejected" && status !== "completed") {
     const isBalancePayment = (booking.paymentStatus === "advance_paid" || advAmount > 0) && remBalance > 0;
     const btnLabel = booking.paymentStatus === "rejected"
-      ? `Resubmit Payment (₹${formatINR(amountDue)})`
+      ? `Resubmit Payment (${formatINR(amountDue)})`
       : (isBalancePayment
-          ? `Pay Remaining Balance (₹${formatINR(amountDue)})`
-          : `Pay Full Amount (₹${formatINR(amountDue)})`);
+          ? `Pay Remaining Balance (${formatINR(amountDue)})`
+          : `Pay Full Amount (${formatINR(amountDue)})`);
 
     paymentButton = `
       <a
@@ -1670,12 +1670,12 @@ function renderBooking(booking) {
             ? `
               <div class="booking-detail">
                 <span>Token Paid</span>
-                <strong style="color: #06d6a0;">₹${formatINR(advAmount || 500)}</strong>
+                <strong style="color: #06d6a0;">${formatINR(advAmount || 500)}</strong>
               </div>
               <div class="booking-detail">
                 <span>Remaining Due</span>
                 <strong style="color: ${remBalance > 0 ? '#ef476f' : '#06d6a0'};">
-                  ${remBalance > 0 ? `₹${formatINR(remBalance)}` : '₹0 (Fully Paid)'}
+                  ${remBalance > 0 ? `${formatINR(remBalance)}` : '₹0 (Fully Paid)'}
                 </strong>
               </div>
             `

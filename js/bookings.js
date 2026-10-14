@@ -276,7 +276,8 @@ function wireActions(bookings) {
       btn.textContent = "Cancelling...";
       try {
         await api.post(`/bookings/${btn.dataset.id}/cancel`);
-        const uid = auth.currentUser && auth.currentUser.uid;
+        const currentUser = await getCurrentUser();
+        const uid = currentUser && currentUser.uid;
         if (uid) loadBookings(uid);
       } catch (error) {
         alert("Could not cancel booking: " + error.message);

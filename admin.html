@@ -56,13 +56,80 @@
       <div class="container">
         <div class="section-header centered">
           <span class="section-label">Administration</span>
-          
-      
-
-            <h1 class="section-title">Admin Control Center</h1>
+          <h1 class="section-title">Admin Control Center</h1>
         </div>
 
-        <div id="adminContent" class="admin-wrapper" style="margin-top: 20px">
+        <!-- Access Denied Card -->
+        <div
+          id="adminAccessDenied"
+          class="card admin-panel-card admin-access-denied"
+          hidden
+          style="
+            display: none;
+            margin: 40px auto;
+            max-width: 520px;
+            text-align: center;
+            padding: 40px 28px;
+          "
+        >
+          <div
+            style="
+              width: 56px;
+              height: 56px;
+              border-radius: 50%;
+              background: rgba(255, 92, 108, 0.12);
+              border: 1px solid rgba(255, 92, 108, 0.3);
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              margin: 0 auto 16px;
+              color: #ff5c6c;
+            "
+          >
+            <svg
+              viewBox="0 0 24 24"
+              width="28"
+              height="28"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+            </svg>
+          </div>
+          <h3
+            style="
+              font-size: 1.35rem;
+              color: #ffffff;
+              margin-bottom: 8px;
+              font-weight: 800;
+            "
+          >
+            Administrator Access Required
+          </h3>
+          <p
+            style="
+              color: var(--sub);
+              font-size: 14px;
+              line-height: 1.6;
+              margin-bottom: 24px;
+            "
+          >
+            This console is restricted to authorized KRUIZLY administrators.
+            Please sign in with an administrator account to view controls.
+          </p>
+          <div class="admin-access-actions">
+            <a
+              href="profile.html"
+              class="btn btn-primary"
+              style="height: 40px; padding: 0 24px; font-size: 13.5px"
+              >Go to Profile</a
+            >
+          </div>
+        </div>
+
+        <div id="adminContent" class="admin-wrapper" style="margin-top: 20px" hidden>
           <!-- Combined Business & Operations KPIs Grid -->
           <div
             style="

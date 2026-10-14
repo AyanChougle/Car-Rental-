@@ -11,7 +11,7 @@ require_once __DIR__ . '/../middleware/auth.php';
 
 
 
-$user = Auth::optionalAuth();
+$user = Auth::requireRole('admin', 'manager', 'executive', 'accountant');
 $hubId = isset($_GET['hub_id']) && $_GET['hub_id'] !== '' ? (int)$_GET['hub_id'] : (isset($_GET['id']) ? (int)$_GET['id'] : 0);
 
 if ($hubId <= 0) {
@@ -113,7 +113,11 @@ $available = max(0, $fleetCount - $onRoad);
 $occupancy = $fleetCount > 0 ? round(($onRoad / $fleetCount) * 100, 2) : 0;
 
 $userCount = (int)(Database::fetchOne("SELECT COUNT(*) AS c FROM users")['c'] ?? 0);
-$pendingDocs = (int)(Database::fetchOne("SELECT COUNT(*) AS c FROM user_documents WHERE status = 'pending'")['c'] ?? 0);
+try {
+    $pendingDocs = (int)(Database::fetchOne("SELECT COUNT(*) AS c FROM verification WHERE overall_status = 'pending'")['c'] ?? 0);
+} catch (Throwable $_) {
+    $pendingDocs = 0;
+}
 
 $totalBookingsCount = count($bookings);
 $paidBookingsCount = count($paidBookings);

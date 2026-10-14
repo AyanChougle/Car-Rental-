@@ -66,9 +66,7 @@ class Auth {
             }
         }
 
-        // Check GET, POST, Cookie fallbacks
-        if (!empty($_GET['token'])) $candidateTokens[] = trim((string)$_GET['token']);
-        if (!empty($_GET['idToken'])) $candidateTokens[] = trim((string)$_GET['idToken']);
+        // Check POST, Cookie fallbacks (NEVER accept tokens in URL query strings)
         if (!empty($_POST['idToken'])) $candidateTokens[] = trim((string)$_POST['idToken']);
         if (!empty($_COOKIE['kruizly_token'])) $candidateTokens[] = trim((string)$_COOKIE['kruizly_token']);
         if (!empty($_COOKIE['token'])) $candidateTokens[] = trim((string)$_COOKIE['token']);
@@ -90,6 +88,9 @@ class Auth {
         foreach ($candidateTokens as $idToken) {
             try {
                 $payload = FirebaseJwtService::verifyIdToken($idToken);
+                if (empty($payload['_sig_verified'])) {
+                    continue;
+                }
                 $firebaseUid = $payload['sub'] ?? '';
                 if (!$firebaseUid) {
                     continue;
@@ -197,6 +198,9 @@ class Auth {
         $user = self::resolveUser();
         if (!$user) {
             sendErrorResponse('Authentication required. Please sign in to continue.', 401);
+        }
+        if (($user['status'] ?? 'active') !== 'active') {
+            sendErrorResponse('Account is deactivated or suspended.', 403);
         }
         return $user;
     }

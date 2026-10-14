@@ -18,7 +18,7 @@ if ($method === 'OPTIONS') {
 
 if ($method === 'GET') {
     try {
-        $user = Auth::optionalAuth();
+        $user = Auth::requireRole('admin', 'manager', 'accountant');
 
         require_once __DIR__ . '/../services/KpiService.php';
         $syncData = KpiService::getMetrics();

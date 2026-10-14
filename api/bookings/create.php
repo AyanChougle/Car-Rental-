@@ -12,12 +12,31 @@ if (!headers_sent()) { header('X-Kruizly-Create-Rev: 2026-09-30-v4'); }
 $user = Auth::requireAuth();
 $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 
+$isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive', 'accountant', 'super_admin'], true);
+
 $pickupDate = date('Y-m-d H:i:s', strtotime((string)($input['pickupDate'] ?? 'now')));
+$dropDate = date('Y-m-d H:i:s', strtotime((string)($input['dropDate'] ?? '+1 day')));
+$days = max(1, (int)($input['days'] ?? $input['durationDays'] ?? 1));
+$hours = (int)($input['hours'] ?? ($days * 24));
+$duration = trim((string)($input['duration'] ?? ($days . ' Day' . ($days > 1 ? 's' : ''))));
+
 $monthCode = strtoupper(date('M', strtotime($pickupDate)));
 $prefix = 'KRZ-' . $monthCode . '-';
 
 $incomingId = trim((string)($input['bookingId'] ?? $input['bookingNumber'] ?? ''));
-if (!$incomingId || !preg_match('/^KRZ-[A-Z]{3}-\d+$/i', $incomingId)) {
+if ($incomingId && preg_match('/^KRZ-[A-Z]{3}-\d+$/i', $incomingId)) {
+    // IDOR protection: check if booking already exists in DB
+    $existing = Database::fetchOne(
+        "SELECT firebase_uid, status FROM bookings WHERE booking_number = ? OR booking_id = ? LIMIT 1",
+        [$incomingId, $incomingId]
+    );
+    if ($existing) {
+        if (!$isStaff && ($existing['firebase_uid'] !== $user['firebase_uid'] || !in_array($existing['status'], ['pending_payment', 'pending'], true))) {
+            sendErrorResponse('Cannot overwrite existing booking record.', 403);
+        }
+    }
+    $bookingId = strtoupper($incomingId);
+} else {
     // Determine the next sequence number for this month in MySQL
     $latestRow = Database::fetchOne(
         "SELECT booking_number FROM bookings 
@@ -32,35 +51,71 @@ if (!$incomingId || !preg_match('/^KRZ-[A-Z]{3}-\d+$/i', $incomingId)) {
         $nextSeq = ((int)$m[1]) + 1;
     }
     $bookingId = sprintf("KRZ-%s-%03d", $monthCode, $nextSeq);
-} else {
-    $bookingId = strtoupper($incomingId);
 }
 $bookingNumber = $bookingId;
 
 $vehicleReg = strtoupper(trim((string)($input['vehicleReg'] ?? $input['carId'] ?? '')));
-$dropDate = date('Y-m-d H:i:s', strtotime((string)($input['dropDate'] ?? '+1 day')));
-$duration = trim((string)($input['duration'] ?? '1 Day'));
-$days = (int)($input['days'] ?? $input['durationDays'] ?? 1);
-$hours = (int)($input['hours'] ?? ($days * 24));
-$withDriver = (int)($input['withDriver'] ?? 0);
-$baseAmount = (float)($input['baseAmount'] ?? $input['rentalTotal'] ?? 0.00);
-$totalAmount = (float)($input['totalAmount'] ?? $input['finalAmount'] ?? $baseAmount);
-$advanceAmount = (float)($input['advanceAmount'] ?? 0.00);
-$remainingBalance = (float)($input['remainingBalance'] ?? $input['remainingAmount'] ?? ($totalAmount - $advanceAmount));
-$securityDeposit = (float)($input['securityDeposit'] ?? 0.00);
-$couponCode = trim((string)($input['couponCode'] ?? ''));
-$couponDiscount = (float)($input['couponDiscount'] ?? 0.00);
-$paymentPlan = trim((string)($input['paymentPlan'] ?? 'full'));
-$paymentStatus = trim((string)($input['paymentStatus'] ?? 'pending_payment'));
-$status = trim((string)($input['status'] ?? 'pending_payment'));
-$pickupHubId = isset($input['pickup_hub_id']) ? (int)$input['pickup_hub_id'] : (isset($input['hub_id']) ? (int)$input['hub_id'] : null);
-$dropHubId = isset($input['drop_hub_id']) ? (int)$input['drop_hub_id'] : $pickupHubId;
-
-// Fetch vehicle
 $vehicle = $vehicleReg ? Database::fetchOne("SELECT * FROM vehicles WHERE reg_no = ? LIMIT 1", [$vehicleReg]) : null;
 $vehicleId = $vehicle && !empty($vehicle['id']) ? (int)$vehicle['id'] : null;
 $vehicleName = $vehicle ? ($vehicle['brand'] . ' ' . $vehicle['model']) : ($input['vehicleName'] ?? 'Vehicle');
 $vehicleCategory = $vehicle ? $vehicle['category'] : ($input['vehicleCategory'] ?? 'Sedan');
+
+// Server-side price calculation
+$priceDay = $vehicle ? (float)($vehicle['price_day'] ?? 0.00) : 0.00;
+$calculatedBase = ($priceDay > 0) ? round($priceDay * $days, 2) : 0.00;
+$clientBase = (float)($input['baseAmount'] ?? $input['rentalTotal'] ?? 0.00);
+$baseAmount = ($calculatedBase > 0) ? $calculatedBase : ($clientBase > 0 ? $clientBase : 0.00);
+
+$withDriver = (int)($input['withDriver'] ?? 0);
+
+// Server-side coupon verification
+$couponCode = trim((string)($input['couponCode'] ?? ''));
+$couponDiscount = 0.00;
+if ($couponCode !== '') {
+    $cRow = Database::fetchOne("SELECT * FROM coupons WHERE UPPER(code) = ? AND (active = 1 OR status = 'active') LIMIT 1", [strtoupper($couponCode)]);
+    if ($cRow) {
+        $isExpired = !empty($cRow['expires_at']) && strtotime((string)$cRow['expires_at']) < time();
+        $minOrder = (float)($cRow['min_order'] ?? 0.00);
+        if (!$isExpired && ($minOrder <= 0 || $baseAmount >= $minOrder)) {
+            $isPercent = (($cRow['discount_type'] ?? '') === 'percentage' || ($cRow['discount_type'] ?? '') === 'percent' || (isset($cRow['label']) && strpos((string)$cRow['label'], '%') !== false));
+            if ($isPercent) {
+                $couponDiscount = round(($baseAmount * (float)$cRow['discount_value']) / 100, 2);
+                if (!empty($cRow['max_discount']) && (float)$cRow['max_discount'] > 0) {
+                    $couponDiscount = min($couponDiscount, (float)$cRow['max_discount']);
+                }
+            } else {
+                $couponDiscount = min($baseAmount, (float)$cRow['discount_value']);
+            }
+        }
+    }
+    if ($couponDiscount === 0.00 && $isStaff) {
+        $couponDiscount = (float)($input['couponDiscount'] ?? 0.00);
+    }
+}
+
+$securityDeposit = (float)($input['securityDeposit'] ?? 0.00);
+$totalAmount = max(0.00, round($baseAmount - $couponDiscount, 2));
+
+$paymentPlan = trim((string)($input['paymentPlan'] ?? 'full'));
+if ($paymentPlan === 'advance') {
+    $advanceAmount = round($totalAmount * 0.20, 2);
+    $remainingBalance = max(0.00, round($totalAmount - $advanceAmount, 2));
+} else {
+    $advanceAmount = $totalAmount;
+    $remainingBalance = 0.00;
+}
+
+// Enforce initial payment status (customers cannot self-mark as paid or confirmed)
+if ($isStaff) {
+    $paymentStatus = trim((string)($input['paymentStatus'] ?? 'pending_payment'));
+    $status = trim((string)($input['status'] ?? 'pending_payment'));
+} else {
+    $paymentStatus = 'pending_payment';
+    $status = 'pending_payment';
+}
+
+$pickupHubId = isset($input['pickup_hub_id']) ? (int)$input['pickup_hub_id'] : (isset($input['hub_id']) ? (int)$input['hub_id'] : null);
+$dropHubId = isset($input['drop_hub_id']) ? (int)$input['drop_hub_id'] : $pickupHubId;
 
 // Resolve hub: prefer explicit ids, then the vehicle's own hub
 if (!$pickupHubId && !empty($vehicle['hub_id'] ?? null)) { $pickupHubId = (int)$vehicle['hub_id']; }

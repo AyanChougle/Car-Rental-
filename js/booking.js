@@ -304,7 +304,6 @@ async function initBooking(vehicle) {
       }
       calculateBooking();
       renderAppliedCoupons();
-      renderSuggestedCoupons(baseCalc.rentalTotal || 0);
     } else {
       if (couponMsg) {
         couponMsg.textContent = result.error || "Coupon could not be applied.";

@@ -8,7 +8,13 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../middleware/auth.php';
 require_once __DIR__ . '/../middleware/cors.php';
+
+// Guard: Only allow execution via CLI or by authenticated admin
+if (PHP_SAPI !== 'cli') {
+    Auth::requireRole('admin', 'super_admin');
+}
 
 header('Content-Type: application/json; charset=utf-8');
 

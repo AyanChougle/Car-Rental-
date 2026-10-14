@@ -58,7 +58,7 @@ const RETURN_PHOTO_TYPES = [
 const RETURN_PHOTO_MAX_BYTES = 6 * 1024 * 1024;
 
 function formatCurrency(n) {
-  return `?${Math.round(n).toLocaleString("en-IN")}`;
+  return `₹${Math.round(n).toLocaleString("en-IN")}`;
 }
 
 function safeFileName(value) {
@@ -304,7 +304,7 @@ export function openReturnModal({ booking, currentUser, onSaved }) {
             <span class="return-item-label">${item.label}</span>
           </div>
           <div class="return-item-input-wrap">
-            <span class="return-item-currency">?</span>
+            <span class="return-item-currency">₹</span>
             <input type="number" class="return-item-amount" min="0" step="50" value="${item.amount}" ${item.checked ? "" : "disabled"} />
           </div>
         </label>

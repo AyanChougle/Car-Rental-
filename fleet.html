@@ -481,39 +481,6 @@
     </div>
   </footer>
 
-  <script>
-    (() => {
-      const toggle = document.getElementById("mobileNavToggle");
-      const nav = document.getElementById("mainNav");
-
-      if (!toggle || !nav) return;
-
-      const closeMenu = () => {
-        nav.classList.remove("is-open");
-        toggle.classList.remove("is-open");
-        toggle.setAttribute("aria-expanded", "false");
-        toggle.setAttribute("aria-label", "Open navigation menu");
-      };
-
-      toggle.addEventListener("click", () => {
-        const open = nav.classList.toggle("is-open");
-        toggle.classList.toggle("is-open", open);
-        toggle.setAttribute("aria-expanded", String(open));
-        toggle.setAttribute(
-          "aria-label",
-          open ? "Close navigation menu" : "Open navigation menu"
-        );
-      });
-
-      nav.querySelectorAll("a").forEach((link) => {
-        link.addEventListener("click", closeMenu);
-      });
-
-      window.addEventListener("resize", () => {
-        if (window.innerWidth > 760) closeMenu();
-      });
-    })();
-  </script>
   <script src="js/vehicles.js?v=20261001-v5"></script>
   <script type="module" src="js/fleet.js?v=20261001-v8"></script>
   <script src="js/glass-ui.js?v=20260917-v1"></script>

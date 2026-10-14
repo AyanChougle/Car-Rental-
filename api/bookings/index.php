@@ -20,7 +20,7 @@ if ($method === 'POST') {
 }
 
 if ($method === 'GET') {
-    $user = Auth::optionalAuth();
+    $user = Auth::requireRole('admin', 'manager', 'executive', 'accountant');
 
     $status = trim((string)($_GET['status'] ?? ''));
     $search = trim((string)($_GET['search'] ?? ''));

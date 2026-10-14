@@ -16,6 +16,9 @@
     RewriteRule ^api/bookings/cancel(?:\.php)?/?$ api/bookings/cancel.php [QSA,L]
     RewriteRule ^bookings/cancel(?:\.php)?/?$ api/bookings/cancel.php [QSA,L]
 
+    # Block direct access to database directory
+    RewriteRule ^database(/.*)?$ - [F,L]
+
     # Clean URLs for HTML pages
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteCond %{REQUEST_FILENAME} !-f
@@ -31,10 +34,11 @@
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
 </IfModule>
 
 # Block sensitive files
-<FilesMatch "(?i)\.(env|json|lock|sql|md|log|git|sh|bak|dist)$">
+<FilesMatch "(?i)\.(env|json|lock|sql|md|log|git|sh|bak|dist|zip|tar|gz|7z|rar|txt)$">
     Require all denied
 </FilesMatch>
 

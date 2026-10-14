@@ -16,7 +16,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 if ($method === 'GET') {
     $user = Auth::optionalAuth();
     $isStaff = $user && in_array($user['role'] ?? '', ['admin', 'manager', 'executive'], true);
-    $showAll = $isStaff || isset($_GET['all']) || (isset($_GET['admin']) && $_GET['admin'] == '1');
+    $showAll = $isStaff && (isset($_GET['all']) || (isset($_GET['admin']) && $_GET['admin'] == '1'));
 
 
 

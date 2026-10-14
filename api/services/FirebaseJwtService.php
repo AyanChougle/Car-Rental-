@@ -45,9 +45,14 @@ class FirebaseJwtService {
             throw new Exception('Invalid JWT header: Must be RS256 algorithm.');
         }
 
+        $kid = trim((string)($header['kid'] ?? ''));
+        if (empty($kid)) {
+            throw new Exception('Invalid JWT header: kid is required.');
+        }
+
         // 2. Validate payload standard claims
         $now = time();
-        $projectId = FIREBASE_PROJECT_ID;
+        $projectId = defined('FIREBASE_PROJECT_ID') ? FIREBASE_PROJECT_ID : 'carrentpeweb';
 
         // Subject (Firebase UID) must not be empty
         $sub = trim((string)($payload['sub'] ?? ($payload['user_id'] ?? ($payload['uid'] ?? ''))));
@@ -56,34 +61,36 @@ class FirebaseJwtService {
         }
         $payload['sub'] = $sub;
 
-        // Expiration check (with 86400-second / 24-hour grace tolerance for active sessions)
-        if (isset($payload['exp']) && ($payload['exp'] + 86400) < $now) {
+        // Expiration check (with 60-second clock skew tolerance)
+        if (!isset($payload['exp']) || ($payload['exp'] + 60) < $now) {
             throw new Exception('Firebase ID token has expired.');
         }
 
-        // Issuer check (must be Google Securetoken or Google Accounts)
+        // Audience check
+        if (!empty($projectId) && isset($payload['aud']) && $payload['aud'] !== $projectId) {
+            throw new Exception('Invalid token audience: expected ' . $projectId);
+        }
+
+        // Issuer check (must be Google Securetoken for this project)
         $issuer = (string)($payload['iss'] ?? '');
-        if ($issuer && !str_contains($issuer, 'securetoken.google.com') && !str_contains($issuer, 'accounts.google.com')) {
-            throw new Exception('Invalid token issuer.');
+        $expectedIss = 'https://securetoken.google.com/' . $projectId;
+        if ($issuer && $issuer !== $expectedIss && !str_contains($issuer, 'securetoken.google.com')) {
+            throw new Exception('Invalid token issuer: ' . $issuer);
         }
 
-        // 3. Verify RS256 cryptographic signature with Google's public key if available
-        $kid = $header['kid'] ?? null;
-        if ($kid) {
-            try {
-                $publicKey = self::getPublicKey($kid);
-                if ($publicKey) {
-                    $dataToVerify = "$headerB64.$payloadB64";
-                    $verified = @openssl_verify($dataToVerify, $signature, $publicKey, OPENSSL_ALGO_SHA256);
-                    if ($verified === 1) {
-                        $payload['_sig_verified'] = true;
-                    }
-                }
-            } catch (Throwable $e) {
-                error_log("[FirebaseJwtService Signature Notice] " . $e->getMessage());
-            }
+        // 3. Verify RS256 cryptographic signature with Google's public key
+        $publicKey = self::getPublicKey($kid);
+        if (!$publicKey) {
+            throw new Exception('Unable to retrieve public key for token verification.');
         }
 
+        $dataToVerify = "$headerB64.$payloadB64";
+        $verified = @openssl_verify($dataToVerify, $signature, $publicKey, OPENSSL_ALGO_SHA256);
+        if ($verified !== 1) {
+            throw new Exception('Cryptographic signature verification failed.');
+        }
+
+        $payload['_sig_verified'] = true;
         return $payload;
     }
 

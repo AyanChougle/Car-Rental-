@@ -492,6 +492,11 @@ async function initAdminAuth() {
 
   currentUser = getCurrentUser();
   if (!isAdminUser(currentUser)) {
+    const denied = document.getElementById("adminAccessDenied");
+    if (denied) {
+      denied.hidden = false;
+      denied.style.display = "block";
+    }
     alert("Access denied. Admin privileges required.");
     window.location.href = "profile.html";
     return;
@@ -10532,7 +10537,8 @@ function refreshActiveAdminTab() {
 setInterval(() => {
   if (
     typeof document !== "undefined" &&
-    document.visibilityState === "visible"
+    document.visibilityState === "visible" &&
+    document.getElementById("adminContent")
   ) {
     refreshActiveAdminTab();
   }
@@ -10541,7 +10547,10 @@ setInterval(() => {
 // Auto-fetch immediately when admin returns to tab
 if (typeof document !== "undefined") {
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
+    if (
+      document.visibilityState === "visible" &&
+      document.getElementById("adminContent")
+    ) {
       refreshActiveAdminTab();
     }
   });
@@ -10876,6 +10885,7 @@ async function handleHubSubmit(event) {
 }
 
 window.addEventListener("kruizly:hubchange", async (event) => {
+  if (!document.getElementById("adminContent")) return;
   const id = event?.detail?.hubId ? String(event.detail.hubId) : "";
   setSelectedHubId(id);
   const fleetHub = document.getElementById("fleetHub");

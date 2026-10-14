@@ -178,6 +178,14 @@ class FileStorageService {
         $originalName = 'document.png';
 
         if ($media) {
+            $isStaff = $user && in_array($user['role'] ?? '', ['admin', 'super_admin', 'manager', 'executive', 'accountant'], true);
+            $isOwner = $user && !empty($user['firebase_uid']) && ($user['firebase_uid'] === ($media['firebase_uid'] ?? ''));
+            $isPublicMedia = in_array($media['category'] ?? '', ['vehicle_gallery', 'vehicle_fleet', 'public'], true);
+
+            if (!$isPublicMedia && !$isOwner && !$isStaff) {
+                sendErrorResponse('Access denied to private document.', 403);
+            }
+
             $mimeType = $media['mime_type'] ?: 'image/png';
             $originalName = $media['original_name'] ?: 'document.png';
             $candidatePath = $media['stored_path'] ?? '';
@@ -211,6 +219,9 @@ class FileStorageService {
 
         if (!$filePath && $mediaId) {
             $cleanRel = str_replace(['../', '..\\'], '', $mediaId);
+            $cleanRel = str_replace(['..', '\\'], '', $cleanRel);
+            $storageRootReal = realpath(STORAGE_ROOT) ?: STORAGE_ROOT;
+
             $candidates = [
                 STORAGE_ROOT . '/' . ltrim($cleanRel, '/'),
                 STORAGE_ROOT . '/users/' . ltrim($cleanRel, '/'),
@@ -218,17 +229,29 @@ class FileStorageService {
                 STORAGE_ROOT . '/inspection_photo/' . ltrim($cleanRel, '/'),
                 STORAGE_ROOT . '/invoices/' . ltrim($cleanRel, '/'),
                 STORAGE_ROOT . '/vehicles/' . ltrim($cleanRel, '/'),
-                __DIR__ . '/../../storage/' . ltrim($cleanRel, '/'),
             ];
             foreach ($candidates as $cand) {
-                if ($cand && file_exists($cand) && !is_dir($cand)) {
-                    $filePath = $cand;
-                    $originalName = basename($cand);
-                    $lowerCand = strtolower(basename($cand));
+                $candReal = realpath($cand);
+                if ($candReal && is_file($candReal) && str_starts_with($candReal, $storageRootReal . DIRECTORY_SEPARATOR)) {
+                    $isStaff = $user && in_array($user['role'] ?? '', ['admin', 'super_admin', 'manager', 'executive', 'accountant'], true);
+                    $isPublicDir = str_contains($candReal, DIRECTORY_SEPARATOR . 'vehicles' . DIRECTORY_SEPARATOR) ||
+                                   str_contains($candReal, DIRECTORY_SEPARATOR . 'vehicle_gallery' . DIRECTORY_SEPARATOR);
+
+                    if (!$isPublicDir && !$isStaff) {
+                        $uid = $user['firebase_uid'] ?? '___';
+                        $isOwnerDir = !empty($user['firebase_uid']) && str_contains($candReal, DIRECTORY_SEPARATOR . $uid . DIRECTORY_SEPARATOR);
+                        if (!$isOwnerDir) {
+                            sendErrorResponse('Access denied to private document.', 403);
+                        }
+                    }
+
+                    $filePath = $candReal;
+                    $originalName = basename($candReal);
+                    $lowerCand = strtolower(basename($candReal));
                     if (preg_match('/\.tar\.(gz|bz2|xz)$/i', $lowerCand, $m)) {
                         $ext = 'tar.' . strtolower($m[1]);
                     } else {
-                        $ext = strtolower(pathinfo($cand, PATHINFO_EXTENSION));
+                        $ext = strtolower(pathinfo($candReal, PATHINFO_EXTENSION));
                     }
                     $mimeType = self::getMimeFromExtension($ext);
                     break;
@@ -239,7 +262,11 @@ class FileStorageService {
         if ($filePath && file_exists($filePath) && !is_dir($filePath)) {
             header('Content-Type: ' . $mimeType);
             header('Content-Length: ' . filesize($filePath));
-            header('Cache-Control: public, max-age=86400');
+            header('Cache-Control: private, max-age=86400');
+            header('X-Content-Type-Options: nosniff');
+            if ($mimeType === 'image/svg+xml' || $mimeType === 'text/html') {
+                header("Content-Security-Policy: default-src 'none'; sandbox;");
+            }
             header('Content-Disposition: inline; filename="' . basename($originalName) . '"');
             readfile($filePath);
             exit;
