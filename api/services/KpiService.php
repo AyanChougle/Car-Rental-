@@ -392,21 +392,31 @@ class KpiService
                 $existing = $existingMetrics[$monthStart] ?? null;
                 $existingRev = isset($existing['month_sales']) ? (float)$existing['month_sales'] : 0.0;
                 
-                // Master ledger protection: month_sales and counts must NEVER be downgraded below existing kpi_metrics database values
-                $mRev = max($calcRev, $existingRev);
+                $isCurrentMonth = ($monthStart === $currentMonthKey);
+                $isHistorical = ($monthStart < $currentMonthKey);
 
-                $mBookingsCount = max(
-                    isset($monthlyBookings[$monthStart]) ? count($monthlyBookings[$monthStart]) : 0,
-                    (int)($existing['total_bookings'] ?? 0)
-                );
-                $mPaidCount = max(
-                    isset($monthlyPaidBookings[$monthStart]) ? count($monthlyPaidBookings[$monthStart]) : 0,
-                    (int)($existing['paid_bookings'] ?? 0)
-                );
-                $mCompletedCount = max(
-                    isset($monthlyCompletedTrips[$monthStart]) ? (int)$monthlyCompletedTrips[$monthStart] : 0,
-                    (int)($existing['completed_trips'] ?? 0)
-                );
+                if ($isHistorical && $existing) {
+                    // Exactly preserve user's database values for historical months (July, August, September)
+                    $mRev = (float)($existing['month_sales'] ?? $existing['total_revenue'] ?? 0.0);
+                    $mBookingsCount = (int)($existing['total_bookings'] ?? 0);
+                    $mPaidCount = (int)($existing['paid_bookings'] ?? 0);
+                    $mCompletedCount = (int)($existing['completed_trips'] ?? 0);
+                } else {
+                    // Current reporting month (October onwards): count ahead dynamically from live booking amounts
+                    $mRev = max($calcRev, $existingRev);
+                    $mBookingsCount = max(
+                        isset($monthlyBookings[$monthStart]) ? count($monthlyBookings[$monthStart]) : 0,
+                        (int)($existing['total_bookings'] ?? 0)
+                    );
+                    $mPaidCount = max(
+                        isset($monthlyPaidBookings[$monthStart]) ? count($monthlyPaidBookings[$monthStart]) : 0,
+                        (int)($existing['paid_bookings'] ?? 0)
+                    );
+                    $mCompletedCount = max(
+                        isset($monthlyCompletedTrips[$monthStart]) ? (int)$monthlyCompletedTrips[$monthStart] : 0,
+                        (int)($existing['completed_trips'] ?? 0)
+                    );
+                }
 
                 $monthUsers = (int)(Database::fetchOne(
                     "SELECT COUNT(DISTINCT firebase_uid) AS c
@@ -415,7 +425,6 @@ class KpiService
                     [$monthEnd]
                 )['c'] ?? 0);
 
-                $isCurrentMonth = ($monthStart === $currentMonthKey);
                 $rowOnRoad = $isCurrentMonth ? $onRoadFleet : (int)($existing['on_road_fleet'] ?? 0);
                 $rowYard = max(0, $totalFleet - $rowOnRoad);
                 $rowOccupancy = $totalFleet > 0 ? min(100, round(($rowOnRoad / $totalFleet) * 100, 2)) : 0;
@@ -448,28 +457,102 @@ class KpiService
 
             // Total Whole Revenue: running cumulative sum of all monthly revenue across company ledger
             $runningTotal = 0.0;
+            $runningBookings = 0;
+            $runningPaidBookings = 0;
             foreach (array_keys($monthlyRows) as $mKey) {
                 $runningTotal += (float)$monthlyRows[$mKey]['month_sales'];
+                $runningBookings += (int)$monthlyRows[$mKey]['total_bookings'];
+                $runningPaidBookings += (int)$monthlyRows[$mKey]['paid_bookings'];
+
                 $existingTot = (float)($existingMetrics[$mKey]['total_revenue'] ?? 0.0);
                 $monthlyRows[$mKey]['total_revenue'] = max(round($runningTotal, 2), $existingTot);
             }
             $grandTotalRevenue = round($runningTotal, 2);
-            if (!empty($existingMetrics)) {
-                $maxExistingTot = 0.0;
-                foreach ($existingMetrics as $em) {
-                    if ((float)($em['total_revenue'] ?? 0) > $maxExistingTot) {
-                        $maxExistingTot = (float)$em['total_revenue'];
-                    }
-                }
-                $grandTotalRevenue = max($grandTotalRevenue, $maxExistingTot);
-            }
-
-            // Calculation complete. Strictly do NOT persist or overwrite kpi_metrics table, so manual database edits from phpMyAdmin are 100% preserved.
 
             $previousMonthKey = date('Y-m-01', strtotime('-1 month'));
             $currentMonthRevenue = (float)($monthlyRows[$currentMonthKey]['month_sales'] ?? 0.0);
             $lastMonthRevenue = (float)($monthlyRows[$previousMonthKey]['month_sales'] ?? 0.0);
-            $avgBooking = $paidBookingsCount > 0 ? round($overallRevenue / $paidBookingsCount, 2) : 0.0;
+            $avgBooking = $runningPaidBookings > 0 ? round($grandTotalRevenue / $runningPaidBookings, 2) : 0.0;
+
+            // Auto-synchronize live metrics to kpi_hub_metrics (Hub 0) and kpi_metrics (October row only)
+            try {
+                Database::execute(
+                    "INSERT INTO `kpi_hub_metrics` 
+                     (`hub_id`, `hub_name`, `total_revenue`, `month_revenue`, `total_bookings`, `paid_bookings`, `active_trips`, `total_fleet`, `on_road_fleet`, `available_fleet`, `occupancy_pct`, `total_users`, `pending_docs`, `pending_payments`, `day_sales`, `week_sales`)
+                     VALUES
+                     (0, 'All Operating Hubs', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     ON DUPLICATE KEY UPDATE 
+                         `total_revenue` = VALUES(`total_revenue`),
+                         `month_revenue` = VALUES(`month_revenue`),
+                         `total_bookings` = VALUES(`total_bookings`),
+                         `paid_bookings` = VALUES(`paid_bookings`),
+                         `active_trips` = VALUES(`active_trips`),
+                         `total_fleet` = VALUES(`total_fleet`),
+                         `on_road_fleet` = VALUES(`on_road_fleet`),
+                         `available_fleet` = VALUES(`available_fleet`),
+                         `occupancy_pct` = VALUES(`occupancy_pct`),
+                         `total_users` = VALUES(`total_users`),
+                         `pending_docs` = VALUES(`pending_docs`),
+                         `pending_payments` = VALUES(`pending_payments`),
+                         `day_sales` = VALUES(`day_sales`),
+                         `week_sales` = VALUES(`week_sales`)",
+                    [
+                        $grandTotalRevenue,
+                        $currentMonthRevenue,
+                        $runningBookings,
+                        $runningPaidBookings,
+                        $onRoadFleet,
+                        $totalFleet,
+                        $onRoadFleet,
+                        $availableInYard,
+                        $fleetUtilization,
+                        $totalUsers,
+                        $pendingDocs,
+                        $pendingPayments,
+                        $daySales,
+                        $weekSales
+                    ]
+                );
+
+                // Update ONLY the October row in kpi_metrics (never touching July, August, September)
+                Database::execute(
+                    "INSERT INTO `kpi_metrics` 
+                     (`metric_date`, `day_sales`, `week_sales`, `month_sales`, `total_revenue`, `total_bookings`, `paid_bookings`, `active_trips`, `completed_trips`, `total_fleet`, `on_road_fleet`, `in_yard_fleet`, `occupancy_pct`, `total_users`)
+                     VALUES
+                     (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     ON DUPLICATE KEY UPDATE 
+                         `day_sales` = VALUES(`day_sales`),
+                         `week_sales` = VALUES(`week_sales`),
+                         `month_sales` = VALUES(`month_sales`),
+                         `total_revenue` = VALUES(`total_revenue`),
+                         `total_bookings` = VALUES(`total_bookings`),
+                         `paid_bookings` = VALUES(`paid_bookings`),
+                         `active_trips` = VALUES(`active_trips`),
+                         `completed_trips` = VALUES(`completed_trips`),
+                         `total_fleet` = VALUES(`total_fleet`),
+                         `on_road_fleet` = VALUES(`on_road_fleet`),
+                         `in_yard_fleet` = VALUES(`in_yard_fleet`),
+                         `occupancy_pct` = VALUES(`occupancy_pct`),
+                         `total_users` = VALUES(`total_users`)",
+                    [
+                        $currentMonthKey,
+                        $daySales,
+                        $weekSales,
+                        $currentMonthRevenue,
+                        $grandTotalRevenue,
+                        (int)($monthlyRows[$currentMonthKey]['total_bookings'] ?? 0),
+                        (int)($monthlyRows[$currentMonthKey]['paid_bookings'] ?? 0),
+                        $onRoadFleet,
+                        $completedTrips,
+                        $totalFleet,
+                        $onRoadFleet,
+                        $availableInYard,
+                        $fleetUtilization,
+                        $totalUsers
+                    ]
+                );
+            } catch (Throwable $_) {}
+
 
             $liveStats = [
                 'total_users' => $totalUsers,
@@ -512,22 +595,22 @@ class KpiService
      */
     public static function getBookingNetRental(array $b): float
     {
-        $pStat = strtolower(trim((string)($b['payment_status'] ?? '')));
-        if ($pStat === 'advance_paid' && !empty($b['advance_amount']) && empty($b['final_amount'])) {
-            return (float)$b['advance_amount'];
-        }
         $dep = (float)($b['security_deposit'] ?? 0);
-        $tot = (float)($b['final_amount'] ?? $b['total_amount'] ?? 0);
+        $tot = (float)($b['final_amount'] ?: ($b['total_amount'] ?? 0));
         $base = (float)($b['base_amount'] ?? 0);
         $disc = (float)($b['coupon_discount'] ?? 0);
 
-        if ($tot > 0 && $dep > 0) {
-            return max(0.0, $tot - $dep);
-        }
+        // If base rental amount exists, net rental is base minus discount
         if ($base > 0) {
-            return max(0.0, $base - $disc);
+            return round(max(0.0, $base - $disc), 2);
         }
-        return max(0.0, $tot - $dep);
+
+        // If total or advance was tracked, strictly subtract any refundable security deposit
+        if ($tot > 0 && $dep > 0 && $tot > $dep) {
+            return round($tot - $dep, 2);
+        }
+
+        return round(max(0.0, $tot - $dep), 2);
     }
 
     /**

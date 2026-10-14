@@ -365,8 +365,7 @@ function renderPaymentsTable() {
           ${p.userPhone ? `<br/><small style="color:var(--sub); font-size:11.5px;">${escapeHtml(p.userPhone)}</small>` : ""}
         </td>
         <td style="padding:12px 10px;">
-          <strong>${escapeHtml(p.vehicleName || "Vehicle")}</strong>
-          ${p.vehicleReg ? `<br/><small style="color:var(--sub); font-family:monospace;">${escapeHtml(p.vehicleReg)}</small>` : ""}
+          <strong style="color:#fff;">${escapeHtml(p.vehicleName || "Vehicle")}</strong>
         </td>
         <td style="padding:12px 10px; font-family:monospace;">
           <span style="font-size:11px; text-transform:uppercase; background:rgba(255,255,255,0.08); padding:2px 6px; border-radius:4px;">${escapeHtml(p.method || "UPI")}</span><br/>
