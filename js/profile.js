@@ -657,8 +657,13 @@ async function loadMyListings(userParam) {
         }
 
         const hostName = listing.userName || listing.ownerName || "Partner Host";
-        const hostPhone = listing.userPhone || "";
-        const hostEmail = listing.userEmail || "";
+        const isSelfCar = currentU && (listing.userId === currentU.uid || listing.userId === currentU.id);
+        let hostPhone = listing.userPhone || "";
+        let hostEmail = listing.userEmail || "";
+        if (!isSelfCar && (hostEmail === "carrentpedatabase@gmail.com" || hostEmail === "currentpedatabase@gmail.com" || hostEmail === "admin@kruizly.com")) {
+          hostEmail = "";
+          if (hostPhone === "7208533219") hostPhone = "";
+        }
 
         return `
         <article class="profile-listing-card">
@@ -2336,6 +2341,16 @@ function initLogout() {
    ============================================================ */
 
 async function initProfileAuth() {
+  // 1. Immediately render cached user details from localStorage to eliminate "Loading profile..." placeholder instantly!
+  const cached = getCurrentUser();
+  if (cached && (cached.email || cached.name || cached.uid || cached.id)) {
+    currentUser = cached;
+    try {
+      renderProfileData(cached, cached);
+      initTabs();
+    } catch (_) {}
+  }
+
   const isAuthenticated = await checkAuth();
 
   if (!isAuthenticated) {
@@ -2343,7 +2358,8 @@ async function initProfileAuth() {
     return;
   }
 
-  const user = getCurrentUser();
+  const user = getCurrentUser() || cached || {};
+  currentUser = user;
   console.log(
     "KRUIZLY auth state:",
     user ? { uid: user.id || user.uid, email: user.email } : "NOT LOGGED IN",

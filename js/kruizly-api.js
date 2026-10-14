@@ -243,6 +243,7 @@ function buildUrl(resolved, token = "") {
     if (val !== undefined && val !== null && val !== "") {
       url.searchParams.append(key, val);
     }
+  });
   return url.toString();
 }
 
