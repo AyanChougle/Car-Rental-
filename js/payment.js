@@ -28,7 +28,7 @@ import {
   formatCurrency,
   formatHumanDateTime,
   parseDateTime
-} from "./booking-calculator.js";
+} from "./booking-calculator.js?v=20261015-v12";
 import { recordCouponUsage } from "./coupon-service.js";
 
 
@@ -926,9 +926,26 @@ function displayBooking(
   const totalAmount = Number(booking.totalAmount ?? booking.finalAmount ?? booking.rentalTotal ?? 0);
   const couponDiscount = Number(booking.couponDiscount || 0);
   const couponCode = booking.couponCode;
+  const securityDeposit = Number(booking.securityDeposit || 0);
+  const rentalCharges = Number(
+    booking.baseAmount ||
+    booking.rentalTotal ||
+    Math.max(0, totalAmount - securityDeposit + couponDiscount)
+  );
 
   if ($("paymentTotalRental")) {
-    $("paymentTotalRental").textContent = `₹${formatCurrency(totalAmount)}`;
+    $("paymentTotalRental").textContent = `₹${formatCurrency(rentalCharges)}`;
+  }
+
+  if ($("paymentSecurityDepositRow")) {
+    if (securityDeposit > 0) {
+      $("paymentSecurityDepositRow").style.display = "flex";
+      if ($("paymentSecurityDeposit")) {
+        $("paymentSecurityDeposit").textContent = `₹${formatCurrency(securityDeposit)}`;
+      }
+    } else {
+      $("paymentSecurityDepositRow").style.display = "none";
+    }
   }
 
   if ($("paymentCouponRow")) {
@@ -943,6 +960,10 @@ function displayBooking(
     } else {
       $("paymentCouponRow").style.display = "none";
     }
+  }
+
+  if ($("paymentTotalAmount")) {
+    $("paymentTotalAmount").textContent = `₹${formatCurrency(totalAmount)}`;
   }
 }
 
@@ -1005,7 +1026,12 @@ function setupPaymentPlanPicker(booking, totalAmount, isAdvancePaid, advPaid, re
       planFullTitle.textContent = "Pay Full Amount";
     }
     if (planFullSubtitle) {
-      planFullSubtitle.textContent = "Pay 100% rental now and avoid waiting at pickup";
+      planFullSubtitle.textContent = "Pay 100% full amount now (incl. refundable deposit)";
+    }
+    const advanceSubtitle = advanceCard ? advanceCard.querySelector("small") : null;
+    if (advanceSubtitle) {
+      const bal = Math.max(0, totalAmount - Math.min(500, totalAmount));
+      advanceSubtitle.textContent = `Lock reservation now, pay ₹${formatCurrency(bal)} balance at pickup`;
     }
   }
 
@@ -1112,7 +1138,7 @@ function updatePaymentPlan(newPlan) {
     if (newPlan === "full") {
       $("paymentPlanNote").textContent = isAdvancePaidVerified
         ? `Paying remaining balance of ₹${formatCurrency(currentPaymentAmount)} to complete full rental payment.`
-        : "Paying 100% full rental payment today.";
+        : "Paying 100% full rental payment today (includes refundable deposit).";
     } else {
       $("paymentPlanNote").textContent = `Token booking fee of ₹${formatCurrency(currentPaymentAmount)} to lock reservation. Balance of ₹${formatCurrency(remainingCalculated)} due at vehicle handover.`;
     }
@@ -1152,9 +1178,6 @@ async function initialisePaymentUI(booking) {
 
   currentBooking = booking;
 
-  displayBooking(booking);
-  await loadVehicleImage(booking);
-
   let totalAmount = Number(
     booking.totalAmount ??
     booking.finalAmount ??
@@ -1162,6 +1185,10 @@ async function initialisePaymentUI(booking) {
     booking.rentalTotal ??
     0
   );
+
+  const securityDep = Number(booking.securityDeposit || 0);
+  const baseAmt = Number(booking.baseAmount || 0);
+  const couponDisc = Number(booking.couponDiscount || 0);
 
   // Self-healing fallback calculation for any booking record missing pre-calculated totals
   if (totalAmount <= 0) {
@@ -1173,9 +1200,16 @@ async function initialisePaymentUI(booking) {
     const numDays = Number(booking.days || booking.durationDays || 1);
 
     totalAmount = Math.max(0, (priceDay * numDays) + (driverVal * numDays) + depositVal);
+  } else if (securityDep > 0 && baseAmt > 0 && totalAmount <= baseAmt) {
+    // If legacy record saved totalAmount excluding security deposit
+    totalAmount = Math.max(0, baseAmt + securityDep - couponDisc);
+    booking.totalAmount = totalAmount;
+    booking.finalAmount = totalAmount;
   }
 
   totalBookingAmount = totalAmount;
+  displayBooking(booking);
+  await loadVehicleImage(booking);
 
   isAdvancePaidVerified = (booking.paymentStatus === "advance_paid");
   const advPaid = Number(booking.advanceAmount || (isAdvancePaidVerified ? 500 : 0));

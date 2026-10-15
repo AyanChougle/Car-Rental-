@@ -198,9 +198,18 @@
 
               <div class="booking-detail" id="paymentTotalRentalRow">
                 <span>
-                  Total Rental
+                  Rental Charges
                 </span>
                 <strong id="paymentTotalRental">
+                  ₹0
+                </strong>
+              </div>
+
+              <div class="booking-detail" id="paymentSecurityDepositRow" style="display: none;">
+                <span>
+                  Security Deposit <small style="display:block; font-size:0.72rem; color:var(--kz-sub,#7b8798);">(Refundable)</small>
+                </span>
+                <strong id="paymentSecurityDeposit">
                   ₹0
                 </strong>
               </div>
@@ -211,6 +220,15 @@
                 </span>
                 <strong id="paymentCouponDiscount" style="color: var(--kz-success, #34d399);">
                   -₹0
+                </strong>
+              </div>
+
+              <div class="booking-detail" id="paymentTotalAmountRow" style="border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 10px; margin-top: 6px;">
+                <span style="font-weight: 700; color: #fff;">
+                  Total Amount
+                </span>
+                <strong id="paymentTotalAmount" style="font-weight: 800; color: #fff; font-size: 1.05rem;">
+                  ₹0
                 </strong>
               </div>
 
@@ -233,7 +251,6 @@
               </div>
 
               <p class="payment-plan-note" id="paymentPlanNote"></p>
-
             </div>
 
 
@@ -687,11 +704,11 @@
        SCRIPTS — ONLY ONCE
        ========================================================= -->
 
-  <script src="js/vehicles.js?v=20260917-v1"></script>
+  <script src="js/vehicles.js?v=20261015-v12"></script>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <script type="module" src="js/payment.js?v=20260930-v11"></script>
+  <script type="module" src="js/payment.js?v=20261015-v12"></script>
 
   <script src="js/glass-ui.js?v=20260917-v1"></script>
   <script src="js/kruizly-motion.js?v=20260917-v1"></script>

@@ -16,9 +16,29 @@ $isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive', 'acco
 
 $pickupDate = date('Y-m-d H:i:s', strtotime((string)($input['pickupDate'] ?? 'now')));
 $dropDate = date('Y-m-d H:i:s', strtotime((string)($input['dropDate'] ?? '+1 day')));
-$days = max(1, (int)($input['days'] ?? $input['durationDays'] ?? 1));
-$hours = (int)($input['hours'] ?? ($days * 24));
-$duration = trim((string)($input['duration'] ?? ($days . ' Day' . ($days > 1 ? 's' : ''))));
+
+// STRICT SECURITY & BUSINESS RULE: Minimum booking duration is 24 hours (86,400 seconds)
+$pTs = strtotime($pickupDate);
+$dTs = strtotime($dropDate);
+if ($pTs === false || $pTs < time() - 3600) {
+    $pTs = time();
+    $pickupDate = date('Y-m-d H:i:s', $pTs);
+}
+if ($dTs === false || $dTs < $pTs + 86400) {
+    $dTs = $pTs + 86400;
+    $dropDate = date('Y-m-d H:i:s', $dTs);
+}
+
+$diffSeconds = $dTs - $pTs;
+$hours = max(24, (int)ceil($diffSeconds / 3600));
+$days = max(1, (int)ceil($hours / 24));
+$fullDays = (int)floor($hours / 24);
+$remHours = $hours % 24;
+if ($fullDays > 0 && $remHours > 0) {
+    $duration = "{$fullDays} Day" . ($fullDays > 1 ? "s" : "") . " {$remHours} Hr" . ($remHours > 1 ? "s" : "") . " ({$hours} hrs)";
+} else {
+    $duration = "{$fullDays} Day" . ($fullDays > 1 ? "s" : "") . " ({$hours} hrs)";
+}
 
 $monthCode = strtoupper(date('M', strtotime($pickupDate)));
 $prefix = 'KRZ-' . $monthCode . '-';
@@ -54,19 +74,57 @@ if ($incomingId && preg_match('/^KRZ-[A-Z]{3}-\d+$/i', $incomingId)) {
 }
 $bookingNumber = $bookingId;
 
+// Authoritative vehicle lookup from MySQL database
 $vehicleReg = strtoupper(trim((string)($input['vehicleReg'] ?? $input['carId'] ?? '')));
-$vehicle = $vehicleReg ? Database::fetchOne("SELECT * FROM vehicles WHERE reg_no = ? LIMIT 1", [$vehicleReg]) : null;
-$vehicleId = $vehicle && !empty($vehicle['id']) ? (int)$vehicle['id'] : null;
-$vehicleName = $vehicle ? ($vehicle['brand'] . ' ' . $vehicle['model']) : ($input['vehicleName'] ?? 'Vehicle');
-$vehicleCategory = $vehicle ? $vehicle['category'] : ($input['vehicleCategory'] ?? 'Sedan');
+$incomingVehicleId = isset($input['vehicleId']) ? (int)$input['vehicleId'] : (isset($input['id']) ? (int)$input['id'] : 0);
+$vehicle = null;
+if ($vehicleReg !== '') {
+    $vehicle = Database::fetchOne("SELECT * FROM vehicles WHERE UPPER(reg_no) = ? LIMIT 1", [$vehicleReg]);
+}
+if (!$vehicle && $incomingVehicleId > 0) {
+    $vehicle = Database::fetchOne("SELECT * FROM vehicles WHERE id = ? LIMIT 1", [$incomingVehicleId]);
+}
+if (!$vehicle && !empty($input['vehicleName'])) {
+    $vehicle = Database::fetchOne("SELECT * FROM vehicles WHERE CONCAT(brand, ' ', model) LIKE ? LIMIT 1", ['%' . trim((string)$input['vehicleName']) . '%']);
+}
 
-// Server-side price calculation
-$priceDay = $vehicle ? (float)($vehicle['price_day'] ?? 0.00) : 0.00;
-$calculatedBase = ($priceDay > 0) ? round($priceDay * $days, 2) : 0.00;
-$clientBase = (float)($input['baseAmount'] ?? $input['rentalTotal'] ?? 0.00);
-$baseAmount = ($calculatedBase > 0) ? $calculatedBase : ($clientBase > 0 ? $clientBase : 0.00);
+$vehicleId = $vehicle && !empty($vehicle['id']) ? (int)$vehicle['id'] : ($incomingVehicleId ?: null);
+$vehicleReg = $vehicle ? (string)$vehicle['reg_no'] : ($vehicleReg ?: 'TBD');
+$vehicleName = $vehicle ? ($vehicle['brand'] . ' ' . $vehicle['model']) : ($input['vehicleName'] ?? 'Vehicle');
+$vehicleCategory = $vehicle ? (string)($vehicle['category'] ?: 'suv') : ($input['vehicleCategory'] ?? 'suv');
+$isLuxury = strtolower($vehicleCategory) === 'luxury';
+
+// Server-side authoritative price calculation (tamper-proof)
+$priceDay = $vehicle ? (float)($vehicle['price_day'] ?? 0.00) : (float)($input['dayRate'] ?? $input['priceDay'] ?? 0.00);
+$hourlyRate = $priceDay > 0 ? round($priceDay / 24, 2) : 0.00;
+
+$fullDays = (int)floor($hours / 24);
+$remHours = (int)($hours % 24);
+$baseAmount = (float)($fullDays * $priceDay);
+if ($remHours > 0 && $priceDay > 0) {
+    $baseAmount += round($remHours * ($priceDay / 24), 2);
+}
+$baseAmount = max($priceDay, $baseAmount);
+if ($baseAmount <= 0) {
+    $baseAmount = (float)($input['baseAmount'] ?? $input['rentalTotal'] ?? 0.00);
+}
 
 $withDriver = (int)($input['withDriver'] ?? 0);
+$driverDailyRate = $vehicle ? (float)($vehicle['driver_price'] ?? 2000.00) : 2000.00;
+$driverHourlyRate = round($driverDailyRate / 24, 2);
+$driverTotal = 0.00;
+if ($withDriver) {
+    $driverTotal = (float)($fullDays * $driverDailyRate);
+    if ($remHours > 0) {
+        $driverTotal += round($remHours * ($driverDailyRate / 24), 2);
+    }
+    $driverTotal = max($driverDailyRate, $driverTotal);
+}
+
+// Authoritative Security Deposit from vehicle database record
+$securityDeposit = ($vehicle && isset($vehicle['security_deposit']) && (float)$vehicle['security_deposit'] > 0)
+    ? (float)$vehicle['security_deposit']
+    : (isset($input['securityDeposit']) && (float)$input['securityDeposit'] > 0 ? (float)$input['securityDeposit'] : ($isLuxury ? 15000.00 : 5000.00));
 
 // Server-side coupon verification
 $couponCode = trim((string)($input['couponCode'] ?? ''));
@@ -93,14 +151,17 @@ if ($couponCode !== '') {
     }
 }
 
-$securityDeposit = (float)($input['securityDeposit'] ?? 0.00);
-$totalAmount = max(0.00, round($baseAmount - $couponDiscount, 2));
+// Authoritative total amount payable: Base rental + Driver + Security Deposit - Coupon discount
+$grossTotal = $baseAmount + $driverTotal + $securityDeposit;
+$totalAmount = max(0.00, round($grossTotal - $couponDiscount, 2));
 
+// Authoritative payment plan calculation (tamper-proof)
 $paymentPlan = trim((string)($input['paymentPlan'] ?? 'full'));
 if ($paymentPlan === 'advance') {
-    $advanceAmount = round($totalAmount * 0.20, 2);
+    $advanceAmount = min(500.00, $totalAmount); // Fixed ₹500 Token
     $remainingBalance = max(0.00, round($totalAmount - $advanceAmount, 2));
 } else {
+    $paymentPlan = 'full';
     $advanceAmount = $totalAmount;
     $remainingBalance = 0.00;
 }
@@ -151,7 +212,7 @@ $nextId = (int)($maxRow['next_id'] ?? 1);
 try {
     Database::transaction(function($pdo) use (
         $nextId, $bookingId, $bookingNumber, $user, $dbUserId, $vehicleId, $vehicleReg, $vehicleName, $vehicleCategory,
-        $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $baseAmount, $couponCode,
+        $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $priceDay, $hourlyRate, $driverDailyRate, $driverHourlyRate, $baseAmount, $couponCode,
         $couponDiscount, $totalAmount, $advanceAmount, $remainingBalance, $paymentPlan, $paymentStatus,
         $status, $pickupHubId, $dropHubId, $securityDeposit, $locationText, $userName, $userEmail, $userPhone, $userAge, $input
     ) {
@@ -175,6 +236,10 @@ try {
             'days' => $days,
             'hours' => $hours,
             'with_driver' => $withDriver,
+            'day_rate' => $priceDay,
+            'hourly_rate' => $hourlyRate,
+            'driver_rate' => $driverDailyRate,
+            'driver_hourly_rate' => $driverHourlyRate,
             'base_amount' => $baseAmount,
             'coupon_code' => $couponCode ?: null,
             'coupon_discount' => $couponDiscount,

@@ -12,7 +12,7 @@ import {
   formatCurrency,
   formatHumanDateTime,
   parseDateTime,
-} from "./booking-calculator.js";
+} from "./booking-calculator.js?v=20261015-v12";
 import { validateCoupon } from "./coupon-service.js";
 
 function padDatePart(value) {
@@ -52,27 +52,6 @@ let queryId =
 if (queryId === "undefined" || queryId === "null" || queryId === "")
   queryId = null;
 
-const catalog = Array.isArray(window.fleetVehicles) ? window.fleetVehicles : [];
-const vehicle =
-  (typeof window.getFleetVehicle === "function" &&
-    window.getFleetVehicle(queryId)) ||
-  catalog.find(
-    (item) =>
-      (queryId &&
-        (item.id === queryId ||
-          item.slug === queryId ||
-          item.regNo === queryId)) ||
-      (queryId &&
-        `${item.brand} ${item.model}`.toLowerCase() === queryId.toLowerCase()),
-  ) ||
-  null;
-
-if (vehicle?.id) {
-  try {
-    sessionStorage.setItem("crp_selectedCarId", vehicle.id);
-  } catch (e) {}
-}
-
 const form = document.getElementById("bookingForm");
 const totalsEl = document.getElementById("bookingTotals");
 const statusEl = document.getElementById("bookingStatus");
@@ -94,51 +73,87 @@ function showUnavailable(message) {
   if (form) form.hidden = true;
 }
 
-if (!vehicle) {
+async function resolveAndInitVehicle() {
   if (bookingTitle) bookingTitle.textContent = "Loading vehicle...";
-  api.get("/vehicles")
-    .then((res) => {
-      const list = Array.isArray(res?.vehicles) ? res.vehicles : [];
-      let matched = null;
-      if (queryId) {
-        const qStr = String(queryId).toLowerCase().trim();
-        matched = list.find((v) =>
-          (v.id && (String(v.id).toLowerCase() === qStr || String(v.id).replace(/\D/g, "") === qStr)) ||
-          (v.carId && String(v.carId).toLowerCase() === qStr) ||
-          (v.regNo && String(v.regNo).toLowerCase() === qStr) ||
+
+  // Wait for the authoritative fleet from database
+  if (window.fleetLoadingPromise) {
+    try {
+      await window.fleetLoadingPromise;
+    } catch (_) {}
+  }
+
+  let catalog = Array.isArray(window.fleetVehicles) ? window.fleetVehicles : [];
+  if (!catalog.length) {
+    try {
+      const res = await api.get("/vehicles");
+      if (Array.isArray(res?.vehicles)) {
+        catalog = res.vehicles;
+      }
+    } catch (_) {}
+  }
+
+  let matched = null;
+  if (queryId) {
+    const qStr = String(queryId).toLowerCase().trim();
+    // 1. Exact registration match (e.g. MH02FU6808)
+    matched = catalog.find(
+      (v) => v.regNo && String(v.regNo).toLowerCase().trim() === qStr
+    );
+    // 2. Exact carId match (e.g. CRP-009)
+    if (!matched) {
+      matched = catalog.find(
+        (v) => v.carId && String(v.carId).toLowerCase().trim() === qStr
+      );
+    }
+    // 3. Exact database ID match
+    if (!matched) {
+      matched = catalog.find(
+        (v) =>
+          v.id &&
+          (String(v.id).toLowerCase() === qStr ||
+            String(v.id).replace(/\D/g, "") === qStr)
+      );
+    }
+    // 4. Exact brand + model match
+    if (!matched) {
+      matched = catalog.find(
+        (v) =>
           `${v.brand} ${v.model}`.toLowerCase() === qStr ||
           (v.slug && String(v.slug).toLowerCase() === qStr)
-        );
-      }
-      if (!matched && list.length > 0) {
-        matched = list.find((v) => v.available !== false && v.status !== "unavailable") || list[0];
-      }
-      if (matched) {
-        if (matched.available === false || matched.status === "unavailable") {
-          if (vehicleName) vehicleName.textContent = matched.brand + " " + matched.model;
-          showUnavailable("This car is currently booked. Please choose another vehicle from the fleet.");
-        } else {
-          try {
-            sessionStorage.setItem("crp_selectedCarId", matched.id);
-          } catch (_) {}
-          initBooking(matched);
-        }
-      } else {
-        showNoVehicleSelected();
-      }
-    })
-    .catch(() => {
-      showNoVehicleSelected();
-    });
-} else if (!vehicle.available) {
-  if (vehicleName)
-    vehicleName.textContent = vehicle.brand + " " + vehicle.model;
-  showUnavailable(
-    "This car is currently booked. Please choose another vehicle from the fleet.",
-  );
-} else {
-  initBooking(vehicle);
+      );
+    }
+  }
+
+  if (!matched && catalog.length > 0) {
+    matched =
+      catalog.find(
+        (v) => v.available !== false && v.status !== "unavailable"
+      ) || catalog[0];
+  }
+
+  if (!matched) {
+    showNoVehicleSelected();
+    return;
+  }
+
+  if (matched.available === false || matched.status === "unavailable") {
+    if (vehicleName)
+      vehicleName.textContent = `${matched.brand} ${matched.model}`;
+    showUnavailable(
+      "This car is currently booked. Please choose another vehicle from the fleet."
+    );
+    return;
+  }
+
+  try {
+    sessionStorage.setItem("crp_selectedCarId", matched.regNo || matched.id);
+  } catch (_) {}
+
+  initBooking(matched);
 }
+
+resolveAndInitVehicle();
 
 function showNoVehicleSelected() {
   if (bookingTitle) bookingTitle.textContent = "No Vehicle Selected";
@@ -337,12 +352,14 @@ async function initBooking(vehicle) {
       pDate = roundToNextHour(now);
     }
 
-    if (!dDate || isNaN(dDate.getTime()) || dDate <= pDate) {
-      dDate = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
+    // STRICT 24-HOUR MINIMUM DURATION: Drop must be at least 24 hours after pickup
+    const minDrop = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
+    if (!dDate || isNaN(dDate.getTime()) || dDate < minDrop) {
+      dDate = minDrop;
     }
 
     pickupInput.value = toLocalDateTime(pDate);
-    dropInput.min = toLocalDateTime(pDate);
+    dropInput.min = toLocalDateTime(minDrop);
     dropInput.value = toLocalDateTime(dDate);
 
     try {
@@ -483,8 +500,9 @@ async function initBooking(vehicle) {
 
       if (dropInput._flatpickr) {
         dropInput._flatpickr.setDate(resetDrop, true);
+        dropInput._flatpickr.set("minDate", resetDrop);
       } else {
-        dropInput.min = toLocalDateTime(resetPickup);
+        dropInput.min = toLocalDateTime(resetDrop);
         dropInput.value = toLocalDateTime(resetDrop);
       }
 
@@ -529,12 +547,19 @@ async function initBooking(vehicle) {
 
   pickupInput.addEventListener("change", () => {
     if (pickupInput.value) {
-      dropInput.min = pickupInput.value;
-      if (!dropInput.value || dropInput.value <= pickupInput.value) {
-        const pDate = parseDateTime(pickupInput.value);
-        if (pDate && !isNaN(pDate.getTime())) {
-          const dDate = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
-          dropInput.value = toLocalDateTime(dDate);
+      const pDate = parseDateTime(pickupInput.value);
+      if (pDate && !isNaN(pDate.getTime())) {
+        const minDrop = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
+        dropInput.min = toLocalDateTime(minDrop);
+        if (dropInput._flatpickr) {
+          dropInput._flatpickr.set("minDate", minDrop);
+        }
+        const currentDrop = parseDateTime(dropInput.value);
+        if (!currentDrop || isNaN(currentDrop.getTime()) || currentDrop < minDrop) {
+          dropInput.value = toLocalDateTime(minDrop);
+          if (dropInput._flatpickr) {
+            dropInput._flatpickr.setDate(minDrop, true);
+          }
         }
       }
     }
@@ -542,7 +567,21 @@ async function initBooking(vehicle) {
   });
   pickupInput.addEventListener("input", calculateBooking);
 
-  dropInput.addEventListener("change", calculateBooking);
+  dropInput.addEventListener("change", () => {
+    const pDate = parseDateTime(pickupInput.value);
+    const dDate = parseDateTime(dropInput.value);
+    if (pDate && !isNaN(pDate.getTime())) {
+      const minDrop = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
+      if (!dDate || isNaN(dDate.getTime()) || dDate < minDrop) {
+        dropInput.value = toLocalDateTime(minDrop);
+        if (dropInput._flatpickr) {
+          dropInput._flatpickr.setDate(minDrop, true);
+        }
+        alert("Booking duration must be a minimum of 24 hours (1 full day). Drop time has been set to 24 hours from pickup.");
+      }
+    }
+    calculateBooking();
+  });
   dropInput.addEventListener("input", calculateBooking);
   driverInput && driverInput.addEventListener("change", calculateBooking);
 
@@ -636,11 +675,14 @@ async function initBooking(vehicle) {
       return;
     }
 
-    if (!dDate || isNaN(dDate.getTime()) || dDate <= pDate) {
+    const minDrop = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
+    if (!dDate || isNaN(dDate.getTime()) || dDate < minDrop) {
       if (statusEl) {
-        statusEl.textContent = "Drop date must be after pickup date.";
+        statusEl.textContent = "Booking duration must be a minimum of 24 hours (1 full day). Drop time adjusted automatically.";
         statusEl.classList.add("form-status--error");
       }
+      dropInput.value = toLocalDateTime(minDrop);
+      calculateBooking();
       return;
     }
 
@@ -760,6 +802,7 @@ async function initBooking(vehicle) {
       // ── STEP 3: Redirect to payment with the real server-issued bookingId ──
       const paymentParams = new URLSearchParams();
       paymentParams.set("booking", confirmedBookingId);
+      paymentParams.set("plan", calculation.paymentPlan);
       window.location.href = "payment.html?" + paymentParams.toString();
     } catch (error) {
       console.error("Booking preparation failed:", error);

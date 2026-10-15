@@ -434,37 +434,41 @@ function wireQuickBookingDates() {
 
   const minNow = formatToLocalDateTime(now);
   pickupEl.min = minNow;
-  dropEl.min = minNow;
 
   if (!pickupEl.value) {
     pickupEl.value = formatToLocalDateTime(start);
   }
-  if (!dropEl.value) {
-    dropEl.value = formatToLocalDateTime(end);
+  const initialPickup = new Date(pickupEl.value);
+  const minInitialDrop = new Date((!isNaN(initialPickup.getTime()) ? initialPickup.getTime() : start.getTime()) + 24 * 60 * 60 * 1000);
+  dropEl.min = formatToLocalDateTime(minInitialDrop);
+
+  if (!dropEl.value || new Date(dropEl.value) < minInitialDrop) {
+    dropEl.value = formatToLocalDateTime(minInitialDrop);
   }
-  dropEl.min = pickupEl.value;
 
   pickupEl.addEventListener("change", () => {
     if (pickupEl.value < pickupEl.min) {
       pickupEl.value = pickupEl.min;
     }
-    dropEl.min = pickupEl.value;
-    if (!dropEl.value || dropEl.value <= pickupEl.value) {
-      const pDate = new Date(pickupEl.value);
-      if (!isNaN(pDate.getTime())) {
-        const dDate = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
-        dropEl.value = formatToLocalDateTime(dDate);
+    const pDate = new Date(pickupEl.value);
+    if (!isNaN(pDate.getTime())) {
+      const minDrop = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
+      dropEl.min = formatToLocalDateTime(minDrop);
+      const currentDrop = new Date(dropEl.value);
+      if (!currentDrop || isNaN(currentDrop.getTime()) || currentDrop < minDrop) {
+        dropEl.value = formatToLocalDateTime(minDrop);
       }
     }
   });
 
   dropEl.addEventListener("change", () => {
-    if (dropEl.value <= pickupEl.value) {
-      alert("Drop date and time must be after pickup date and time.");
-      const pDate = new Date(pickupEl.value);
-      if (!isNaN(pDate.getTime())) {
-        const dDate = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
-        dropEl.value = formatToLocalDateTime(dDate);
+    const pDate = new Date(pickupEl.value);
+    const dDate = new Date(dropEl.value);
+    if (!isNaN(pDate.getTime())) {
+      const minDrop = new Date(pDate.getTime() + 24 * 60 * 60 * 1000);
+      if (isNaN(dDate.getTime()) || dDate < minDrop) {
+        alert("Booking duration must be a minimum of 24 hours (1 full day). Drop time set to 24 hours from pickup.");
+        dropEl.value = formatToLocalDateTime(minDrop);
       }
     }
   });

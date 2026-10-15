@@ -132,8 +132,10 @@ export function calculateDuration(pickup, drop) {
     };
   }
 
-  // Exact hours with ceiling for partial hours
-  const durationHours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)));
+  // Exact hours with ceiling for partial hours - strictly enforce minimum 24 hours
+  const rawHours = Math.max(1, Math.ceil(durationMs / (1000 * 60 * 60)));
+  const isBelow24 = rawHours < 24;
+  const durationHours = Math.max(24, rawHours);
   // Days based on 24hr chunks
   const durationDays = Math.max(1, Math.ceil(durationHours / 24));
   const fullDays = Math.floor(durationHours / 24);
@@ -142,13 +144,27 @@ export function calculateDuration(pickup, drop) {
   let daysAndHoursText = "";
   if (fullDays > 0 && remainingHours > 0) {
     daysAndHoursText = `${fullDays} Day${fullDays > 1 ? "s" : ""} ${remainingHours} Hr${remainingHours > 1 ? "s" : ""} (${durationHours} hrs)`;
-  } else if (fullDays > 0) {
-    daysAndHoursText = `${fullDays} Day${fullDays > 1 ? "s" : ""} (${durationHours} hrs)`;
   } else {
-    daysAndHoursText = `${durationHours} Hr${durationHours > 1 ? "s" : ""}`;
+    daysAndHoursText = `${fullDays} Day${fullDays > 1 ? "s" : ""} (${durationHours} hrs)`;
   }
 
   const formattedDuration = daysAndHoursText;
+
+  if (isBelow24) {
+    return {
+      valid: false,
+      error: "Booking duration must be a minimum of 24 hours (1 full day).",
+      durationMs,
+      durationHours,
+      durationDays,
+      fullDays,
+      remainingHours,
+      daysAndHoursText,
+      formattedDuration,
+      pickupDate: pDate,
+      dropDate: dDate
+    };
+  }
 
   return {
     valid: true,
@@ -193,18 +209,34 @@ export function calculateBookingPrice({
     };
   }
 
-  const hours = duration.durationHours;
-  const days = duration.durationDays;
+  const hours = Math.max(24, duration.durationHours);
+  const days = Math.max(1, duration.durationDays);
 
-  // Rate determination: hourly rate preferred, fallback to daily / 24
-  const priceDay = Number(vehicle.priceDay || 0);
-  const hourlyRate = Number(vehicle.priceHour || (priceDay > 0 ? priceDay / 24 : 0));
+  const fullDays = Math.floor(hours / 24);
+  const remHours = hours % 24;
 
-  const driverPriceDay = Number(vehicle.driverPrice || 2000);
-  const driverHourlyRate = Number(vehicle.driverPriceHour || (driverPriceDay > 0 ? driverPriceDay / 24 : 83.33));
+  // Rate determination: daily rate is primary, hourly rate is pro-rated
+  const priceDay = Number(vehicle.priceDay || vehicle.price_day || 0);
+  const driverPriceDay = Number(vehicle.driverPrice || vehicle.driver_price || 2000);
+  const hourlyRate = priceDay > 0 ? Math.round(priceDay / 24) : 0;
+  const driverHourlyRate = driverPriceDay > 0 ? Math.round(driverPriceDay / 24) : 83;
 
-  const rentalTotal = Math.round(hours * hourlyRate);
-  const driverTotal = withDriver ? Math.round(hours * driverHourlyRate) : 0;
+  // Authoritative rental charge: full days * day rate + pro-rated remaining hours (minimum 1 full day)
+  let rentalTotal = fullDays * priceDay;
+  if (remHours > 0) {
+    rentalTotal += Math.round(remHours * (priceDay > 0 ? priceDay / 24 : 0));
+  }
+  rentalTotal = Math.max(priceDay, rentalTotal);
+
+  // Authoritative driver allowance
+  let driverTotal = 0;
+  if (withDriver) {
+    driverTotal = fullDays * driverPriceDay;
+    if (remHours > 0) {
+      driverTotal += Math.round(remHours * (driverPriceDay > 0 ? driverPriceDay / 24 : 83.33));
+    }
+    driverTotal = Math.max(driverPriceDay, driverTotal);
+  }
   const isLuxury = (vehicle.category || "").toLowerCase() === "luxury";
   const securityDeposit = Number(
     vehicle.securityDeposit !== undefined && vehicle.securityDeposit !== null && vehicle.securityDeposit !== ""
