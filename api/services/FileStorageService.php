@@ -213,6 +213,7 @@ class FileStorageService {
             $cleanRel = str_replace(['../', '..\\'], '', $mediaId);
             $cleanRel = str_replace(['..', '\\'], '', $cleanRel);
             $storageRootReal = realpath(STORAGE_ROOT) ?: STORAGE_ROOT;
+            $storageRootNorm = rtrim(str_replace('\\', '/', $storageRootReal), '/') . '/';
 
             $candidates = [
                 STORAGE_ROOT . '/' . ltrim($cleanRel, '/'),
@@ -224,16 +225,20 @@ class FileStorageService {
             ];
             foreach ($candidates as $cand) {
                 $candReal = realpath($cand);
-                    $filePath = $candReal;
-                    $originalName = basename($candReal);
-                    $lowerCand = strtolower(basename($candReal));
-                    if (preg_match('/\.tar\.(gz|bz2|xz)$/i', $lowerCand, $m)) {
-                        $ext = 'tar.' . strtolower($m[1]);
-                    } else {
-                        $ext = strtolower(pathinfo($candReal, PATHINFO_EXTENSION));
+                if ($candReal && is_file($candReal)) {
+                    $candNorm = str_replace('\\', '/', $candReal);
+                    if (str_starts_with($candNorm, $storageRootNorm)) {
+                        $filePath = $candReal;
+                        $originalName = basename($candReal);
+                        $lowerCand = strtolower(basename($candReal));
+                        if (preg_match('/\.tar\.(gz|bz2|xz)$/i', $lowerCand, $m)) {
+                            $ext = 'tar.' . strtolower($m[1]);
+                        } else {
+                            $ext = strtolower(pathinfo($candReal, PATHINFO_EXTENSION));
+                        }
+                        $mimeType = self::getMimeFromExtension($ext);
+                        break;
                     }
-                    $mimeType = self::getMimeFromExtension($ext);
-                    break;
                 }
             }
         }

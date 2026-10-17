@@ -1289,14 +1289,19 @@ function openPaymentModal(payment) {
   let screenshotImg = "";
   const curStaffTok = localStorage.getItem("kruizly_token") || sessionStorage.getItem("kruizly_token") || "";
   const staffTokParam = curStaffTok ? `&token=${encodeURIComponent(curStaffTok)}` : "";
+  const isLocalHost = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+  const mediaOrigin = isLocalHost ? "https://kruizly.com" : "";
   if (payment.screenshotUrl) {
     let sUrl = payment.screenshotUrl;
+    if (sUrl.startsWith("/api/")) {
+      sUrl = `${mediaOrigin}${sUrl}`;
+    }
     if (curStaffTok && (sUrl.includes("/api/media/") || sUrl.includes("/media/")) && !sUrl.includes("token=")) {
       sUrl = `${sUrl}${sUrl.includes("?") ? "&" : "?"}${staffTokParam.replace(/^&/, "")}`;
     }
     screenshotImg = `<img src="${escapeHtml(sUrl)}" alt="Payment Receipt" class="manager-modal-screenshot-img" />`;
   } else if (payment.screenshotMediaId) {
-    screenshotImg = `<img src="/api/media/file.php?id=${encodeURIComponent(payment.screenshotMediaId)}${staffTokParam}" alt="Payment Receipt" class="manager-modal-screenshot-img" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:var(--sub);\\'>No image file found on server.</div>';" />`;
+    screenshotImg = `<img src="${mediaOrigin}/api/media/file.php?id=${encodeURIComponent(payment.screenshotMediaId)}${staffTokParam}" alt="Payment Receipt" class="manager-modal-screenshot-img" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:var(--sub);\\'>No image file found on server.</div>';" />`;
   } else {
     screenshotImg = `<div style="padding: 20px; text-align: center; color: var(--sub); border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;">No screenshot receipt attached.</div>`;
   }
@@ -1569,6 +1574,12 @@ async function fetchExecDocumentPreview(rawUrl) {
   let finalUrl = str;
   if (str.startsWith("MED-")) {
     finalUrl = `/api/media/file.php?id=${encodeURIComponent(str)}`;
+  }
+
+  if (finalUrl.startsWith("/api/")) {
+    const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
+    const origin = isLocal ? "https://kruizly.com" : window.location.origin;
+    finalUrl = `${origin}${finalUrl}`;
   }
 
   let token = "";
