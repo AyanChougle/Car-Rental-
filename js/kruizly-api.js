@@ -183,13 +183,24 @@ export function resolveEndpoint(endpoint, params = {}) {
   return { path: `/${clean}/index.php`, params: queryParams };
 }
 
-async function getAuthToken(forceRefresh = false) {
+function syncTokenCookie(tok) {
+  try {
+    if (tok) {
+      document.cookie = `kruizly_token=${encodeURIComponent(tok)}; path=/; max-age=86400; SameSite=Lax`;
+    } else {
+      document.cookie = `kruizly_token=; path=/; max-age=0; SameSite=Lax`;
+    }
+  } catch (_) {}
+}
+
+export async function getAuthToken(forceRefresh = false) {
   let token = "";
   if (auth?.currentUser) {
     try {
       token = await auth.currentUser.getIdToken(forceRefresh);
       if (token) {
         localStorage.setItem("kruizly_token", token);
+        syncTokenCookie(token);
       }
     } catch (err) {
       console.warn("Could not get Firebase ID token:", err);
@@ -199,6 +210,7 @@ async function getAuthToken(forceRefresh = false) {
   if (!token) {
     // Check if token was saved locally
     token = localStorage.getItem("kruizly_token") || sessionStorage.getItem("kruizly_token") || "";
+    if (token) syncTokenCookie(token);
   }
 
   if (!token && auth) {
@@ -213,6 +225,7 @@ async function getAuthToken(forceRefresh = false) {
             const t = await user.getIdToken(forceRefresh);
             if (t) {
               localStorage.setItem("kruizly_token", t);
+              syncTokenCookie(t);
             }
             resolve(t || "");
           } catch {

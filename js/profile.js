@@ -533,29 +533,10 @@ async function loadMyListings(userParam) {
     const uPhone = String(currentU.phone || "").replace(/\D/g, "").slice(-10);
     const uUid = String(currentU.uid || currentU.firebaseUid || "").trim();
     const uName = String(currentU.name || "").toLowerCase().trim();
-    const isGenericAdmin = ["carrentpedatabase@gmail.com", "admin@kruizly.com", "currentpedatabase@gmail.com", "ayan@kruizly.com"].includes(uEmail);
+    const isGenericAdmin = ["carrentpedatabase@gmail.com", "admin@kruizly.com", "currentpedatabase@gmail.com"].includes(uEmail);
 
-    // Strictly filter to the current user's own cars - other users' cars will NEVER reflect
-    let myListings = listings.filter((item) => {
-      if (isGenericAdmin) {
-        // Platform admin account does not personally own individual host cars
-        return false;
-      }
-      const itemEmail = String(item.userEmail || item.ownerEmail || item.email || "").toLowerCase().trim();
-      const itemPhone = String(item.userPhone || item.ownerPhone || item.phone || "").replace(/\D/g, "").slice(-10);
-      const itemUid = String(item.userId || item.firebaseUid || "").trim();
-      const itemName = String(item.userName || item.ownerName || "").toLowerCase().trim();
-
-      if (uEmail && itemEmail && uEmail === itemEmail) return true;
-      if (uPhone && itemPhone && uPhone.length === 10 && uPhone === itemPhone) return true;
-      if (uUid && itemUid && uUid === itemUid && !itemUid.startsWith("host_")) return true;
-      if (uName && itemName && uName.length > 3 && !["user", "kruizly user", "car database", "admin"].includes(uName) && (uName === itemName || itemName.includes(uName))) return true;
-
-      return false;
-    });
-
-    // Strictly isolate to the current user's own cars only (never leak or dump all partner cars on personal profile)
-    let displayedListings = myListings;
+    // Whatever partner cars the API returned for this authenticated host user from the database is displayed
+    let displayedListings = listings;
 
     // If host has listings, reveal bank details tab
     if (displayedListings.length > 0) {
@@ -579,11 +560,9 @@ async function loadMyListings(userParam) {
       return sum + amt;
     }, 0);
 
-    // Summary reflects ONLY what this particular user is earning from their own car(s)
+    // Summary displays only the fleet count; financial payout amounts hidden as requested
     summary.innerHTML = `
       <div><strong>${displayedListings.length}</strong><span>My Hosted Cars</span></div>
-      <div><strong style="color: #06d6a0;">${formatINR(totalMonthHostPayout)}</strong><span>This Month Host Payout</span></div>
-      <div><strong style="color: var(--kr-cyan); font-weight: 700;">${formatINR(totalLifetimeHostPayout)}</strong><span>Lifetime Earnings</span></div>
     `;
 
     if (!displayedListings.length) {
@@ -626,7 +605,7 @@ async function loadMyListings(userParam) {
 
         // Payout Model: Strictly either Fixed Monthly Retainer OR 60% Revenue Share (Never both)
         const isFixed = listing.payoutModel === "fixed_monthly" || String(listing.payoutModel || "").includes("fixed");
-        const fixedAmt = Number(listing.fixedMonthlyAmount || 25000);
+        const fixedAmt = Number(listing.fixedMonthlyAmount || 0);
         const grossMonthVal = Number(listing.grossMonthRevenue || listing.monthRevenue || 0);
         const grossTotalVal = Number(listing.grossTotalRevenue || listing.totalRevenue || 0);
 
@@ -640,10 +619,6 @@ async function loadMyListings(userParam) {
         const hostName = listing.userName || listing.ownerName || "Partner Host";
         let hostPhone = listing.userPhone || "";
         let hostEmail = listing.userEmail || "";
-        if (hostEmail === "carrentpedatabase@gmail.com" || hostEmail === "currentpedatabase@gmail.com" || hostEmail === "admin@kruizly.com") {
-          hostEmail = "";
-          if (hostPhone === "7208533219") hostPhone = "";
-        }
 
         const regNo = listing.regNo || listing.regNumber || "MH04MU1178";
         const locationVal = listing.city || listing.location || "Gavson Business Park, Ghansoli";
@@ -721,32 +696,13 @@ async function loadMyListings(userParam) {
               </dl>
             </div>
 
-            <!-- Revenue and Payout Performance Box (Trips omitted for customers) -->
-            <div class="profile-listing-revenue" style="padding: 14px 18px; background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; text-align: left;">
-              <div>
-                <span style="font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px;">
-                  ${isFixed ? "FIXED MONTHLY GIVEN" : "THIS MONTH (60%)"}
-                </span>
-                <strong style="font-size: 17px; color: #06d6a0; font-weight: 800; display: block;">${formatINR(hostMonthPay)}</strong>
-                <span style="display: block; font-size: 10.5px; color: #888; margin-top: 3px;">
-                  ${isFixed ? "Company Guaranteed" : `Fleet Gross: ${formatINR(grossMonthVal)}`}
-                </span>
-              </div>
-              <div>
-                <span style="font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px;">
-                  ${isFixed ? "OVERALL PAYOUTS" : "LIFETIME PAYOUTS (60%)"}
-                </span>
-                <strong style="font-size: 17px; color: #4fd7ff; font-weight: 800; display: block;">${formatINR(hostTotalPay)}</strong>
-                <span style="display: block; font-size: 10.5px; color: #888; margin-top: 3px;">
-                  ${isFixed ? `Gross: ${formatINR(grossTotalVal)}` : "Host Share"}
-                </span>
-              </div>
-            </div>
-            <!-- Card Footer: Listing ID and Edit Details Button -->
+            <!-- Revenue and payout amounts hidden as requested -->
+            <!-- Card Footer: Listing ID and Edit Details Button (Admin/Staff only) -->
             <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.06); margin-top: 4px;">
               <span style="font-size: 11px; color: #777; font-weight: 700; letter-spacing: 0.04em;">
                 LISTING ID #${escapeHtml(String(listing.id || listing.carId || "").slice(0, 10).toUpperCase())}
               </span>
+              ${isStaffOrAdmin ? `
               <button type="button" class="btn-edit-listing" 
                 data-id="${escapeHtml(listing.id || listing.carId || '')}"
                 data-title="${escapeHtml(vehicleName)} (${escapeHtml(regNo)})"
@@ -759,6 +715,9 @@ async function loadMyListings(userParam) {
                 style="padding: 6px 14px; border-radius: 8px; font-size: 12px; font-weight: 700; background: rgba(79, 215, 255, 0.12); color: #4fd7ff; border: 1px solid rgba(79, 215, 255, 0.3); cursor: pointer;">
                 ✏️ Edit Listing Details
               </button>
+              ` : `
+              <span style="font-size: 11px; color: #555; font-weight: 600;">Managed by Kruizly Admin</span>
+              `}
             </div>
           </div>
         </article>`;
@@ -2359,9 +2318,11 @@ async function initProfileAuth() {
     initUserCancellationModal();
     initEditListingModal();
     const profileData = await loadProfile(user);
-    initEditProfile(user, profileData || {});
-    loadBookings(user.id || user.uid);
-    loadMyListings(user);
+    const activeHostUser = { ...user, ...(profileData || {}) };
+    currentUser = activeHostUser;
+    initEditProfile(activeHostUser, profileData || {});
+    loadBookings(activeHostUser.id || activeHostUser.uid);
+    loadMyListings(activeHostUser);
 
     [
       {

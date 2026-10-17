@@ -13,11 +13,11 @@
 
 import { auth } from "./firebase-init.js";
 import { checkAuth, getCurrentUser, setStoredUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260908-v5";
-import { api } from "./kruizly-api.js?v=20261001-v2";
+import { api, getAuthToken } from "./kruizly-api.js?v=20261017-v14";
 import "./nav-helper.js?v=20260928-v2";
 import { formatBookingNumber } from "./booking-reference.js";
 import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260917-v6";
-import { openImageLightbox, isPdfDocument } from "./image-lightbox.js?v=20260928-v1";
+import { openImageLightbox, isPdfDocument } from "./image-lightbox.js?v=20261017-v14";
 
 function $(id) {
   return document.getElementById(id);
@@ -388,7 +388,7 @@ async function initExecutive() {
     }
   }
 
-  const hasStaffRole = isExecutiveUser(currentUser) || isManagerUser(currentUser) || isAdminUser(currentUser);
+  const hasStaffRole = isExecutiveUser(currentUser) || isAdminUser(currentUser);
 
   if (!hasStaffRole) {
     safeShow(accessDeniedEl);
@@ -1287,10 +1287,16 @@ function openPaymentModal(payment) {
   if (title) title.textContent = `Payment Verification — #${payment.bookingNumber || payment.bookingId}`;
 
   let screenshotImg = "";
+  const curStaffTok = localStorage.getItem("kruizly_token") || sessionStorage.getItem("kruizly_token") || "";
+  const staffTokParam = curStaffTok ? `&token=${encodeURIComponent(curStaffTok)}` : "";
   if (payment.screenshotUrl) {
-    screenshotImg = `<img src="${escapeHtml(payment.screenshotUrl)}" alt="Payment Receipt" class="manager-modal-screenshot-img" />`;
+    let sUrl = payment.screenshotUrl;
+    if (curStaffTok && (sUrl.includes("/api/media/") || sUrl.includes("/media/")) && !sUrl.includes("token=")) {
+      sUrl = `${sUrl}${sUrl.includes("?") ? "&" : "?"}${staffTokParam.replace(/^&/, "")}`;
+    }
+    screenshotImg = `<img src="${escapeHtml(sUrl)}" alt="Payment Receipt" class="manager-modal-screenshot-img" />`;
   } else if (payment.screenshotMediaId) {
-    screenshotImg = `<img src="/api/media/file.php?id=${encodeURIComponent(payment.screenshotMediaId)}" alt="Payment Receipt" class="manager-modal-screenshot-img" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:var(--sub);\\'>No image file found on server.</div>';" />`;
+    screenshotImg = `<img src="/api/media/file.php?id=${encodeURIComponent(payment.screenshotMediaId)}${staffTokParam}" alt="Payment Receipt" class="manager-modal-screenshot-img" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:var(--sub);\\'>No image file found on server.</div>';" />`;
   } else {
     screenshotImg = `<div style="padding: 20px; text-align: center; color: var(--sub); border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;">No screenshot receipt attached.</div>`;
   }
@@ -1540,10 +1546,86 @@ function openKycModal(kycItem) {
   }
 }
 
-function renderExecKycDocBox(boxEl, url, sideLabel, docTypeName, isPdfFlag) {
+let activeExecDocObjectUrls = [];
+
+function revokeExecDocBlobs() {
+  activeExecDocObjectUrls.forEach((u) => {
+    try {
+      URL.revokeObjectURL(u);
+    } catch (_) {}
+  });
+  activeExecDocObjectUrls = [];
+}
+
+async function fetchExecDocumentPreview(rawUrl) {
+  if (!rawUrl) return null;
+  const str = String(rawUrl).trim();
+  if (!str) return null;
+
+  if (str.startsWith("data:") || str.startsWith("blob:")) {
+    return { url: str, isPdf: isPdfDocument(str) };
+  }
+
+  let finalUrl = str;
+  if (str.startsWith("MED-")) {
+    finalUrl = `/api/media/file.php?id=${encodeURIComponent(str)}`;
+  }
+
+  let token = "";
+  try {
+    token = await getAuthToken();
+  } catch (_) {
+    token = localStorage.getItem("kruizly_token") || "";
+  }
+
+  if (token) {
+    const sep = finalUrl.includes("?") ? "&" : "?";
+    if (!finalUrl.includes("token=")) {
+      finalUrl = `${finalUrl}${sep}token=${encodeURIComponent(token)}`;
+    }
+  }
+
+  try {
+    const headers = {};
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const res = await fetch(finalUrl, { headers });
+    if (!res.ok) {
+      return { url: finalUrl, isPdf: isPdfDocument(finalUrl), failed: true, status: res.status };
+    }
+    const blob = await res.blob();
+    const isPdf = blob.type === "application/pdf" || isPdfDocument(finalUrl);
+    const blobUrl = URL.createObjectURL(blob);
+    activeExecDocObjectUrls.push(blobUrl);
+    return { url: blobUrl, originalUrl: finalUrl, isPdf, isBlob: true };
+  } catch (err) {
+    console.warn("fetchExecDocumentPreview fallback:", err);
+    return { url: finalUrl, isPdf: isPdfDocument(finalUrl) };
+  }
+}
+
+function renderExecKycDocBox(boxEl, previewData, sideLabel, docTypeName) {
   if (!boxEl) return;
-  if (!url) {
+  if (!previewData || !previewData.url) {
     boxEl.innerHTML = `<span style="color:var(--sub);font-size:13px;">No ${sideLabel.toLowerCase()} submitted</span>`;
+    return;
+  }
+
+  if (previewData.failed) {
+    if (previewData.status === 404) {
+      boxEl.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:180px;color:var(--sub);font-size:12.5px;background:rgba(255,255,255,0.02);border-radius:8px;border:1px dashed rgba(255,255,255,0.1);">
+          Document file not found on server
+        </div>
+      `;
+      return;
+    }
+    boxEl.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:180px;color:#ef476f;font-size:12.5px;text-align:center;padding:12px;background:rgba(239,71,111,0.05);border-radius:8px;border:1px solid rgba(239,71,111,0.2);">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:6px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        <span>Access denied to document. Please check staff session.</span>
+      </div>
+    `;
     return;
   }
 
@@ -1551,14 +1633,15 @@ function renderExecKycDocBox(boxEl, url, sideLabel, docTypeName, isPdfFlag) {
   const customerPhone = activeKycItem?.phone || "";
   const subtitle = `${customerName} ${customerPhone ? `· ${customerPhone}` : ""}`;
   const fullTitle = `${docTypeName} — ${sideLabel}`;
-
-  const isPdf = isPdfFlag || isPdfDocument(url);
+  const displayUrl = previewData.url;
+  const rawDownloadUrl = previewData.originalUrl || previewData.url;
+  const isPdf = Boolean(previewData.isPdf);
 
   if (isPdf) {
     boxEl.innerHTML = `
       <div class="exec-doc-pdf-wrapper" style="width: 100%; height: 100%; min-height: 220px; display: flex; flex-direction: column; position: relative; border-radius: 8px; overflow: hidden; background: #0c121d; border: 1px solid rgba(239, 71, 111, 0.25);">
         <div style="flex: 1; min-height: 180px; position: relative; overflow: hidden;">
-          <iframe src="${escapeHtml(url)}#toolbar=0&navpanes=0" style="width: 100%; height: 100%; min-height: 180px; border: none; background: #fff;" title="${docTypeName} ${sideLabel} PDF Preview"></iframe>
+          <iframe src="${escapeHtml(displayUrl)}#toolbar=0&navpanes=0" style="width: 100%; height: 100%; min-height: 180px; border: none; background: #fff;" title="${docTypeName} ${sideLabel} PDF Preview"></iframe>
           <div class="exec-doc-pdf-click-overlay" role="button" tabindex="0" title="Click to inspect PDF in full lightbox" style="position: absolute; inset: 0; cursor: pointer; background: transparent;"></div>
         </div>
         <div class="exec-doc-pdf-bar" style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: rgba(5, 8, 13, 0.95); border-top: 1px solid rgba(255,255,255,0.08);">
@@ -1571,7 +1654,7 @@ function renderExecKycDocBox(boxEl, url, sideLabel, docTypeName, isPdfFlag) {
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
               Inspect
             </button>
-            <a href="${escapeHtml(url)}" target="_blank" rel="noopener" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #fff; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+            <a href="${escapeHtml(rawDownloadUrl)}" target="_blank" rel="noopener" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); color: #fff; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
               Open
             </a>
@@ -1582,7 +1665,7 @@ function renderExecKycDocBox(boxEl, url, sideLabel, docTypeName, isPdfFlag) {
 
     const overlay = boxEl.querySelector(".exec-doc-pdf-click-overlay");
     const inspectBtn = boxEl.querySelector(".btn-exec-pdf-lightbox");
-    const openLb = () => openImageLightbox(url, fullTitle, subtitle);
+    const openLb = () => openImageLightbox(displayUrl, fullTitle, subtitle);
     overlay?.addEventListener("click", openLb);
     overlay?.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -1597,7 +1680,7 @@ function renderExecKycDocBox(boxEl, url, sideLabel, docTypeName, isPdfFlag) {
   // Otherwise, render image wrapper
   boxEl.innerHTML = `
     <div class="exec-doc-img-wrapper" role="button" tabindex="0" title="Click to enlarge ${sideLabel}">
-      <img src="${escapeHtml(url)}" alt="${docTypeName} ${sideLabel}" class="enlargeable-kyc-img" />
+      <img src="${escapeHtml(displayUrl)}" alt="${docTypeName} ${sideLabel}" class="enlargeable-kyc-img" />
       <div class="exec-doc-zoom-overlay">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
         <span>Click to Enlarge</span>
@@ -1606,18 +1689,8 @@ function renderExecKycDocBox(boxEl, url, sideLabel, docTypeName, isPdfFlag) {
   `;
 
   const wrap = boxEl.querySelector(".exec-doc-img-wrapper");
-  const img = boxEl.querySelector("img");
-
-  if (img) {
-    img.addEventListener("error", () => {
-      // If image loading fails, automatically re-render as PDF preview container
-      console.warn("KYC document image error for:", url, "- switching to PDF/document preview");
-      renderExecKycDocBox(boxEl, url, sideLabel, docTypeName, true);
-    });
-  }
-
   if (wrap) {
-    const openLb = () => openImageLightbox(url, fullTitle, subtitle);
+    const openLb = () => openImageLightbox(displayUrl, fullTitle, subtitle);
     wrap.addEventListener("click", openLb);
     wrap.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -1628,41 +1701,44 @@ function renderExecKycDocBox(boxEl, url, sideLabel, docTypeName, isPdfFlag) {
   }
 }
 
-function renderKycDocPreviews() {
+async function renderKycDocPreviews() {
   if (!activeKycItem) return;
 
   const frontBox = $("execDocFrontPreview");
   const backBox = $("execDocBackPreview");
 
-  let frontUrl = null;
-  let backUrl = null;
-  let frontIsPdf = false;
-  let backIsPdf = false;
+  revokeExecDocBlobs();
+
+  let rawFrontUrl = null;
+  let rawBackUrl = null;
 
   if (activeKycDocTab === "license") {
-    frontUrl = activeKycItem.licenseFrontURL || (activeKycItem.licenseFrontMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.licenseFrontMediaId)}` : null);
-    backUrl = activeKycItem.licenseBackURL || (activeKycItem.licenseBackMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.licenseBackMediaId)}` : null);
-    frontIsPdf = Boolean(activeKycItem.licenseFrontIsPdf);
-    backIsPdf = Boolean(activeKycItem.licenseBackIsPdf);
+    rawFrontUrl = activeKycItem.licenseFrontURL || (activeKycItem.licenseFrontMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.licenseFrontMediaId)}` : null);
+    rawBackUrl = activeKycItem.licenseBackURL || (activeKycItem.licenseBackMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.licenseBackMediaId)}` : null);
   } else if (activeKycDocTab === "aadhar") {
-    frontUrl = activeKycItem.aadharFrontURL || (activeKycItem.aadharFrontMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.aadharFrontMediaId)}` : null);
-    backUrl = activeKycItem.aadharBackURL || (activeKycItem.aadharBackMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.aadharBackMediaId)}` : null);
-    frontIsPdf = Boolean(activeKycItem.aadharFrontIsPdf);
-    backIsPdf = Boolean(activeKycItem.aadharBackIsPdf);
+    rawFrontUrl = activeKycItem.aadharFrontURL || (activeKycItem.aadharFrontMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.aadharFrontMediaId)}` : null);
+    rawBackUrl = activeKycItem.aadharBackURL || (activeKycItem.aadharBackMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.aadharBackMediaId)}` : null);
   } else if (activeKycDocTab === "pan") {
-    frontUrl = activeKycItem.panFrontURL || (activeKycItem.panFrontMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.panFrontMediaId)}` : null);
-    backUrl = activeKycItem.panBackURL || (activeKycItem.panBackMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.panBackMediaId)}` : null);
-    frontIsPdf = Boolean(activeKycItem.panFrontIsPdf);
-    backIsPdf = Boolean(activeKycItem.panBackIsPdf);
+    rawFrontUrl = activeKycItem.panFrontURL || (activeKycItem.panFrontMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.panFrontMediaId)}` : null);
+    rawBackUrl = activeKycItem.panBackURL || (activeKycItem.panBackMediaId ? `/api/media/file.php?id=${encodeURIComponent(activeKycItem.panBackMediaId)}` : null);
   }
 
   const docTypeName = activeKycDocTab === "license" ? "Driving License" : activeKycDocTab === "aadhar" ? "Aadhaar Card" : "PAN Card";
 
-  renderExecKycDocBox(frontBox, frontUrl, "Front Side", docTypeName, frontIsPdf);
-  renderExecKycDocBox(backBox, backUrl, "Back Side", docTypeName, backIsPdf);
+  if (frontBox) frontBox.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:180px;color:var(--sub);font-size:12.5px;">Loading front side...</div>`;
+  if (backBox) backBox.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:180px;color:var(--sub);font-size:12.5px;">Loading back side...</div>`;
+
+  const [frontPreview, backPreview] = await Promise.all([
+    fetchExecDocumentPreview(rawFrontUrl),
+    fetchExecDocumentPreview(rawBackUrl)
+  ]);
+
+  renderExecKycDocBox(frontBox, frontPreview, "Front Side", docTypeName);
+  renderExecKycDocBox(backBox, backPreview, "Back Side", docTypeName);
 }
 
 function closeKycModal() {
+  revokeExecDocBlobs();
   const modal = $("executiveDocModal");
   if (modal) {
     modal.hidden = true;

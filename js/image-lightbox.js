@@ -180,14 +180,21 @@ export function openImageLightbox(src, title = "Document Preview", subtitle = ""
   const zoomLabel = document.getElementById("kruizlyLightboxZoomLabel");
   const hintEl = document.getElementById("kruizlyLightboxHint");
 
+  let activeSrc = String(src || "").trim();
+  const curToken = localStorage.getItem("kruizly_token") || sessionStorage.getItem("kruizly_token") || "";
+  if (curToken && (activeSrc.includes("/api/media/") || activeSrc.includes("/media/")) && !activeSrc.includes("token=")) {
+    const sep = activeSrc.includes("?") ? "&" : "?";
+    activeSrc = `${activeSrc}${sep}token=${encodeURIComponent(curToken)}`;
+  }
+
   if (titleEl) titleEl.textContent = title;
   if (subEl) subEl.textContent = subtitle;
-  if (newTabBtn) newTabBtn.href = src;
+  if (newTabBtn) newTabBtn.href = activeSrc;
   if (zoomLabel) zoomLabel.textContent = "2x Zoom";
   currentLightboxZoom = 1;
   currentLightboxRotate = 0;
 
-  const isPdf = isPdfDocument(src);
+  const isPdf = isPdfDocument(activeSrc);
 
   if (isPdf) {
     if (imgEl) {
@@ -198,7 +205,7 @@ export function openImageLightbox(src, title = "Document Preview", subtitle = ""
     }
     if (pdfEl) {
       pdfEl.style.display = "block";
-      pdfEl.src = src;
+      pdfEl.src = activeSrc;
     }
     if (zoomBtn) zoomBtn.style.display = "none";
     if (rotateBtn) rotateBtn.style.display = "none";

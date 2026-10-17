@@ -52,12 +52,8 @@ export function initDynamicNav() {
         prof ? nav.insertBefore(link, prof) : nav.appendChild(link);
       }
 
-      // Executive operations (available to executive, manager, and admin)
-      if (
-        normalizedRole === "executive" ||
-        normalizedRole === "manager" ||
-        normalizedRole === "admin"
-      ) {
+      // Executive operations (available strictly to executive and admin)
+      if (normalizedRole === "executive" || normalizedRole === "admin") {
         if (!nav.querySelector('a[href="executive.html"]')) {
           const link = document.createElement("a");
           link.href = "executive.html";
@@ -68,7 +64,7 @@ export function initDynamicNav() {
         }
       }
 
-      // Manager summary (available to manager and admin)
+      // Manager summary (available strictly to manager and admin)
       if (normalizedRole === "manager" || normalizedRole === "admin") {
         if (!nav.querySelector('a[href="manager.html"]')) {
           const link = document.createElement("a");
@@ -80,7 +76,7 @@ export function initDynamicNav() {
         }
       }
 
-      // Accounts / Financial Verification (available to accountant and admin)
+      // Accounts / Financial Verification (available strictly to accountant and admin)
       if (normalizedRole === "accountant" || normalizedRole === "admin") {
         if (!nav.querySelector('a[href="accounts.html"]')) {
           const link = document.createElement("a");
@@ -92,7 +88,7 @@ export function initDynamicNav() {
         }
       }
 
-      // Admin link (available to admin - full access to every page)
+      // Admin link (available strictly to admin - full access to every page)
       if (normalizedRole === "admin") {
         if (!nav.querySelector('a[href="admin.html"]')) {
           const link = document.createElement("a");

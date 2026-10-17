@@ -930,7 +930,7 @@ function displayBooking(
   const rentalCharges = Number(
     booking.baseAmount ||
     booking.rentalTotal ||
-    Math.max(0, totalAmount - securityDeposit + couponDiscount)
+    totalAmount
   );
 
   if ($("paymentTotalRental")) {
@@ -1026,7 +1026,7 @@ function setupPaymentPlanPicker(booking, totalAmount, isAdvancePaid, advPaid, re
       planFullTitle.textContent = "Pay Full Amount";
     }
     if (planFullSubtitle) {
-      planFullSubtitle.textContent = "Pay 100% full amount now (incl. refundable deposit)";
+      planFullSubtitle.textContent = "Pay 100% full booking amount now";
     }
     const advanceSubtitle = advanceCard ? advanceCard.querySelector("small") : null;
     if (advanceSubtitle) {
@@ -1138,7 +1138,7 @@ function updatePaymentPlan(newPlan) {
     if (newPlan === "full") {
       $("paymentPlanNote").textContent = isAdvancePaidVerified
         ? `Paying remaining balance of ₹${formatCurrency(currentPaymentAmount)} to complete full rental payment.`
-        : "Paying 100% full rental payment today (includes refundable deposit).";
+        : "Paying 100% full rental payment today.";
     } else {
       $("paymentPlanNote").textContent = `Token booking fee of ₹${formatCurrency(currentPaymentAmount)} to lock reservation. Balance of ₹${formatCurrency(remainingCalculated)} due at vehicle handover.`;
     }
@@ -1190,21 +1190,15 @@ async function initialisePaymentUI(booking) {
   const baseAmt = Number(booking.baseAmount || 0);
   const couponDisc = Number(booking.couponDiscount || 0);
 
-  // Self-healing fallback calculation for any booking record missing pre-calculated totals
+  // Fallback calculation for any booking record missing pre-calculated totals
   if (totalAmount <= 0) {
     const catalog = window.fleetVehicles || [];
     const vehicle = catalog.find((item) => item.regNo === booking.vehicleReg) || {};
     const priceDay = Number(booking.priceDay || vehicle.priceDay || 2600);
-    const depositVal = Number(booking.securityDeposit || vehicle.securityDeposit || 3000);
     const driverVal = booking.withDriver ? Number(booking.driverPrice || vehicle.driverPrice || 1500) : 0;
     const numDays = Number(booking.days || booking.durationDays || 1);
 
-    totalAmount = Math.max(0, (priceDay * numDays) + (driverVal * numDays) + depositVal);
-  } else if (securityDep > 0 && baseAmt > 0 && totalAmount <= baseAmt) {
-    // If legacy record saved totalAmount excluding security deposit
-    totalAmount = Math.max(0, baseAmt + securityDep - couponDisc);
-    booking.totalAmount = totalAmount;
-    booking.finalAmount = totalAmount;
+    totalAmount = Math.max(0, (priceDay * numDays) + (driverVal * numDays) - couponDisc);
   }
 
   totalBookingAmount = totalAmount;

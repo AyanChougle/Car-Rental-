@@ -151,8 +151,8 @@ if ($couponCode !== '') {
     }
 }
 
-// Authoritative total amount payable: Base rental + Driver + Security Deposit - Coupon discount
-$grossTotal = $baseAmount + $driverTotal + $securityDeposit;
+// Authoritative total amount payable: Base rental + Driver - Coupon discount (Security deposit is NOT included in booking total)
+$grossTotal = $baseAmount + $driverTotal;
 $totalAmount = max(0.00, round($grossTotal - $couponDiscount, 2));
 
 // Authoritative payment plan calculation (tamper-proof)
@@ -337,16 +337,21 @@ try {
     if ($isPaidOrConfirmed) {
         try {
             require_once __DIR__ . '/../services/KpiService.php';
-            $netRental = 0.0;
-            if (!empty($finalAmount) && (float)$finalAmount > 0) {
-                $netRental = max(0.0, (float)$finalAmount - (float)$securityDeposit);
-            } elseif (!empty($totalAmount) && (float)$totalAmount > 0) {
-                $netRental = max(0.0, (float)$totalAmount - (float)$securityDeposit);
-            } elseif (!empty($advanceAmount) && (float)$advanceAmount > 0) {
+            $bk = [
+                'final_amount' => $finalAmount,
+                'total_amount' => $totalAmount,
+                'base_amount' => $baseAmount,
+                'coupon_discount' => $couponDiscount,
+                'advance_amount' => $advanceAmount
+            ];
+            $netRental = KpiService::getBookingNetRental($bk);
+            if ($netRental <= 0 && (float)$advanceAmount > 0) {
                 $netRental = (float)$advanceAmount;
             }
             if ($netRental > 0) {
-                KpiService::incrementBookingMetrics($netRental);
+                $hId = isset($pickupHubId) ? (int)$pickupHubId : 0;
+                KpiService::incrementBookingMetrics($netRental, $hId);
+                KpiService::syncMetrics();
             }
         } catch (Throwable $_) {}
     }

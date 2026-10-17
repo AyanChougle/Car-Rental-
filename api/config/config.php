@@ -41,7 +41,7 @@ define('FIREBASE_PROJECT_ID', getenv('FIREBASE_PROJECT_ID') ?: 'carrentpeweb');
 define('JWT_SECRET', getenv('JWT_SECRET') ?: 'dev_key_change_in_production_immediately');
 
 // Admin emails that auto-get admin role on first login
-define('ADMIN_EMAILS', ['ayan@kruizly.com', 'admin@kruizly.com', 'carrentpedatabase@gmail.com']);
+define('ADMIN_EMAILS', ['ayan@kruizly.com', 'admin@kruizly.com', 'ayanchougle@gmail.com', 'carrentpedatabase@gmail.com', 'currentpedatabase@gmail.com']);
 
 // Token expiration times (seconds)
 define('JWT_ACCESS_TOKEN_TTL', 86400); // 24 hours

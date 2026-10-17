@@ -10,7 +10,7 @@ ALTER TABLE `vehicles`
   ADD COLUMN IF NOT EXISTS `owner_email` VARCHAR(191) DEFAULT NULL AFTER `owner_name`,
   ADD COLUMN IF NOT EXISTS `owner_phone` VARCHAR(32) DEFAULT NULL AFTER `owner_email`;
 
--- 2. Ensure partner_cars table exists
+-- 2. Ensure partner_cars table exists with valid PRIMARY KEY and AUTO_INCREMENT
 CREATE TABLE IF NOT EXISTS `partner_cars` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `car_id` VARCHAR(64) NOT NULL UNIQUE,
@@ -33,8 +33,26 @@ CREATE TABLE IF NOT EXISTS `partner_cars` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   INDEX `idx_partner_cars_uid` (`firebase_uid`),
-  INDEX `idx_partner_cars_status` (`status`)
+  INDEX `idx_partner_cars_status` (`status`),
+  INDEX `idx_partner_cars_reg` (`reg_no`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Fix table if imported without primary key or auto_increment
+-- First, deduplicate by reg_no / car_id so we can safely add PRIMARY KEY
+DELETE pc1 FROM `partner_cars` pc1
+INNER JOIN `partner_cars` pc2 
+WHERE (pc1.id < pc2.id OR (pc1.id = pc2.id AND pc1.created_at < pc2.created_at))
+  AND (
+    (pc1.reg_no = pc2.reg_no AND pc1.reg_no != '')
+    OR (pc1.car_id = pc2.car_id AND pc1.car_id != '')
+  );
+
+-- Re-assign sequential IDs to existing rows to avoid duplicate '0' collision
+SET @new_id := 0;
+UPDATE `partner_cars` SET `id` = (@new_id := @new_id + 1) ORDER BY `created_at` ASC;
+
+-- Add PRIMARY KEY and AUTO_INCREMENT safely without duplicate error
+ALTER TABLE `partner_cars` MODIFY COLUMN `id` INT NOT NULL AUTO_INCREMENT;
 
 -- 3. Ensure partner_leads table exists and has name column
 CREATE TABLE IF NOT EXISTS `partner_leads` (
@@ -93,7 +111,22 @@ SET
   END
 WHERE `owner_name` IS NOT NULL AND `owner_name` != '';
 
--- 5. Seed partner host user accounts into users table
+-- 5. Ensure admin accounts in admin_users and users table
+ALTER TABLE `admin_users` ADD COLUMN IF NOT EXISTS `hub_id` INT DEFAULT 0;
+
+INSERT INTO `admin_users` (`firebase_uid`, `email`, `name`, `role`)
+VALUES 
+  ('2RzZfetVnmdHQa119Mddj80bPrs2', 'carrentpedatabase@gmail.com', 'Car Database Admin', 'super_admin'),
+  ('admin_kruizly_ayan', 'admin@kruizly.com', 'Kruizly Admin', 'super_admin'),
+  ('admin_ayan_chougle', 'ayan@kruizly.com', 'Ayan Chougle', 'super_admin')
+ON DUPLICATE KEY UPDATE 
+  `role` = 'super_admin';
+
+UPDATE `users` 
+SET `role` = 'super_admin' 
+WHERE LOWER(TRIM(`email`)) IN ('carrentpedatabase@gmail.com', 'admin@kruizly.com', 'ayan@kruizly.com','currentpedatabase@gmail.com');
+
+-- 5b. Seed partner host user accounts into users table
 INSERT INTO `users` (`firebase_uid`, `name`, `email`, `phone`, `role`, `created_at`, `updated_at`)
 VALUES
   ('host_aditi_lotankar', 'Aditi Lotankar', 'aditilotankar03@gmail.com', '9867539466', 'host', NOW(), NOW()),
@@ -138,27 +171,43 @@ VALUES
 
 -- 7. Add payout model columns to partner_cars and vehicles
 ALTER TABLE `partner_cars` 
-  ADD COLUMN IF NOT EXISTS `payout_model` ENUM('revenue_share', 'fixed_monthly') NOT NULL DEFAULT 'revenue_share' AFTER `expected_price`,
+  ADD COLUMN IF NOT EXISTS `payout_model` ENUM('revenue_share', 'fixed_monthly') NOT NULL DEFAULT 'fixed_monthly' AFTER `expected_price`,
   ADD COLUMN IF NOT EXISTS `fixed_monthly_amount` DECIMAL(10,2) DEFAULT 25000.00 AFTER `payout_model`,
   ADD COLUMN IF NOT EXISTS `revenue_share_pct` DECIMAL(5,2) DEFAULT 60.00 AFTER `fixed_monthly_amount`;
 
 ALTER TABLE `vehicles`
-  ADD COLUMN IF NOT EXISTS `payout_model` ENUM('revenue_share', 'fixed_monthly') NOT NULL DEFAULT 'revenue_share' AFTER `acquisition_type`,
+  ADD COLUMN IF NOT EXISTS `payout_model` ENUM('revenue_share', 'fixed_monthly') NOT NULL DEFAULT 'fixed_monthly' AFTER `acquisition_type`,
   ADD COLUMN IF NOT EXISTS `fixed_monthly_amount` DECIMAL(10,2) DEFAULT 25000.00 AFTER `payout_model`;
 
+-- As requested: every host has chosen Option 1 (fixed amount every month paid by the company)
 UPDATE `vehicles`
-SET `payout_model` = CASE 
-    WHEN LOWER(TRIM(`owner_name`)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma', 'anil kumar gupta') THEN 'fixed_monthly'
-    ELSE 'revenue_share'
-  END,
+SET `payout_model` = 'fixed_monthly',
   `fixed_monthly_amount` = CASE 
-    WHEN LOWER(TRIM(`owner_name`)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma') THEN 28000.00
-    WHEN LOWER(TRIM(`owner_name`)) = 'anil kumar gupta' THEN 25000.00
+    WHEN LOWER(CONCAT(brand, ' ', model)) LIKE '%ertiga%' 
+      OR LOWER(CONCAT(brand, ' ', model)) LIKE '%xuv%' 
+      OR LOWER(CONCAT(brand, ' ', model)) LIKE '%scorpio%' 
+      OR LOWER(CONCAT(brand, ' ', model)) LIKE '%taisor%' 
+      OR LOWER(CONCAT(brand, ' ', model)) LIKE '%innova%' 
+      OR LOWER(CONCAT(brand, ' ', model)) LIKE '%thar%' 
+      OR LOWER(TRIM(`owner_name`)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma') THEN 28000.00
     ELSE 25000.00
   END
 WHERE `owner_name` IS NOT NULL AND `owner_name` != '';
 
--- 8. Populate partner_cars from vehicles table with resolved host user credentials and payout models
+-- 8. Clean up and deduplicate partner_cars table
+-- Remove rows with 0 or null ID or duplicate reg_no
+DELETE pc1 FROM `partner_cars` pc1
+INNER JOIN `partner_cars` pc2 
+WHERE pc1.id < pc2.id 
+  AND (
+    (pc1.reg_no = pc2.reg_no AND pc1.reg_no != '')
+    OR (pc1.car_id = pc2.car_id AND pc1.car_id != '')
+  );
+
+-- If any id = 0 exists from a previous bad import, assign fresh auto_increment values
+UPDATE `partner_cars` SET `id` = NULL WHERE `id` = 0;
+
+-- 9. Populate partner_cars from vehicles table with resolved host user credentials and payout models
 INSERT INTO `partner_cars` (
   `car_id`, `user_id`, `firebase_uid`, `user_name`, `user_phone`, `user_email`,
   `brand`, `model`, `year`, `reg_no`, `transmission`, `fuel`, `city`, `expected_price`,
@@ -180,32 +229,41 @@ SELECT
   v.fuel,
   COALESCE(NULLIF(v.location, ''), 'Navi Mumbai') AS `city`,
   v.price_day AS `expected_price`,
+  'fixed_monthly' AS `payout_model`,
   CASE 
-    WHEN LOWER(TRIM(v.owner_name)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma', 'anil kumar gupta') THEN 'fixed_monthly'
-    ELSE 'revenue_share'
-  END AS `payout_model`,
-  CASE 
-    WHEN LOWER(TRIM(v.owner_name)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma') THEN 28000.00
-    WHEN LOWER(TRIM(v.owner_name)) = 'anil kumar gupta' THEN 25000.00
+    WHEN LOWER(CONCAT(v.brand, ' ', v.model)) LIKE '%ertiga%' 
+      OR LOWER(CONCAT(v.brand, ' ', v.model)) LIKE '%xuv%' 
+      OR LOWER(CONCAT(v.brand, ' ', v.model)) LIKE '%scorpio%' 
+      OR LOWER(CONCAT(v.brand, ' ', v.model)) LIKE '%taisor%' 
+      OR LOWER(CONCAT(v.brand, ' ', v.model)) LIKE '%innova%' 
+      OR LOWER(CONCAT(v.brand, ' ', v.model)) LIKE '%thar%' 
+      OR LOWER(TRIM(v.owner_name)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma') THEN 28000.00
     ELSE 25000.00
   END AS `fixed_monthly_amount`,
   60.00 AS `revenue_share_pct`,
   'approved' AS `status`,
   v.gallery AS `photos`
-FROM `vehicles` v
+FROM (
+  SELECT * FROM `vehicles`
+  WHERE (LOWER(TRIM(acquisition_type)) IN ('partner', 'host', 'hosted')
+     OR (owner_name IS NOT NULL AND owner_name != '' AND owner_name NOT IN ('Fleet Catalog', 'KRUIZLY')))
+    AND reg_no IS NOT NULL AND reg_no != ''
+  GROUP BY reg_no
+) v
 LEFT JOIN `users` u ON (
   (v.owner_email IS NOT NULL AND v.owner_email != '' AND LOWER(TRIM(u.email)) = LOWER(TRIM(v.owner_email)))
   OR LOWER(TRIM(u.name)) = LOWER(TRIM(v.owner_name))
 )
-WHERE LOWER(TRIM(v.acquisition_type)) IN ('partner', 'host', 'hosted')
-   OR (v.owner_name IS NOT NULL AND v.owner_name != '' AND v.owner_name NOT IN ('Fleet Catalog', 'KRUIZLY'))
 ON DUPLICATE KEY UPDATE 
+  `user_id` = COALESCE(VALUES(`user_id`), `partner_cars`.`user_id`),
+  `firebase_uid` = CASE WHEN `partner_cars`.`firebase_uid` LIKE 'host_%' THEN VALUES(`firebase_uid`) ELSE `partner_cars`.`firebase_uid` END,
   `user_name` = VALUES(`user_name`),
   `user_phone` = COALESCE(NULLIF(VALUES(`user_phone`), ''), `user_phone`),
   `user_email` = COALESCE(NULLIF(VALUES(`user_email`), ''), `user_email`),
-  `payout_model` = VALUES(`payout_model`),
+  `payout_model` = 'fixed_monthly',
   `fixed_monthly_amount` = VALUES(`fixed_monthly_amount`),
   `revenue_share_pct` = VALUES(`revenue_share_pct`),
+  
   `status` = 'approved',
   `brand` = VALUES(`brand`),
   `model` = VALUES(`model`),
@@ -214,13 +272,15 @@ ON DUPLICATE KEY UPDATE
 UPDATE `partner_cars` pc
 JOIN `vehicles` v ON (pc.reg_no = v.reg_no OR pc.car_id = v.car_id)
 SET 
-  pc.payout_model = CASE 
-    WHEN LOWER(TRIM(v.owner_name)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma', 'anil kumar gupta') THEN 'fixed_monthly'
-    ELSE 'revenue_share'
-  END,
+  pc.payout_model = 'fixed_monthly',
   pc.fixed_monthly_amount = CASE 
-    WHEN LOWER(TRIM(v.owner_name)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma') THEN 28000.00
-    WHEN LOWER(TRIM(v.owner_name)) = 'anil kumar gupta' THEN 25000.00
+    WHEN LOWER(CONCAT(v.brand, ' ', v.model)) LIKE '%ertiga%' 
+      OR LOWER(CONCAT(v.brand, ' ', v.model)) LIKE '%xuv%' 
+      OR LOWER(CONCAT(v.brand, ' ', v.model)) LIKE '%scorpio%' 
+      OR LOWER(CONCAT(v.brand, ' ', v.model)) LIKE '%taisor%' 
+      OR LOWER(CONCAT(v.brand, ' ', v.model)) LIKE '%innova%' 
+      OR LOWER(CONCAT(v.brand, ' ', v.model)) LIKE '%thar%' 
+      OR LOWER(TRIM(v.owner_name)) IN ('viran gupta', 'viren gupta', 'anil vishwakarma') THEN 28000.00
     ELSE 25000.00
   END,
   pc.user_name = COALESCE(NULLIF(v.owner_name, ''), pc.user_name),

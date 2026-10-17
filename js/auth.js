@@ -50,9 +50,15 @@ export function clearStoredUser() {
 export function isAdminUser(user) {
   if (!user) return false;
   const role = String(user.role || "").trim().toLowerCase();
-  if (role === "admin") return true;
+  if (role === "admin" || role === "super_admin") return true;
   const email = String(user.email || "").trim().toLowerCase();
-  return ["ayan@kruizly.com", "admin@kruizly.com", "carrentpedatabase@gmail.com"].includes(email);
+  return [
+    "ayan@kruizly.com",
+    "admin@kruizly.com",
+    "ayanchougle@gmail.com",
+    "carrentpedatabase@gmail.com",
+    "currentpedatabase@gmail.com"
+  ].includes(email);
 }
 
 export function isManagerUser(user) {

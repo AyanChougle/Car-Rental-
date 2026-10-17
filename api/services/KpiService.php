@@ -34,11 +34,12 @@ class KpiService
      * Increments the live month sales, total revenue, day sales, week sales and booking count
      * when a new booking is reserved on the platform.
      */
-    public static function incrementBookingMetrics(float $amount): void
+    public static function incrementBookingMetrics(float $amount, int $hubId = 0): void
     {
         if ($amount <= 0) return;
         $mKey = date('Y-m-01');
         try {
+            // 1. Add to kpi_metrics table
             Database::execute(
                 "INSERT INTO kpi_metrics (metric_date, day_sales, week_sales, month_sales, total_revenue, total_bookings, paid_bookings)
                  VALUES (?, ?, ?, ?, ?, 1, 1)
@@ -52,6 +53,27 @@ class KpiService
                      updated_at = CURRENT_TIMESTAMP",
                 [$mKey, $amount, $amount, $amount, $amount]
             );
+
+            // 2. Add to kpi_hub_metrics table (both hub 0 'All Hubs' and specific hub)
+            $hubsToUpdate = [0];
+            if ($hubId > 0 && !in_array($hubId, $hubsToUpdate, true)) {
+                $hubsToUpdate[] = $hubId;
+            }
+
+            foreach ($hubsToUpdate as $hId) {
+                Database::execute(
+                    "UPDATE kpi_hub_metrics SET
+                        day_sales = day_sales + ?,
+                        week_sales = week_sales + ?,
+                        month_revenue = month_revenue + ?,
+                        total_revenue = total_revenue + ?,
+                        total_bookings = total_bookings + 1,
+                        paid_bookings = paid_bookings + 1,
+                        updated_at = CURRENT_TIMESTAMP
+                     WHERE hub_id = ?",
+                    [$amount, $amount, $amount, $amount, $hId]
+                );
+            }
         } catch (Throwable $e) {
             error_log("[KpiService::incrementBookingMetrics] " . $e->getMessage());
         }
@@ -61,10 +83,12 @@ class KpiService
      * Decrements the live month sales, total revenue, day sales, week sales and booking count
      * when a booking is cancelled.
      */
-    public static function decrementBookingMetrics(float $amount): void
+    public static function decrementBookingMetrics(float $amount, int $hubId = 0): void
     {
+        if ($amount <= 0) return;
         $mKey = date('Y-m-01');
         try {
+            // 1. Decrement in kpi_metrics
             Database::execute(
                 "UPDATE kpi_metrics 
                  SET month_sales = GREATEST(0, month_sales - ?),
@@ -75,6 +99,26 @@ class KpiService
                  WHERE metric_date = ?",
                 [$amount, $amount, $amount, $amount, $mKey]
             );
+
+            // 2. Decrement in kpi_hub_metrics
+            $hubsToUpdate = [0];
+            if ($hubId > 0 && !in_array($hubId, $hubsToUpdate, true)) {
+                $hubsToUpdate[] = $hubId;
+            }
+
+            foreach ($hubsToUpdate as $hId) {
+                Database::execute(
+                    "UPDATE kpi_hub_metrics SET
+                        day_sales = GREATEST(0, day_sales - ?),
+                        week_sales = GREATEST(0, week_sales - ?),
+                        month_revenue = GREATEST(0, month_revenue - ?),
+                        total_revenue = GREATEST(0, total_revenue - ?),
+                        total_bookings = GREATEST(0, total_bookings - 1),
+                        updated_at = CURRENT_TIMESTAMP
+                     WHERE hub_id = ?",
+                    [$amount, $amount, $amount, $amount, $hId]
+                );
+            }
         } catch (Throwable $e) {
             error_log("[KpiService::decrementBookingMetrics] " . $e->getMessage());
         }
@@ -519,7 +563,6 @@ class KpiService
      */
     public static function getBookingNetRental(array $b): float
     {
-        $dep = (float)($b['security_deposit'] ?? 0);
         $tot = (float)($b['final_amount'] ?: ($b['total_amount'] ?? 0));
         $base = (float)($b['base_amount'] ?? 0);
         $disc = (float)($b['coupon_discount'] ?? 0);
@@ -529,12 +572,12 @@ class KpiService
             return round(max(0.0, $base - $disc), 2);
         }
 
-        // If total or advance was tracked, strictly subtract any refundable security deposit
-        if ($tot > 0 && $dep > 0 && $tot > $dep) {
-            return round($tot - $dep, 2);
+        // The booking amount in database is already pure rental revenue
+        if ($tot > 0) {
+            return round(max(0.0, $tot - $disc), 2);
         }
 
-        return round(max(0.0, $tot - $dep), 2);
+        return 0.0;
     }
 
     /**

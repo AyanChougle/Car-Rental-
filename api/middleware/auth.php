@@ -66,7 +66,11 @@ class Auth {
             }
         }
 
-        // Check POST, Cookie fallbacks (NEVER accept tokens in URL query strings)
+        // Check GET query params (essential for media streaming, img, iframe, and direct file download)
+        if (!empty($_GET['token'])) $candidateTokens[] = trim((string)$_GET['token']);
+        if (!empty($_GET['idToken'])) $candidateTokens[] = trim((string)$_GET['idToken']);
+
+        // Check POST, Cookie fallbacks
         if (!empty($_POST['idToken'])) $candidateTokens[] = trim((string)$_POST['idToken']);
         if (!empty($_COOKIE['kruizly_token'])) $candidateTokens[] = trim((string)$_COOKIE['kruizly_token']);
         if (!empty($_COOKIE['token'])) $candidateTokens[] = trim((string)$_COOKIE['token']);
@@ -123,8 +127,45 @@ class Auth {
                     }
                 }
 
-                $isAdminEmail = in_array($email, ['ayan@kruizly.com', 'admin@kruizly.com', 'carrentpedatabase@gmail.com'], true);
-                $initialRole = $isAdminEmail ? 'admin' : 'customer';
+                // Check admin_users table for elevated staff role (super_admin, admin, manager, executive, accountant)
+                $staffRecord = null;
+                try {
+                    $staffRecord = Database::fetchOne(
+                        "SELECT role, hub_id FROM admin_users 
+                         WHERE firebase_uid = ? 
+                            OR (email IS NOT NULL AND email != '' AND LOWER(TRIM(email)) = ?) 
+                         LIMIT 1",
+                        [$firebaseUid, $email]
+                    );
+                } catch (Throwable $_) {}
+
+                $elevatedRole = null;
+                if ($staffRecord && !empty($staffRecord['role'])) {
+                    $elevatedRole = strtolower(trim((string)$staffRecord['role']));
+                } elseif (in_array($email, ['ayan@kruizly.com', 'admin@kruizly.com', 'ayanchougle@gmail.com', 'carrentpedatabase@gmail.com', 'currentpedatabase@gmail.com'], true)) {
+                    $elevatedRole = 'super_admin';
+                } elseif ($user && in_array(strtolower((string)($user['role'] ?? '')), ['admin', 'super_admin', 'manager', 'executive', 'accountant'], true)) {
+                    // Retain staff role already assigned in users table
+                    $elevatedRole = strtolower((string)$user['role']);
+                }
+
+                // If not staff, check if user has approved partner vehicles (host role)
+                if (!$elevatedRole) {
+                    try {
+                        $isHostCar = Database::fetchOne(
+                            "SELECT id FROM partner_cars 
+                             WHERE (firebase_uid = ? OR (user_email IS NOT NULL AND LOWER(TRIM(user_email)) = ?))
+                               AND status = 'approved'
+                             LIMIT 1",
+                            [$firebaseUid, $email]
+                        );
+                        if ($isHostCar) {
+                            $elevatedRole = 'host';
+                        }
+                    } catch (Throwable $_) {}
+                }
+
+                $initialRole = $elevatedRole ?: 'customer';
 
                 // 3. Auto-provision in MySQL if new user
                 if (!$user) {
@@ -137,7 +178,7 @@ class Auth {
                         Database::execute(
                             "INSERT INTO users (id, firebase_uid, email, name, phone, role, status)
                              VALUES (?, ?, ?, ?, ?, ?, 'active')
-                             ON DUPLICATE KEY UPDATE firebase_uid = VALUES(firebase_uid)",
+                             ON DUPLICATE KEY UPDATE firebase_uid = VALUES(firebase_uid), role = VALUES(role)",
                             [$nextId, $firebaseUid, $userEmail, $userName, $phone ?: null, $initialRole]
                         );
                     } catch (Throwable $e1) {
@@ -145,7 +186,7 @@ class Auth {
                             Database::execute(
                                 "INSERT INTO users (firebase_uid, email, name, phone, role, status)
                                  VALUES (?, ?, ?, ?, ?, 'active')
-                                 ON DUPLICATE KEY UPDATE firebase_uid = VALUES(firebase_uid)",
+                                 ON DUPLICATE KEY UPDATE firebase_uid = VALUES(firebase_uid), role = VALUES(role)",
                                 [$firebaseUid, $userEmail, $userName, $phone ?: null, $initialRole]
                             );
                         } catch (Throwable $e2) {
@@ -157,9 +198,14 @@ class Auth {
                         "SELECT * FROM users WHERE firebase_uid = ? OR (email IS NOT NULL AND email != '' AND email = ?) LIMIT 1",
                         [$firebaseUid, $userEmail]
                     );
-                } else if ($isAdminEmail && ($user['role'] ?? '') !== 'admin') {
-                    Database::execute("UPDATE users SET role = 'admin' WHERE id = ?", [$user['id']]);
-                    $user['role'] = 'admin';
+                } elseif ($elevatedRole && strtolower($user['role'] ?? '') !== $elevatedRole) {
+                    // Automatically synchronize elevated role (admin, manager, executive, accountant, host)
+                    Database::execute("UPDATE users SET role = ? WHERE id = ?", [$elevatedRole, $user['id']]);
+                    $user['role'] = $elevatedRole;
+                }
+
+                if ($staffRecord && isset($staffRecord['hub_id'])) {
+                    $user['hub_id'] = $staffRecord['hub_id'];
                 }
 
                 // 4. Guarantee a valid authenticated user structure

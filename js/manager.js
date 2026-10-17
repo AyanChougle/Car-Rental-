@@ -117,7 +117,6 @@ async function initManagerAuth() {
 
   currentUser = getCurrentUser();
   if (
-    isExecutiveUser(currentUser) ||
     isManagerUser(currentUser) ||
     isAdminUser(currentUser)
   ) {

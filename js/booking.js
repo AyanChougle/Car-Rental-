@@ -436,10 +436,12 @@ async function initBooking(vehicle) {
         "</strong></div>";
     }
 
-    html +=
-      '<div class="booking-total-row"><span>Security Deposit<small style="display:block; font-size:0.75rem; color:var(--text-sub)">(100% Refundable upon vehicle return)</small></span><strong>₹' +
-      formatCurrency(securityDeposit) +
-      "</strong></div>";
+    if (securityDeposit > 0) {
+      html +=
+        '<div class="booking-total-row" style="opacity:0.85;"><span>Refundable Deposit<small style="display:block; font-size:0.75rem; color:var(--text-sub)">(Payable at vehicle pickup • 100% Refundable)</small></span><strong>₹' +
+        formatCurrency(securityDeposit) +
+        "</strong></div>";
+    }
 
     if (couponDiscount > 0) {
       const appliedLabels = appliedCoupons.map((c) => c.code).join(", ");
@@ -452,7 +454,7 @@ async function initBooking(vehicle) {
     }
 
     html +=
-      '<div class="booking-total-row booking-total-row--grand"><span>Total Estimated Amount</span><strong>₹' +
+      '<div class="booking-total-row booking-total-row--grand"><span>Total Booking Amount</span><strong>₹' +
       formatCurrency(finalAmount) +
       "</strong></div>";
     html +=

@@ -3922,12 +3922,12 @@ function renderBookingsTable(bookings) {
       booking.couponDiscount ?? booking.coupon_discount ?? 0,
     );
     const baseAmt =
-      rawTot > 0 && rawDep > 0
-        ? Math.max(0, rawTot - rawDep)
-        : rawBase > 0
-          ? Math.max(0, rawBase - rawDisc)
-          : Math.max(0, rawTot - rawDep);
-    const totalAmt = rawTot > 0 ? rawTot : baseAmt + rawDep;
+      rawBase > 0
+        ? Math.max(0, rawBase - rawDisc)
+        : rawTot > 0
+          ? rawTot
+          : 0;
+    const totalAmt = rawTot > 0 ? rawTot : baseAmt;
     const amount = baseAmt;
 
     const startOdo = getStartOdometer(booking);
@@ -4049,9 +4049,8 @@ function renderBookingsTable(bookings) {
               padding:14px;
               white-space:nowrap;
             "
-          >
             <div style="font-weight:700;color:#06d6a0;">${formatINR(baseAmt)}</div>
-            ${rawDep > 0 ? `<small style="color:var(--sub);font-size:11px;display:block;margin-top:2px;">Total: ${formatINR(totalAmt)} (₹${rawDep} dep)</small>` : `<small style="color:var(--sub);font-size:11px;display:block;margin-top:2px;">Total: ${formatINR(totalAmt)}</small>`}
+            ${rawDep > 0 ? `<small style="color:var(--sub);font-size:11px;display:block;margin-top:2px;">Deposit: ₹${rawDep}</small>` : ''}
           </td>
 
           <td style="padding:14px;">
@@ -6952,9 +6951,8 @@ function updateRevenueStats() {
     const base = Number(b.baseAmount || 0);
     const disc = Number(b.couponDiscount || 0);
     let net = 0;
-    if (tot > 0 && dep > 0) net = Math.max(0, tot - dep);
-    else if (base > 0) net = Math.max(0, base - disc);
-    else net = Math.max(0, tot - dep);
+    if (base > 0) net = Math.max(0, base - disc);
+    else if (tot > 0) net = tot;
     return sum + net;
   }, 0);
 
@@ -10503,9 +10501,8 @@ function renderBookingsAnalytics() {
           const base = Number(b.baseAmount ?? b.base_amount ?? 0);
           const disc = Number(b.couponDiscount ?? b.coupon_discount ?? 0);
           let amt = 0;
-          if (total > 0 && dep > 0) amt = Math.max(0, total - dep);
-          else if (base > 0) amt = Math.max(0, base - disc);
-          else amt = Math.max(0, total - dep);
+          if (base > 0) amt = Math.max(0, base - disc);
+          else if (total > 0) amt = total;
           return sum + (Number.isFinite(amt) ? amt : 0);
         }, 0);
 

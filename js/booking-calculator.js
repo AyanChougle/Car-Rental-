@@ -290,7 +290,7 @@ export function calculateBookingPrice({
 
   const couponApplied = appliedCoupons[0] || null;
 
-  const finalAmount = Math.max(0, rentalTotal + driverTotal + securityDeposit - couponDiscount);
+  const finalAmount = Math.max(0, rentalTotal + driverTotal - couponDiscount);
   const normalizedPlan = paymentPlan === "full" ? "full" : "advance";
   const advanceAmount = normalizedPlan === "advance" ? Math.min(500, finalAmount) : finalAmount;
   const remainingAmount = Math.max(0, finalAmount - advanceAmount);
