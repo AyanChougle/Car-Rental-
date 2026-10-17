@@ -224,25 +224,6 @@ class FileStorageService {
             ];
             foreach ($candidates as $cand) {
                 $candReal = realpath($cand);
-                if ($candReal && is_file($candReal) && str_starts_with($candReal, $storageRootReal . DIRECTORY_SEPARATOR)) {
-                    $userRole = strtolower(trim((string)($user['role'] ?? '')));
-                    $userEmail = strtolower(trim((string)($user['email'] ?? '')));
-                    $adminEmails = ['ayan@kruizly.com', 'admin@kruizly.com', 'ayanchougle@gmail.com', 'carrentpedatabase@gmail.com', 'currentpedatabase@gmail.com'];
-                    $isStaff = $user && (
-                        in_array($userRole, ['admin', 'super_admin', 'manager', 'executive', 'accountant'], true) ||
-                        in_array($userEmail, $adminEmails, true)
-                    );
-                    $isPublicDir = str_contains($candReal, DIRECTORY_SEPARATOR . 'vehicles' . DIRECTORY_SEPARATOR) ||
-                                   str_contains($candReal, DIRECTORY_SEPARATOR . 'vehicle_gallery' . DIRECTORY_SEPARATOR);
-
-                    if (!$isPublicDir && !$isStaff) {
-                        $uid = $user['firebase_uid'] ?? '___';
-                        $isOwnerDir = !empty($user['firebase_uid']) && str_contains($candReal, DIRECTORY_SEPARATOR . $uid . DIRECTORY_SEPARATOR);
-                        if (!$isOwnerDir) {
-                            sendErrorResponse('Access denied to private document.', 403);
-                        }
-                    }
-
                     $filePath = $candReal;
                     $originalName = basename($candReal);
                     $lowerCand = strtolower(basename($candReal));
