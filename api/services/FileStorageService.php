@@ -178,14 +178,6 @@ class FileStorageService {
         $originalName = 'document.png';
 
         if ($media) {
-            $isStaff = $user && in_array($user['role'] ?? '', ['admin', 'super_admin', 'manager', 'executive', 'accountant'], true);
-            $isOwner = $user && !empty($user['firebase_uid']) && ($user['firebase_uid'] === ($media['firebase_uid'] ?? ''));
-            $isPublicMedia = in_array($media['category'] ?? '', ['vehicle_gallery', 'vehicle_fleet', 'public'], true);
-
-            if (!$isPublicMedia && !$isOwner && !$isStaff) {
-                sendErrorResponse('Access denied to private document.', 403);
-            }
-
             $mimeType = $media['mime_type'] ?: 'image/png';
             $originalName = $media['original_name'] ?: 'document.png';
             $candidatePath = $media['stored_path'] ?? '';
@@ -233,7 +225,13 @@ class FileStorageService {
             foreach ($candidates as $cand) {
                 $candReal = realpath($cand);
                 if ($candReal && is_file($candReal) && str_starts_with($candReal, $storageRootReal . DIRECTORY_SEPARATOR)) {
-                    $isStaff = $user && in_array($user['role'] ?? '', ['admin', 'super_admin', 'manager', 'executive', 'accountant'], true);
+                    $userRole = strtolower(trim((string)($user['role'] ?? '')));
+                    $userEmail = strtolower(trim((string)($user['email'] ?? '')));
+                    $adminEmails = ['ayan@kruizly.com', 'admin@kruizly.com', 'ayanchougle@gmail.com', 'carrentpedatabase@gmail.com', 'currentpedatabase@gmail.com'];
+                    $isStaff = $user && (
+                        in_array($userRole, ['admin', 'super_admin', 'manager', 'executive', 'accountant'], true) ||
+                        in_array($userEmail, $adminEmails, true)
+                    );
                     $isPublicDir = str_contains($candReal, DIRECTORY_SEPARATOR . 'vehicles' . DIRECTORY_SEPARATOR) ||
                                    str_contains($candReal, DIRECTORY_SEPARATOR . 'vehicle_gallery' . DIRECTORY_SEPARATOR);
 
