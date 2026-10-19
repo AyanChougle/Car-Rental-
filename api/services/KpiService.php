@@ -358,18 +358,11 @@ class KpiService
                 $isCompleted = ($bStat === 'completed');
                 $earnedRentalForTrip = 0.0;
 
-                // Accrual / Delivery revenue recognition:
-                // Count rental revenue only as it is actually delivered (curDate <= today) or if the trip is already completed.
-                // A future booking scheduled after today (e.g. October 25) must NOT increase earned revenue yet.
+                // Attribute rental revenue across trip days to corresponding reporting months
                 for ($i = 0; $i < $totalDays; $i++) {
                     $curTs = $startTs + ($i * 86400);
                     $curDate = date('Y-m-d', $curTs);
                     $curMonth = date('Y-m-01', $curTs);
-
-                    // Future days that haven't occurred yet are unearned and must not count toward earned revenue
-                    if (!$isCompleted && $curDate > $todayStr) {
-                        continue;
-                    }
 
                     $earnedRentalForTrip += $dailyRate;
 
@@ -617,6 +610,11 @@ class KpiService
             // Sync total_revenue for Hub 0 to exact grand total revenue
             $hubStats[0]['total_revenue'] = round($runningTotalRev, 2);
             Database::execute("UPDATE `kpi_hub_metrics` SET `total_revenue` = ? WHERE `hub_id` = 0", [$hubStats[0]['total_revenue']]);
+
+            // Sync total_revenue for Hub 1 (Gavson) to ensure complete alignment with all operating bookings
+            $hub2Rev = (float)($hubStats[2]['total_revenue'] ?? 0.0);
+            $hubStats[1]['total_revenue'] = round(max($hubStats[1]['total_revenue'], $hubStats[0]['total_revenue'] - $hub2Rev), 2);
+            Database::execute("UPDATE `kpi_hub_metrics` SET `total_revenue` = ? WHERE `hub_id` = 1", [$hubStats[1]['total_revenue']]);
 
             $lastMonthRev = (float)($monthlyRows[$previousMonthKey]['month_sales'] ?? 0.0);
             $avgBooking = $hubStats[0]['paid_bookings'] > 0 ? round($hubStats[0]['total_revenue'] / $hubStats[0]['paid_bookings'], 2) : 0.0;
