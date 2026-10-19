@@ -101,7 +101,7 @@ class FileStorageService {
             $targetDir = STORAGE_ROOT . '/users/' . $safeUid . '/personal';
         } elseif ($cleanCategory === 'bookings' || $cleanCategory === 'payment_proof' || $cleanCategory === 'payment_screenshot') {
             $targetDir = STORAGE_ROOT . '/bookings/' . ($relatedId ? preg_replace('/[^a-zA-Z0-9_-]/', '_', $relatedId) : 'general');
-        } elseif ($cleanCategory === 'vehicles' || $cleanCategory === 'vehicle_gallery') {
+        } elseif ($cleanCategory === 'vehicles' || $cleanCategory === 'vehicle_gallery' || $cleanCategory === 'partner_car_photo' || $cleanCategory === 'partner_cars') {
             $targetDir = STORAGE_ROOT . '/vehicles/' . ($relatedId ? preg_replace('/[^a-zA-Z0-9_-]/', '_', $relatedId) : 'fleet');
         }
 
@@ -125,7 +125,7 @@ class FileStorageService {
         $dbCategory = match($cleanCategory) {
             'license_doc', 'aadhar_doc', 'pan_doc', 'verification', 'users' => 'verification',
             'payment_proof', 'payment_screenshot' => 'payment_proof',
-            'vehicle_gallery', 'vehicles' => 'vehicle_gallery',
+            'vehicle_gallery', 'vehicles', 'partner_car_photo', 'partner_cars' => 'vehicle_gallery',
             'booking_doc', 'bookings' => 'booking_doc',
             'invoice', 'invoices' => 'invoice',
             default => 'other'

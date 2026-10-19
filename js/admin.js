@@ -7541,20 +7541,26 @@ function renderLegacyHostPhotos(carId, urls) {
     .map((url, index) => {
       const cleanUrl = String(url || "").trim();
       let srcUrl = cleanUrl;
-      const isDirect =
-        cleanUrl.startsWith("http://") ||
-        cleanUrl.startsWith("https://") ||
-        cleanUrl.startsWith("data:") ||
-        cleanUrl.startsWith("blob:") ||
-        cleanUrl.startsWith("assets/") ||
-        cleanUrl.startsWith("images/");
-
-      if (!isDirect) {
+      if (cleanUrl.startsWith("assets/") || cleanUrl.startsWith("images/")) {
         if (typeof window !== "undefined" && typeof window.fleetImagePath === "function") {
-          const resolved = window.fleetImagePath(cleanUrl);
-          srcUrl = (resolved && !resolved.includes("MED-")) ? resolved : `/api/media/file.php?id=${encodeURIComponent(cleanUrl)}`;
+          srcUrl = window.fleetImagePath(cleanUrl) || cleanUrl;
         } else {
-          srcUrl = `/api/media/file.php?id=${encodeURIComponent(cleanUrl)}`;
+          srcUrl = cleanUrl;
+        }
+      } else {
+        const isDirect =
+          cleanUrl.startsWith("http://") ||
+          cleanUrl.startsWith("https://") ||
+          cleanUrl.startsWith("data:") ||
+          cleanUrl.startsWith("blob:");
+
+        if (!isDirect) {
+          if (typeof window !== "undefined" && typeof window.fleetImagePath === "function") {
+            const resolved = window.fleetImagePath(cleanUrl);
+            srcUrl = (resolved && !resolved.includes("MED-")) ? resolved : `/api/media/file.php?id=${encodeURIComponent(cleanUrl)}`;
+          } else {
+            srcUrl = `/api/media/file.php?id=${encodeURIComponent(cleanUrl)}`;
+          }
         }
       }
 

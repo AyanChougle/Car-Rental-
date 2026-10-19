@@ -64,6 +64,7 @@
     RewriteRule ^verification/?$ verification/index.php [L,QSA]
 
     # Media
+    RewriteRule ^media/?$ media/index.php [L,QSA]
     RewriteRule ^media/upload/?$ media/upload.php [L,QSA]
     RewriteRule ^media/file/([^/]+)/?$ media/file.php?id=$1 [L,QSA]
     RewriteRule ^media/my-media/?$ media/my-media.php [L,QSA]
