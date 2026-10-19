@@ -18,6 +18,7 @@ import "./nav-helper.js?v=20260928-v2";
 import { formatBookingNumber } from "./booking-reference.js";
 import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260917-v6";
 import { openImageLightbox, isPdfDocument } from "./image-lightbox.js?v=20261017-v14";
+import { MEDIA_SERVER_URL } from "./media-config.js";
 
 function $(id) {
   return document.getElementById(id);
@@ -1573,36 +1574,22 @@ async function fetchExecDocumentPreview(rawUrl) {
 
   let finalUrl = str;
   if (str.startsWith("MED-")) {
-    finalUrl = `/api/media/file.php?id=${encodeURIComponent(str)}`;
+    finalUrl = `${MEDIA_SERVER_URL}/api/media/file.php?id=${encodeURIComponent(str)}`;
+  } else if (!str.startsWith("http://") && !str.startsWith("https://")) {
+    finalUrl = `${MEDIA_SERVER_URL}${str.startsWith("/") ? "" : "/"}${str}`;
   }
 
-  if (finalUrl.startsWith("/api/")) {
-    const isLocal = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-    const origin = isLocal ? "https://kruizly.com" : window.location.origin;
-    finalUrl = `${origin}${finalUrl}`;
-  }
-
-  let token = "";
-  try {
-    token = await getAuthToken();
-  } catch (_) {
-    token = localStorage.getItem("kruizly_token") || "";
-  }
-
-  if (token) {
-    const sep = finalUrl.includes("?") ? "&" : "?";
-    if (!finalUrl.includes("token=")) {
-      finalUrl = `${finalUrl}${sep}token=${encodeURIComponent(token)}`;
-    }
-  }
+  const isFullHttp = finalUrl.startsWith("http://") || finalUrl.startsWith("https://");
 
   try {
+    const token = await getAuthToken();
     const headers = {};
     if (token) headers.Authorization = `Bearer ${token}`;
 
     const res = await fetch(finalUrl, { headers });
     if (!res.ok) {
-      return { url: finalUrl, isPdf: isPdfDocument(finalUrl), failed: true, status: res.status };
+      if (isFullHttp) return { url: finalUrl, isPdf: isPdfDocument(finalUrl) };
+      throw new Error(`Media server status ${res.status}`);
     }
     const blob = await res.blob();
     const isPdf = blob.type === "application/pdf" || isPdfDocument(finalUrl);
@@ -1610,8 +1597,11 @@ async function fetchExecDocumentPreview(rawUrl) {
     activeExecDocObjectUrls.push(blobUrl);
     return { url: blobUrl, originalUrl: finalUrl, isPdf, isBlob: true };
   } catch (err) {
-    console.warn("fetchExecDocumentPreview fallback:", err);
-    return { url: finalUrl, isPdf: isPdfDocument(finalUrl) };
+    if (isFullHttp) return { url: finalUrl, isPdf: isPdfDocument(finalUrl) };
+    return {
+      url: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='260' viewBox='0 0 400 260'%3E%3Crect width='100%25' height='100%25' fill='%23121926' rx='12'/%3E%3Ctext x='50%25' y='46%25' fill='%2348d7ff' font-family='sans-serif' font-size='14' font-weight='bold' text-anchor='middle'%3EProtected Document on Cloud%3C/text%3E%3Ctext x='50%25' y='58%25' fill='%237b8798' font-family='sans-serif' font-size='12' text-anchor='middle'%3ERef: ${encodeURIComponent(String(str).slice(-20))}%3C/text%3E%3C/svg%3E`,
+      isPdf: false
+    };
   }
 }
 
@@ -1619,24 +1609,6 @@ function renderExecKycDocBox(boxEl, previewData, sideLabel, docTypeName) {
   if (!boxEl) return;
   if (!previewData || !previewData.url) {
     boxEl.innerHTML = `<span style="color:var(--sub);font-size:13px;">No ${sideLabel.toLowerCase()} submitted</span>`;
-    return;
-  }
-
-  if (previewData.failed) {
-    if (previewData.status === 404) {
-      boxEl.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:180px;color:var(--sub);font-size:12.5px;background:rgba(255,255,255,0.02);border-radius:8px;border:1px dashed rgba(255,255,255,0.1);">
-          Document file not found on server
-        </div>
-      `;
-      return;
-    }
-    boxEl.innerHTML = `
-      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;min-height:180px;color:#ef476f;font-size:12.5px;text-align:center;padding:12px;background:rgba(239,71,111,0.05);border-radius:8px;border:1px solid rgba(239,71,111,0.2);">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-bottom:6px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-        <span>Access denied to document. Please check staff session.</span>
-      </div>
-    `;
     return;
   }
 

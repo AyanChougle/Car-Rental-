@@ -16,7 +16,7 @@ if (!$bookingId) {
 }
 
 $user = Auth::requireAuth();
-$isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive'], true);
+$isStaff = in_array(strtolower((string)($user['role'] ?? '')), ['admin', 'manager', 'executive', 'accounts', 'super_admin'], true);
 
 $invoice = Database::fetchOne(
     "SELECT * FROM invoices WHERE booking_id = ? OR invoice_number = ? OR invoice_id = ? LIMIT 1",

@@ -217,6 +217,8 @@ class FileStorageService {
 
             $candidates = [
                 STORAGE_ROOT . '/' . ltrim($cleanRel, '/'),
+                STORAGE_ROOT . '/payment_proof/' . ltrim($cleanRel, '/'),
+                STORAGE_ROOT . '/verification/' . ltrim($cleanRel, '/'),
                 STORAGE_ROOT . '/users/' . ltrim($cleanRel, '/'),
                 STORAGE_ROOT . '/bookings/' . ltrim($cleanRel, '/'),
                 STORAGE_ROOT . '/inspection_photo/' . ltrim($cleanRel, '/'),

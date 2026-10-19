@@ -15,7 +15,7 @@ if (!$bookingId) {
 }
 
 $user = Auth::requireAuth();
-$isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive'], true);
+$isStaff = in_array(strtolower((string)($user['role'] ?? '')), ['admin', 'manager', 'executive', 'accounts', 'super_admin'], true);
 
 $booking = Database::fetchOne(
     "SELECT * FROM bookings WHERE booking_id = ? OR booking_number = ? LIMIT 1",
