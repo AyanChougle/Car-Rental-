@@ -516,18 +516,18 @@ class KpiService
                 $ex = $existingLedger[$mStart] ?? null;
                 $hasDynamicBookings = isset($monthlySalesOverall[$mStart]) && $monthlySalesOverall[$mStart] > 0;
 
-                // Priority 1: If values exist in kpi_metrics (entered in phpMyAdmin), strictly preserve and fetch them
-                if ($ex && ((float)($ex['month_sales'] ?? 0) > 0 || (float)($ex['total_revenue'] ?? 0) > 0)) {
-                    $mSales = (float)($ex['month_sales'] ?? 0);
-                    $mBCount = max((int)($ex['total_bookings'] ?? 0), $monthlyBookingsOverall[$mStart] ?? 0);
-                    $mPCount = max((int)($ex['paid_bookings'] ?? 0), $monthlyPaidOverall[$mStart] ?? 0);
-                    $mCompCount = max((int)($ex['completed_trips'] ?? 0), $monthlyCompletedOverall[$mStart] ?? 0);
-                } elseif ($hasDynamicBookings) {
-                    // Authoritative dynamically calculated sales from actual bookings
+                // Priority 1: If live bookings exist for this month in MySQL, derive authoritative sales dynamically
+                if ($hasDynamicBookings) {
                     $mSales = round($monthlySalesOverall[$mStart], 2);
                     $mBCount = $monthlyBookingsOverall[$mStart] ?? 0;
                     $mPCount = $monthlyPaidOverall[$mStart] ?? 0;
                     $mCompCount = $monthlyCompletedOverall[$mStart] ?? 0;
+                } elseif ($ex && ((float)($ex['month_sales'] ?? 0) > 0 || (float)($ex['total_revenue'] ?? 0) > 0)) {
+                    // Priority 2: Historical / manual ledger entries entered in phpMyAdmin for months without dynamic booking records
+                    $mSales = (float)($ex['month_sales'] ?? 0);
+                    $mBCount = (int)($ex['total_bookings'] ?? 0);
+                    $mPCount = (int)($ex['paid_bookings'] ?? 0);
+                    $mCompCount = (int)($ex['completed_trips'] ?? 0);
                 } else {
                     $mSales = 0.0;
                     $mBCount = 0;
@@ -536,12 +536,7 @@ class KpiService
                 }
 
                 $runningTotalRev += $mSales;
-                if ($ex && (float)($ex['total_revenue'] ?? 0) > 0) {
-                    $rowTotalRev = (float)$ex['total_revenue'];
-                    $runningTotalRev = max($runningTotalRev, $rowTotalRev);
-                } else {
-                    $rowTotalRev = round($runningTotalRev, 2);
-                }
+                $rowTotalRev = round($runningTotalRev, 2);
                 $runningBookingsCount += $mBCount;
                 $runningPaidCount += $mPCount;
 
@@ -623,10 +618,14 @@ class KpiService
 
             // Sync total_revenue and current month metrics for Hub 1 (Gavson) to ensure complete alignment
             $hub2Rev = (float)($hubStats[2]['total_revenue'] ?? 0.0);
+            $hub2MonthRev = (float)($hubStats[2]['month_revenue'] ?? 0.0);
+            $hub2DaySales = (float)($hubStats[2]['day_sales'] ?? 0.0);
+            $hub2WeekSales = (float)($hubStats[2]['week_sales'] ?? 0.0);
+
             $hubStats[1]['total_revenue'] = round(max($hubStats[1]['total_revenue'], $hubStats[0]['total_revenue'] - $hub2Rev), 2);
-            $hubStats[1]['month_revenue'] = round($curMonthSales, 2);
-            $hubStats[1]['day_sales'] = round($curDaySales, 2);
-            $hubStats[1]['week_sales'] = round($curWeekSales, 2);
+            $hubStats[1]['month_revenue'] = round(max($hubStats[1]['month_revenue'], $curMonthSales - $hub2MonthRev), 2);
+            $hubStats[1]['day_sales'] = round(max($hubStats[1]['day_sales'], $curDaySales - $hub2DaySales), 2);
+            $hubStats[1]['week_sales'] = round(max($hubStats[1]['week_sales'], $curWeekSales - $hub2WeekSales), 2);
             Database::execute(
                 "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 1",
                 [$hubStats[1]['total_revenue'], $hubStats[1]['month_revenue'], $hubStats[1]['day_sales'], $hubStats[1]['week_sales']]

@@ -351,6 +351,23 @@ if ($method === 'PUT' || $method === 'POST') {
         $updates[] = "user_phone = ?";
         $params[] = (string)($input['userPhone'] ?? $input['user_phone']);
     }
+    $depositVal = isset($input['securityDeposit']) ? (float)$input['securityDeposit'] : (float)($existing['security_deposit'] ?? 0);
+    if (isset($input['securityDeposit'])) {
+        $updates[] = "security_deposit = ?";
+        $params[] = (float)$input['securityDeposit'];
+    }
+
+    if (isset($input['baseAmount']) || isset($input['base_amount'])) {
+        $baseAmt = (float)($input['baseAmount'] ?? $input['base_amount']);
+        $updates[] = "base_amount = ?";
+        $params[] = $baseAmt;
+    } elseif (isset($input['totalAmount']) || isset($input['total_amount'])) {
+        $tot = (float)($input['totalAmount'] ?? $input['total_amount']);
+        $calcBase = max(0.0, $tot - $depositVal);
+        $updates[] = "base_amount = ?";
+        $params[] = $calcBase;
+    }
+
     if (isset($input['totalAmount']) || isset($input['total_amount'])) {
         $tot = (float)($input['totalAmount'] ?? $input['total_amount']);
         $updates[] = "total_amount = ?";

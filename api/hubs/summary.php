@@ -97,14 +97,18 @@ try {
              (2, 'Kandivali Hub, Mumbai', 0.00, 0.00, 0, 0, 0, 0, 0, 0, 0.00, 0, 0, 0, 0.00, 0.00)
              ON DUPLICATE KEY UPDATE `hub_name` = VALUES(`hub_name`)"
         );
-        require_once __DIR__ . '/../services/KpiService.php';
-        KpiService::syncMetrics();
     }
 } catch (Throwable $e) {
     error_log("[summary.php ensureTable] " . $e->getMessage());
 }
 
-// 2. Read KPI fixture data DIRECTLY from MySQL database (zero hard-coded constants)
+// 2. Dynamically calculate and sync authoritative KPI metrics directly from live database records
+try {
+    require_once __DIR__ . '/../services/KpiService.php';
+    KpiService::syncMetrics();
+} catch (Throwable $_) {}
+
+// 3. Read KPI fixture data DIRECTLY from MySQL database (zero hard-coded constants)
 $hubRecord = Database::fetchOne("SELECT * FROM `kpi_hub_metrics` WHERE `hub_id` = ?", [$isAllHubs ? 0 : $hubId]);
 
 if ($hubRecord) {
