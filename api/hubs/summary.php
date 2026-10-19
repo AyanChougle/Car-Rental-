@@ -92,11 +92,13 @@ try {
             "INSERT INTO `kpi_hub_metrics` 
              (`hub_id`, `hub_name`, `total_revenue`, `month_revenue`, `total_bookings`, `paid_bookings`, `active_trips`, `total_fleet`, `on_road_fleet`, `available_fleet`, `occupancy_pct`, `total_users`, `pending_docs`, `pending_payments`, `day_sales`, `week_sales`)
              VALUES
-             (0, 'All Operating Hubs', 1129499.00, 213208.00, 45, 43, 9, 58, 9, 49, 15.52, 188, 0, 0, 1458.00, 7745.00),
-             (1, 'Gavson Business Park, Ghansoli', 744557.00, 107796.00, 28, 27, 6, 43, 6, 37, 13.95, 188, 0, 0, 950.00, 4500.00),
-             (2, 'Kandivali Hub, Mumbai', 384942.00, 105412.00, 17, 16, 3, 15, 3, 12, 20.00, 188, 0, 0, 508.00, 3245.00)
+             (0, 'All Operating Hubs', 0.00, 0.00, 0, 0, 0, 0, 0, 0, 0.00, 0, 0, 0, 0.00, 0.00),
+             (1, 'Gavson Business Park, Ghansoli', 0.00, 0.00, 0, 0, 0, 0, 0, 0, 0.00, 0, 0, 0, 0.00, 0.00),
+             (2, 'Kandivali Hub, Mumbai', 0.00, 0.00, 0, 0, 0, 0, 0, 0, 0.00, 0, 0, 0, 0.00, 0.00)
              ON DUPLICATE KEY UPDATE `hub_name` = VALUES(`hub_name`)"
         );
+        require_once __DIR__ . '/../services/KpiService.php';
+        KpiService::syncMetrics();
     }
 } catch (Throwable $e) {
     error_log("[summary.php ensureTable] " . $e->getMessage());

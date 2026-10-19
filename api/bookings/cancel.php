@@ -145,6 +145,7 @@ try {
             }
             KpiService::decrementBookingMetrics($netRental);
         }
+        KpiService::syncMetrics();
     } catch (Throwable $_) {}
 
     sendJsonResponse([

@@ -338,10 +338,11 @@ try {
         try {
             require_once __DIR__ . '/../services/KpiService.php';
             $bk = [
-                'final_amount' => $finalAmount,
+                'final_amount' => $totalAmount,
                 'total_amount' => $totalAmount,
                 'base_amount' => $baseAmount,
                 'coupon_discount' => $couponDiscount,
+                'security_deposit' => $securityDeposit,
                 'advance_amount' => $advanceAmount
             ];
             $netRental = KpiService::getBookingNetRental($bk);
@@ -351,8 +352,13 @@ try {
             if ($netRental > 0) {
                 $hId = isset($pickupHubId) ? (int)$pickupHubId : 0;
                 KpiService::incrementBookingMetrics($netRental, $hId);
-                KpiService::syncMetrics();
             }
+            KpiService::syncMetrics();
+        } catch (Throwable $_) {}
+    } else {
+        try {
+            require_once __DIR__ . '/../services/KpiService.php';
+            KpiService::syncMetrics();
         } catch (Throwable $_) {}
     }
 
