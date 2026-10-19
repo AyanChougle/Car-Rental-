@@ -351,9 +351,8 @@ try {
             }
             if ($netRental > 0) {
                 $hId = isset($pickupHubId) ? (int)$pickupHubId : 0;
-                KpiService::incrementBookingMetrics($netRental, $hId);
+                KpiService::incrementBookingMetrics($netRental, $hId, (string)$pickupDate);
             }
-            KpiService::syncMetrics();
         } catch (Throwable $_) {}
     } else {
         try {

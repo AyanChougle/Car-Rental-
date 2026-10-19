@@ -27,19 +27,125 @@ class KpiService
     }
 
     /**
-     * Compatibility hook for booking creation.
+     * Atomically increments the revenue and booking count when a new booking is created on the platform.
+     * Increases month_sales, total_revenue, and booking counts across both kpi_metrics and kpi_hub_metrics.
      */
-    public static function incrementBookingMetrics(float $amount = 0.0, int $hubId = 0): void
+    public static function incrementBookingMetrics(float $amount = 0.0, int $hubId = 0, string $pickupDate = ''): void
     {
-        self::syncMetrics();
+        $mKey = !empty($pickupDate) ? date('Y-m-01', strtotime($pickupDate)) : date('Y-m-01');
+        $isToday = !empty($pickupDate) ? (date('Y-m-d', strtotime($pickupDate)) === date('Y-m-d')) : true;
+        $dayAmount = $isToday ? $amount : 0.0;
+
+        try {
+            self::ensureTables();
+
+            // 1. Increment in kpi_metrics table (creates row if not exists, or increments existing ledger values)
+            Database::execute(
+                "INSERT INTO `kpi_metrics` (
+                    `metric_date`, `day_sales`, `week_sales`, `month_sales`, `total_revenue`,
+                    `total_bookings`, `paid_bookings`, `created_at`, `updated_at`
+                ) VALUES (?, ?, ?, ?, ?, 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                ON DUPLICATE KEY UPDATE 
+                    `month_sales` = `month_sales` + VALUES(`month_sales`),
+                    `total_revenue` = `total_revenue` + VALUES(`total_revenue`),
+                    `day_sales` = `day_sales` + VALUES(`day_sales`),
+                    `week_sales` = `week_sales` + VALUES(`week_sales`),
+                    `total_bookings` = `total_bookings` + 1,
+                    `paid_bookings` = `paid_bookings` + 1,
+                    `updated_at` = CURRENT_TIMESTAMP",
+                [$mKey, $dayAmount, $dayAmount, $amount, $amount]
+            );
+
+            // Also increment running total_revenue for subsequent months (e.g. November row if booking was in October)
+            if ($amount > 0) {
+                Database::execute(
+                    "UPDATE `kpi_metrics` SET `total_revenue` = `total_revenue` + ? WHERE `metric_date` > ?",
+                    [$amount, $mKey]
+                );
+            }
+
+            // 2. Increment in kpi_hub_metrics table (Hub 0 and specific Hub)
+            $hubsToUpdate = [0];
+            if ($hubId > 0 && !in_array($hubId, $hubsToUpdate, true)) {
+                $hubsToUpdate[] = $hubId;
+            }
+
+            foreach ($hubsToUpdate as $hId) {
+                Database::execute(
+                    "UPDATE `kpi_hub_metrics` SET
+                        `day_sales` = `day_sales` + ?,
+                        `week_sales` = `week_sales` + ?,
+                        `month_revenue` = `month_revenue` + ?,
+                        `total_revenue` = `total_revenue` + ?,
+                        `total_bookings` = `total_bookings` + 1,
+                        `paid_bookings` = `paid_bookings` + 1,
+                        `updated_at` = CURRENT_TIMESTAMP
+                     WHERE `hub_id` = ?",
+                    [$dayAmount, $dayAmount, $amount, $amount, $hId]
+                );
+            }
+        } catch (Throwable $e) {
+            error_log("[KpiService::incrementBookingMetrics] " . $e->getMessage());
+        }
     }
 
     /**
-     * Compatibility hook for booking cancellation.
+     * Atomically decrements the revenue and booking count when a booking is cancelled.
+     * Subtracts net rental from month_sales and total_revenue across both kpi_metrics and kpi_hub_metrics.
      */
-    public static function decrementBookingMetrics(float $amount = 0.0, int $hubId = 0): void
+    public static function decrementBookingMetrics(float $amount = 0.0, int $hubId = 0, string $pickupDate = ''): void
     {
-        self::syncMetrics();
+        if ($amount <= 0.0) return;
+        $mKey = !empty($pickupDate) ? date('Y-m-01', strtotime($pickupDate)) : date('Y-m-01');
+        $isToday = !empty($pickupDate) ? (date('Y-m-d', strtotime($pickupDate)) === date('Y-m-d')) : true;
+        $dayAmount = $isToday ? $amount : 0.0;
+
+        try {
+            self::ensureTables();
+
+            // 1. Decrement in kpi_metrics table
+            Database::execute(
+                "UPDATE `kpi_metrics` 
+                 SET `month_sales` = GREATEST(0.00, `month_sales` - ?),
+                     `total_revenue` = GREATEST(0.00, `total_revenue` - ?),
+                     `day_sales` = GREATEST(0.00, `day_sales` - ?),
+                     `week_sales` = GREATEST(0.00, `week_sales` - ?),
+                     `total_bookings` = GREATEST(0, `total_bookings` - 1),
+                     `paid_bookings` = GREATEST(0, `paid_bookings` - 1),
+                     `updated_at` = CURRENT_TIMESTAMP
+                 WHERE `metric_date` = ?",
+                [$amount, $amount, $dayAmount, $dayAmount, $mKey]
+            );
+
+            // Also decrement running total_revenue for subsequent months
+            Database::execute(
+                "UPDATE `kpi_metrics` SET `total_revenue` = GREATEST(0.00, `total_revenue` - ?) WHERE `metric_date` > ?",
+                [$amount, $mKey]
+            );
+
+            // 2. Decrement in kpi_hub_metrics table
+            $hubsToUpdate = [0];
+            if ($hubId > 0 && !in_array($hubId, $hubsToUpdate, true)) {
+                $hubsToUpdate[] = $hubId;
+            }
+
+            foreach ($hubsToUpdate as $hId) {
+                Database::execute(
+                    "UPDATE `kpi_hub_metrics` SET
+                        `day_sales` = GREATEST(0.00, `day_sales` - ?),
+                        `week_sales` = GREATEST(0.00, `week_sales` - ?),
+                        `month_revenue` = GREATEST(0.00, `month_revenue` - ?),
+                        `total_revenue` = GREATEST(0.00, `total_revenue` - ?),
+                        `total_bookings` = GREATEST(0, `total_bookings` - 1),
+                        `paid_bookings` = GREATEST(0, `paid_bookings` - 1),
+                        `updated_at` = CURRENT_TIMESTAMP
+                     WHERE `hub_id` = ?",
+                    [$dayAmount, $dayAmount, $amount, $amount, $hId]
+                );
+            }
+        } catch (Throwable $e) {
+            error_log("[KpiService::decrementBookingMetrics] " . $e->getMessage());
+        }
     }
 
     /**
