@@ -947,8 +947,9 @@ function renderDashboard() {
   );
   const curMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
   let dynamicCurrentMonthRevenue = Number(
-    dynamicMonthlyRevenue[curMonthKey] ||
-      serverKpiStats?.effective?.month_revenue ||
+    serverKpiStats?.effective?.month_revenue ??
+      serverKpiStats?.live?.month_revenue ??
+      dynamicMonthlyRevenue[curMonthKey] ??
       0,
   );
 
@@ -970,9 +971,12 @@ function renderDashboard() {
     .filter((b) => isVerifiedRevenue(b))
     .reduce((sum, b) => sum + bookingAmount(b), 0);
 
-  const grandCumulativeRevenue = Number(serverKpiStats?.live?.total_revenue) || 
-    Number(dynamicTotalRevenue) || 
-    allVerifiedRevenue;
+  const grandCumulativeRevenue = Number(
+    serverKpiStats?.effective?.total_revenue ??
+      serverKpiStats?.live?.total_revenue ??
+      dynamicTotalRevenue ??
+      allVerifiedRevenue,
+  );
 
   const totalRevenue = isAllTime
     ? grandCumulativeRevenue

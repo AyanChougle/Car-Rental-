@@ -546,8 +546,8 @@ class KpiService
                 $runningPaidCount += $mPCount;
 
                 $isCur = ($mStart === $currentMonthKey);
-                $rowDay = $isCur ? $hubStats[0]['day_sales'] : 0.0;
-                $rowWeek = $isCur ? $hubStats[0]['week_sales'] : 0.0;
+                $rowDay = $isCur ? max($hubStats[0]['day_sales'], (float)($ex['day_sales'] ?? 0.0)) : 0.0;
+                $rowWeek = $isCur ? max($hubStats[0]['week_sales'], (float)($ex['week_sales'] ?? 0.0)) : 0.0;
                 $rowActive = $isCur ? $hubStats[0]['active_trips'] : 0;
                 $rowOnRoad = $isCur ? $hubStats[0]['on_road_fleet'] : 0;
                 $rowFleet = $hubStats[0]['total_fleet'];
@@ -607,14 +607,30 @@ class KpiService
                 );
             }
 
-            // Sync total_revenue for Hub 0 to exact grand total revenue
-            $hubStats[0]['total_revenue'] = round($runningTotalRev, 2);
-            Database::execute("UPDATE `kpi_hub_metrics` SET `total_revenue` = ? WHERE `hub_id` = 0", [$hubStats[0]['total_revenue']]);
+            // Sync total_revenue, month_revenue, day_sales, week_sales for Hub 0 to exact ledger
+            $curMonthSales = (float)($monthlyRows[$currentMonthKey]['month_sales'] ?? $hubStats[0]['month_revenue']);
+            $curDaySales = (float)($monthlyRows[$currentMonthKey]['day_sales'] ?? $hubStats[0]['day_sales']);
+            $curWeekSales = (float)($monthlyRows[$currentMonthKey]['week_sales'] ?? $hubStats[0]['week_sales']);
 
-            // Sync total_revenue for Hub 1 (Gavson) to ensure complete alignment with all operating bookings
+            $hubStats[0]['total_revenue'] = round($runningTotalRev, 2);
+            $hubStats[0]['month_revenue'] = round($curMonthSales, 2);
+            $hubStats[0]['day_sales'] = round($curDaySales, 2);
+            $hubStats[0]['week_sales'] = round($curWeekSales, 2);
+            Database::execute(
+                "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 0",
+                [$hubStats[0]['total_revenue'], $hubStats[0]['month_revenue'], $hubStats[0]['day_sales'], $hubStats[0]['week_sales']]
+            );
+
+            // Sync total_revenue and current month metrics for Hub 1 (Gavson) to ensure complete alignment
             $hub2Rev = (float)($hubStats[2]['total_revenue'] ?? 0.0);
             $hubStats[1]['total_revenue'] = round(max($hubStats[1]['total_revenue'], $hubStats[0]['total_revenue'] - $hub2Rev), 2);
-            Database::execute("UPDATE `kpi_hub_metrics` SET `total_revenue` = ? WHERE `hub_id` = 1", [$hubStats[1]['total_revenue']]);
+            $hubStats[1]['month_revenue'] = round($curMonthSales, 2);
+            $hubStats[1]['day_sales'] = round($curDaySales, 2);
+            $hubStats[1]['week_sales'] = round($curWeekSales, 2);
+            Database::execute(
+                "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 1",
+                [$hubStats[1]['total_revenue'], $hubStats[1]['month_revenue'], $hubStats[1]['day_sales'], $hubStats[1]['week_sales']]
+            );
 
             $lastMonthRev = (float)($monthlyRows[$previousMonthKey]['month_sales'] ?? 0.0);
             $avgBooking = $hubStats[0]['paid_bookings'] > 0 ? round($hubStats[0]['total_revenue'] / $hubStats[0]['paid_bookings'], 2) : 0.0;
