@@ -414,21 +414,21 @@ class KpiService
             $runningPaidCount = 0;
 
             foreach ($allMonths as $mStart) {
-                $hasDynamicBookings = isset($monthlySalesOverall[$mStart]) && $monthlySalesOverall[$mStart] > 0;
                 $ex = $existingLedger[$mStart] ?? null;
+                $hasDynamicBookings = isset($monthlySalesOverall[$mStart]) && $monthlySalesOverall[$mStart] > 0;
 
-                if ($hasDynamicBookings) {
+                // Priority 1: If values exist in kpi_metrics (entered in phpMyAdmin), strictly preserve and fetch them
+                if ($ex && ((float)($ex['month_sales'] ?? 0) > 0 || (float)($ex['total_revenue'] ?? 0) > 0)) {
+                    $mSales = (float)($ex['month_sales'] ?? 0);
+                    $mBCount = max((int)($ex['total_bookings'] ?? 0), $monthlyBookingsOverall[$mStart] ?? 0);
+                    $mPCount = max((int)($ex['paid_bookings'] ?? 0), $monthlyPaidOverall[$mStart] ?? 0);
+                    $mCompCount = max((int)($ex['completed_trips'] ?? 0), $monthlyCompletedOverall[$mStart] ?? 0);
+                } elseif ($hasDynamicBookings) {
                     // Authoritative dynamically calculated sales from actual bookings
                     $mSales = round($monthlySalesOverall[$mStart], 2);
                     $mBCount = $monthlyBookingsOverall[$mStart] ?? 0;
                     $mPCount = $monthlyPaidOverall[$mStart] ?? 0;
                     $mCompCount = $monthlyCompletedOverall[$mStart] ?? 0;
-                } elseif ($ex && (float)($ex['month_sales'] ?? 0) > 0) {
-                    // Historical baseline ledger month
-                    $mSales = (float)$ex['month_sales'];
-                    $mBCount = (int)($ex['total_bookings'] ?? 0);
-                    $mPCount = (int)($ex['paid_bookings'] ?? 0);
-                    $mCompCount = (int)($ex['completed_trips'] ?? 0);
                 } else {
                     $mSales = 0.0;
                     $mBCount = 0;
@@ -437,6 +437,12 @@ class KpiService
                 }
 
                 $runningTotalRev += $mSales;
+                if ($ex && (float)($ex['total_revenue'] ?? 0) > 0) {
+                    $rowTotalRev = (float)$ex['total_revenue'];
+                    $runningTotalRev = max($runningTotalRev, $rowTotalRev);
+                } else {
+                    $rowTotalRev = round($runningTotalRev, 2);
+                }
                 $runningBookingsCount += $mBCount;
                 $runningPaidCount += $mPCount;
 
@@ -454,7 +460,7 @@ class KpiService
                     'day_sales' => $rowDay,
                     'week_sales' => $rowWeek,
                     'month_sales' => $mSales,
-                    'total_revenue' => round($runningTotalRev, 2),
+                    'total_revenue' => $rowTotalRev,
                     'total_bookings' => $mBCount,
                     'paid_bookings' => $mPCount,
                     'active_trips' => $rowActive,
@@ -494,7 +500,7 @@ class KpiService
                         `pending_docs` = VALUES(`pending_docs`),
                         `updated_at` = CURRENT_TIMESTAMP",
                     [
-                        $mStart, $rowDay, $rowWeek, $mSales, round($runningTotalRev, 2),
+                        $mStart, $rowDay, $rowWeek, $mSales, $rowTotalRev,
                         $mBCount, $mPCount, $rowActive, $mCompCount,
                         $rowFleet, $rowOnRoad, $rowInYard, $rowOcc,
                         $totalUsers, $isCur ? $pendingPayments : 0, $isCur ? $pendingDocs : 0
