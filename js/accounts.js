@@ -157,64 +157,82 @@ async function loadPaymentsData() {
       api.get("/bookings"),
     ]);
 
-    let payments = [];
+    let rawPayments = [];
     if (
       paymentsRes.status === "fulfilled" &&
       paymentsRes.value &&
       Array.isArray(paymentsRes.value.payments)
     ) {
-      payments = paymentsRes.value.payments;
+      rawPayments = paymentsRes.value.payments;
     }
 
-    let bookings = [];
+    let rawBookings = [];
     if (
       bookingsRes.status === "fulfilled" &&
       bookingsRes.value &&
       Array.isArray(bookingsRes.value.bookings)
     ) {
-      bookings = bookingsRes.value.bookings;
+      rawBookings = bookingsRes.value.bookings;
     }
 
-    // Merge fallback bookings if payments endpoint returned empty
-    if (!payments.length && bookings.length) {
-      payments = bookings
-        .filter(
-          (b) => b.paymentStatus || b.paymentRef || b.paymentScreenshotUrl,
-        )
-        .map((b) => ({
-          id: b.id || b.bookingId,
-          bookingId: b.id || b.bookingId,
-          bookingNumber: b.bookingNumber || b.id,
-          userName: b.userName || b.name || "Customer",
-          userEmail: b.userEmail || b.email || "",
-          userPhone: b.userPhone || b.phone || "",
-          vehicleName: b.carName || b.vehicleName || "Vehicle",
-          vehicleReg: b.vehicleReg || "",
-          amount: Number(
-            b.paymentAmountPaid || b.advanceAmount || b.totalAmount || 0,
-          ),
-          method: b.paymentMethod || "UPI",
-          utr: b.paymentRef || "",
-          screenshotUrl: b.paymentScreenshotUrl || "",
-          status:
-            String(b.paymentStatus || b.status || "").toLowerCase() ===
-              "paid" ||
-            String(b.paymentStatus || b.status || "").toLowerCase() ===
-              "confirmed"
-              ? "verified"
-              : String(b.paymentStatus || b.status || "").toLowerCase() ===
-                  "rejected"
-                ? "rejected"
-                : "pending",
-          verifiedBy: b.verifiedBy || "",
-          createdAt: b.createdAt || b.pickupDate || "",
-        }));
-    }
+    // Combine payments and payment-bearing bookings seamlessly
+    const combined = [...rawPayments];
+    const seenBookingRefs = new Set();
+    rawPayments.forEach((p) => {
+      const ref1 = String(p.bookingId || "").trim().toUpperCase();
+      const ref2 = String(p.bookingNumber || "").trim().toUpperCase();
+      if (ref1) seenBookingRefs.add(ref1);
+      if (ref2) seenBookingRefs.add(ref2);
+    });
 
-    // Strictly deduplicate by paymentId, bookingId, or id
+    rawBookings.forEach((b) => {
+      const bNum = String(b.bookingNumber || b.bookingId || b.id || "").trim().toUpperCase();
+      const bId = String(b.bookingId || "").trim().toUpperCase();
+      if ((bNum && seenBookingRefs.has(bNum)) || (bId && seenBookingRefs.has(bId))) {
+        return;
+      }
+
+      const pStat = String(b.paymentStatus || "").toLowerCase();
+      const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
+      if (["cancelled", "rejected", "refunded"].includes(pStat) || ["cancelled", "rejected"].includes(bStat)) {
+        return;
+      }
+
+      const isVerified =
+        ["paid", "advance_paid", "verified"].includes(pStat) ||
+        ["confirmed", "active", "in_trip", "completed"].includes(bStat);
+      const isRejected = ["rejected", "cancelled"].includes(pStat);
+      const status = isVerified ? "verified" : isRejected ? "rejected" : "pending";
+
+      combined.push({
+        id: b.id || b.bookingId,
+        paymentId: "PAY-" + (b.bookingNumber || b.bookingId || b.id),
+        bookingId: b.bookingId || b.id,
+        bookingNumber: b.bookingNumber || b.bookingId || b.id,
+        userName: b.userName || b.name || "Customer",
+        userEmail: b.userEmail || b.email || "",
+        userPhone: b.userPhone || b.phone || "",
+        vehicleName: b.carName || b.vehicleName || "Vehicle",
+        vehicleReg: b.vehicleReg || "",
+        amount: Number(b.paymentAmountPaid || b.advanceAmount || b.totalAmount || 0),
+        method: b.paymentMethod || "UPI",
+        utr: b.paymentRef || b.bookingNumber || b.bookingId || "",
+        screenshotUrl: b.paymentScreenshotUrl || "",
+        status,
+        verifiedBy: b.verifiedBy || "",
+        createdAt: b.createdAt || b.pickupDate || "",
+        pickupHubId: b.pickupHubId || b.pickup_hub_id || 0,
+        dropHubId: b.dropHubId || b.drop_hub_id || 0,
+      });
+
+      if (bNum) seenBookingRefs.add(bNum);
+      if (bId) seenBookingRefs.add(bId);
+    });
+
+    // Deduplicate by payment key
     const seenPay = new Set();
     const deduped = [];
-    payments.forEach((p) => {
+    combined.forEach((p) => {
       const key = String(p.paymentId || p.id || p.utr || p.bookingId || "")
         .trim()
         .toUpperCase();
@@ -224,8 +242,8 @@ async function loadPaymentsData() {
       }
     });
 
-    // Filter out cancelled bookings and refunded payments so they are automatically removed from accounts panel
-    payments = deduped.filter((p) => {
+    // Final filter excluding cancelled and refunded
+    const payments = deduped.filter((p) => {
       const pStat = String(p.status || "").toLowerCase();
       const bStat = String(p.bookingStatus || "").toLowerCase();
       return (

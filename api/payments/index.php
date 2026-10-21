@@ -77,6 +77,72 @@ if (!$isStaff) {
          ORDER BY p.created_at DESC",
         [$hubIdFilter, $hubIdFilter, $hubIdFilter]
     );
+
+    // Also include payment records from bookings table that have payment info
+    $existingBookingRefs = [];
+    foreach ($rows as $r) {
+        $bId = trim((string)($r['booking_id'] ?? ''));
+        if ($bId !== '') $existingBookingRefs[strtoupper($bId)] = true;
+        $bNum = trim((string)($r['matched_booking_number'] ?? ''));
+        if ($bNum !== '') $existingBookingRefs[strtoupper($bNum)] = true;
+    }
+
+    try {
+        $bookingPayments = Database::fetchAll(
+            "SELECT b.id AS b_id, b.booking_id, b.booking_number, b.firebase_uid,
+                    COALESCE(NULLIF(b.advance_amount, 0), NULLIF(b.final_amount, 0), b.total_amount, 0.0) AS amount,
+                    COALESCE(NULLIF(b.payment_method, ''), 'UPI') AS method,
+                    COALESCE(NULLIF(b.payment_ref, ''), b.booking_number, b.booking_id) AS utr,
+                    b.payment_ref,
+                    b.payment_status AS status,
+                    b.payment_screenshot_url AS screenshot_url,
+                    b.created_at,
+                    b.verified_by,
+                    COALESCE(NULLIF(b.user_name, ''), NULLIF(u.name, ''), u.email, 'Customer') AS matched_user_name,
+                    COALESCE(NULLIF(b.user_email, ''), NULLIF(u.email, ''), '') AS matched_user_email,
+                    COALESCE(NULLIF(b.user_phone, ''), NULLIF(u.phone, ''), '') AS matched_user_phone,
+                    COALESCE(NULLIF(b.vehicle_name, ''), NULLIF(v.model, ''), 'Vehicle') AS matched_vehicle_name,
+                    COALESCE(NULLIF(b.vehicle_reg, ''), NULLIF(v.reg_no, ''), '') AS matched_vehicle_reg,
+                    b.total_amount,
+                    COALESCE(b.booking_number, b.booking_id) AS matched_booking_number,
+                    b.pickup_date, b.drop_date, b.pickup_hub_id, b.drop_hub_id,
+                    COALESCE(
+                        NULLIF(b.payment_screenshot_url, ''),
+                        (SELECT CONCAT('/api/media/file.php?id=', m.media_id) FROM media m WHERE (m.related_id = b.booking_id OR m.related_id = b.id) AND m.category IN ('payment_proof', 'payment_screenshot') ORDER BY m.id DESC LIMIT 1)
+                    ) AS effective_screenshot_url
+             FROM bookings b
+             LEFT JOIN users u ON u.firebase_uid = b.firebase_uid
+             LEFT JOIN vehicles v ON (
+                 (b.vehicle_id IS NOT NULL AND b.vehicle_id > 0 AND v.id = b.vehicle_id)
+                 OR (b.vehicle_reg IS NOT NULL AND TRIM(b.vehicle_reg) <> '' AND b.vehicle_reg <> 'TBD' AND v.reg_no = b.vehicle_reg)
+             )
+             WHERE (? = 0 OR b.pickup_hub_id = ? OR b.drop_hub_id = ?)
+               AND LOWER(COALESCE(b.status, '')) NOT IN ('cancelled', 'rejected')
+               AND LOWER(COALESCE(b.payment_status, '')) NOT IN ('cancelled', 'rejected', 'refunded')
+               AND (
+                   (b.payment_status IS NOT NULL AND TRIM(b.payment_status) <> '' AND b.payment_status != 'unpaid')
+                   OR (b.payment_ref IS NOT NULL AND TRIM(b.payment_ref) <> '')
+                   OR (b.payment_screenshot_url IS NOT NULL AND TRIM(b.payment_screenshot_url) <> '')
+                   OR b.total_amount > 0
+               )
+             ORDER BY b.created_at DESC",
+            [$hubIdFilter, $hubIdFilter, $hubIdFilter]
+        );
+
+        foreach ($bookingPayments as $bp) {
+            $ref1 = strtoupper(trim((string)($bp['booking_id'] ?? '')));
+            $ref2 = strtoupper(trim((string)($bp['booking_number'] ?? '')));
+            if (($ref1 !== '' && isset($existingBookingRefs[$ref1])) || ($ref2 !== '' && isset($existingBookingRefs[$ref2]))) {
+                continue;
+            }
+            $bp['payment_id'] = 'PAY-' . ($bp['booking_number'] ?: $bp['booking_id'] ?: $bp['b_id']);
+            $bp['screenshot_media_id'] = null;
+            $bp['rejection_reason'] = null;
+            $bp['refund_amount'] = 0.0;
+            $bp['verified_at'] = null;
+            $rows[] = $bp;
+        }
+    } catch (Throwable $_) {}
 }
 
 // Bulletproof deduplication by payment_id or id
