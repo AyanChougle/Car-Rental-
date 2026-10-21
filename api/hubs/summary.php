@@ -126,7 +126,7 @@ if ($hubRecord) {
     $pendingPayments = (int)$hubRecord['pending_payments'];
     $dayRevenue = (float)$hubRecord['day_sales'];
     $weekRevenue = (float)$hubRecord['week_sales'];
-    $avgBookingVal = $paidBookingsCount > 0 ? round($totalRevenue / $paidBookingsCount, 2) : 0.0;
+    $avgBookingVal = $paidBookingsCount > 0 ? round($monthRevenue / $paidBookingsCount, 2) : 0.0;
 } else {
     // Dynamic fallback if row not found in kpi_hub_metrics
     $totalRevenue = 0.0;

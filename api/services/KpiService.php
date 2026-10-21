@@ -423,8 +423,17 @@ class KpiService
                 $endTs = $startTs + ($totalDays * 86400);
 
                 // Active Trip determination
-                $isActiveTrip = in_array($bStat, ['active', 'in_trip', 'started'], true)                
-                    || ($bStat === 'confirmed' && $nowTs >= $startTs && $nowTs <= $endTs);
+                $hasReturned = !empty($b['return_odometer']) || !empty($b['end_odometer']) || !empty($b['completed_at']) || !empty($b['returned_at']);
+                $isActiveTrip = false;
+                if (!$hasReturned && $bStat !== 'completed') {
+                    if ($bStat === 'in_trip') {
+                        $isActiveTrip = true;
+                    } elseif (in_array($bStat, ['active', 'started'], true)) {
+                        $isActiveTrip = ($endTs <= 0 || $nowTs <= ($endTs + 43200)); // Within trip window + 12 hrs
+                    } elseif ($bStat === 'confirmed' && $nowTs >= $startTs && $nowTs <= $endTs) {
+                        $isActiveTrip = true;
+                    }
+                }
 
                 if ($isActiveTrip) {
                     $hubStats[$hubId]['active_trips']++;
@@ -753,7 +762,7 @@ class KpiService
             }
 
             $lastMonthRev = (float)($monthlyRows[$previousMonthKey]['month_sales'] ?? 0.0);
-            $avgBooking = $hubStats[0]['paid_bookings'] > 0 ? round($hubStats[0]['total_revenue'] / $hubStats[0]['paid_bookings'], 2) : 0.0;
+            $avgBooking = $hubStats[0]['paid_bookings'] > 0 ? round($hubStats[0]['month_revenue'] / $hubStats[0]['paid_bookings'], 2) : 0.0;
 
             $liveStats = [
                 'total_users' => $totalUsers,

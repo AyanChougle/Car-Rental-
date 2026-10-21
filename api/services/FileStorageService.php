@@ -186,24 +186,58 @@ class FileStorageService {
                 $filePath = $candidatePath;
             } else {
                 $storedName = $media['stored_name'] ?? basename((string)$candidatePath);
+                $uid = (string)($media['firebase_uid'] ?? '');
+                $safeUid = preg_replace('/[^a-zA-Z0-9_-]/', '_', $uid);
+
                 $searchLocations = [
                     STORAGE_ROOT . '/' . $storedName,
+                    STORAGE_ROOT . '/users/' . $safeUid . '/verification/' . $storedName,
+                    STORAGE_ROOT . '/users/' . $uid . '/verification/' . $storedName,
+                    STORAGE_ROOT . '/users/' . $safeUid . '/personal/' . $storedName,
+                    STORAGE_ROOT . '/users/' . $safeUid . '/' . $storedName,
+                    STORAGE_ROOT . '/bank_passbook/' . $storedName,
+                    STORAGE_ROOT . '/passbook/' . $storedName,
+                    STORAGE_ROOT . '/passbooks/' . $storedName,
+                    STORAGE_ROOT . '/verification/' . $storedName,
                     STORAGE_ROOT . '/bookings/' . ($media['related_id'] ?? '') . '/' . $storedName,
                     STORAGE_ROOT . '/bookings/general/' . $storedName,
-                    STORAGE_ROOT . '/users/' . ($media['firebase_uid'] ?? '') . '/verification/' . $storedName,
-                    STORAGE_ROOT . '/users/' . ($media['firebase_uid'] ?? '') . '/personal/' . $storedName,
-                    STORAGE_ROOT . '/verification/' . $storedName,
                     STORAGE_ROOT . '/payment_proof/' . $storedName,
                     STORAGE_ROOT . '/vehicle_gallery/' . $storedName,
                     STORAGE_ROOT . '/vehicles/' . ($media['related_id'] ?? '') . '/' . $storedName,
                     STORAGE_ROOT . '/other/' . $storedName,
                     __DIR__ . '/../../storage/' . $storedName,
                     __DIR__ . '/../../uploads/' . $storedName,
+                    __DIR__ . '/../../uploads/verification/' . $storedName,
+                    __DIR__ . '/../../uploads/passbook/' . $storedName,
                 ];
                 foreach ($searchLocations as $loc) {
                     if ($loc && file_exists($loc) && !is_dir($loc)) {
                         $filePath = $loc;
                         break;
+                    }
+                }
+
+                // If not found in standard paths, search recursively in storage and uploads directories
+                if (!$filePath && $storedName) {
+                    $searchRoots = array_unique([
+                        STORAGE_ROOT,
+                        realpath(__DIR__ . '/../../storage') ?: (__DIR__ . '/../../storage'),
+                        realpath(__DIR__ . '/../../uploads') ?: (__DIR__ . '/../../uploads'),
+                        __DIR__ . '/../../public_html/storage',
+                        __DIR__ . '/../../public_html/uploads',
+                    ]);
+                    foreach ($searchRoots as $root) {
+                        if (!$root || !is_dir($root)) continue;
+                        try {
+                            $rdi = new RecursiveDirectoryIterator($root, RecursiveDirectoryIterator::SKIP_DOTS | FilesystemIterator::FOLLOW_SYMLINKS);
+                            $rii = new RecursiveIteratorIterator($rdi, RecursiveIteratorIterator::LEAVES_ONLY);
+                            foreach ($rii as $file) {
+                                if ($file->isFile() && $file->getFilename() === $storedName) {
+                                    $filePath = $file->getPathname();
+                                    break 2;
+                                }
+                            }
+                        } catch (Throwable $_) {}
                     }
                 }
             }

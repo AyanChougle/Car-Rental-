@@ -602,10 +602,17 @@ function updateStats() {
     return isSameExecDay(d, now);
   }).length;
 
-  const pendingPayments = allPayments.filter((p) => {
-    const s = String(p.status || "").toLowerCase();
-    return s === "pending" || s === "pending_verification";
+  const pendingInBookings = allBookings.filter((b) => {
+    const s = String(b.paymentStatus || "").toLowerCase();
+    return s === "pending_verification" || (b.paymentRef && s !== "paid" && s !== "advance_paid" && s !== "rejected");
   }).length;
+  const pendingPayments = Math.max(
+    pendingInBookings,
+    allPayments.filter((p) => {
+      const s = String(p.status || "").toLowerCase();
+      return s === "pending" || s === "pending_verification";
+    }).length,
+  );
 
   const pendingKyc = allVerifications.filter((v) => {
     const s = String(v.overallStatus || v.status || "").toLowerCase();

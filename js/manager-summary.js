@@ -280,19 +280,41 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
 
     if (!isTargetCar) return false;
 
-    // Determine if booking is currently on trip:
-    // A: Explicitly started or handed over
+    // 1. If car was already returned or trip completed, it is in yard (NOT on trip)
+    const hasBeenReturned =
+      bStat === "completed" ||
+      Boolean(b.returnOdometer || b.return_odometer || b.endOdometer || b.end_odometer || b.completedAt || b.returnedAt);
+
+    if (hasBeenReturned) return false;
+
+    const { start, end } = getBookingOperationalDates(b);
+    const startMs = start ? start.getTime() : 0;
+    const endMs = end ? end.getTime() + 2 * 60 * 60 * 1000 : 0;
+
+    // 2. Explicitly started or handed over, currently running within trip window
     const isExplicitlyActive =
       bStat === "active" ||
       bStat === "in_trip" ||
       bStat === "started" ||
       bStat === "ongoing" ||
-      b.pickupStatus === "picked_up" ||
-      Boolean(b.pickupAt || b.pickup_at || b.startOdometer || b.start_odometer);
+      b.pickupStatus === "picked_up";
 
-    if (isExplicitlyActive) return true;
+    if (isExplicitlyActive) {
+      if (endMs && nowMs > endMs + 24 * 60 * 60 * 1000 && bStat !== "in_trip") {
+        return false;
+      }
+      return true;
+    }
 
-    // B: Confirmed / Paid booking whose operational dates cover current time
+    // 3. Handed over via pickup odometer or pickup timestamp
+    const hasStartedTrip = Boolean(b.pickupAt || b.pickup_at || b.startOdometer || b.start_odometer);
+    if (hasStartedTrip) {
+      if (startMs && nowMs < startMs) return false;
+      if (endMs && nowMs > endMs + 12 * 60 * 60 * 1000) return false;
+      return true;
+    }
+
+    // 4. Confirmed / Paid booking whose operational dates cover current time
     const isConfirmedOrPaid =
       bStat === "confirmed" ||
       bStat === "approved" ||
@@ -301,14 +323,11 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
       String(b.paymentStatus || "").toLowerCase() === "paid";
 
     if (isConfirmedOrPaid) {
-      const { start, end } = getBookingOperationalDates(b);
-      if (start && end) {
-        const startMs = start.getTime();
-        const endMs = end.getTime() + 2 * 60 * 60 * 1000; // 2 hours grace period
+      if (startMs && endMs) {
         if (nowMs >= startMs && nowMs <= endMs) {
           return true;
         }
-      } else if (start && nowMs >= start.getTime()) {
+      } else if (startMs && nowMs >= startMs && (!endMs || nowMs <= endMs)) {
         return true;
       }
     }

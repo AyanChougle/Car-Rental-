@@ -6976,7 +6976,7 @@ function updateRevenueStats() {
 
   // Keep the average aligned with verified revenue and paid bookings
   const average = paid.length
-    ? Math.round((totalRevenue / paid.length) * 100) / 100
+    ? Math.round((monthlyRevenue / paid.length) * 100) / 100
     : effKpi?.avg_booking
       ? Number(effKpi.avg_booking)
       : 0;
@@ -7036,11 +7036,29 @@ function updateRevenueStats() {
     const s = String(b.status || "").toLowerCase();
     if (s === "completed" || s === "cancelled" || s === "rejected")
       return false;
-    if (s === "active" || s === "in_trip" || s === "started") return true;
+
+    // Returned or completed trips are back in yard
+    const hasReturned = Boolean(
+      b.returnOdometer ||
+        b.return_odometer ||
+        b.endOdometer ||
+        b.end_odometer ||
+        b.completedAt ||
+        b.returnedAt,
+    );
+    if (hasReturned) return false;
+
+    const pMs = b.pickupDate ? new Date(b.pickupDate).getTime() : 0;
+    const dMs = b.dropDate ? new Date(b.dropDate).getTime() : 0;
+    const endWindow = dMs ? dMs + 12 * 60 * 60 * 1000 : 0;
+
+    if (s === "in_trip") return true;
+    if (s === "active" || s === "started") {
+      if (endWindow && nowMs > endWindow) return false;
+      return true;
+    }
     if (s === "confirmed") {
-      const pMs = b.pickupDate ? new Date(b.pickupDate).getTime() : 0;
-      const dMs = b.dropDate ? new Date(b.dropDate).getTime() : 0;
-      return pMs && dMs && nowMs >= pMs && nowMs <= dMs;
+      return pMs && dMs && nowMs >= pMs && nowMs <= endWindow;
     }
     return false;
   }).length;
