@@ -380,6 +380,13 @@ if ($method === 'PUT' || $method === 'POST') {
     $params[] = json_encode($existingInspection);
 
     if (!empty($updates)) {
+        require_once __DIR__ . '/../services/KpiService.php';
+        $oldNet = KpiService::getBookingNetRental($existing);
+        $oldStat = strtolower(trim((string)($existing['status'] ?? $existing['booking_status'] ?? '')));
+        $oldPaidStat = strtolower(trim((string)($existing['payment_status'] ?? '')));
+        $oldIsEligible = !in_array($oldStat, ['cancelled', 'rejected'], true) && !in_array($oldPaidStat, ['cancelled', 'rejected', 'refunded'], true);
+        $oldAmountEffective = $oldIsEligible ? $oldNet : 0.0;
+
         $params[] = $bookingId;
         $params[] = $bookingId;
         $params[] = $bookingId;
@@ -387,6 +394,35 @@ if ($method === 'PUT' || $method === 'POST') {
             "UPDATE bookings SET " . implode(', ', $updates) . ", updated_at = CURRENT_TIMESTAMP WHERE booking_id = ? OR booking_number = ? OR id = ?",
             $params
         );
+
+        $updated = Database::fetchOne(
+            "SELECT * FROM bookings WHERE booking_id = ? OR booking_number = ? OR id = ? LIMIT 1",
+            [$bookingId, $bookingId, $bookingId]
+        );
+
+        if ($updated) {
+            $newNet = KpiService::getBookingNetRental($updated);
+            $newStat = strtolower(trim((string)($updated['status'] ?? $updated['booking_status'] ?? '')));
+            $newPaidStat = strtolower(trim((string)($updated['payment_status'] ?? '')));
+            $newIsEligible = !in_array($newStat, ['cancelled', 'rejected'], true) && !in_array($newPaidStat, ['cancelled', 'rejected', 'refunded'], true);
+            $newAmountEffective = $newIsEligible ? $newNet : 0.0;
+
+            $diffAmount = round($newAmountEffective - $oldAmountEffective, 2);
+            $bHubId = (int)($updated['pickup_hub_id'] ?: ($updated['drop_hub_id'] ?: 1));
+            $bDate = (string)($updated['pickup_date'] ?: ($updated['created_at'] ?: date('Y-m-d')));
+
+            // If revenue changed due to amount change or status change, adjust kpi_metrics and kpi_hub_metrics dynamically
+            if (abs($diffAmount) > 0.001) {
+                KpiService::adjustBookingMetrics($diffAmount, $bHubId, $bDate);
+            }
+
+            // If booking status transitioned to/from cancelled
+            if (!$oldIsEligible && $newIsEligible) {
+                KpiService::incrementBookingCount($bHubId, $bDate);
+            } elseif ($oldIsEligible && !$newIsEligible) {
+                KpiService::decrementBookingCount($bHubId, $bDate);
+            }
+        }
     }
 
     // Automated KPI metrics sync into MySQL kpi_metrics table
@@ -431,6 +467,26 @@ if ($method === 'DELETE') {
     if (!$isStaff) {
         sendErrorResponse('Access denied. Staff only.', 403);
     }
+
+    try {
+        require_once __DIR__ . '/../services/KpiService.php';
+        $delBk = Database::fetchOne(
+            "SELECT * FROM bookings WHERE booking_id = ? OR booking_number = ? OR id = ? LIMIT 1",
+            [$bookingId, $bookingId, $bookingId]
+        );
+        if ($delBk) {
+            $delNet = KpiService::getBookingNetRental($delBk);
+            $delStat = strtolower(trim((string)($delBk['status'] ?? $delBk['booking_status'] ?? '')));
+            $delPaidStat = strtolower(trim((string)($delBk['payment_status'] ?? '')));
+            $delIsEligible = !in_array($delStat, ['cancelled', 'rejected'], true) && !in_array($delPaidStat, ['cancelled', 'rejected', 'refunded'], true);
+            if ($delIsEligible && $delNet > 0) {
+                $delHubId = (int)($delBk['pickup_hub_id'] ?: ($delBk['drop_hub_id'] ?: 1));
+                $delDate = (string)($delBk['pickup_date'] ?: ($delBk['created_at'] ?: date('Y-m-d')));
+                KpiService::decrementBookingMetrics($delNet, $delHubId, $delDate);
+            }
+        }
+    } catch (Throwable $_) {}
+
     Database::execute(
         "DELETE FROM bookings WHERE booking_id = ? OR booking_number = ? OR id = ?",
         [$bookingId, $bookingId, $bookingId]

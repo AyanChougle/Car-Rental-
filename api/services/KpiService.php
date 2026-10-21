@@ -90,6 +90,111 @@ class KpiService
     }
 
     /**
+     * Dynamically adjusts the revenue across kpi_metrics and kpi_hub_metrics when a booking amount is edited.
+     * $diffAmount can be positive (amount increased) or negative (amount decreased).
+     */
+    public static function adjustBookingMetrics(float $diffAmount = 0.0, int $hubId = 0, string $pickupDate = ''): void
+    {
+        if (abs($diffAmount) < 0.01) return;
+        $mKey = !empty($pickupDate) ? date('Y-m-01', strtotime($pickupDate)) : date('Y-m-01');
+        $isToday = !empty($pickupDate) ? (date('Y-m-d', strtotime($pickupDate)) === date('Y-m-d')) : true;
+        $dayAmount = $isToday ? $diffAmount : 0.0;
+
+        try {
+            self::ensureTables();
+
+            // 1. Adjust in kpi_metrics for this month
+            Database::execute(
+                "UPDATE `kpi_metrics` 
+                 SET `month_sales` = GREATEST(0.00, `month_sales` + ?),
+                     `total_revenue` = GREATEST(0.00, `total_revenue` + ?),
+                     `day_sales` = GREATEST(0.00, `day_sales` + ?),
+                     `week_sales` = GREATEST(0.00, `week_sales` + ?),
+                     `updated_at` = CURRENT_TIMESTAMP
+                 WHERE `metric_date` = ?",
+                [$diffAmount, $diffAmount, $dayAmount, $dayAmount, $mKey]
+            );
+
+            // Also adjust running total_revenue for subsequent months
+            Database::execute(
+                "UPDATE `kpi_metrics` SET `total_revenue` = GREATEST(0.00, `total_revenue` + ?) WHERE `metric_date` > ?",
+                [$diffAmount, $mKey]
+            );
+
+            // 2. Adjust in kpi_hub_metrics table (Hub 0 and specific Hub)
+            $hubsToUpdate = [0];
+            if ($hubId > 0 && !in_array($hubId, $hubsToUpdate, true)) {
+                $hubsToUpdate[] = $hubId;
+            }
+
+            foreach ($hubsToUpdate as $hId) {
+                Database::execute(
+                    "UPDATE `kpi_hub_metrics` SET
+                        `day_sales` = GREATEST(0.00, `day_sales` + ?),
+                        `week_sales` = GREATEST(0.00, `week_sales` + ?),
+                        `month_revenue` = GREATEST(0.00, `month_revenue` + ?),
+                        `total_revenue` = GREATEST(0.00, `total_revenue` + ?),
+                        `updated_at` = CURRENT_TIMESTAMP
+                     WHERE `hub_id` = ?",
+                    [$dayAmount, $dayAmount, $diffAmount, $diffAmount, $hId]
+                );
+            }
+        } catch (Throwable $e) {
+            error_log("[KpiService::adjustBookingMetrics] " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Increments booking count across kpi_metrics and kpi_hub_metrics.
+     */
+    public static function incrementBookingCount(int $hubId = 0, string $pickupDate = ''): void
+    {
+        $mKey = !empty($pickupDate) ? date('Y-m-01', strtotime($pickupDate)) : date('Y-m-01');
+        try {
+            self::ensureTables();
+            Database::execute(
+                "UPDATE `kpi_metrics` SET `total_bookings` = `total_bookings` + 1, `paid_bookings` = `paid_bookings` + 1, `updated_at` = CURRENT_TIMESTAMP WHERE `metric_date` = ?",
+                [$mKey]
+            );
+            $hubs = [0];
+            if ($hubId > 0) $hubs[] = $hubId;
+            foreach ($hubs as $hId) {
+                Database::execute(
+                    "UPDATE `kpi_hub_metrics` SET `total_bookings` = `total_bookings` + 1, `paid_bookings` = `paid_bookings` + 1, `updated_at` = CURRENT_TIMESTAMP WHERE `hub_id` = ?",
+                    [$hId]
+                );
+            }
+        } catch (Throwable $e) {
+            error_log("[KpiService::incrementBookingCount] " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Decrements booking count across kpi_metrics and kpi_hub_metrics.
+     */
+    public static function decrementBookingCount(int $hubId = 0, string $pickupDate = ''): void
+    {
+        $mKey = !empty($pickupDate) ? date('Y-m-01', strtotime($pickupDate)) : date('Y-m-01');
+        try {
+            self::ensureTables();
+            Database::execute(
+                "UPDATE `kpi_metrics` SET `total_bookings` = GREATEST(0, `total_bookings` - 1), `paid_bookings` = GREATEST(0, `paid_bookings` - 1), `updated_at` = CURRENT_TIMESTAMP WHERE `metric_date` = ?",
+                [$mKey]
+            );
+            $hubs = [0];
+            if ($hubId > 0) $hubs[] = $hubId;
+            foreach ($hubs as $hId) {
+                Database::execute(
+                    "UPDATE `kpi_hub_metrics` SET `total_bookings` = GREATEST(0, `total_bookings` - 1), `paid_bookings` = GREATEST(0, `paid_bookings` - 1), `updated_at` = CURRENT_TIMESTAMP WHERE `hub_id` = ?",
+                    [$hId]
+                );
+            }
+        } catch (Throwable $e) {
+            error_log("[KpiService::decrementBookingCount] " . $e->getMessage());
+        }
+    }
+
+    /**
      * Atomically decrements the revenue and booking count when a booking is cancelled.
      * Subtracts net rental from month_sales and total_revenue across both kpi_metrics and kpi_hub_metrics.
      */
@@ -318,7 +423,7 @@ class KpiService
                 $endTs = $startTs + ($totalDays * 86400);
 
                 // Active Trip determination
-                $isActiveTrip = in_array($bStat, ['active', 'in_trip', 'started'], true)
+                $isActiveTrip = in_array($bStat, ['active', 'in_trip', 'started'], true)                
                     || ($bStat === 'confirmed' && $nowTs >= $startTs && $nowTs <= $endTs);
 
                 if ($isActiveTrip) {
@@ -454,7 +559,7 @@ class KpiService
                 $hs['day_sales'] = round($hs['day_sales'], 2);
                 $hs['week_sales'] = round($hs['week_sales'], 2);
 
-                // Persist each hub record into kpi_hub_metrics table
+                // Persist each hub record into kpi_hub_metrics table without overwriting user/booking revenues
                 Database::execute(
                     "INSERT INTO `kpi_hub_metrics` (
                         `hub_id`, `hub_name`, `total_revenue`, `month_revenue`, `total_bookings`, `paid_bookings`,
@@ -463,10 +568,10 @@ class KpiService
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                     ON DUPLICATE KEY UPDATE
                         `hub_name` = VALUES(`hub_name`),
-                        `total_revenue` = VALUES(`total_revenue`),
-                        `month_revenue` = VALUES(`month_revenue`),
-                        `total_bookings` = VALUES(`total_bookings`),
-                        `paid_bookings` = VALUES(`paid_bookings`),
+                        `total_revenue` = IF(`total_revenue` > 0, `total_revenue`, VALUES(`total_revenue`)),
+                        `month_revenue` = IF(`month_revenue` > 0, `month_revenue`, VALUES(`month_revenue`)),
+                        `total_bookings` = GREATEST(`total_bookings`, VALUES(`total_bookings`)),
+                        `paid_bookings` = GREATEST(`paid_bookings`, VALUES(`paid_bookings`)),
                         `active_trips` = VALUES(`active_trips`),
                         `total_fleet` = VALUES(`total_fleet`),
                         `on_road_fleet` = VALUES(`on_road_fleet`),
@@ -475,8 +580,8 @@ class KpiService
                         `total_users` = VALUES(`total_users`),
                         `pending_docs` = VALUES(`pending_docs`),
                         `pending_payments` = VALUES(`pending_payments`),
-                        `day_sales` = VALUES(`day_sales`),
-                        `week_sales` = VALUES(`week_sales`),
+                        `day_sales` = IF(`day_sales` > 0, `day_sales`, VALUES(`day_sales`)),
+                        `week_sales` = IF(`week_sales` > 0, `week_sales`, VALUES(`week_sales`)),
                         `updated_at` = CURRENT_TIMESTAMP",
                     [
                         $hs['hub_id'], $hs['hub_name'], $hs['total_revenue'], $hs['month_revenue'],
@@ -577,12 +682,12 @@ class KpiService
                         `total_users`, `pending_payments`, `pending_docs`, `updated_at`
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                     ON DUPLICATE KEY UPDATE
-                        `day_sales` = VALUES(`day_sales`),
-                        `week_sales` = VALUES(`week_sales`),
-                        `month_sales` = VALUES(`month_sales`),
-                        `total_revenue` = VALUES(`total_revenue`),
-                        `total_bookings` = VALUES(`total_bookings`),
-                        `paid_bookings` = VALUES(`paid_bookings`),
+                        `day_sales` = IF(`day_sales` > 0, `day_sales`, VALUES(`day_sales`)),
+                        `week_sales` = IF(`week_sales` > 0, `week_sales`, VALUES(`week_sales`)),
+                        `month_sales` = IF(`month_sales` > 0, `month_sales`, VALUES(`month_sales`)),
+                        `total_revenue` = IF(`total_revenue` > 0, `total_revenue`, VALUES(`total_revenue`)),
+                        `total_bookings` = GREATEST(`total_bookings`, VALUES(`total_bookings`)),
+                        `paid_bookings` = GREATEST(`paid_bookings`, VALUES(`paid_bookings`)),
                         `active_trips` = VALUES(`active_trips`),
                         `completed_trips` = VALUES(`completed_trips`),
                         `total_fleet` = VALUES(`total_fleet`),
@@ -602,34 +707,50 @@ class KpiService
                 );
             }
 
-            // Sync total_revenue, month_revenue, day_sales, week_sales for Hub 0 to exact ledger
+            // Sync live metrics for Hub 0, strictly preserving master ledger revenues if already populated
             $curMonthSales = (float)($monthlyRows[$currentMonthKey]['month_sales'] ?? $hubStats[0]['month_revenue']);
             $curDaySales = (float)($monthlyRows[$currentMonthKey]['day_sales'] ?? $hubStats[0]['day_sales']);
             $curWeekSales = (float)($monthlyRows[$currentMonthKey]['week_sales'] ?? $hubStats[0]['week_sales']);
 
-            $hubStats[0]['total_revenue'] = round($runningTotalRev, 2);
-            $hubStats[0]['month_revenue'] = round($curMonthSales, 2);
-            $hubStats[0]['day_sales'] = round($curDaySales, 2);
-            $hubStats[0]['week_sales'] = round($curWeekSales, 2);
-            Database::execute(
-                "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 0",
-                [$hubStats[0]['total_revenue'], $hubStats[0]['month_revenue'], $hubStats[0]['day_sales'], $hubStats[0]['week_sales']]
-            );
+            $existingHub0 = Database::fetchOne("SELECT total_revenue, month_revenue, day_sales, week_sales FROM kpi_hub_metrics WHERE hub_id = 0 LIMIT 1");
+            if ($existingHub0 && (float)$existingHub0['total_revenue'] > 0) {
+                $hubStats[0]['total_revenue'] = (float)$existingHub0['total_revenue'];
+                $hubStats[0]['month_revenue'] = (float)$existingHub0['month_revenue'];
+                $hubStats[0]['day_sales'] = max($hubStats[0]['day_sales'], (float)$existingHub0['day_sales']);
+                $hubStats[0]['week_sales'] = max($hubStats[0]['week_sales'], (float)$existingHub0['week_sales']);
+            } else {
+                $hubStats[0]['total_revenue'] = round($runningTotalRev, 2);
+                $hubStats[0]['month_revenue'] = round($curMonthSales, 2);
+                $hubStats[0]['day_sales'] = round($curDaySales, 2);
+                $hubStats[0]['week_sales'] = round($curWeekSales, 2);
+                Database::execute(
+                    "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 0",
+                    [$hubStats[0]['total_revenue'], $hubStats[0]['month_revenue'], $hubStats[0]['day_sales'], $hubStats[0]['week_sales']]
+                );
+            }
 
-            // Sync total_revenue and current month metrics for Hub 1 (Gavson) to ensure complete alignment
-            $hub2Rev = (float)($hubStats[2]['total_revenue'] ?? 0.0);
-            $hub2MonthRev = (float)($hubStats[2]['month_revenue'] ?? 0.0);
-            $hub2DaySales = (float)($hubStats[2]['day_sales'] ?? 0.0);
-            $hub2WeekSales = (float)($hubStats[2]['week_sales'] ?? 0.0);
+            // Sync live metrics for Hub 1 (Gavson), strictly preserving master ledger revenues if already populated
+            $existingHub1 = Database::fetchOne("SELECT total_revenue, month_revenue, day_sales, week_sales FROM kpi_hub_metrics WHERE hub_id = 1 LIMIT 1");
+            if ($existingHub1 && (float)$existingHub1['total_revenue'] > 0) {
+                $hubStats[1]['total_revenue'] = (float)$existingHub1['total_revenue'];
+                $hubStats[1]['month_revenue'] = (float)$existingHub1['month_revenue'];
+                $hubStats[1]['day_sales'] = max($hubStats[1]['day_sales'], (float)$existingHub1['day_sales']);
+                $hubStats[1]['week_sales'] = max($hubStats[1]['week_sales'], (float)$existingHub1['week_sales']);
+            } else {
+                $hub2Rev = (float)($hubStats[2]['total_revenue'] ?? 0.0);
+                $hub2MonthRev = (float)($hubStats[2]['month_revenue'] ?? 0.0);
+                $hub2DaySales = (float)($hubStats[2]['day_sales'] ?? 0.0);
+                $hub2WeekSales = (float)($hubStats[2]['week_sales'] ?? 0.0);
 
-            $hubStats[1]['total_revenue'] = round(max($hubStats[1]['total_revenue'], $hubStats[0]['total_revenue'] - $hub2Rev), 2);
-            $hubStats[1]['month_revenue'] = round(max($hubStats[1]['month_revenue'], $curMonthSales - $hub2MonthRev), 2);
-            $hubStats[1]['day_sales'] = round(max($hubStats[1]['day_sales'], $curDaySales - $hub2DaySales), 2);
-            $hubStats[1]['week_sales'] = round(max($hubStats[1]['week_sales'], $curWeekSales - $hub2WeekSales), 2);
-            Database::execute(
-                "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 1",
-                [$hubStats[1]['total_revenue'], $hubStats[1]['month_revenue'], $hubStats[1]['day_sales'], $hubStats[1]['week_sales']]
-            );
+                $hubStats[1]['total_revenue'] = round(max($hubStats[1]['total_revenue'], $hubStats[0]['total_revenue'] - $hub2Rev), 2);
+                $hubStats[1]['month_revenue'] = round(max($hubStats[1]['month_revenue'], $curMonthSales - $hub2MonthRev), 2);
+                $hubStats[1]['day_sales'] = round(max($hubStats[1]['day_sales'], $curDaySales - $hub2DaySales), 2);
+                $hubStats[1]['week_sales'] = round(max($hubStats[1]['week_sales'], $curWeekSales - $hub2WeekSales), 2);
+                Database::execute(
+                    "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 1",
+                    [$hubStats[1]['total_revenue'], $hubStats[1]['month_revenue'], $hubStats[1]['day_sales'], $hubStats[1]['week_sales']]
+                );
+            }
 
             $lastMonthRev = (float)($monthlyRows[$previousMonthKey]['month_sales'] ?? 0.0);
             $avgBooking = $hubStats[0]['paid_bookings'] > 0 ? round($hubStats[0]['total_revenue'] / $hubStats[0]['paid_bookings'], 2) : 0.0;
