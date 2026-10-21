@@ -425,12 +425,21 @@ export function getFleetLiveStatusInfo(vehicleOrReg, bookings = rawBookings) {
   const isOnTrip = isVehicleOnTripNow(vehicleOrReg, bookings);
 
   const returnBooking = carBookings.find((b) => {
+    // Only a vehicle actively out on trip can have a scheduled return
+    if (!isOnTrip) return false;
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (bStat === "completed") return false;
-    const { end } = getBookingOperationalDates(b);
-    return (
-      end && end.getTime() >= todayStartMs && (bStat === "active" || isOnTrip)
+    if (bStat === "completed" || bStat === "cancelled" || bStat === "rejected") return false;
+    const hasReturned = Boolean(
+      b.returnOdometer ||
+        b.return_odometer ||
+        b.endOdometer ||
+        b.end_odometer ||
+        b.completedAt ||
+        b.returnedAt
     );
+    if (hasReturned) return false;
+    const { end } = getBookingOperationalDates(b);
+    return end && end.getTime() >= todayStartMs;
   });
 
   const pickupBooking = carBookings.find((b) => {
@@ -1021,11 +1030,7 @@ function renderDashboard() {
   });
 
   // KPI 2: ACTIVE TRIPS (Auto-fetches the live on-road count)
-  const activeTripsCount = selectedMonthKpi
-    ? Number(selectedMonthKpi.active_trips || 0)
-    : (serverKpiStats?.effective?.active_trips !== undefined && Number(serverKpiStats.effective.active_trips) > 0
-        ? Number(serverKpiStats.effective.active_trips) 
-        : onTripFleetCount);
+  const activeTripsCount = onTripFleetCount;
   const kpiActiveTripsEl = document.getElementById("kpiActiveTrips");
   if (kpiActiveTripsEl) {
     kpiActiveTripsEl.innerHTML = `${activeTripsCount} <span style="font-size: 13px; font-weight: 600; color: #4fd7ff; margin-left: 4px;">(${inYardFleetCount} in yard)</span>`;

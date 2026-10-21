@@ -585,7 +585,23 @@ function updateStats() {
   const activeCount = allBookings.filter((b) => {
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
     if (bStat === "cancelled" || bStat === "rejected" || bStat === "completed" || bStat === "returned") return false;
-    return bStat === "active" || bStat === "in_trip" || bStat === "started" || b.pickupStatus === "picked_up";
+    const hasReturned = Boolean(
+      b.returnOdometer ||
+        b.return_odometer ||
+        b.endOdometer ||
+        b.end_odometer ||
+        b.completedAt ||
+        b.returnedAt
+    );
+    if (hasReturned) return false;
+    const d = parseExecDate(b.dropDate);
+    const endWindow = d ? d.getTime() + 12 * 60 * 60 * 1000 : 0;
+    if (bStat === "in_trip") return true;
+    if (bStat === "active" || bStat === "started" || b.pickupStatus === "picked_up") {
+      if (endWindow && now.getTime() > endWindow) return false;
+      return true;
+    }
+    return false;
   }).length;
 
   const pickupsToday = allBookings.filter((b) => {

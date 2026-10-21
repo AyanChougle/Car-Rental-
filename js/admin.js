@@ -2777,9 +2777,10 @@ function updateUserStats() {
 
   const pending = usersData.filter(
     (user) =>
-      user.licenseStatus === "pending" ||
-      user.aadharStatus === "pending" ||
-      user.panStatus === "pending",
+      (user.licenseStatus === "pending" ||
+        user.aadharStatus === "pending" ||
+        user.panStatus === "pending") &&
+      (user.licenseFrontURL || user.aadharFrontURL || user.hasSubmission || user.hasDocs),
   ).length;
 
   const pendingEl = $("statPendingDocs");

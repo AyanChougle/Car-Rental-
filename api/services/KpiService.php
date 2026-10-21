@@ -307,9 +307,16 @@ class KpiService
             // 2. Operational Counts: Total Users & KYC Pending
             $totalUsers = (int)(Database::fetchOne("SELECT COUNT(DISTINCT firebase_uid) AS c FROM users")['c'] ?? 0);
             $pendingDocs = (int)(Database::fetchOne(
-                "SELECT COUNT(DISTINCT firebase_uid) AS c FROM users
-                 WHERE license_status = 'pending' OR aadhar_status = 'pending' OR pan_status = 'pending'"
+                "SELECT COUNT(DISTINCT firebase_uid) AS c FROM verification
+                 WHERE overall_status = 'pending' OR license_status = 'pending' OR aadhar_status = 'pending' OR pan_status = 'pending'"
             )['c'] ?? 0);
+            if ($pendingDocs === 0) {
+                $pendingDocs = (int)(Database::fetchOne(
+                    "SELECT COUNT(DISTINCT firebase_uid) AS c FROM users
+                     WHERE (license_status = 'pending' OR aadhar_status = 'pending' OR pan_status = 'pending')
+                       AND (license_front_url IS NOT NULL OR aadhar_front_url IS NOT NULL)"
+                )['c'] ?? 0);
+            }
 
             // 3. Operational Counts: Pending Payments
             $pendingPayments = (int)(Database::fetchOne(
