@@ -433,12 +433,13 @@ class KpiService
                 $hasReturned = !empty($b['return_odometer']) || !empty($b['end_odometer']) || !empty($b['completed_at']) || !empty($b['returned_at']);
                 $isActiveTrip = false;
                 if (!$hasReturned && $bStat !== 'completed') {
+                    $hasPhysicalPickup = !empty($b['pickup_at']) || !empty($b['start_odometer']);
                     if ($bStat === 'in_trip') {
                         $isActiveTrip = true;
-                    } elseif (in_array($bStat, ['active', 'started'], true)) {
-                        $isActiveTrip = ($endTs <= 0 || $nowTs <= ($endTs + 43200)); // Within trip window + 12 hrs
-                    } elseif ($bStat === 'confirmed' && $nowTs >= $startTs && $nowTs <= $endTs) {
-                        $isActiveTrip = true;
+                    } elseif ($hasPhysicalPickup) {
+                        $isActiveTrip = ($endTs <= 0 || $nowTs <= ($endTs + 86400));
+                    } elseif (in_array($bStat, ['active', 'started', 'confirmed'], true)) {
+                        $isActiveTrip = ($startTs <= 0 || $nowTs >= $startTs) && ($endTs <= 0 || $nowTs <= ($endTs + 86400));
                     }
                 }
 

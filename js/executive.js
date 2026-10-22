@@ -596,8 +596,19 @@ function updateStats() {
     if (hasReturned) return false;
     const d = parseExecDate(b.dropDate);
     const endWindow = d ? d.getTime() + 12 * 60 * 60 * 1000 : 0;
+    const p = parseExecDate(b.pickupDate);
+    const startMs = p ? p.getTime() : 0;
+    const hasHandover = Boolean(b.pickupAt || b.startOdometer || bStat === "in_trip");
+
+    // If scheduled for the future and not handed over, car is in yard
+    if (startMs && now.getTime() < startMs && !hasHandover) return false;
+
     if (bStat === "in_trip") return true;
-    if (bStat === "active" || bStat === "started" || b.pickupStatus === "picked_up") {
+    if (hasHandover) {
+      if (endWindow && now.getTime() > endWindow) return false;
+      return true;
+    }
+    if (bStat === "active" || bStat === "started" || bStat === "confirmed") {
       if (endWindow && now.getTime() > endWindow) return false;
       return true;
     }

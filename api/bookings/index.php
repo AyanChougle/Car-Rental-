@@ -99,10 +99,13 @@ if ($method === 'GET') {
             }
         }
 
-        $isPickedUp = !empty($b['pickup_at']) ||
-                      !empty($b['start_odometer']) ||
-                      in_array($status, ['active', 'in_trip', 'completed'], true) ||
-                      (!empty($inspection['pickupStatus']) && $inspection['pickupStatus'] === 'picked_up');
+        $hasPhysicalPickup = !empty($b['pickup_at']) ||
+                             !empty($b['start_odometer']) ||
+                             (!empty($inspection['pickupStatus']) && $inspection['pickupStatus'] === 'picked_up');
+
+        $isPickedUp = $hasPhysicalPickup ||
+                      ($status === 'in_trip') ||
+                      ($status === 'completed');
 
         $pickupStatus = $isPickedUp ? 'picked_up' : ($inspection['pickupStatus'] ?? 'awaiting pickup');
         $pickupAt = $b['pickup_at'] ?? ($inspection['pickupAt'] ?? null);

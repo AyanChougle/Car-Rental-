@@ -283,6 +283,7 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
     // 1. If car was already returned or trip completed, it is in yard (NOT on trip)
     const hasBeenReturned =
       bStat === "completed" ||
+      bStat === "returned" ||
       Boolean(b.returnOdometer || b.return_odometer || b.endOdometer || b.end_odometer || b.completedAt || b.returnedAt);
 
     if (hasBeenReturned) return false;
@@ -291,38 +292,47 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
     const startMs = start ? start.getTime() : 0;
     const endMs = end ? end.getTime() + 2 * 60 * 60 * 1000 : 0;
 
-    // 2. Explicitly started or handed over, currently running within trip window
-    const isExplicitlyActive =
+    // Physical handover proof
+    const hasPhysicalHandover = Boolean(
+      b.pickupAt ||
+      b.pickup_at ||
+      b.startOdometer ||
+      b.start_odometer ||
+      bStat === "in_trip"
+    );
+
+    // If booking starts in the future and vehicle hasn't been physically handed over, vehicle is in yard
+    if (startMs && nowMs < startMs && !hasPhysicalHandover) {
+      return false;
+    }
+
+    // If trip window ended more than 24 hours ago and status is not in_trip, vehicle has returned to yard
+    if (endMs && nowMs > endMs + 24 * 60 * 60 * 1000 && bStat !== "in_trip") {
+      return false;
+    }
+
+    // 2. Explicitly running in trip or has physical handover
+    if (bStat === "in_trip") {
+      return true;
+    }
+
+    if (hasPhysicalHandover) {
+      return true;
+    }
+
+    // 3. Confirmed / Paid / Active booking currently within the operational trip window
+    const isQualifyingBooking =
       bStat === "active" ||
-      bStat === "in_trip" ||
       bStat === "started" ||
       bStat === "ongoing" ||
-      b.pickupStatus === "picked_up";
-
-    if (isExplicitlyActive) {
-      if (endMs && nowMs > endMs + 24 * 60 * 60 * 1000 && bStat !== "in_trip") {
-        return false;
-      }
-      return true;
-    }
-
-    // 3. Handed over via pickup odometer or pickup timestamp
-    const hasStartedTrip = Boolean(b.pickupAt || b.pickup_at || b.startOdometer || b.start_odometer);
-    if (hasStartedTrip) {
-      if (startMs && nowMs < startMs) return false;
-      if (endMs && nowMs > endMs + 12 * 60 * 60 * 1000) return false;
-      return true;
-    }
-
-    // 4. Confirmed / Paid booking whose operational dates cover current time
-    const isConfirmedOrPaid =
       bStat === "confirmed" ||
       bStat === "approved" ||
       bStat === "paid" ||
       bStat === "advance_paid" ||
+      b.pickupStatus === "picked_up" ||
       String(b.paymentStatus || "").toLowerCase() === "paid";
 
-    if (isConfirmedOrPaid) {
+    if (isQualifyingBooking) {
       if (startMs && endMs) {
         if (nowMs >= startMs && nowMs <= endMs) {
           return true;
@@ -424,11 +434,12 @@ export function getFleetLiveStatusInfo(vehicleOrReg, bookings = rawBookings) {
 
   const isOnTrip = isVehicleOnTripNow(vehicleOrReg, bookings);
 
+  // Return booking: ONLY vehicles actively out on trip can have a scheduled return
   const returnBooking = carBookings.find((b) => {
-    // Only a vehicle actively out on trip can have a scheduled return
     if (!isOnTrip) return false;
+    if (isBookingCancelled(b)) return false;
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (bStat === "completed" || bStat === "cancelled" || bStat === "rejected") return false;
+    if (bStat === "completed" || bStat === "returned" || bStat === "cancelled" || bStat === "rejected") return false;
     const hasReturned = Boolean(
       b.returnOdometer ||
         b.return_odometer ||
@@ -442,16 +453,26 @@ export function getFleetLiveStatusInfo(vehicleOrReg, bookings = rawBookings) {
     return end && end.getTime() >= todayStartMs;
   });
 
+  // Pickup booking: ONLY vehicles currently in yard can have an upcoming scheduled pickup
   const pickupBooking = carBookings.find((b) => {
+    if (isOnTrip) return false;
+    if (isBookingCancelled(b)) return false;
     const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (
-      bStat === "completed" ||
-      bStat === "active" ||
-      b.pickupStatus === "picked_up"
-    )
-      return false;
+    if (bStat === "completed" || bStat === "returned" || bStat === "cancelled" || bStat === "rejected") return false;
+
+    // If already physically handed over, not awaiting pickup
+    const hasHandover = Boolean(
+      b.pickupAt ||
+      b.pickup_at ||
+      b.startOdometer ||
+      b.start_odometer ||
+      bStat === "in_trip"
+    );
+    if (hasHandover) return false;
+
     const { start } = getBookingOperationalDates(b);
-    return start && start.getTime() >= todayStartMs;
+    const startMs = start ? start.getTime() : 0;
+    return startMs && startMs >= todayStartMs;
   });
 
   return {
@@ -1552,7 +1573,7 @@ function renderDashboard() {
   let fleetReturnCount = 0;
 
   currentScopeRoster.forEach((f) => {
-    const status = getFleetLiveStatusInfo(f.regNo, rawBookings);
+    const status = getFleetLiveStatusInfo(f, rawBookings);
     if (status.isOnTrip) fleetTripCount++;
     if (status.isInYard) fleetYardCount++;
     if (status.hasScheduledPickup) fleetPickupCount++;
@@ -1599,22 +1620,22 @@ function renderDashboard() {
   let displayFleetList = fleetList;
   if (fleetStatusFilter === "on_trip") {
     displayFleetList = fleetList.filter((item) => {
-      const status = getFleetLiveStatusInfo(item.regNo, rawBookings);
+      const status = getFleetLiveStatusInfo(item, rawBookings);
       return status.isOnTrip;
     });
   } else if (fleetStatusFilter === "in_yard") {
     displayFleetList = fleetList.filter((item) => {
-      const status = getFleetLiveStatusInfo(item.regNo, rawBookings);
+      const status = getFleetLiveStatusInfo(item, rawBookings);
       return status.isInYard;
     });
   } else if (fleetStatusFilter === "scheduled_pickup") {
     displayFleetList = fleetList.filter((item) => {
-      const status = getFleetLiveStatusInfo(item.regNo, rawBookings);
+      const status = getFleetLiveStatusInfo(item, rawBookings);
       return status.hasScheduledPickup;
     });
   } else if (fleetStatusFilter === "scheduled_return") {
     displayFleetList = fleetList.filter((item) => {
-      const status = getFleetLiveStatusInfo(item.regNo, rawBookings);
+      const status = getFleetLiveStatusInfo(item, rawBookings);
       return status.hasScheduledReturn;
     });
   }
