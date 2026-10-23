@@ -1081,7 +1081,7 @@ function renderDashboard() {
     serverKpiStats?.monthly?.[previousMonthKey]?.month_sales ??
       serverKpiStats?.effective?.last_month_revenue ??
       dynamicMonthlyRevenue[previousMonthKey] ??
-      425962,
+      423462,
   );
   const currentMonthSales = Number(
     serverKpiStats?.effective?.month_revenue ??
