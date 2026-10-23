@@ -585,8 +585,8 @@ class KpiService
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                     ON DUPLICATE KEY UPDATE
                         `hub_name` = VALUES(`hub_name`),
-                        `total_revenue` = IF(`total_revenue` > 0, `total_revenue`, VALUES(`total_revenue`)),
-                        `month_revenue` = IF(`month_revenue` > 0, `month_revenue`, VALUES(`month_revenue`)),
+                        `total_revenue` = GREATEST(`total_revenue`, VALUES(`total_revenue`)),
+                        `month_revenue` = GREATEST(`month_revenue`, VALUES(`month_revenue`)),
                         `total_bookings` = GREATEST(`total_bookings`, VALUES(`total_bookings`)),
                         `paid_bookings` = GREATEST(`paid_bookings`, VALUES(`paid_bookings`)),
                         `active_trips` = VALUES(`active_trips`),
@@ -597,8 +597,8 @@ class KpiService
                         `total_users` = VALUES(`total_users`),
                         `pending_docs` = VALUES(`pending_docs`),
                         `pending_payments` = VALUES(`pending_payments`),
-                        `day_sales` = IF(`day_sales` > 0, `day_sales`, VALUES(`day_sales`)),
-                        `week_sales` = IF(`week_sales` > 0, `week_sales`, VALUES(`week_sales`)),
+                        `day_sales` = VALUES(`day_sales`),
+                        `week_sales` = VALUES(`week_sales`),
                         `updated_at` = CURRENT_TIMESTAMP",
                     [
                         $hs['hub_id'], $hs['hub_name'], $hs['total_revenue'], $hs['month_revenue'],
@@ -699,10 +699,10 @@ class KpiService
                         `total_users`, `pending_payments`, `pending_docs`, `updated_at`
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                     ON DUPLICATE KEY UPDATE
-                        `day_sales` = IF(`day_sales` > 0, `day_sales`, VALUES(`day_sales`)),
-                        `week_sales` = IF(`week_sales` > 0, `week_sales`, VALUES(`week_sales`)),
-                        `month_sales` = IF(`month_sales` > 0, `month_sales`, VALUES(`month_sales`)),
-                        `total_revenue` = IF(`total_revenue` > 0, `total_revenue`, VALUES(`total_revenue`)),
+                        `day_sales` = VALUES(`day_sales`),
+                        `week_sales` = VALUES(`week_sales`),
+                        `month_sales` = GREATEST(`month_sales`, VALUES(`month_sales`)),
+                        `total_revenue` = GREATEST(`total_revenue`, VALUES(`total_revenue`)),
                         `total_bookings` = GREATEST(`total_bookings`, VALUES(`total_bookings`)),
                         `paid_bookings` = GREATEST(`paid_bookings`, VALUES(`paid_bookings`)),
                         `active_trips` = VALUES(`active_trips`),

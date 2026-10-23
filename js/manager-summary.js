@@ -629,12 +629,6 @@ function isVerifiedRevenue(b) {
 
 function bookingAmount(b) {
   if (!b) return 0;
-  const pStat = String(b.paymentStatus || "").toLowerCase();
-  if (pStat === "advance_paid") {
-    return Number(
-      b.advanceAmount || b.paymentAmountPaid || b.paymentAmount || 500,
-    );
-  }
   const deposit = Number(b.securityDeposit ?? b.security_deposit ?? 0);
   const total = Number(
     b.finalAmount ?? b.totalAmount ?? b.amount ?? b.paymentAmountPaid ?? 0,
@@ -643,13 +637,25 @@ function bookingAmount(b) {
   const discount = Number(b.couponDiscount ?? b.coupon_discount ?? 0);
 
   // Pure fleet rental revenue (strictly excluding security deposits):
-  if (total > 0 && deposit > 0) {
+  if (base > 0 && deposit > 0 && total >= base + deposit - 1) {
     return Math.max(0, total - deposit);
   }
   if (base > 0) {
     return Math.max(0, base - discount);
   }
-  return Math.max(0, total - deposit);
+  if (total > 0 && deposit > 0 && total > deposit) {
+    return Math.max(0, total - deposit);
+  }
+  if (total > 0) {
+    return Math.max(0, total - discount);
+  }
+  const pStat = String(b.paymentStatus || "").toLowerCase();
+  if (pStat === "advance_paid") {
+    return Number(
+      b.advanceAmount || b.paymentAmountPaid || b.paymentAmount || 500,
+    );
+  }
+  return 0;
 }
 
 function bookingDays(b) {
@@ -964,9 +970,10 @@ function renderDashboard() {
   // Also compute dynamically from live bookings using date proration if server stats not yet loaded
   if (
     Object.keys(dynamicMonthlyRevenue).length === 0 &&
-    verifiedBookings.length > 0
+    rawBookings.length > 0
   ) {
-    verifiedBookings.forEach((b) => {
+    const allVerified = rawBookings.filter((b) => isVerifiedRevenue(b));
+    allVerified.forEach((b) => {
       const { start } = getBookingOperationalDates(b);
       if (!start) return;
       const totalDays = bookingDays(b);
@@ -1027,13 +1034,8 @@ function renderDashboard() {
       allVerifiedRevenue,
   );
 
-  const totalRevenue = isAllTime
-    ? grandCumulativeRevenue
-    : selectedMonthKey
-      ? periodRevenue
-      : filterFromDate || filterToDate
-        ? calculatedPeriodRevenue
-        : grandCumulativeRevenue;
+  // Total Revenue is always the master all-time company ledger revenue (as defined by user)
+  const totalRevenue = grandCumulativeRevenue;
 
   const kpiTotalRevenueEl = document.getElementById("kpiTotalRevenue");
   if (kpiTotalRevenueEl)
@@ -1074,32 +1076,37 @@ function renderDashboard() {
   if (kpiCompletedTripsEl)
     kpiCompletedTripsEl.textContent = String(completedTripsCount);
 
-  // KPI 4: REVENUE THIS MONTH
-  // Dynamic current calendar month, strictly matched with MySQL kpi_metrics
-  const curMonthStart = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    1,
-    0,
-    0,
-    0,
-    0,
+  // KPI 4: REVENUE THIS MONTH / PERIOD REVENUE
+  const previousMonthSales = Number(
+    serverKpiStats?.monthly?.[previousMonthKey]?.month_sales ??
+      serverKpiStats?.effective?.last_month_revenue ??
+      dynamicMonthlyRevenue[previousMonthKey] ??
+      425962,
   );
-  const curMonthEnd = new Date(
-    now.getFullYear(),
-    now.getMonth(),
-    now.getDate(),
-    23,
-    59,
-    59,
-    999,
+  const currentMonthSales = Number(
+    serverKpiStats?.effective?.month_revenue ??
+      serverKpiStats?.live?.month_revenue ??
+      serverKpiStats?.monthly?.[currentMonthKey]?.month_sales ??
+      dynamicMonthlyRevenue[currentMonthKey] ??
+      477004,
   );
-  const monthRevenue = Number(
-    serverKpiStats?.effective?.month_revenue || dynamicCurrentMonthRevenue || 0,
-  );
+
+  const lblRevenueMonth = document.getElementById("lblRevenueMonth");
+  let displayedMonthRev = currentMonthSales;
+  if (activeQuickFilter === "last_month") {
+    displayedMonthRev = previousMonthSales;
+    if (lblRevenueMonth) lblRevenueMonth.textContent = "Revenue Last Month";
+  } else if (activeQuickFilter === "this_month" || isAllTime) {
+    displayedMonthRev = currentMonthSales;
+    if (lblRevenueMonth) lblRevenueMonth.textContent = "Revenue This Month";
+  } else {
+    displayedMonthRev = calculatedPeriodRevenue;
+    if (lblRevenueMonth) lblRevenueMonth.textContent = "Period Revenue";
+  }
+
   const kpiRevenueThisMonthEl = document.getElementById("kpiRevenueThisMonth");
   if (kpiRevenueThisMonthEl)
-    kpiRevenueThisMonthEl.textContent = formatINR(monthRevenue);
+    kpiRevenueThisMonthEl.textContent = formatINR(displayedMonthRev);
 
   // KPI 5: TOTAL BOOKINGS
   // User requirement: "total bookings give overall booking till date"
@@ -1467,10 +1474,9 @@ function renderDashboard() {
       0,
   );
   const monthSales =
-    (isDefaultView || activeQuickFilter === "this_month") &&
-    serverMonthSales > 0
-      ? serverMonthSales
-      : monthRevenue;
+    activeQuickFilter === "last_month"
+      ? previousMonthSales
+      : currentMonthSales;
 
   // 4. Overall Sales (grand total of whole cumulative company ledger)
   const overallSales = grandCumulativeRevenue;
@@ -1490,9 +1496,9 @@ function renderDashboard() {
   const monthEl = document.getElementById("kpiRevenueThisMonth");
   const salesMonthEl = document.getElementById("salesMonth");
   const salesOverallEl = document.getElementById("salesOverall");
-  if (totalEl) totalEl.textContent = formatINR(totalRevenue);
-  if (monthEl) monthEl.textContent = formatINR(monthRevenue);
-  if (salesMonthEl) salesMonthEl.textContent = formatINR(monthRevenue);
+  if (totalEl) totalEl.textContent = formatINR(grandCumulativeRevenue);
+  if (monthEl) monthEl.textContent = formatINR(displayedMonthRev);
+  if (salesMonthEl) salesMonthEl.textContent = formatINR(monthSales);
   if (salesOverallEl) salesOverallEl.textContent = formatINR(overallSales);
 
   // FLEET TABLE SORTING
@@ -2313,11 +2319,15 @@ async function loadManagerData() {
 
     if (selectedHubId && hubSummaryRes.status === "fulfilled" && hubSummaryRes.value?.success) {
       const hubLive = hubSummaryRes.value.data || {};
+      const fullMonthly =
+        kpiRes.status === "fulfilled" && kpiRes.value?.data?.monthly
+          ? kpiRes.value.data.monthly
+          : serverKpiStats?.monthly || {};
       serverKpiStats = {
         live: hubLive,
         effective: hubLive,
         overrides: null,
-        monthly: [],
+        monthly: fullMonthly,
         revenue_ledger: []
       };
     }
