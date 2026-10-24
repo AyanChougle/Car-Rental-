@@ -1077,18 +1077,20 @@ function renderDashboard() {
     kpiCompletedTripsEl.textContent = String(completedTripsCount);
 
   // KPI 4: REVENUE THIS MONTH / PERIOD REVENUE
+  // Monthly KPI values must come from the saved SQL monthly ledger first.
+  // No hardcoded fallback values: if data is missing, show 0 rather than stale revenue.
   const previousMonthSales = Number(
     serverKpiStats?.monthly?.[previousMonthKey]?.month_sales ??
-      serverKpiStats?.effective?.last_month_revenue ??
       dynamicMonthlyRevenue[previousMonthKey] ??
-      423462,
+      serverKpiStats?.effective?.last_month_revenue ??
+      0,
   );
   const currentMonthSales = Number(
-    serverKpiStats?.effective?.month_revenue ??
-      serverKpiStats?.live?.month_revenue ??
-      serverKpiStats?.monthly?.[currentMonthKey]?.month_sales ??
+    serverKpiStats?.monthly?.[currentMonthKey]?.month_sales ??
       dynamicMonthlyRevenue[currentMonthKey] ??
-      477004,
+      serverKpiStats?.effective?.month_revenue ??
+      serverKpiStats?.live?.month_revenue ??
+      0,
   );
 
   const lblRevenueMonth = document.getElementById("lblRevenueMonth");

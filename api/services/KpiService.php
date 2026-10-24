@@ -638,20 +638,31 @@ class KpiService
                 $ex = $existingLedger[$mStart] ?? null;
                 $hasDynamicBookings = isset($monthlySalesOverall[$mStart]) && $monthlySalesOverall[$mStart] > 0;
 
-                // Priority 1: If live bookings exist for this month in MySQL, derive authoritative sales dynamically
-                if ($hasDynamicBookings) {
+                // Revenue ledger rule:
+                // A populated SQL month_sales value is the approved monthly ledger value.
+                // Do not replace a manually corrected month with a different booking-derived
+                // total every time the dashboard refreshes. Booking totals are used to seed
+                // a month only when the ledger has no positive month_sales value yet.
+                if ($ex && (float)($ex['month_sales'] ?? 0) > 0) {
+                    $mSales = (float)$ex['month_sales'];
+                } elseif ($hasDynamicBookings) {
                     $mSales = round($monthlySalesOverall[$mStart], 2);
+                } elseif ($ex && (float)($ex['total_revenue'] ?? 0) > 0) {
+                    $mSales = (float)($ex['month_sales'] ?? 0);
+                } else {
+                    $mSales = 0.0;
+                }
+
+                // Operational counts can still be recalculated from live bookings.
+                if ($hasDynamicBookings) {
                     $mBCount = $monthlyBookingsOverall[$mStart] ?? 0;
                     $mPCount = $monthlyPaidOverall[$mStart] ?? 0;
                     $mCompCount = $monthlyCompletedOverall[$mStart] ?? 0;
-                } elseif ($ex && ((float)($ex['month_sales'] ?? 0) > 0 || (float)($ex['total_revenue'] ?? 0) > 0)) {
-                    // Priority 2: Historical / manual ledger entries entered in phpMyAdmin for months without dynamic booking records
-                    $mSales = (float)($ex['month_sales'] ?? 0);
+                } elseif ($ex) {
                     $mBCount = (int)($ex['total_bookings'] ?? 0);
                     $mPCount = (int)($ex['paid_bookings'] ?? 0);
                     $mCompCount = (int)($ex['completed_trips'] ?? 0);
                 } else {
-                    $mSales = 0.0;
                     $mBCount = 0;
                     $mPCount = 0;
                     $mCompCount = 0;
