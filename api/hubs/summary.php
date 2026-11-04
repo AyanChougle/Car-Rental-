@@ -103,29 +103,33 @@ try {
 }
 
 // 2. Dynamically calculate and sync authoritative KPI metrics directly from live database records
+$syncData = null;
 try {
     require_once __DIR__ . '/../services/KpiService.php';
-    KpiService::syncMetrics();
+    $syncData = KpiService::syncMetrics();
 } catch (Throwable $_) {}
 
 // 3. Read KPI fixture data DIRECTLY from MySQL database (zero hard-coded constants)
 $hubRecord = Database::fetchOne("SELECT * FROM `kpi_hub_metrics` WHERE `hub_id` = ?", [$isAllHubs ? 0 : $hubId]);
 
-if ($hubRecord) {
-    $totalRevenue = (float)$hubRecord['total_revenue'];
-    $monthRevenue = (float)$hubRecord['month_revenue'];
-    $totalBookingsCount = (int)$hubRecord['total_bookings'];
-    $paidBookingsCount = (int)$hubRecord['paid_bookings'];
-    $activeTrips = (int)$hubRecord['active_trips'];
-    $fleetCount = (int)$hubRecord['total_fleet'];
-    $onRoad = (int)($hubRecord['on_road_fleet'] ?: $activeTrips);
+$hTarget = $isAllHubs ? 0 : $hubId;
+$liveHubStats = $syncData['hubs'][$hTarget] ?? ($isAllHubs ? ($syncData['live'] ?? null) : null);
+
+if ($hubRecord || $liveHubStats) {
+    $totalRevenue = (float)($liveHubStats['total_revenue'] ?? $hubRecord['total_revenue'] ?? 0.0);
+    $monthRevenue = (float)($liveHubStats['month_revenue'] ?? $hubRecord['month_revenue'] ?? 0.0);
+    $totalBookingsCount = (int)($liveHubStats['total_bookings'] ?? $hubRecord['total_bookings'] ?? 0);
+    $paidBookingsCount = (int)($liveHubStats['paid_bookings'] ?? $hubRecord['paid_bookings'] ?? 0);
+    $activeTrips = (int)($liveHubStats['active_trips'] ?? $hubRecord['active_trips'] ?? 0);
+    $fleetCount = (int)($liveHubStats['total_fleet'] ?? $hubRecord['total_fleet'] ?? 0);
+    $onRoad = (int)($liveHubStats['on_road_fleet'] ?? ($hubRecord['on_road_fleet'] ?? $activeTrips));
     $available = max(0, $fleetCount - $onRoad);
-    $occupancy = $fleetCount > 0 ? round(($onRoad / $fleetCount) * 100, 2) : (float)$hubRecord['occupancy_pct'];
-    $userCount = (int)$hubRecord['total_users'];
-    $pendingDocs = (int)$hubRecord['pending_docs'];
-    $pendingPayments = (int)$hubRecord['pending_payments'];
-    $dayRevenue = (float)$hubRecord['day_sales'];
-    $weekRevenue = (float)$hubRecord['week_sales'];
+    $occupancy = $fleetCount > 0 ? round(($onRoad / $fleetCount) * 100, 2) : (float)($liveHubStats['occupancy_pct'] ?? $hubRecord['occupancy_pct'] ?? 0.0);
+    $userCount = (int)($liveHubStats['total_users'] ?? $hubRecord['total_users'] ?? 0);
+    $pendingDocs = (int)($liveHubStats['pending_docs'] ?? $hubRecord['pending_docs'] ?? 0);
+    $pendingPayments = (int)($liveHubStats['pending_payments'] ?? $hubRecord['pending_payments'] ?? 0);
+    $dayRevenue = (float)($liveHubStats['day_sales'] ?? $hubRecord['day_sales'] ?? 0.0);
+    $weekRevenue = (float)($liveHubStats['week_sales'] ?? $hubRecord['week_sales'] ?? 0.0);
     $avgBookingVal = $paidBookingsCount > 0 ? round($monthRevenue / $paidBookingsCount, 2) : 0.0;
 } else {
     // Dynamic fallback if row not found in kpi_hub_metrics

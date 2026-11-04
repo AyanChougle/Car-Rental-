@@ -586,7 +586,7 @@ class KpiService
                     ON DUPLICATE KEY UPDATE
                         `hub_name` = VALUES(`hub_name`),
                         `total_revenue` = GREATEST(`total_revenue`, VALUES(`total_revenue`)),
-                        `month_revenue` = GREATEST(`month_revenue`, VALUES(`month_revenue`)),
+                        `month_revenue` = VALUES(`month_revenue`),
                         `total_bookings` = GREATEST(`total_bookings`, VALUES(`total_bookings`)),
                         `paid_bookings` = GREATEST(`paid_bookings`, VALUES(`paid_bookings`)),
                         `active_trips` = VALUES(`active_trips`),
@@ -741,42 +741,45 @@ class KpiService
             $curWeekSales = (float)($monthlyRows[$currentMonthKey]['week_sales'] ?? $hubStats[0]['week_sales']);
 
             $existingHub0 = Database::fetchOne("SELECT total_revenue, month_revenue, day_sales, week_sales FROM kpi_hub_metrics WHERE hub_id = 0 LIMIT 1");
-            if ($existingHub0 && (float)$existingHub0['total_revenue'] > 0) {
-                $hubStats[0]['total_revenue'] = (float)$existingHub0['total_revenue'];
-                $hubStats[0]['month_revenue'] = (float)$existingHub0['month_revenue'];
-                $hubStats[0]['day_sales'] = max($hubStats[0]['day_sales'], (float)$existingHub0['day_sales']);
-                $hubStats[0]['week_sales'] = max($hubStats[0]['week_sales'], (float)$existingHub0['week_sales']);
-            } else {
-                $hubStats[0]['total_revenue'] = round($runningTotalRev, 2);
-                $hubStats[0]['month_revenue'] = round($curMonthSales, 2);
-                $hubStats[0]['day_sales'] = round($curDaySales, 2);
-                $hubStats[0]['week_sales'] = round($curWeekSales, 2);
-                Database::execute(
-                    "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 0",
-                    [$hubStats[0]['total_revenue'], $hubStats[0]['month_revenue'], $hubStats[0]['day_sales'], $hubStats[0]['week_sales']]
-                );
-            }
+            $hubStats[0]['total_revenue'] = max(
+                (float)($hubStats[0]['total_revenue'] ?? 0.0),
+                (float)($runningTotalRev ?? 0.0),
+                (float)($existingHub0['total_revenue'] ?? 0.0)
+            );
+            $hubStats[0]['month_revenue'] = round($curMonthSales, 2);
+            $hubStats[0]['day_sales'] = round($curDaySales, 2);
+            $hubStats[0]['week_sales'] = round($curWeekSales, 2);
+
+            Database::execute(
+                "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 0",
+                [$hubStats[0]['total_revenue'], $hubStats[0]['month_revenue'], $hubStats[0]['day_sales'], $hubStats[0]['week_sales']]
+            );
 
             // Sync live metrics for Hub 1 (Gavson), strictly preserving master ledger revenues if already populated
             $existingHub1 = Database::fetchOne("SELECT total_revenue, month_revenue, day_sales, week_sales FROM kpi_hub_metrics WHERE hub_id = 1 LIMIT 1");
-            if ($existingHub1 && (float)$existingHub1['total_revenue'] > 0) {
-                $hubStats[1]['total_revenue'] = (float)$existingHub1['total_revenue'];
-                $hubStats[1]['month_revenue'] = (float)$existingHub1['month_revenue'];
-                $hubStats[1]['day_sales'] = max($hubStats[1]['day_sales'], (float)$existingHub1['day_sales']);
-                $hubStats[1]['week_sales'] = max($hubStats[1]['week_sales'], (float)$existingHub1['week_sales']);
-            } else {
-                $hub2Rev = (float)($hubStats[2]['total_revenue'] ?? 0.0);
-                $hub2MonthRev = (float)($hubStats[2]['month_revenue'] ?? 0.0);
-                $hub2DaySales = (float)($hubStats[2]['day_sales'] ?? 0.0);
-                $hub2WeekSales = (float)($hubStats[2]['week_sales'] ?? 0.0);
+            $hub2Rev = (float)($hubStats[2]['total_revenue'] ?? 0.0);
+            $hub2MonthRev = (float)($hubStats[2]['month_revenue'] ?? 0.0);
+            $hub2DaySales = (float)($hubStats[2]['day_sales'] ?? 0.0);
+            $hub2WeekSales = (float)($hubStats[2]['week_sales'] ?? 0.0);
 
-                $hubStats[1]['total_revenue'] = round(max($hubStats[1]['total_revenue'], $hubStats[0]['total_revenue'] - $hub2Rev), 2);
-                $hubStats[1]['month_revenue'] = round(max($hubStats[1]['month_revenue'], $curMonthSales - $hub2MonthRev), 2);
-                $hubStats[1]['day_sales'] = round(max($hubStats[1]['day_sales'], $curDaySales - $hub2DaySales), 2);
-                $hubStats[1]['week_sales'] = round(max($hubStats[1]['week_sales'], $curWeekSales - $hub2WeekSales), 2);
+            $hubStats[1]['total_revenue'] = max(
+                (float)($hubStats[1]['total_revenue'] ?? 0.0),
+                round(max(0.0, $hubStats[0]['total_revenue'] - $hub2Rev), 2),
+                (float)($existingHub1['total_revenue'] ?? 0.0)
+            );
+            $hubStats[1]['month_revenue'] = round(max(0.0, $curMonthSales - $hub2MonthRev), 2);
+            $hubStats[1]['day_sales'] = round(max(0.0, $curDaySales - $hub2DaySales), 2);
+            $hubStats[1]['week_sales'] = round(max(0.0, $curWeekSales - $hub2WeekSales), 2);
+
+            Database::execute(
+                "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 1",
+                [$hubStats[1]['total_revenue'], $hubStats[1]['month_revenue'], $hubStats[1]['day_sales'], $hubStats[1]['week_sales']]
+            );
+
+            if (isset($hubStats[2])) {
                 Database::execute(
-                    "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 1",
-                    [$hubStats[1]['total_revenue'], $hubStats[1]['month_revenue'], $hubStats[1]['day_sales'], $hubStats[1]['week_sales']]
+                    "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 2",
+                    [$hubStats[2]['total_revenue'], $hubStats[2]['month_revenue'], $hubStats[2]['day_sales'], $hubStats[2]['week_sales']]
                 );
             }
 
