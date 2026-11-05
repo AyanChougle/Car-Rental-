@@ -298,26 +298,29 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
       b.pickup_at ||
       b.startOdometer ||
       b.start_odometer ||
-      bStat === "in_trip"
+      bStat === "in_trip" ||
+      bStat === "ongoing"
     );
 
-    // If booking starts in the future and vehicle hasn't been physically handed over, vehicle is in yard
-    if (startMs && nowMs < startMs && !hasPhysicalHandover) {
-      return false;
-    }
-
-    // If trip window ended more than 24 hours ago and status is not in_trip, vehicle has returned to yard
-    if (endMs && nowMs > endMs + 24 * 60 * 60 * 1000 && bStat !== "in_trip") {
-      return false;
-    }
-
-    // 2. Explicitly running in trip or has physical handover
-    if (bStat === "in_trip") {
+    if (bStat === "in_trip" || bStat === "ongoing") {
       return true;
     }
 
     if (hasPhysicalHandover) {
+      if (endMs && nowMs > endMs + 7 * 24 * 60 * 60 * 1000) {
+        return false;
+      }
       return true;
+    }
+
+    // If booking starts in the future and vehicle hasn't been physically handed over, vehicle is in yard
+    if (startMs && nowMs < startMs) {
+      return false;
+    }
+
+    // If trip window ended without physical handover, it expired / no-show -> vehicle is in yard
+    if (endMs && nowMs > endMs + 24 * 60 * 60 * 1000) {
+      return false;
     }
 
     // 3. Confirmed / Paid / Active booking currently within the operational trip window
@@ -334,10 +337,10 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
 
     if (isQualifyingBooking) {
       if (startMs && endMs) {
-        if (nowMs >= startMs && nowMs <= endMs) {
+        if (nowMs >= startMs && nowMs <= endMs + 24 * 60 * 60 * 1000) {
           return true;
         }
-      } else if (startMs && nowMs >= startMs && (!endMs || nowMs <= endMs)) {
+      } else if (startMs && nowMs >= startMs) {
         return true;
       }
     }

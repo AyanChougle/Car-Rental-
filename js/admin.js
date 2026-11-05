@@ -6977,7 +6977,7 @@ function updateRevenueStats() {
 
   // Keep the average aligned with verified revenue and paid bookings
   const average = paid.length
-    ? Math.round((monthlyRevenue / paid.length) * 100) / 100
+    ? Math.round((totalRevenue / paid.length) * 100) / 100
     : effKpi?.avg_booking
       ? Number(effKpi.avg_booking)
       : 0;
@@ -7045,21 +7045,34 @@ function updateRevenueStats() {
         b.endOdometer ||
         b.end_odometer ||
         b.completedAt ||
-        b.returnedAt,
+        b.returnedAt ||
+        b.returnInspection ||
+        b.return_inspection,
     );
     if (hasReturned) return false;
 
     const pMs = b.pickupDate ? new Date(b.pickupDate).getTime() : 0;
     const dMs = b.dropDate ? new Date(b.dropDate).getTime() : 0;
-    const endWindow = dMs ? dMs + 12 * 60 * 60 * 1000 : 0;
+    const endWindow = dMs ? dMs + 24 * 60 * 60 * 1000 : 0;
 
-    if (s === "in_trip") return true;
-    if (s === "active" || s === "started") {
-      if (endWindow && nowMs > endWindow) return false;
+    const hasHandover = Boolean(
+      b.pickupAt ||
+        b.pickup_at ||
+        b.startOdometer ||
+        b.start_odometer ||
+        s === "in_trip" ||
+        s === "ongoing",
+    );
+
+    if (s === "in_trip" || s === "ongoing") return true;
+    if (hasHandover) {
+      if (endWindow && nowMs > endWindow + 7 * 24 * 60 * 60 * 1000) return false;
       return true;
     }
-    if (s === "confirmed") {
-      return pMs && dMs && nowMs >= pMs && nowMs <= endWindow;
+    if (s === "active" || s === "started" || s === "confirmed" || s === "paid") {
+      if (pMs && nowMs < pMs) return false;
+      if (endWindow && nowMs > endWindow) return false;
+      return true;
     }
     return false;
   }).length;

@@ -353,12 +353,9 @@ class KpiService
                 $hubStats[0]['total_fleet']++;
             }
 
-            // 5. Fetch All Bookings with Fleet Join
+            // 5. Fetch All Bookings with Fleet Join (select all columns for odometers, inspections, and refunds)
             $bookings = Database::fetchAll(
-                "SELECT b.id, b.booking_id, b.booking_number, b.vehicle_id, b.vehicle_reg, b.vehicle_name,
-                        b.pickup_date, b.drop_date, b.days, b.total_amount, b.final_amount, b.base_amount,
-                        b.coupon_discount, b.security_deposit, b.advance_amount, b.payment_status, b.status,
-                        b.created_at, b.pickup_hub_id, b.drop_hub_id,
+                "SELECT b.*,
                         v.hub_id AS v_hub_id, v.acquisition_type AS v_acq_type, v.owner_name AS v_owner_name
                  FROM bookings b
                  LEFT JOIN vehicles v ON (
@@ -393,7 +390,7 @@ class KpiService
                 }
                 $seenBookings[$bRef] = true;
 
-                $bStat = strtolower(trim((string)($b['status'] ?? '')));
+                $bStat = strtolower(trim((string)($b['status'] ?? $b['booking_status'] ?? '')));
                 $pStat = strtolower(trim((string)($b['payment_status'] ?? '')));
 
                 // Exclude cancelled, rejected, or refunded bookings completely from revenue
@@ -417,7 +414,7 @@ class KpiService
 
                 // Check eligibility for revenue and active/completed trips
                 $isPaid = in_array($pStat, ['paid', 'advance_paid', 'verified'], true)
-                    || in_array($bStat, ['confirmed', 'active', 'completed', 'in_trip', 'started'], true);
+                    || in_array($bStat, ['confirmed', 'active', 'completed', 'in_trip', 'started', 'ongoing', 'paid'], true);
 
                 if ($isPaid) {
                     $hubStats[$hubId]['paid_bookings']++;
@@ -430,15 +427,26 @@ class KpiService
                 $endTs = $startTs + ($totalDays * 86400);
 
                 // Active Trip determination
-                $hasReturned = !empty($b['return_odometer']) || !empty($b['end_odometer']) || !empty($b['completed_at']) || !empty($b['returned_at']);
+                $hasReturned = !empty($b['return_odometer'])
+                    || !empty($b['end_odometer'])
+                    || !empty($b['completed_at'])
+                    || !empty($b['returned_at'])
+                    || !empty($b['return_inspection'])
+                    || in_array($bStat, ['completed', 'returned'], true);
+
                 $isActiveTrip = false;
-                if (!$hasReturned && $bStat !== 'completed') {
-                    $hasPhysicalPickup = !empty($b['pickup_at']) || !empty($b['start_odometer']);
-                    if ($bStat === 'in_trip') {
+                if (!$hasReturned) {
+                    $hasPhysicalPickup = !empty($b['pickup_at'])
+                        || !empty($b['start_odometer'])
+                        || in_array($bStat, ['in_trip', 'ongoing'], true);
+
+                    if (in_array($bStat, ['in_trip', 'ongoing'], true)) {
                         $isActiveTrip = true;
                     } elseif ($hasPhysicalPickup) {
-                        $isActiveTrip = ($endTs <= 0 || $nowTs <= ($endTs + 86400));
-                    } elseif (in_array($bStat, ['active', 'started', 'confirmed'], true)) {
+                        // Physical pickup logged: active while within trip window or up to 7 days overdue
+                        $isActiveTrip = ($endTs <= 0 || $nowTs <= ($endTs + 7 * 86400));
+                    } elseif ($isPaid || in_array($bStat, ['active', 'started', 'confirmed', 'approved'], true)) {
+                        // Scheduled within current date window
                         $isActiveTrip = ($startTs <= 0 || $nowTs >= $startTs) && ($endTs <= 0 || $nowTs <= ($endTs + 86400));
                     }
                 }
@@ -448,13 +456,16 @@ class KpiService
                     $hubStats[0]['active_trips']++;
 
                     $vRegKey = strtoupper(trim((string)($b['vehicle_reg'] ?? '')));
-                    if ($vRegKey !== '' && $vRegKey !== 'TBD') {
-                        $onRoadVehiclesOverall[$vRegKey] = true;
-                        $onRoadVehiclesPerHub[$hubId][$vRegKey] = true;
+                    if (($vRegKey === '' || $vRegKey === 'TBD') && !empty($b['vehicle_id']) && isset($vehicleMapById[(int)$b['vehicle_id']])) {
+                        $vRegKey = strtoupper(trim((string)$vehicleMapById[(int)$b['vehicle_id']]['reg_no']));
                     }
+                    $uniqueTripKey = ($vRegKey !== '' && $vRegKey !== 'TBD') ? $vRegKey : ('BOOKING-' . $bRef);
+
+                    $onRoadVehiclesOverall[$uniqueTripKey] = true;
+                    $onRoadVehiclesPerHub[$hubId][$uniqueTripKey] = true;
                 }
 
-                if ($bStat === 'completed') {
+                if ($bStat === 'completed' || $hasReturned) {
                     $hubStats[$hubId]['completed_trips']++;
                     $hubStats[0]['completed_trips']++;
                 }
@@ -637,13 +648,16 @@ class KpiService
             foreach ($allMonths as $mStart) {
                 $ex = $existingLedger[$mStart] ?? null;
                 $hasDynamicBookings = isset($monthlySalesOverall[$mStart]) && $monthlySalesOverall[$mStart] > 0;
+                $isCur = ($mStart === $currentMonthKey);
 
                 // Revenue ledger rule:
-                // A populated SQL month_sales value is the approved monthly ledger value.
-                // Do not replace a manually corrected month with a different booking-derived
-                // total every time the dashboard refreshes. Booking totals are used to seed
-                // a month only when the ledger has no positive month_sales value yet.
-                if ($ex && (float)($ex['month_sales'] ?? 0) > 0) {
+                // For the ongoing current month, recalculate dynamically from live bookings.
+                // For historical closed months, a populated SQL month_sales value is preserved.
+                if ($isCur) {
+                    $mSales = $hasDynamicBookings
+                        ? round($monthlySalesOverall[$mStart], 2)
+                        : (float)($ex['month_sales'] ?? 0.0);
+                } elseif ($ex && (float)($ex['month_sales'] ?? 0) > 0) {
                     $mSales = (float)$ex['month_sales'];
                 } elseif ($hasDynamicBookings) {
                     $mSales = round($monthlySalesOverall[$mStart], 2);
@@ -654,10 +668,10 @@ class KpiService
                 }
 
                 // Operational counts can still be recalculated from live bookings.
-                if ($hasDynamicBookings) {
-                    $mBCount = $monthlyBookingsOverall[$mStart] ?? 0;
-                    $mPCount = $monthlyPaidOverall[$mStart] ?? 0;
-                    $mCompCount = $monthlyCompletedOverall[$mStart] ?? 0;
+                if ($isCur || $hasDynamicBookings) {
+                    $mBCount = $monthlyBookingsOverall[$mStart] ?? ($ex ? (int)($ex['total_bookings'] ?? 0) : 0);
+                    $mPCount = $monthlyPaidOverall[$mStart] ?? ($ex ? (int)($ex['paid_bookings'] ?? 0) : 0);
+                    $mCompCount = $monthlyCompletedOverall[$mStart] ?? ($ex ? (int)($ex['completed_trips'] ?? 0) : 0);
                 } elseif ($ex) {
                     $mBCount = (int)($ex['total_bookings'] ?? 0);
                     $mPCount = (int)($ex['paid_bookings'] ?? 0);
@@ -670,10 +684,12 @@ class KpiService
 
                 $runningTotalRev += $mSales;
                 $rowTotalRev = round($runningTotalRev, 2);
+                if ($isCur) {
+                    $rowTotalRev = max($rowTotalRev, (float)($existingHub0['total_revenue'] ?? 0.0), (float)($hubStats[0]['total_revenue'] ?? 0.0));
+                }
                 $runningBookingsCount += $mBCount;
                 $runningPaidCount += $mPCount;
 
-                $isCur = ($mStart === $currentMonthKey);
                 $rowDay = $isCur ? max($hubStats[0]['day_sales'], (float)($ex['day_sales'] ?? 0.0)) : 0.0;
                 $rowWeek = $isCur ? max($hubStats[0]['week_sales'], (float)($ex['week_sales'] ?? 0.0)) : 0.0;
                 $rowActive = $isCur ? $hubStats[0]['active_trips'] : 0;
@@ -712,7 +728,7 @@ class KpiService
                     ON DUPLICATE KEY UPDATE
                         `day_sales` = VALUES(`day_sales`),
                         `week_sales` = VALUES(`week_sales`),
-                        `month_sales` = GREATEST(`month_sales`, VALUES(`month_sales`)),
+                        `month_sales` = VALUES(`month_sales`),
                         `total_revenue` = GREATEST(`total_revenue`, VALUES(`total_revenue`)),
                         `total_bookings` = GREATEST(`total_bookings`, VALUES(`total_bookings`)),
                         `paid_bookings` = GREATEST(`paid_bookings`, VALUES(`paid_bookings`)),
@@ -751,8 +767,11 @@ class KpiService
             $hubStats[0]['week_sales'] = round($curWeekSales, 2);
 
             Database::execute(
-                "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 0",
-                [$hubStats[0]['total_revenue'], $hubStats[0]['month_revenue'], $hubStats[0]['day_sales'], $hubStats[0]['week_sales']]
+                "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ?, `active_trips` = ?, `total_fleet` = ?, `on_road_fleet` = ?, `available_fleet` = ?, `occupancy_pct` = ? WHERE `hub_id` = 0",
+                [
+                    $hubStats[0]['total_revenue'], $hubStats[0]['month_revenue'], $hubStats[0]['day_sales'], $hubStats[0]['week_sales'],
+                    $hubStats[0]['active_trips'], $hubStats[0]['total_fleet'], $hubStats[0]['on_road_fleet'], $hubStats[0]['available_fleet'], $hubStats[0]['occupancy_pct']
+                ]
             );
 
             // Sync live metrics for Hub 1 (Gavson), strictly preserving master ledger revenues if already populated
@@ -772,19 +791,25 @@ class KpiService
             $hubStats[1]['week_sales'] = round(max(0.0, $curWeekSales - $hub2WeekSales), 2);
 
             Database::execute(
-                "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 1",
-                [$hubStats[1]['total_revenue'], $hubStats[1]['month_revenue'], $hubStats[1]['day_sales'], $hubStats[1]['week_sales']]
+                "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ?, `active_trips` = ?, `total_fleet` = ?, `on_road_fleet` = ?, `available_fleet` = ?, `occupancy_pct` = ? WHERE `hub_id` = 1",
+                [
+                    $hubStats[1]['total_revenue'], $hubStats[1]['month_revenue'], $hubStats[1]['day_sales'], $hubStats[1]['week_sales'],
+                    $hubStats[1]['active_trips'], $hubStats[1]['total_fleet'], $hubStats[1]['on_road_fleet'], $hubStats[1]['available_fleet'], $hubStats[1]['occupancy_pct']
+                ]
             );
 
             if (isset($hubStats[2])) {
                 Database::execute(
-                    "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ? WHERE `hub_id` = 2",
-                    [$hubStats[2]['total_revenue'], $hubStats[2]['month_revenue'], $hubStats[2]['day_sales'], $hubStats[2]['week_sales']]
+                    "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ?, `active_trips` = ?, `total_fleet` = ?, `on_road_fleet` = ?, `available_fleet` = ?, `occupancy_pct` = ? WHERE `hub_id` = 2",
+                    [
+                        $hubStats[2]['total_revenue'], $hubStats[2]['month_revenue'], $hubStats[2]['day_sales'], $hubStats[2]['week_sales'],
+                        $hubStats[2]['active_trips'], $hubStats[2]['total_fleet'], $hubStats[2]['on_road_fleet'], $hubStats[2]['available_fleet'], $hubStats[2]['occupancy_pct']
+                    ]
                 );
             }
 
             $lastMonthRev = (float)($monthlyRows[$previousMonthKey]['month_sales'] ?? 0.0);
-            $avgBooking = $hubStats[0]['paid_bookings'] > 0 ? round($hubStats[0]['month_revenue'] / $hubStats[0]['paid_bookings'], 2) : 0.0;
+            $avgBooking = $hubStats[0]['paid_bookings'] > 0 ? round($hubStats[0]['total_revenue'] / $hubStats[0]['paid_bookings'], 2) : 0.0;
 
             $liveStats = [
                 'total_users' => $totalUsers,
