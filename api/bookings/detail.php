@@ -7,6 +7,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../services/KpiService.php';
 
 $bookingId = trim((string)($_GET['id'] ?? $_GET['bookingId'] ?? ''));
 if (!$bookingId) {
@@ -127,6 +128,8 @@ if ($method === 'GET') {
             'pickupPhotos' => $pickupPhotos,
             'returnInspection' => $inspection,
             'paymentScreenshotUrl' => $b['payment_screenshot_url'],
+            'monthlyRevenueSplit' => (!empty($b['monthly_revenue_split']) ? (is_string($b['monthly_revenue_split']) ? json_decode($b['monthly_revenue_split'], true) : $b['monthly_revenue_split']) : KpiService::calculateMonthlyRevenueSplit($b)),
+            'monthly_revenue_split' => (!empty($b['monthly_revenue_split']) ? (is_string($b['monthly_revenue_split']) ? json_decode($b['monthly_revenue_split'], true) : $b['monthly_revenue_split']) : KpiService::calculateMonthlyRevenueSplit($b)),
             'createdAt' => $b['created_at'],
             'updatedAt' => $b['updated_at']
         ]
@@ -401,6 +404,15 @@ if ($method === 'PUT' || $method === 'POST') {
         );
 
         if ($updated) {
+            // Update monthly_revenue_split on updated booking
+            try {
+                $split = KpiService::calculateMonthlyRevenueSplit($updated);
+                Database::execute(
+                    "UPDATE bookings SET monthly_revenue_split = ? WHERE id = ?",
+                    [json_encode($split), (int)$updated['id']]
+                );
+            } catch (Throwable $_) {}
+
             $newNet = KpiService::getBookingNetRental($updated);
             $newStat = strtolower(trim((string)($updated['status'] ?? $updated['booking_status'] ?? '')));
             $newPaidStat = strtolower(trim((string)($updated['payment_status'] ?? '')));

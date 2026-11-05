@@ -7039,6 +7039,12 @@ function updateRevenueStats() {
       return false;
 
     // Returned or completed trips are back in yard
+    let insp = b.returnInspection || b.return_inspection;
+    if (typeof insp === "string") {
+      try { insp = JSON.parse(insp); } catch (e) { insp = {}; }
+    }
+    if (!insp || typeof insp !== "object") insp = {};
+
     const hasReturned = Boolean(
       b.returnOdometer ||
         b.return_odometer ||
@@ -7046,8 +7052,13 @@ function updateRevenueStats() {
         b.end_odometer ||
         b.completedAt ||
         b.returnedAt ||
-        b.returnInspection ||
-        b.return_inspection,
+        insp.returnOdometer ||
+        insp.endOdometer ||
+        insp.returnAt ||
+        insp.returnedAt ||
+        insp.returnStatus === 'returned' ||
+        s === 'completed' ||
+        s === 'returned',
     );
     if (hasReturned) return false;
 
@@ -7060,12 +7071,16 @@ function updateRevenueStats() {
         b.pickup_at ||
         b.startOdometer ||
         b.start_odometer ||
+        insp.pickupOdometer ||
+        insp.pickupAt ||
+        insp.pickupStatus === 'picked_up' ||
         s === "in_trip" ||
         s === "ongoing",
     );
 
     if (s === "in_trip" || s === "ongoing") return true;
     if (hasHandover) {
+      if (s === "active" || s === "started") return true;
       if (endWindow && nowMs > endWindow + 7 * 24 * 60 * 60 * 1000) return false;
       return true;
     }

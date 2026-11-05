@@ -257,7 +257,17 @@ try {
             'security_deposit' => $securityDeposit,
             'location' => $locationText ?: null,
             'payment_screenshot_url' => $input['paymentScreenshotUrl'] ?? $input['screenshotUrl'] ?? null,
+            'monthly_revenue_split' => null,
         ];
+
+        // Ensure monthly revenue split is calculated for exact month attribution
+        try {
+            require_once __DIR__ . '/../services/KpiService.php';
+            $split = KpiService::calculateMonthlyRevenueSplit($row);
+            if (!empty($split)) {
+                $row['monthly_revenue_split'] = json_encode($split);
+            }
+        } catch (Throwable $_) {}
 
         $existingCols = [];
         foreach ($pdo->query('SHOW COLUMNS FROM bookings')->fetchAll(PDO::FETCH_ASSOC) as $c) {
@@ -330,36 +340,11 @@ try {
         }
     });
 
-    // Automated KPI metrics sync: only increment revenue if the booking is verified/paid/confirmed immediately
-    $isPaidOrConfirmed = in_array(strtolower($paymentStatus), ['paid', 'advance_paid', 'verified'], true)
-        || in_array(strtolower($status), ['confirmed', 'active', 'in_trip', 'started', 'completed'], true);
-
-    if ($isPaidOrConfirmed) {
-        try {
-            require_once __DIR__ . '/../services/KpiService.php';
-            $bk = [
-                'final_amount' => $totalAmount,
-                'total_amount' => $totalAmount,
-                'base_amount' => $baseAmount,
-                'coupon_discount' => $couponDiscount,
-                'security_deposit' => $securityDeposit,
-                'advance_amount' => $advanceAmount
-            ];
-            $netRental = KpiService::getBookingNetRental($bk);
-            if ($netRental <= 0 && (float)$advanceAmount > 0) {
-                $netRental = (float)$advanceAmount;
-            }
-            if ($netRental > 0) {
-                $hId = isset($pickupHubId) ? (int)$pickupHubId : 0;
-                KpiService::incrementBookingMetrics($netRental, $hId, (string)$pickupDate);
-            }
-        } catch (Throwable $_) {}
-    } else {
-        try {
-            require_once __DIR__ . '/../services/KpiService.php';
-            KpiService::syncMetrics();
-        } catch (Throwable $_) {}
-    }
+    // Automated KPI metrics sync: dynamically recalculate authoritative metrics from live database records
+    try {
+        require_once __DIR__ . '/../services/KpiService.php';
+        KpiService::syncMetrics();
+    } catch (Throwable $_) {}
 
     sendJsonResponse([
         'success' => true,

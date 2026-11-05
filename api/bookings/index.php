@@ -8,6 +8,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../services/KpiService.php';
 
 
 
@@ -184,6 +185,8 @@ if ($method === 'GET') {
             'pickupPhotos' => $pickupPhotos,
             'returnInspection' => $inspection,
             'paymentScreenshotUrl' => $b['payment_screenshot_url'],
+            'monthlyRevenueSplit' => (!empty($b['monthly_revenue_split']) ? (is_string($b['monthly_revenue_split']) ? json_decode($b['monthly_revenue_split'], true) : $b['monthly_revenue_split']) : KpiService::calculateMonthlyRevenueSplit($b)),
+            'monthly_revenue_split' => (!empty($b['monthly_revenue_split']) ? (is_string($b['monthly_revenue_split']) ? json_decode($b['monthly_revenue_split'], true) : $b['monthly_revenue_split']) : KpiService::calculateMonthlyRevenueSplit($b)),
             'createdAt' => $b['created_at'],
             'updatedAt' => $b['updated_at']
         ];

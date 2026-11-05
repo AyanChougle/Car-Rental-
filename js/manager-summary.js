@@ -281,10 +281,28 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
     if (!isTargetCar) return false;
 
     // 1. If car was already returned or trip completed, it is in yard (NOT on trip)
+    let insp = b.returnInspection || b.return_inspection;
+    if (typeof insp === "string") {
+      try { insp = JSON.parse(insp); } catch (e) { insp = {}; }
+    }
+    if (!insp || typeof insp !== "object") insp = {};
+
     const hasBeenReturned =
       bStat === "completed" ||
       bStat === "returned" ||
-      Boolean(b.returnOdometer || b.return_odometer || b.endOdometer || b.end_odometer || b.completedAt || b.returnedAt);
+      Boolean(
+        b.returnOdometer ||
+        b.return_odometer ||
+        b.endOdometer ||
+        b.end_odometer ||
+        b.completedAt ||
+        b.returnedAt ||
+        insp.returnOdometer ||
+        insp.endOdometer ||
+        insp.returnAt ||
+        insp.returnedAt ||
+        insp.returnStatus === 'returned'
+      );
 
     if (hasBeenReturned) return false;
 
@@ -298,6 +316,9 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
       b.pickup_at ||
       b.startOdometer ||
       b.start_odometer ||
+      insp.pickupOdometer ||
+      insp.pickupAt ||
+      insp.pickupStatus === 'picked_up' ||
       bStat === "in_trip" ||
       bStat === "ongoing"
     );
@@ -307,6 +328,9 @@ export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
     }
 
     if (hasPhysicalHandover) {
+      if (bStat === "active" || bStat === "started") {
+        return true;
+      }
       if (endMs && nowMs > endMs + 7 * 24 * 60 * 60 * 1000) {
         return false;
       }
@@ -610,18 +634,9 @@ function isVerifiedRevenue(b) {
   if (pStat === "paid" || pStat === "advance_paid" || pStat === "verified")
     return true;
   if (
-    ["confirmed", "active", "completed", "in_progress", "on_trip"].includes(
+    ["confirmed", "active", "completed", "in_progress", "on_trip", "in_trip", "ongoing", "started"].includes(
       bStat,
     ) &&
-    pStat !== "failed" &&
-    pStat !== "refunded"
-  )
-    return true;
-  if (
-    (b.paymentRef ||
-      b.paymentScreenshotUrl ||
-      Number(b.paymentAmountPaid) > 0 ||
-      Number(b.advanceAmount) > 0) &&
     pStat !== "failed" &&
     pStat !== "rejected" &&
     pStat !== "refunded"
@@ -684,11 +699,41 @@ export function prorateBookingForWindow(b, windowStart, windowEnd) {
   if (!start) return { matchedDays: 0, proratedRevenue: 0 };
 
   const totalDays = bookingDays(b);
-  const dailyRate = totalDays > 0 ? netRental / totalDays : 0;
+  if (!totalDays || netRental <= 0) return { matchedDays: 0, proratedRevenue: 0 };
 
   // If no filter window is specified (all time), return full amount and full days
-  if (!windowStart || !windowEnd) {
+  if (!windowStart && !windowEnd) {
     return { matchedDays: totalDays, proratedRevenue: netRental };
+  }
+
+  // If window matches a calendar month and booking has server-computed monthlyRevenueSplit
+  const splitMap = b.monthlyRevenueSplit || b.monthly_revenue_split;
+  if (splitMap && typeof splitMap === "object" && windowStart && windowEnd) {
+    const wsY = windowStart.getFullYear();
+    const wsM = windowStart.getMonth();
+    const weY = windowEnd.getFullYear();
+    const weM = windowEnd.getMonth();
+    const lastDayOfMonth = new Date(wsY, wsM + 1, 0).getDate();
+    const isFullMonth =
+      wsY === weY &&
+      wsM === weM &&
+      windowStart.getDate() === 1 &&
+      windowEnd.getDate() === lastDayOfMonth;
+    if (isFullMonth) {
+      const mKey = `${wsY}-${String(wsM + 1).padStart(2, "0")}-01`;
+      if (splitMap[mKey]) {
+        const item = splitMap[mKey];
+        const amt = typeof item === "object" ? Number(item.amount || 0) : Number(item || 0);
+        const days =
+          typeof item === "object"
+            ? Number(item.days || 0)
+            : Math.max(1, Math.round(amt / (netRental / totalDays)));
+        return {
+          matchedDays: days,
+          proratedRevenue: Math.round(amt * 100) / 100,
+        };
+      }
+    }
   }
 
   const sYear = start.getFullYear();
@@ -696,31 +741,40 @@ export function prorateBookingForWindow(b, windowStart, windowEnd) {
   const sDay = start.getDate();
   const sDateOnly = new Date(sYear, sMonth, sDay, 0, 0, 0, 0).getTime();
 
-  const wStart = new Date(
-    windowStart.getFullYear(),
-    windowStart.getMonth(),
-    windowStart.getDate(),
-    0,
-    0,
-    0,
-    0,
-  ).getTime();
-  const wEnd = new Date(
-    windowEnd.getFullYear(),
-    windowEnd.getMonth(),
-    windowEnd.getDate(),
-    23,
-    59,
-    59,
-    999,
-  ).getTime();
+  const wStart = windowStart
+    ? new Date(
+        windowStart.getFullYear(),
+        windowStart.getMonth(),
+        windowStart.getDate(),
+        0,
+        0,
+        0,
+        0,
+      ).getTime()
+    : 0;
+  const wEnd = windowEnd
+    ? new Date(
+        windowEnd.getFullYear(),
+        windowEnd.getMonth(),
+        windowEnd.getDate(),
+        23,
+        59,
+        59,
+        999,
+      ).getTime()
+    : Infinity;
 
+  const dailyRate = netRental / totalDays;
   let matchedDays = 0;
   for (let i = 0; i < totalDays; i++) {
     const curDay = sDateOnly + i * 86400000;
     if (curDay >= wStart && curDay <= wEnd) {
       matchedDays++;
     }
+  }
+
+  if (matchedDays === totalDays) {
+    return { matchedDays, proratedRevenue: netRental };
   }
 
   return {
@@ -883,14 +937,16 @@ function applyCustomDateInputs() {
 
 function isBookingInPeriod(b, fromDate, toDate) {
   if (!fromDate && !toDate) return true;
-  const sDate = getBookingSaleDate(b) || getBookingOperationalDates(b).start;
+  const { start, end } = getBookingOperationalDates(b);
+  const sDate = start || getBookingSaleDate(b);
   if (!sDate) return true;
 
   const fromMs = fromDate ? fromDate.getTime() : 0;
   const toMs = toDate ? toDate.getTime() : Infinity;
-  const sMs = sDate.getTime();
+  const bStartMs = sDate.getTime();
+  const bEndMs = (end || sDate).getTime();
 
-  return sMs >= fromMs && sMs <= toMs;
+  return bEndMs >= fromMs && bStartMs <= toMs;
 }
 
 /* ============================================================
@@ -977,6 +1033,14 @@ function renderDashboard() {
   ) {
     const allVerified = rawBookings.filter((b) => isVerifiedRevenue(b));
     allVerified.forEach((b) => {
+      const splitMap = b.monthlyRevenueSplit || b.monthly_revenue_split;
+      if (splitMap && typeof splitMap === "object" && Object.keys(splitMap).length > 0) {
+        Object.entries(splitMap).forEach(([mKey, mData]) => {
+          const amt = typeof mData === "object" ? Number(mData.amount || 0) : Number(mData || 0);
+          dynamicMonthlyRevenue[mKey] = (dynamicMonthlyRevenue[mKey] || 0) + amt;
+        });
+        return;
+      }
       const { start } = getBookingOperationalDates(b);
       if (!start) return;
       const totalDays = bookingDays(b);
@@ -1012,9 +1076,12 @@ function renderDashboard() {
       0,
   );
 
-  // Total verified revenue in selected period
+  // Total verified revenue in selected period with daily proration
   const calculatedPeriodRevenue = verifiedBookings.reduce(
-    (sum, b) => sum + bookingAmount(b),
+    (sum, b) => {
+      const { proratedRevenue } = prorateBookingForWindow(b, filterFromDate, filterToDate);
+      return sum + proratedRevenue;
+    },
     0,
   );
   const periodRevenue =
@@ -1261,20 +1328,27 @@ function renderDashboard() {
     const matchedReg = matchBookingToFleet(b);
     let entry = matchedReg ? vehicleStatsMap.get(matchedReg) : null;
 
+    const { matchedDays, proratedRevenue } = prorateBookingForWindow(
+      b,
+      filterFromDate,
+      filterToDate,
+    );
+
+    if (matchedDays === 0 && proratedRevenue === 0 && (filterFromDate || filterToDate)) {
+      return;
+    }
+
     if (!entry) {
-      unmappedRevenue += bookingAmount(b);
+      unmappedRevenue += proratedRevenue;
       unmappedCount += 1;
-      const days = Math.max(1, Number(b.days) || 1);
-      unmappedDays += days;
+      unmappedDays += matchedDays;
       unmappedBookings.push(b);
       return; // Strictly separate the 7 active Kruizly fleets from partner/external fleets
     }
 
     entry.bookingsCount += 1;
-    const days = Math.max(1, Number(b.days) || 1);
-    entry.bookedDays += days;
-    const amt = bookingAmount(b);
-    entry.revenue += amt;
+    entry.bookedDays += matchedDays;
+    entry.revenue += proratedRevenue;
 
     const pDate = parseDate(b.pickupDate);
     const dDate = parseDate(b.dropDate);

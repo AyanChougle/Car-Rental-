@@ -27,6 +27,66 @@ class KpiService
     }
 
     /**
+     * Calculates the exact calendar daily revenue attribution across months for a booking.
+     * 
+     * Guaranteed invariants:
+     * 1. A day belongs to exactly one month (no day counted twice or dropped).
+     * 2. Sum of allocated amounts across all months strictly equals net rental (down to the exact cent/paisa).
+     * 
+     * @param array $b Booking record
+     * @return array Map of monthKey ('Y-m-01') => ['month' => 'Y-m-01', 'days' => int, 'amount' => float, 'daily_rate' => float]
+     */
+    public static function calculateMonthlyRevenueSplit(array $b): array
+    {
+        $netRental = self::getBookingNetRental($b);
+        $refundAmt = (float)($b['refund_amount'] ?? 0.0);
+        if ($refundAmt > 0) {
+            $netRental = max(0.0, $netRental - $refundAmt);
+        }
+        if ($netRental <= 0.0) {
+            return [];
+        }
+
+        $dateInfo = self::getBookingDates($b);
+        $startDate = $dateInfo['start_date']; // 'Y-m-d'
+        $totalDays = max(1, (int)$dateInfo['days']);
+
+        $dailyRate = $netRental / $totalDays;
+
+        // Step through each day of the booking to assign it to its exact calendar month
+        $monthDays = [];
+        for ($i = 0; $i < $totalDays; $i++) {
+            $dayDate = date('Y-m-d', strtotime("$startDate +$i days"));
+            $mKey = date('Y-m-01', strtotime($dayDate));
+            $monthDays[$mKey] = ($monthDays[$mKey] ?? 0) + 1;
+        }
+
+        $split = [];
+        $sumAllocated = 0.0;
+        $monthKeys = array_keys($monthDays);
+        $lastMonthKey = end($monthKeys);
+
+        foreach ($monthDays as $mKey => $mCount) {
+            if ($mKey === $lastMonthKey) {
+                // Assign exact remainder to the last month so sum(allocated) === netRental always
+                $amount = round(max(0.0, $netRental - $sumAllocated), 2);
+            } else {
+                $amount = round($dailyRate * $mCount, 2);
+                $sumAllocated += $amount;
+            }
+
+            $split[$mKey] = [
+                'month' => $mKey,
+                'days' => $mCount,
+                'amount' => $amount,
+                'daily_rate' => round($dailyRate, 2),
+            ];
+        }
+
+        return $split;
+    }
+
+    /**
      * Atomically increments the revenue and booking count when a new booking is created on the platform.
      * Increases month_sales, total_revenue, and booking counts across both kpi_metrics and kpi_hub_metrics.
      */
@@ -423,28 +483,43 @@ class KpiService
 
                 $dateInfo = self::getBookingDates($b);
                 $startTs = $dateInfo['start_time'];
+                $startDate = $dateInfo['start_date'];
                 $totalDays = max(1, $dateInfo['days']);
                 $endTs = $startTs + ($totalDays * 86400);
 
                 // Active Trip determination
+                $insp = [];
+                if (!empty($b['return_inspection'])) {
+                    $insp = is_string($b['return_inspection']) ? json_decode($b['return_inspection'], true) : $b['return_inspection'];
+                    if (!is_array($insp)) $insp = [];
+                }
+
                 $hasReturned = !empty($b['return_odometer'])
                     || !empty($b['end_odometer'])
                     || !empty($b['completed_at'])
                     || !empty($b['returned_at'])
-                    || !empty($b['return_inspection'])
-                    || in_array($bStat, ['completed', 'returned'], true);
+                    || in_array($bStat, ['completed', 'returned'], true)
+                    || !empty($insp['returnOdometer'])
+                    || !empty($insp['endOdometer'])
+                    || !empty($insp['returnAt'])
+                    || !empty($insp['returnedAt'])
+                    || (isset($insp['returnStatus']) && strtolower((string)$insp['returnStatus']) === 'returned');
 
                 $isActiveTrip = false;
                 if (!$hasReturned) {
                     $hasPhysicalPickup = !empty($b['pickup_at'])
                         || !empty($b['start_odometer'])
-                        || in_array($bStat, ['in_trip', 'ongoing'], true);
+                        || in_array($bStat, ['in_trip', 'ongoing'], true)
+                        || (!empty($insp['pickupStatus']) && $insp['pickupStatus'] === 'picked_up');
 
                     if (in_array($bStat, ['in_trip', 'ongoing'], true)) {
                         $isActiveTrip = true;
                     } elseif ($hasPhysicalPickup) {
-                        // Physical pickup logged: active while within trip window or up to 7 days overdue
-                        $isActiveTrip = ($endTs <= 0 || $nowTs <= ($endTs + 7 * 86400));
+                        if (in_array($bStat, ['active', 'started', 'ongoing', 'in_trip'], true)) {
+                            $isActiveTrip = true;
+                        } else {
+                            $isActiveTrip = ($endTs <= 0 || $nowTs <= ($endTs + 7 * 86400));
+                        }
                     } elseif ($isPaid || in_array($bStat, ['active', 'started', 'confirmed', 'approved'], true)) {
                         // Scheduled within current date window
                         $isActiveTrip = ($startTs <= 0 || $nowTs >= $startTs) && ($endTs <= 0 || $nowTs <= ($endTs + 86400));
@@ -487,40 +562,46 @@ class KpiService
                     continue;
                 }
 
+                // Split revenue across calendar months strictly by day (no double counting or dropped days)
+                $split = self::calculateMonthlyRevenueSplit($b);
+
+                // Auto-backfill monthly_revenue_split into bookings record if empty
+                if (empty($b['monthly_revenue_split']) && !empty($split) && !empty($b['id'])) {
+                    try {
+                        Database::execute(
+                            "UPDATE `bookings` SET `monthly_revenue_split` = ? WHERE `id` = ?",
+                            [json_encode($split), (int)$b['id']]
+                        );
+                    } catch (Throwable $_) {}
+                }
+
                 $dailyRate = $netRental / $totalDays;
-                $isCompleted = ($bStat === 'completed');
-                $earnedRentalForTrip = 0.0;
 
-                // Attribute rental revenue across trip days to corresponding reporting months
-                for ($i = 0; $i < $totalDays; $i++) {
-                    $curTs = $startTs + ($i * 86400);
-                    $curDate = date('Y-m-d', $curTs);
-                    $curMonth = date('Y-m-01', $curTs);
-
-                    $earnedRentalForTrip += $dailyRate;
-
+                // Attribute monthly split to corresponding reporting months
+                foreach ($split as $curMonth => $splitInfo) {
+                    $monthAmt = (float)$splitInfo['amount'];
                     if (!isset($monthlySalesOverall[$curMonth])) {
                         $monthlySalesOverall[$curMonth] = 0.0;
                         $monthlyBookingsOverall[$curMonth] = 0;
                         $monthlyPaidOverall[$curMonth] = 0;
                         $monthlyCompletedOverall[$curMonth] = 0;
                     }
-
-                    $monthlySalesOverall[$curMonth] += $dailyRate;
+                    $monthlySalesOverall[$curMonth] += $monthAmt;
 
                     // Current Reporting Month
                     if ($curMonth === $currentMonthKey) {
-                        $hubStats[$hubId]['month_revenue'] += $dailyRate;
-                        $hubStats[0]['month_revenue'] += $dailyRate;
+                        $hubStats[$hubId]['month_revenue'] += $monthAmt;
+                        $hubStats[0]['month_revenue'] += $monthAmt;
                     }
+                }
 
-                    // Day Sales (Today)
+                // Day Sales (Today) and Week Sales (Current Monday - Sunday)
+                for ($i = 0; $i < $totalDays; $i++) {
+                    $curDate = date('Y-m-d', strtotime("$startDate +$i days"));
                     if ($curDate === $todayStr) {
                         $hubStats[$hubId]['day_sales'] += $dailyRate;
                         $hubStats[0]['day_sales'] += $dailyRate;
                     }
-
-                    // Week Sales (Current Monday - Sunday)
                     if ($curDate >= $weekStartStr && $curDate <= $weekEndStr) {
                         $hubStats[$hubId]['week_sales'] += $dailyRate;
                         $hubStats[0]['week_sales'] += $dailyRate;
@@ -535,17 +616,17 @@ class KpiService
                 }
                 $monthlyBookingsOverall[$bookingMonth]++;
                 $monthlyPaidOverall[$bookingMonth]++;
-                if ($bStat === 'completed') {
+                if ($bStat === 'completed' || $hasReturned) {
                     $monthlyCompletedOverall[$bookingMonth]++;
                 }
 
                 // Total Earned Revenue: only add the delivered/earned portion
-                $hubStats[$hubId]['total_revenue'] += $earnedRentalForTrip;
-                $hubStats[0]['total_revenue'] += $earnedRentalForTrip;
+                $hubStats[$hubId]['total_revenue'] += $netRental;
+                $hubStats[0]['total_revenue'] += $netRental;
 
                 // Fleet Revenue & Partner Sharing (60% Partner / 40% Company on earned rental)
                 $vReg = strtoupper(trim((string)($b['vehicle_reg'] ?? '')));
-                if ($vReg !== '' && $vReg !== 'TBD' && $earnedRentalForTrip > 0) {
+                if ($vReg !== '' && $vReg !== 'TBD' && $netRental > 0) {
                     if (!isset($fleetRevenue[$vReg])) {
                         $vInfo = $vehicleMapByReg[$vReg] ?? null;
                         $acqType = $vInfo['acquisition_type'] ?? ($b['v_acq_type'] ?? 'Partner');
@@ -559,15 +640,20 @@ class KpiService
                             'total_rental' => 0.0,
                             'partner_share' => 0.0,
                             'company_share' => 0.0,
+                            'monthly_split' => [],
                         ];
                     }
                     $fleetRevenue[$vReg]['trips_count']++;
-                    $fleetRevenue[$vReg]['total_rental'] += $earnedRentalForTrip;
+                    $fleetRevenue[$vReg]['total_rental'] += $netRental;
                     if (strtolower((string)$fleetRevenue[$vReg]['acquisition_type']) === 'partner') {
-                        $fleetRevenue[$vReg]['partner_share'] += round($earnedRentalForTrip * 0.60, 2);
-                        $fleetRevenue[$vReg]['company_share'] += round($earnedRentalForTrip * 0.40, 2);
+                        $fleetRevenue[$vReg]['partner_share'] += round($netRental * 0.60, 2);
+                        $fleetRevenue[$vReg]['company_share'] += round($netRental * 0.40, 2);
                     } else {
-                        $fleetRevenue[$vReg]['company_share'] += $earnedRentalForTrip;
+                        $fleetRevenue[$vReg]['company_share'] += $netRental;
+                    }
+
+                    foreach ($split as $curMonth => $splitInfo) {
+                        $fleetRevenue[$vReg]['monthly_split'][$curMonth] = ($fleetRevenue[$vReg]['monthly_split'][$curMonth] ?? 0.0) + (float)$splitInfo['amount'];
                     }
                 }
             }
@@ -651,16 +737,15 @@ class KpiService
                 $isCur = ($mStart === $currentMonthKey);
 
                 // Revenue ledger rule:
-                // For the ongoing current month, recalculate dynamically from live bookings.
-                // For historical closed months, a populated SQL month_sales value is preserved.
-                if ($isCur) {
-                    $mSales = $hasDynamicBookings
-                        ? round($monthlySalesOverall[$mStart], 2)
-                        : (float)($ex['month_sales'] ?? 0.0);
-                } elseif ($ex && (float)($ex['month_sales'] ?? 0) > 0) {
+                // Pre-launch historical baseline months (July & August 2026) preserve their baseline ledger values.
+                // Operational months with live dynamic bookings derive dynamically from the daily revenue attribution.
+                $isHistoricalBaseline = ($mStart <= '2026-08-01');
+                if ($isHistoricalBaseline && $ex && (float)($ex['month_sales'] ?? 0) > 0) {
                     $mSales = (float)$ex['month_sales'];
                 } elseif ($hasDynamicBookings) {
                     $mSales = round($monthlySalesOverall[$mStart], 2);
+                } elseif ($ex && (float)($ex['month_sales'] ?? 0) > 0) {
+                    $mSales = (float)$ex['month_sales'];
                 } elseif ($ex && (float)($ex['total_revenue'] ?? 0) > 0) {
                     $mSales = (float)($ex['month_sales'] ?? 0);
                 } else {
@@ -976,6 +1061,18 @@ class KpiService
                   INDEX `idx_hub_metrics_hub` (`hub_id`)
                 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;"
             );
+
+            // Ensure `monthly_revenue_split` column exists in `bookings` table for persistent per-month attribution
+            try {
+                $cols = Database::fetchAll("SHOW COLUMNS FROM `bookings` LIKE 'monthly_revenue_split'");
+                if (empty($cols)) {
+                    try {
+                        Database::execute("ALTER TABLE `bookings` ADD COLUMN `monthly_revenue_split` JSON NULL AFTER `security_deposit`");
+                    } catch (Throwable $_) {
+                        Database::execute("ALTER TABLE `bookings` ADD COLUMN `monthly_revenue_split` TEXT NULL AFTER `security_deposit`");
+                    }
+                }
+            } catch (Throwable $_) {}
         } catch (Throwable $e) {
             error_log("[KpiService::ensureTables] " . $e->getMessage());
         }
