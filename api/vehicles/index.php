@@ -9,6 +9,59 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
 
+function getStandardFleetImage(string $brand, string $model): string {
+    $cleanBrand = trim($brand);
+    $cleanModel = trim($model);
+    $key = strtolower(preg_replace('/[^a-z0-9]/', '', $cleanBrand . $cleanModel));
+    $modelKey = strtolower(preg_replace('/[^a-z0-9]/', '', $cleanModel));
+
+    $map = [
+        'tatatigor' => 'assets/fleet/Tigor.jpg',
+        'tigor' => 'assets/fleet/Tigor.jpg',
+        'kiaseltos' => 'assets/fleet/Seltos.png',
+        'seltos' => 'assets/fleet/Seltos.png',
+        'kiaseltossunroof' => 'assets/fleet/Seltos.png',
+        'seltossunroof' => 'assets/fleet/Seltos.png',
+        'mghector' => 'assets/fleet/MG Hector.png',
+        'hector' => 'assets/fleet/MG Hector.png',
+        'mghectorplus' => 'assets/fleet/MG Hector.png',
+        'bmwm5modified' => 'assets/fleet/BMW.png',
+        'm5modified' => 'assets/fleet/BMW.png',
+        'bmwm5' => 'assets/fleet/BMW.png',
+        'm5' => 'assets/fleet/BMW.png',
+        'toyotafortuner' => 'assets/fleet/Toyota Fortuner.png',
+        'fortuner' => 'assets/fleet/Toyota Fortuner.png',
+        'toyotafortunerlegender' => 'assets/fleet/Toyota Fortuner.png',
+        'fortunerlegender' => 'assets/fleet/Toyota Fortuner.png',
+        'marutisuzukidzirezxi' => 'assets/fleet/Maruti Suzuki Dzire.png',
+        'dzirezxi' => 'assets/fleet/Maruti Suzuki Dzire.png',
+        'marutisuzukidzirezxisunroof' => 'assets/fleet/Maruti Suzuki Dzire.png',
+        'dzirezxisunroof' => 'assets/fleet/Maruti Suzuki Dzire.png',
+        'marutisuzukiswiftvxio' => 'assets/fleet/Maruti Suzuki Swift.png',
+        'swiftvxio' => 'assets/fleet/Maruti Suzuki Swift.png',
+        'marutisuzukiertigahybrid' => 'assets/fleet/Maruti Suzuki Ertiga.png',
+        'ertigahybrid' => 'assets/fleet/Maruti Suzuki Ertiga.png',
+        'toyotaurbancruisertaisor' => 'assets/fleet/Toyota Taisor.png',
+        'urbancruisertaisor' => 'assets/fleet/Toyota Taisor.png',
+        'toyotataisor' => 'assets/fleet/Toyota Taisor.png',
+        'taisor' => 'assets/fleet/Toyota Taisor.png',
+        'mahindratharroxx' => 'assets/fleet/Mahindra Thar Roxx.png',
+        'tharroxx' => 'assets/fleet/Mahindra Thar Roxx.png',
+        'mahindratharroxxsunroof' => 'assets/fleet/Mahindra Thar Roxx.png',
+        'tharroxxsunroof' => 'assets/fleet/Mahindra Thar Roxx.png',
+    ];
+
+    if (isset($map[$key])) {
+        return $map[$key];
+    }
+    if (isset($map[$modelKey])) {
+        return $map[$modelKey];
+    }
+
+    return 'assets/fleet/' . $cleanBrand . ' ' . $cleanModel . '.png';
+}
+
+
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
@@ -104,18 +157,41 @@ if ($method === 'GET') {
             'status' => $v['status'],
             'isActiveFleet' => (int)($v['is_active_fleet'] ?? 1),
             'imageUrl' => (function() use ($gallery, $v) {
+                $standard = getStandardFleetImage((string)$v['brand'], (string)$v['model']);
                 $img = !empty($gallery[0]) ? trim((string)$gallery[0]) : '';
                 if (!$img || str_contains($img, 'MED-') || str_contains($img, '/api/media/')) {
-                    return 'assets/fleet/' . $v['brand'] . ' ' . $v['model'] . '.png';
+                    return $standard;
+                }
+                if (str_starts_with($img, 'assets/fleet/')) {
+                    $base = preg_replace('#^assets/fleet/#', '', $img);
+                    $base = preg_replace('#\.(png|jpg|jpeg|webp)$#i', '', $base);
+                    $resolved = getStandardFleetImage('', $base);
+                    if ($resolved !== 'assets/fleet/ ' . $base . '.png') {
+                        return $resolved;
+                    }
                 }
                 return $img;
             })(),
             'gallery' => (function() use ($gallery, $v) {
+                $standard = getStandardFleetImage((string)$v['brand'], (string)$v['model']);
                 $filtered = array_values(array_filter($gallery, function($item) {
                     $s = trim((string)$item);
                     return !str_contains($s, 'MED-') && !str_contains($s, '/api/media/');
                 }));
-                return !empty($filtered) ? $filtered : ['assets/fleet/' . $v['brand'] . ' ' . $v['model'] . '.png'];
+                if (empty($filtered)) {
+                    return [$standard];
+                }
+                return array_map(function($img) use ($standard) {
+                    if (str_starts_with($img, 'assets/fleet/')) {
+                        $base = preg_replace('#^assets/fleet/#', '', $img);
+                        $base = preg_replace('#\.(png|jpg|jpeg|webp)$#i', '', $base);
+                        $resolved = getStandardFleetImage('', $base);
+                        if ($resolved !== 'assets/fleet/ ' . $base . '.png') {
+                            return $resolved;
+                        }
+                    }
+                    return $img;
+                }, $filtered);
             })(),
             'createdAt' => $v['created_at'],
             'updatedAt' => $v['updated_at']

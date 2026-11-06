@@ -100,7 +100,7 @@ function renderFleetCards(records) {
               loading="lazy"
               decoding="async"
               onload="this.parentElement.classList.add('has-loaded-image')"
-              onerror="this.onerror=null; this.src='assets/fleet/BMW 520D.png';"
+              onerror="if (!this.dataset.triedAlt && this.src.match(/\.(png|jpg)$/i)) { this.dataset.triedAlt='1'; this.src = this.src.endsWith('.png') ? this.src.replace(/\.png$/i, '.jpg') : this.src.replace(/\.jpg$/i, '.png'); } else { this.onerror=null; this.src='assets/fleet/BMW 520D.png'; }"
             />
 
             <span

@@ -51,6 +51,7 @@ const DEFAULT_FLEET_VEHICLES = [
   { id: 44, carId: "CAT-037", regNo: "MH04KR0137", brand: "Mahindra", model: "XUV500", year: 2022, category: "suv", transmission: "Manual", fuel: "Diesel", seats: 7, priceDay: 4500, priceHour: 188, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 1, hubName: "Gavson Business Park, Ghansoli", hub: "Gavson Business Park, Ghansoli", available: 1, status: "available" },
   { id: 45, carId: "CAT-038", regNo: "MH04KR0138", brand: "Mahindra", model: "XUV700", year: 2025, category: "suv", transmission: "Manual", fuel: "Diesel", seats: 7, priceDay: 6000, priceHour: 250, securityDeposit: 4000, freeKm: 250, extraKm: 16, hubId: 1, hubName: "Gavson Business Park, Ghansoli", hub: "Gavson Business Park, Ghansoli", available: 1, status: "available" },
   { id: 46, carId: "CAT-039", regNo: "MH04KR0139", brand: "Toyota", model: "Urban Cruiser Taisor", year: 2025, category: "compact-suv", transmission: "Automatic", fuel: "Petrol", seats: 5, priceDay: 3500, priceHour: 146, securityDeposit: 3000, freeKm: 250, extraKm: 12, hubId: 1, hubName: "Gavson Business Park, Ghansoli", hub: "Gavson Business Park, Ghansoli", available: 1, status: "available" },
+  { id: 128, carId: "CPR-041", regNo: "CPR-041", brand: "Toyota", model: "Fortuner", year: 2024, category: "suv", transmission: "Automatic", fuel: "Diesel", seats: 7, priceDay: 8000, priceHour: 333, securityDeposit: 3000, freeKm: 250, extraKm: 15, hubId: 1, hubName: "Gavson Business Park, Ghansoli", hub: "Gavson Business Park, Ghansoli", available: 1, status: "available" },
 
   // HUB 2: KANDIVALI HUB, MUMBAI (Exact Segment Fleet)
   // 🔹 COMPACT & 5-SEATER SEGMENT:
@@ -222,9 +223,9 @@ const fleetImageOverrides = {
   "bolero": "assets/fleet/Mahindra Scorpio N.png",
   "mahindra thar": "assets/fleet/Mahindra Thar.png",
   "thar": "assets/fleet/Mahindra Thar.png",
-  "mahindra thar roxx": "assets/fleet/Mahindra Thar Roxx.jpg",  
-  "thar roxx": "assets/fleet/Mahindra Thar Roxx.jpg",
-  "thar roxx sunroof": "assets/fleet/Mahindra Thar Roxx.jpg",
+  "mahindra thar roxx": "assets/fleet/Mahindra Thar Roxx.png",  
+  "thar roxx": "assets/fleet/Mahindra Thar Roxx.png",
+  "thar roxx sunroof": "assets/fleet/Mahindra Thar Roxx.png",
   "mahindra xuv500": "assets/fleet/Mahindra XUV500.png",
   "xuv500": "assets/fleet/Mahindra XUV500.png",
   "mahindra xuv 500": "assets/fleet/Mahindra XUV500.png",
@@ -246,10 +247,10 @@ const fleetImageOverrides = {
   "urban cruiser": "assets/fleet/Toyota Taisor.png",
   "toyota taisor": "assets/fleet/Toyota Taisor.png",
   "taisor": "assets/fleet/Toyota Taisor.png",
-  "toyota fortuner legender": "assets/fleet/Toyota Innova Crysta.png",
-  "fortuner legender": "assets/fleet/Toyota Innova Crysta.png",
-  "toyota fortuner": "assets/fleet/Toyota Innova Crysta.png",
-  "fortuner": "assets/fleet/Toyota Innova Crysta.png",
+  "toyota fortuner legender": "assets/fleet/Toyota Fortuner.png",
+  "fortuner legender": "assets/fleet/Toyota Fortuner.png",
+  "toyota fortuner": "assets/fleet/Toyota Fortuner.png",
+  "fortuner": "assets/fleet/Toyota Fortuner.png",
 
   // Kia models
   "kia seltos": "assets/fleet/Seltos.png",
@@ -280,10 +281,10 @@ const fleetImageOverrides = {
   "bmw": "assets/fleet/BMW 520D.png",
 
   // MG models
-  "mg hector": "assets/fleet/MG hector.jpg",
-  "mg hector plus": "assets/fleet/MG hector.jpg",
-  "hector": "assets/fleet/MG hector.jpg",
-  "mg": "assets/fleet/MG hector.jpg",
+  "mg hector": "assets/fleet/MG Hector.png",
+  "mg hector plus": "assets/fleet/MG Hector.png",
+  "hector": "assets/fleet/MG Hector.png",
+  "mg": "assets/fleet/MG Hector.png",
 
   // Honda, Skoda, VW, Mercedes
   "honda amaze": "assets/fleet/Hyundai Aura.png",

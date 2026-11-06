@@ -600,7 +600,9 @@ async function loadMyListings(userParam) {
           }
         }
         if (!firstPhoto) {
-          firstPhoto = `assets/fleet/${vehicleName}.png`;
+          firstPhoto = typeof window !== "undefined" && typeof window.fleetImagePath === "function"
+            ? window.fleetImagePath(listing)
+            : `assets/fleet/${vehicleName}.png`;
         }
 
         // Payout Model: Strictly either Fixed Monthly Retainer OR 60% Revenue Share (Never both)
