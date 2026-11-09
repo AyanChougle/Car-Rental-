@@ -113,25 +113,8 @@ try {
 
     // Automated KPI metrics sync into MySQL kpi_metrics table
     try {
-        if ($action === 'approve') {
-            require_once __DIR__ . '/../services/KpiService.php';
-            $bk = Database::fetchOne(
-                "SELECT final_amount, total_amount, base_amount, advance_amount, security_deposit, pickup_hub_id FROM bookings 
-                 WHERE booking_id = ? OR booking_number = ? OR id = ? LIMIT 1",
-                [$id, $id, is_numeric($id) ? (int)$id : 0]
-            );
-            if ($bk) {
-                $netRental = KpiService::getBookingNetRental($bk);
-                if ($netRental > 0) {
-                    $hubId = (int)($bk['pickup_hub_id'] ?? 0);
-                    KpiService::incrementBookingMetrics($netRental, $hubId);
-                }
-            }
-            KpiService::syncMetrics();
-        } elseif ($action === 'reject') {
-            require_once __DIR__ . '/../services/KpiService.php';
-            KpiService::syncMetrics();
-        }
+        require_once __DIR__ . '/../services/KpiService.php';
+        KpiService::syncMetrics();
     } catch (Throwable $_) {}
 
     // Dispatch approval or cancellation notification

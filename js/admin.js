@@ -6501,6 +6501,13 @@ function initialisePaymentModal() {
 
         updateRevenueStats();
 
+        try {
+          if (typeof BroadcastChannel !== "undefined") {
+            new BroadcastChannel("kruizly_kpi_sync").postMessage({ type: "KPI_UPDATED", timestamp: Date.now() });
+          }
+          localStorage.setItem("kruizly_kpi_last_sync", String(Date.now()));
+        } catch (_) {}
+
         const notif = verifyRes?.notification;
         if (notif) {
           let msg = "✅ Payment approved and booking confirmed!";
@@ -6590,6 +6597,13 @@ function initialisePaymentModal() {
         renderBookingsTable(getFilteredBookings());
 
         updateRevenueStats();
+
+        try {
+          if (typeof BroadcastChannel !== "undefined") {
+            new BroadcastChannel("kruizly_kpi_sync").postMessage({ type: "KPI_UPDATED", timestamp: Date.now() });
+          }
+          localStorage.setItem("kruizly_kpi_last_sync", String(Date.now()));
+        } catch (_) {}
       } catch (error) {
         console.error("PAYMENT REJECTION ERROR:", error);
 
@@ -10981,4 +10995,25 @@ if (typeof window !== "undefined") {
       once: true,
     });
   else bindHubModalEvents();
+}
+
+// Cross-tab real-time synchronization via BroadcastChannel & storage events
+if (typeof window !== "undefined") {
+  if (typeof BroadcastChannel !== "undefined") {
+    try {
+      const kpiSyncChannel = new BroadcastChannel("kruizly_kpi_sync");
+      kpiSyncChannel.onmessage = (event) => {
+        if (event?.data?.type === "KPI_UPDATED" || event?.data?.event === "kpi_updated") {
+          if (typeof loadKpiStats === "function") loadKpiStats();
+          if (typeof loadBookings === "function") loadBookings();
+        }
+      };
+    } catch (_) {}
+  }
+  window.addEventListener("storage", (e) => {
+    if (e.key === "kruizly_kpi_last_sync") {
+      if (typeof loadKpiStats === "function") loadKpiStats();
+      if (typeof loadBookings === "function") loadBookings();
+    }
+  });
 }

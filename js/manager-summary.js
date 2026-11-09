@@ -2910,6 +2910,25 @@ async function initManagerSummary() {
       });
     }
 
+    // Cross-tab real-time synchronization via BroadcastChannel & storage events
+    if (typeof window !== "undefined") {
+      if (typeof BroadcastChannel !== "undefined") {
+        try {
+          const kpiSyncChannel = new BroadcastChannel("kruizly_kpi_sync");
+          kpiSyncChannel.onmessage = (event) => {
+            if (event?.data?.type === "KPI_UPDATED" || event?.data?.event === "kpi_updated") {
+              loadManagerData();
+            }
+          };
+        } catch (_) {}
+      }
+      window.addEventListener("storage", (e) => {
+        if (e.key === "kruizly_kpi_last_sync") {
+          loadManagerData();
+        }
+      });
+    }
+
     if (typeof window !== "undefined") {
       window.loadManagerSummaryData = loadManagerData;
     }

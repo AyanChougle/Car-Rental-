@@ -53,33 +53,41 @@ class KpiService
 
         $dailyRate = $netRental / $totalDays;
 
-        // Step through each day of the booking to assign it to its exact calendar month
+        // Allocate each day across its specific calendar date and month
         $monthDays = [];
+        $monthDailyBreakdown = [];
+        $sumAllocatedDays = 0.0;
+
         for ($i = 0; $i < $totalDays; $i++) {
             $dayDate = date('Y-m-d', strtotime("$startDate +$i days"));
             $mKey = date('Y-m-01', strtotime($dayDate));
+
+            // Assign daily rate; final day receives exact remainder so sum(daily) === netRental
+            if ($i === $totalDays - 1) {
+                $dayPrice = round(max(0.0, $netRental - $sumAllocatedDays), 2);
+            } else {
+                $dayPrice = round($dailyRate, 2);
+            }
+            $sumAllocatedDays += $dayPrice;
+
             $monthDays[$mKey] = ($monthDays[$mKey] ?? 0) + 1;
+            $monthDailyBreakdown[$mKey][$dayDate] = $dayPrice;
         }
 
         $split = [];
-        $sumAllocated = 0.0;
         $monthKeys = array_keys($monthDays);
-        $lastMonthKey = end($monthKeys);
 
-        foreach ($monthDays as $mKey => $mCount) {
-            if ($mKey === $lastMonthKey) {
-                // Assign exact remainder to the last month so sum(allocated) === netRental always
-                $amount = round(max(0.0, $netRental - $sumAllocated), 2);
-            } else {
-                $amount = round($dailyRate * $mCount, 2);
-                $sumAllocated += $amount;
-            }
+        foreach ($monthKeys as $mKey) {
+            $mCount = $monthDays[$mKey];
+            // Monthly total is the exact sum of its daily revenues
+            $monthTotal = round(array_sum($monthDailyBreakdown[$mKey]), 2);
 
             $split[$mKey] = [
                 'month' => $mKey,
                 'days' => $mCount,
-                'amount' => $amount,
+                'amount' => $monthTotal,
                 'daily_rate' => round($dailyRate, 2),
+                'daily_breakdown' => $monthDailyBreakdown[$mKey],
             ];
         }
 
@@ -546,8 +554,13 @@ class KpiService
                 }
 
                 // Revenue calculation (strictly excluding deposits & deducting refunds)
-                if (!$isPaid) {
+                $isEligible = $isPaid || $isActiveTrip;
+                if (!$isEligible) {
                     continue;
+                }
+                if (!$isPaid && $isActiveTrip) {
+                    $hubStats[$hubId]['paid_bookings']++;
+                    $hubStats[0]['paid_bookings']++;
                 }
 
                 $netRental = self::getBookingNetRental($b);
@@ -682,10 +695,10 @@ class KpiService
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
                     ON DUPLICATE KEY UPDATE
                         `hub_name` = VALUES(`hub_name`),
-                        `total_revenue` = GREATEST(`total_revenue`, VALUES(`total_revenue`)),
+                        `total_revenue` = VALUES(`total_revenue`),
                         `month_revenue` = VALUES(`month_revenue`),
-                        `total_bookings` = GREATEST(`total_bookings`, VALUES(`total_bookings`)),
-                        `paid_bookings` = GREATEST(`paid_bookings`, VALUES(`paid_bookings`)),
+                        `total_bookings` = VALUES(`total_bookings`),
+                        `paid_bookings` = VALUES(`paid_bookings`),
                         `active_trips` = VALUES(`active_trips`),
                         `total_fleet` = VALUES(`total_fleet`),
                         `on_road_fleet` = VALUES(`on_road_fleet`),
@@ -738,16 +751,14 @@ class KpiService
 
                 // Revenue ledger rule:
                 // Pre-launch historical baseline months (July & August 2026) preserve their baseline ledger values.
-                // Operational months with live dynamic bookings derive dynamically from the daily revenue attribution.
+                // Operational months derive dynamically from the daily revenue attribution of all eligible bookings.
                 $isHistoricalBaseline = ($mStart <= '2026-08-01');
-                if ($isHistoricalBaseline && $ex && (float)($ex['month_sales'] ?? 0) > 0) {
-                    $mSales = (float)$ex['month_sales'];
-                } elseif ($hasDynamicBookings) {
+                if ($isHistoricalBaseline) {
+                    $mSales = (float)($ex['month_sales'] ?? ($mStart === '2026-07-01' ? 50540.00 : 281857.00));
+                } elseif (isset($monthlySalesOverall[$mStart])) {
                     $mSales = round($monthlySalesOverall[$mStart], 2);
-                } elseif ($ex && (float)($ex['month_sales'] ?? 0) > 0) {
+                } elseif ($mStart === '2026-09-01' && $ex && (float)($ex['month_sales'] ?? 0) > 0) {
                     $mSales = (float)$ex['month_sales'];
-                } elseif ($ex && (float)($ex['total_revenue'] ?? 0) > 0) {
-                    $mSales = (float)($ex['month_sales'] ?? 0);
                 } else {
                     $mSales = 0.0;
                 }
@@ -769,9 +780,6 @@ class KpiService
 
                 $runningTotalRev += $mSales;
                 $rowTotalRev = round($runningTotalRev, 2);
-                if ($isCur) {
-                    $rowTotalRev = max($rowTotalRev, (float)($existingHub0['total_revenue'] ?? 0.0), (float)($hubStats[0]['total_revenue'] ?? 0.0));
-                }
                 $runningBookingsCount += $mBCount;
                 $runningPaidCount += $mPCount;
 
@@ -814,9 +822,9 @@ class KpiService
                         `day_sales` = VALUES(`day_sales`),
                         `week_sales` = VALUES(`week_sales`),
                         `month_sales` = VALUES(`month_sales`),
-                        `total_revenue` = GREATEST(`total_revenue`, VALUES(`total_revenue`)),
-                        `total_bookings` = GREATEST(`total_bookings`, VALUES(`total_bookings`)),
-                        `paid_bookings` = GREATEST(`paid_bookings`, VALUES(`paid_bookings`)),
+                        `total_revenue` = VALUES(`total_revenue`),
+                        `total_bookings` = VALUES(`total_bookings`),
+                        `paid_bookings` = VALUES(`paid_bookings`),
                         `active_trips` = VALUES(`active_trips`),
                         `completed_trips` = VALUES(`completed_trips`),
                         `total_fleet` = VALUES(`total_fleet`),
@@ -836,17 +844,12 @@ class KpiService
                 );
             }
 
-            // Sync live metrics for Hub 0, strictly preserving master ledger revenues if already populated
+            // Sync live metrics for Hub 0, strictly matching cumulative running totals
             $curMonthSales = (float)($monthlyRows[$currentMonthKey]['month_sales'] ?? $hubStats[0]['month_revenue']);
             $curDaySales = (float)($monthlyRows[$currentMonthKey]['day_sales'] ?? $hubStats[0]['day_sales']);
             $curWeekSales = (float)($monthlyRows[$currentMonthKey]['week_sales'] ?? $hubStats[0]['week_sales']);
 
-            $existingHub0 = Database::fetchOne("SELECT total_revenue, month_revenue, day_sales, week_sales FROM kpi_hub_metrics WHERE hub_id = 0 LIMIT 1");
-            $hubStats[0]['total_revenue'] = max(
-                (float)($hubStats[0]['total_revenue'] ?? 0.0),
-                (float)($runningTotalRev ?? 0.0),
-                (float)($existingHub0['total_revenue'] ?? 0.0)
-            );
+            $hubStats[0]['total_revenue'] = round($runningTotalRev, 2);
             $hubStats[0]['month_revenue'] = round($curMonthSales, 2);
             $hubStats[0]['day_sales'] = round($curDaySales, 2);
             $hubStats[0]['week_sales'] = round($curWeekSales, 2);
@@ -859,18 +862,13 @@ class KpiService
                 ]
             );
 
-            // Sync live metrics for Hub 1 (Gavson), strictly preserving master ledger revenues if already populated
-            $existingHub1 = Database::fetchOne("SELECT total_revenue, month_revenue, day_sales, week_sales FROM kpi_hub_metrics WHERE hub_id = 1 LIMIT 1");
+            // Sync live metrics for Hub 1 (Gavson) and Hub 2 (Kandivali)
             $hub2Rev = (float)($hubStats[2]['total_revenue'] ?? 0.0);
             $hub2MonthRev = (float)($hubStats[2]['month_revenue'] ?? 0.0);
             $hub2DaySales = (float)($hubStats[2]['day_sales'] ?? 0.0);
             $hub2WeekSales = (float)($hubStats[2]['week_sales'] ?? 0.0);
 
-            $hubStats[1]['total_revenue'] = max(
-                (float)($hubStats[1]['total_revenue'] ?? 0.0),
-                round(max(0.0, $hubStats[0]['total_revenue'] - $hub2Rev), 2),
-                (float)($existingHub1['total_revenue'] ?? 0.0)
-            );
+            $hubStats[1]['total_revenue'] = round(max(0.0, $hubStats[0]['total_revenue'] - $hub2Rev), 2);
             $hubStats[1]['month_revenue'] = round(max(0.0, $curMonthSales - $hub2MonthRev), 2);
             $hubStats[1]['day_sales'] = round(max(0.0, $curDaySales - $hub2DaySales), 2);
             $hubStats[1]['week_sales'] = round(max(0.0, $curWeekSales - $hub2WeekSales), 2);
@@ -944,10 +942,13 @@ class KpiService
         $finalAmt = (float)($b['final_amount'] ?? 0.0);
         $totalAmt = (float)($b['total_amount'] ?? 0.0);
         $baseAmt = (float)($b['base_amount'] ?? 0.0);
+        $amt = (float)($b['amount'] ?? 0.0);
+        $paidAmt = (float)($b['payment_amount_paid'] ?? 0.0);
+        $advAmt = (float)($b['advance_amount'] ?? 0.0);
         $couponDisc = (float)($b['coupon_discount'] ?? 0.0);
 
         // Authoritative booking gross amount
-        $gross = $finalAmt > 0 ? $finalAmt : ($totalAmt > 0 ? $totalAmt : 0.0);
+        $gross = $finalAmt > 0 ? $finalAmt : ($totalAmt > 0 ? $totalAmt : ($amt > 0 ? $amt : ($paidAmt > 0 ? $paidAmt : 0.0)));
 
         // Case 1: Gross amount explicitly contains deposit (e.g. gross >= baseAmt + deposit - 1.0)
         if ($baseAmt > 0 && $deposit > 0 && $gross >= ($baseAmt + $deposit - 1.0)) {
@@ -965,6 +966,12 @@ class KpiService
                 return round(max(0.0, $gross - $deposit), 2);
             }
             return round(max(0.0, $gross - $couponDisc), 2);
+        }
+
+        // Case 4: Advance paid only
+        $pStat = strtolower(trim((string)($b['payment_status'] ?? '')));
+        if ($pStat === 'advance_paid' && $advAmt > 0) {
+            return round($advAmt, 2);
         }
 
         return 0.0;

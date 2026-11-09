@@ -1038,6 +1038,12 @@ function initModals() {
       await api.put(`/bookings/${encodeURIComponent(activePickupBooking.id)}`, payload);
 
       alert("Trip started and vehicle handover confirmed successfully!");
+      try {
+        if (typeof BroadcastChannel !== "undefined") {
+          new BroadcastChannel("kruizly_kpi_sync").postMessage({ type: "KPI_UPDATED", timestamp: Date.now() });
+        }
+        localStorage.setItem("kruizly_kpi_last_sync", String(Date.now()));
+      } catch (_) {}
       closePickupModal();
       await loadAllExecutiveData();
     } catch (err) {
@@ -1123,6 +1129,12 @@ function initModals() {
       });
 
       alert("Vehicle return processed and trip marked Completed!");
+      try {
+        if (typeof BroadcastChannel !== "undefined") {
+          new BroadcastChannel("kruizly_kpi_sync").postMessage({ type: "KPI_UPDATED", timestamp: Date.now() });
+        }
+        localStorage.setItem("kruizly_kpi_last_sync", String(Date.now()));
+      } catch (_) {}
       closeReturnModal();
       await loadAllExecutiveData();
     } catch (err) {
