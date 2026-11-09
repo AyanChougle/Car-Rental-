@@ -67,13 +67,136 @@ if ($method === 'GET') {
 
         ensureKpiHubMetricsTable();
 
-        // Dynamically calculate and sync authoritative KPI metrics directly from live database records
+        $forceSync = isset($_GET['sync']) || isset($_GET['recalculate']) || isset($_GET['force']);
+
+        // 1. Fetch persistent KPI rows directly from kpi_hub_metrics table in MySQL
+        $existingHubRows = Database::fetchAll("SELECT * FROM `kpi_hub_metrics` ORDER BY `hub_id` ASC") ?: [];
+
         require_once __DIR__ . '/../services/KpiService.php';
-        $syncData = KpiService::syncMetrics();
-        $liveStats = $syncData['live'] ?? [];
-        $hubsMap = $syncData['hubs'] ?? [];
-        $monthlyRows = $syncData['monthly'] ?? [];
-        $fleetRevenue = $syncData['fleet'] ?? [];
+
+        // Only run syncMetrics with database persistence if table is completely empty or explicit sync requested
+        if (empty($existingHubRows) || $forceSync) {
+            KpiService::syncMetrics(true);
+            $existingHubRows = Database::fetchAll("SELECT * FROM `kpi_hub_metrics` ORDER BY `hub_id` ASC") ?: [];
+        }
+
+        // 2. Fetch fleet revenue breakdown in-memory without overwriting kpi_hub_metrics or kpi_metrics tables
+        $calcData = KpiService::syncMetrics(false);
+        $fleetRevenue = $calcData['fleet'] ?? [];
+
+        // 3. Map actual database rows from kpi_hub_metrics table (strictly preserving any manual phpMyAdmin edits)
+        $hubsMap = [];
+        $allHubRow = null;
+        foreach ($existingHubRows as $hr) {
+            $hId = (int)$hr['hub_id'];
+            $paidCount = (int)($hr['paid_bookings'] ?? 0);
+            $totRev = (float)($hr['total_revenue'] ?? 0.0);
+            $avgBk = $paidCount > 0 ? round($totRev / $paidCount, 2) : 0.0;
+            $totFleet = (int)($hr['total_fleet'] ?? 0);
+            $onRoad = (int)($hr['on_road_fleet'] ?? $hr['active_trips'] ?? 0);
+            $availFleet = (int)($hr['available_fleet'] ?? max(0, $totFleet - $onRoad));
+            $occPct = (float)($hr['occupancy_pct'] ?? ($totFleet > 0 ? min(100.0, round(($onRoad / $totFleet) * 100, 2)) : 0.0));
+
+            $hubsMap[$hId] = [
+                'hub_id' => $hId,
+                'hub_name' => (string)($hr['hub_name'] ?? ($hId === 2 ? 'Kandivali Hub, Mumbai' : ($hId === 1 ? 'Gavson Business Park, Ghansoli' : 'All Operating Hubs'))),
+                'total_revenue' => $totRev,
+                'month_revenue' => (float)($hr['month_revenue'] ?? 0.0),
+                'total_bookings' => (int)($hr['total_bookings'] ?? 0),
+                'paid_bookings' => $paidCount,
+                'active_trips' => (int)($hr['active_trips'] ?? $onRoad),
+                'active_rentals' => (int)($hr['active_trips'] ?? $onRoad),
+                'completed_trips' => max(0, (int)($hr['total_bookings'] ?? 0) - (int)($hr['active_trips'] ?? $onRoad)),
+                'total_fleet' => $totFleet,
+                'fleet_count' => $totFleet,
+                'on_road_fleet' => $onRoad,
+                'available_fleet' => $availFleet,
+                'available_in_yard' => $availFleet,
+                'in_yard_fleet' => $availFleet,
+                'occupancy_pct' => $occPct,
+                'fleet_utilization' => $occPct,
+                'total_users' => (int)($hr['total_users'] ?? 0),
+                'pending_docs' => (int)($hr['pending_docs'] ?? 0),
+                'pending_payments' => (int)($hr['pending_payments'] ?? 0),
+                'day_sales' => (float)($hr['day_sales'] ?? 0.0),
+                'week_sales' => (float)($hr['week_sales'] ?? 0.0),
+                'avg_booking' => $avgBk,
+                'updated_at' => $hr['updated_at'] ?? null,
+            ];
+
+            if ($hId === 0) {
+                $allHubRow = $hubsMap[$hId];
+            }
+        }
+
+        if (!$allHubRow && !empty($hubsMap)) {
+            $allHubRow = reset($hubsMap);
+        }
+
+        $liveStats = $allHubRow ?? [
+            'total_users' => 0,
+            'total_bookings' => 0,
+            'pending_docs' => 0,
+            'pending_payments' => 0,
+            'day_sales' => 0.0,
+            'week_sales' => 0.0,
+            'total_revenue' => 0.0,
+            'month_revenue' => 0.0,
+            'last_month_revenue' => 0.0,
+            'paid_bookings' => 0,
+            'avg_booking' => 0.0,
+            'active_trips' => 0,
+            'active_rentals' => 0,
+            'completed_trips' => 0,
+            'total_fleet' => 0,
+            'fleet_count' => 0,
+            'on_road_fleet' => 0,
+            'available_fleet' => 0,
+            'available_in_yard' => 0,
+            'in_yard_fleet' => 0,
+            'fleet_utilization' => 0.0,
+            'occupancy_pct' => 0.0,
+        ];
+
+        // 4. Read monthly rows directly from kpi_metrics table in MySQL
+        $kpiMetricsRows = Database::fetchAll("SELECT * FROM `kpi_metrics` ORDER BY `metric_date` ASC") ?: [];
+        $monthlyRows = [];
+        foreach ($kpiMetricsRows as $km) {
+            $mKey = date('Y-m-01', strtotime((string)$km['metric_date']));
+            $monthlyRows[$mKey] = $km;
+        }
+
+        $currentMonthKey = date('Y-m-01');
+        $previousMonthKey = date('Y-m-01', strtotime('-1 month'));
+
+        // Keep current reporting month row strictly aligned with current kpi_hub_metrics table
+        if (!isset($monthlyRows[$currentMonthKey])) {
+            $monthlyRows[$currentMonthKey] = [
+                'metric_date' => $currentMonthKey,
+                'day_sales' => $liveStats['day_sales'],
+                'week_sales' => $liveStats['week_sales'],
+                'month_sales' => $liveStats['month_revenue'],
+                'total_revenue' => $liveStats['total_revenue'],
+                'total_bookings' => $liveStats['total_bookings'],
+                'paid_bookings' => $liveStats['paid_bookings'],
+                'active_trips' => $liveStats['active_trips'],
+                'completed_trips' => $liveStats['completed_trips'],
+                'total_fleet' => $liveStats['total_fleet'],
+                'on_road_fleet' => $liveStats['on_road_fleet'],
+                'in_yard_fleet' => $liveStats['available_fleet'],
+                'occupancy_pct' => $liveStats['occupancy_pct'],
+                'total_users' => $liveStats['total_users'],
+                'pending_payments' => $liveStats['pending_payments'],
+                'pending_docs' => $liveStats['pending_docs'],
+            ];
+        } else {
+            if ($liveStats['month_revenue'] > 0) {
+                $monthlyRows[$currentMonthKey]['month_sales'] = $liveStats['month_revenue'];
+            }
+            if ($liveStats['total_revenue'] > 0) {
+                $monthlyRows[$currentMonthKey]['total_revenue'] = $liveStats['total_revenue'];
+            }
+        }
 
         header('Content-Type: application/json; charset=utf-8');
         echo json_encode([
@@ -85,8 +208,8 @@ if ($method === 'GET') {
                 'hubs' => $hubsMap,
                 'monthly' => $monthlyRows,
                 'fleet' => $fleetRevenue,
-                'reporting_month' => date('Y-m-01'),
-                'previous_month' => date('Y-m-01', strtotime('-1 month')),
+                'reporting_month' => $currentMonthKey,
+                'previous_month' => $previousMonthKey,
             ]
         ], JSON_UNESCAPED_UNICODE);
         exit;

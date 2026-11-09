@@ -659,17 +659,19 @@ function applyKpiStats() {
   const totFleetNum = Number(eff.total_fleet || eff.fleet_count || 0);
   const onRoadNum = Number(eff.on_road_fleet || eff.active_rentals || 0);
   if (availableFleet)
-    availableFleet.textContent = Math.max(0, totFleetNum - onRoadNum);
+    availableFleet.textContent = eff.available_fleet !== undefined ? eff.available_fleet : Math.max(0, totFleetNum - onRoadNum);
 
   const utilizationRate = $("statUtilizationRate");
   if (utilizationRate) {
     const rate =
-      totFleetNum > 0
-        ? Math.min(
-            100,
-            Math.max(0, Math.round((onRoadNum / totFleetNum) * 100)),
-          )
-        : 0;
+      eff.occupancy_pct !== undefined && eff.occupancy_pct !== null && eff.occupancy_pct !== ""
+        ? Math.round(Number(eff.occupancy_pct))
+        : (totFleetNum > 0
+            ? Math.min(
+                100,
+                Math.max(0, Math.round((onRoadNum / totFleetNum) * 100)),
+              )
+            : 0);
     utilizationRate.textContent = `${rate}%`;
   }
 

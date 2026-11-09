@@ -1122,6 +1122,19 @@ function renderDashboard() {
     }
   });
 
+  if (
+    serverKpiStats?.effective?.on_road_fleet !== undefined &&
+    Number(serverKpiStats.effective.on_road_fleet) >= 0
+  ) {
+    onTripFleetCount = Number(serverKpiStats.effective.on_road_fleet);
+  }
+  if (
+    serverKpiStats?.effective?.available_fleet !== undefined &&
+    Number(serverKpiStats.effective.available_fleet) >= 0
+  ) {
+    inYardFleetCount = Number(serverKpiStats.effective.available_fleet);
+  }
+
   // KPI 2: ACTIVE TRIPS (Auto-fetches the live on-road count)
   const activeTripsCount = onTripFleetCount;
   const kpiActiveTripsEl = document.getElementById("kpiActiveTrips");
