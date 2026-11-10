@@ -2392,77 +2392,115 @@ function initialiseCouponManagement() {
 // DATABASE EXCEL EXPORT
 // ============================================================================
 
-function initialiseFirebaseExport() {
-  if (!exportFirebaseExcelBtn) return;
+async function runAdminDatabaseExport(triggerBtn) {
+  const activeBtn = triggerBtn || exportFirebaseExcelBtn;
+  if (activeBtn) activeBtn.disabled = true;
+  if (exportFirebaseExcelBtn && exportFirebaseExcelBtn !== activeBtn) exportFirebaseExcelBtn.disabled = true;
 
-  exportFirebaseExcelBtn.addEventListener("click", async () => {
-    exportFirebaseExcelBtn.disabled = true;
+  const fromDate = $("bookingDateFrom")?.value || bookingDateFrom || "";
+  const toDate = $("bookingDateTo")?.value || bookingDateTo || "";
+  const status = $("bookingStatusFilter")?.value || bookingStatus || "all";
+  const sort = $("bookingSortOrder")?.value || bookingSortDirection || "desc";
+  const selectedHubId = getSelectedHubId() || "";
+
+  const params = {
+    format: "json",
+    sort,
+    status,
+    _t: Date.now(),
+  };
+  if (fromDate) params.from = fromDate;
+  if (toDate) params.to = toDate;
+  if (selectedHubId) params.hub_id = selectedHubId;
+
+  if (firebaseExportStatus) {
+    firebaseExportStatus.textContent = fromDate || toDate
+      ? `Generating updated Excel export (${fromDate || "Start"} to ${toDate || "Present"})...`
+      : "Generating updated multi-sheet Excel export...";
+    firebaseExportStatus.style.color = "var(--kr-cyan)";
+  }
+
+  try {
+    const res = await api.get("/admin/export", params);
+    const exportData = res.data || res;
+    const nowD = new Date();
+    const dateStr = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, "0")}-${String(nowD.getDate()).padStart(2, "0")}`;
+    const rangeTag = fromDate || toDate ? `_${fromDate || "start"}_to_${toDate || "present"}` : "";
+    const filename = `KRUIZLY_Database_Export${rangeTag}_${dateStr}.xlsx`;
+
+    if (typeof window.XLSX !== "undefined" && window.XLSX.utils) {
+      const wb = window.XLSX.utils.book_new();
+
+      const addSheet = (rows, sheetName) => {
+        if (Array.isArray(rows) && rows.length > 0) {
+          const ws = window.XLSX.utils.json_to_sheet(rows);
+          const keys = Object.keys(rows[0]);
+          ws["!cols"] = keys.map((k) => {
+            const maxLen = Math.max(
+              k.length,
+              ...rows.slice(0, 200).map((r) => String(r[k] ?? "").length)
+            );
+            return { wch: Math.min(42, Math.max(12, maxLen + 3)) };
+          });
+          window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        } else {
+          const ws = window.XLSX.utils.aoa_to_sheet([["No records found"]]);
+          window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        }
+      };
+
+      addSheet(exportData.summary, "Summary & KPIs");
+      addSheet(exportData.daily_kpis, "Daily KPI Bifurcation");
+      addSheet(exportData.monthly_kpis, "Monthly KPIs");
+      addSheet(exportData.bookings, "Bookings");
+      addSheet(exportData.hub_kpis, "Hub KPIs");
+      addSheet(exportData.vehicles, "Vehicles");
+      addSheet(exportData.payments, "Payments");
+      addSheet(exportData.users, "Users");
+      addSheet(exportData.coupons, "Coupons");
+      addSheet(exportData.verification, "KYC Verifications");
+
+      window.XLSX.writeFile(wb, filename);
+    } else {
+      const qs = new URLSearchParams({ ...params, format: "csv" }).toString();
+      const csvUrl = `${API_BASE_URL}/admin/export?${qs}`;
+      const token = await getAuthToken();
+      const response = await fetch(csvUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `KRUIZLY_Database_Export${rangeTag}_${dateStr}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    }
+
+    const count = Array.isArray(exportData.bookings) ? exportData.bookings.length : 0;
     if (firebaseExportStatus) {
-      firebaseExportStatus.textContent = "Generating database Excel export...";
-      firebaseExportStatus.style.color = "var(--kr-cyan)";
+      firebaseExportStatus.textContent =
+        `✓ Exported ${count} sorted booking(s) and updated database tables.`;
+      firebaseExportStatus.style.color = "#00f0a0";
     }
-
-    try {
-      const res = await api.get("/admin/export", { format: "json" });
-      const exportData = res.data || res;
-      const dateStr = new Date().toISOString().slice(0, 10);
-      const filename = `KRUIZLY_Database_Export_${dateStr}.xlsx`;
-
-      if (typeof window.XLSX !== "undefined" && window.XLSX.utils) {
-        // Generate a true multi-tab Excel (.xlsx) workbook
-        const wb = window.XLSX.utils.book_new();
-
-        const addSheet = (rows, sheetName) => {
-          if (Array.isArray(rows) && rows.length > 0) {
-            const ws = window.XLSX.utils.json_to_sheet(rows);
-            window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
-          } else {
-            const ws = window.XLSX.utils.aoa_to_sheet([["No records found"]]);
-            window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
-          }
-        };
-
-        addSheet(exportData.bookings, "Bookings");
-        addSheet(exportData.payments, "Payments");
-        addSheet(exportData.users, "Users");
-        addSheet(exportData.vehicles, "Vehicles");
-        addSheet(exportData.coupons, "Coupons");
-        addSheet(exportData.verification, "KYC Verifications");
-
-        window.XLSX.writeFile(wb, filename);
-      } else {
-        // Fallback to CSV download
-        const csvUrl = `${API_BASE_URL}/admin/export?format=csv`;
-        const token = await getAuthToken();
-        const response = await fetch(csvUrl, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        });
-        const blob = await response.blob();
-        const downloadUrl = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = downloadUrl;
-        a.download = `KRUIZLY_Database_Export_${dateStr}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        window.URL.revokeObjectURL(downloadUrl);
-      }
-
-      if (firebaseExportStatus) {
-        firebaseExportStatus.textContent =
-          "✓ Database Excel workbook downloaded successfully.";
-        firebaseExportStatus.style.color = "#00f0a0";
-      }
-    } catch (err) {
-      console.error("EXCEL EXPORT ERROR:", err);
-      if (firebaseExportStatus) {
-        firebaseExportStatus.textContent = "Export error: " + err.message;
-        firebaseExportStatus.style.color = "#ef476f";
-      }
-    } finally {
-      exportFirebaseExcelBtn.disabled = false;
+  } catch (err) {
+    console.error("EXCEL EXPORT ERROR:", err);
+    if (firebaseExportStatus) {
+      firebaseExportStatus.textContent = "Export error: " + err.message;
+      firebaseExportStatus.style.color = "#ef476f";
     }
-  });
+  } finally {
+    if (activeBtn) activeBtn.disabled = false;
+    if (exportFirebaseExcelBtn) exportFirebaseExcelBtn.disabled = false;
+  }
+}
+
+function initialiseFirebaseExport() {
+  if (exportFirebaseExcelBtn) {
+    exportFirebaseExcelBtn.addEventListener("click", () => runAdminDatabaseExport(exportFirebaseExcelBtn));
+  }
 }
 
 function normaliseFirestoreValue(value) {

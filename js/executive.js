@@ -13,7 +13,7 @@
 
 import { auth } from "./firebase-init.js";
 import { checkAuth, getCurrentUser, setStoredUser, isExecutiveUser, isManagerUser, isAdminUser } from "./auth.js?v=20260908-v5";
-import { api, getAuthToken } from "./kruizly-api.js?v=20261017-v14";
+import { api, API_BASE_URL, getAuthToken } from "./kruizly-api.js?v=20261017-v14";
 import "./nav-helper.js?v=20260928-v2";
 import { formatBookingNumber } from "./booking-reference.js";
 import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260917-v6";
@@ -675,16 +675,106 @@ function updateStats() {
    TAB 1: BOOKINGS & OPERATIONS TABLE
    ========================================================================== */
 
+async function exportExecutiveDatasheet() {
+  const btn = $("execExportExcelBtn");
+  const prevLabel = btn ? btn.textContent : "Export Excel";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Exporting...";
+  }
+
+  const fromDate = $("execExportDateFrom")?.value || "";
+  const toDate = $("execExportDateTo")?.value || "";
+  const status = $("execStatusFilter")?.value || "all";
+  const search = ($("execSearchInput")?.value || "").trim();
+  const sort = $("execSortOrder")?.value || "desc";
+  const hubId = window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : "";
+
+  const params = { format: "json", sort, status, _t: Date.now() };
+  if (fromDate) params.from = fromDate;
+  if (toDate) params.to = toDate;
+  if (search) params.search = search;
+  if (hubId) params.hub_id = hubId;
+
+  try {
+    const res = await api.get("/admin/export", params);
+    const exportData = res.data || res;
+    const nowD = new Date();
+    const dateStr = `${nowD.getFullYear()}-${String(nowD.getMonth() + 1).padStart(2, "0")}-${String(nowD.getDate()).padStart(2, "0")}`;
+    const rangeTag = fromDate || toDate ? `_${fromDate || "start"}_to_${toDate || "present"}` : "";
+    const filename = `KRUIZLY_Executive_Export${rangeTag}_${dateStr}.xlsx`;
+
+    if (typeof window.XLSX !== "undefined" && window.XLSX.utils) {
+      const wb = window.XLSX.utils.book_new();
+      const addSheet = (rows, sheetName) => {
+        if (Array.isArray(rows) && rows.length > 0) {
+          const ws = window.XLSX.utils.json_to_sheet(rows);
+          const keys = Object.keys(rows[0]);
+          ws["!cols"] = keys.map((k) => {
+            const maxLen = Math.max(
+              k.length,
+              ...rows.slice(0, 200).map((r) => String(r[k] ?? "").length)
+            );
+            return { wch: Math.min(42, Math.max(12, maxLen + 3)) };
+          });
+          window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        } else {
+          const ws = window.XLSX.utils.aoa_to_sheet([["No records found"]]);
+          window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        }
+      };
+
+      addSheet(exportData.summary, "Summary & KPIs");
+      addSheet(exportData.daily_kpis, "Daily KPI Bifurcation");
+      addSheet(exportData.monthly_kpis, "Monthly KPIs");
+      addSheet(exportData.bookings, "Bookings");
+      addSheet(exportData.hub_kpis, "Hub KPIs");
+      addSheet(exportData.vehicles, "Vehicles");
+      addSheet(exportData.payments, "Payments");
+      addSheet(exportData.verification, "KYC Verifications");
+
+      window.XLSX.writeFile(wb, filename);
+    } else {
+      const qs = new URLSearchParams({ ...params, format: "csv" }).toString();
+      const csvUrl = `${API_BASE_URL}/admin/export?${qs}`;
+      const token = await getAuthToken();
+      const response = await fetch(csvUrl, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!response.ok) throw new Error(`Export download failed (${response.status})`);
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `KRUIZLY_Executive_Export${rangeTag}_${dateStr}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+    }
+  } catch (err) {
+    console.error("EXECUTIVE EXPORT ERROR:", err);
+    alert("Failed to export datasheet: " + (err?.message || "Unknown error"));
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = prevLabel;
+    }
+  }
+}
+
 function initFilters() {
   const searchInput = $("execSearchInput");
   const statusFilter = $("execStatusFilter");
   const sortOrder = $("execSortOrder");
   const refreshBtn = $("execRefreshBtn");
+  const exportBtn = $("execExportExcelBtn");
 
   searchInput?.addEventListener("input", renderBookingsTable);
   statusFilter?.addEventListener("change", renderBookingsTable);
   sortOrder?.addEventListener("change", renderBookingsTable);
   refreshBtn?.addEventListener("click", loadAllExecutiveData);
+  exportBtn?.addEventListener("click", exportExecutiveDatasheet);
 }
 
 function getFilteredBookings() {

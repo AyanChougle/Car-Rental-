@@ -2664,143 +2664,131 @@ function initExportExcel() {
       <span>Exporting...</span>`;
 
     try {
-      let exportBookings = rawBookings;
+      const fmtYmd = (d) =>
+        d instanceof Date && !isNaN(d.getTime())
+          ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`
+          : "";
+      const selectedHubId = window.getKruizlySelectedHubId ? window.getKruizlySelectedHubId() : "";
+      const fromYmd = fmtYmd(filterFromDate);
+      const toYmd = fmtYmd(filterToDate);
+      const sortSel = document.getElementById("tabBookingsSort")?.value || "desc";
+
+      const params = {
+        format: "json",
+        sort: sortSel,
+        _t: Date.now(),
+      };
+      if (fromYmd) params.from = fromYmd;
+      if (toYmd) params.to = toYmd;
+      if (selectedHubId) params.hub_id = selectedHubId;
+
+      let exportData = null;
       try {
-        const res = await api.get("/admin/export", { format: "json" });
-        if (
-          res?.data?.bookings &&
-          Array.isArray(res.data.bookings) &&
-          res.data.bookings.length > 0
-        ) {
-          exportBookings = res.data.bookings;
+        const res = await api.get("/admin/export", params);
+        if (res?.data && Array.isArray(res.data.bookings)) {
+          exportData = res.data;
         }
       } catch (e) {
         // Fallback to in-memory rawBookings
       }
 
-      const rows = exportBookings.map((b) => {
-        let insp = {};
-        if (b.return_inspection) {
-          try {
-            insp =
-              typeof b.return_inspection === "string"
-                ? JSON.parse(b.return_inspection)
-                : b.return_inspection;
-          } catch (err) {}
-        }
-        const startOdo =
-          b["Start Odometer (KM)"] ??
-          b.start_odometer ??
-          b.pickupOdometer ??
-          b.odometerStart ??
-          insp.pickupOdometer ??
-          insp.startOdometer ??
-          "";
-        const endOdo =
-          b["End Odometer (KM)"] ??
-          b.end_odometer ??
-          b.returnOdometer ??
-          b.odometerEnd ??
-          insp.returnOdometer ??
-          insp.endOdometer ??
-          "";
-        const dist =
-          b["Distance Driven (KM)"] !== undefined &&
-          b["Distance Driven (KM)"] !== ""
-            ? b["Distance Driven (KM)"]
-            : Number(endOdo) &&
-                Number(startOdo) &&
-                Number(endOdo) >= Number(startOdo)
+      let rows = [];
+      if (exportData && Array.isArray(exportData.bookings)) {
+        rows = exportData.bookings;
+      } else {
+        const fallbackList = rawBookings
+          .filter((b) => isBookingInPeriod(b, filterFromDate, filterToDate))
+          .sort((a, b) => {
+            const ta = getBookingOperationalDates(a).start?.getTime() || 0;
+            const tb = getBookingOperationalDates(b).start?.getTime() || 0;
+            return sortSel === "asc" ? ta - tb : tb - ta;
+          });
+        rows = fallbackList.map((b) => {
+          let insp = {};
+          if (b.return_inspection || b.returnInspection) {
+            try {
+              const rawInsp = b.return_inspection || b.returnInspection;
+              insp = typeof rawInsp === "string" ? JSON.parse(rawInsp) : rawInsp;
+            } catch (err) {}
+          }
+          const nonEmpty = (...vals) => {
+            for (const v of vals) {
+              if (v !== null && v !== undefined && String(v).trim() !== "") return v;
+            }
+            return "";
+          };
+          const startOdo = nonEmpty(b.pickupOdometer, b.start_odometer, b.startOdometer, insp.pickupOdometer, insp.startOdometer);
+          const endOdo = nonEmpty(insp.returnOdometer, insp.endOdometer, b.returnOdometer, b.end_odometer, b.endOdometer);
+          const dist =
+            startOdo !== "" && endOdo !== "" && Number(endOdo) >= Number(startOdo)
               ? Number(endOdo) - Number(startOdo)
               : "";
-        const startFastag =
-          b["Start FASTag (₹)"] ??
-          b.start_fastag ??
-          b.pickupFastagBalance ??
-          b.fastagStart ??
-          insp.pickupFastagBalance ??
-          insp.startFastag ??
-          "";
-        const returnFastag =
-          b["Return FASTag (₹)"] ??
-          b.return_fastag ??
-          b.returnFastagBalance ??
-          b.fastagReturn ??
-          insp.returnFastagBalance ??
-          insp.returnFastag ??
-          "";
-        const tollUsed =
-          b["FASTag Used (₹)"] !== undefined && b["FASTag Used (₹)"] !== ""
-            ? b["FASTag Used (₹)"]
-            : Number(startFastag) &&
-                Number(returnFastag) &&
-                Number(startFastag) >= Number(returnFastag)
+          const startFastag = nonEmpty(b.pickupFastagBalance, b.start_fastag, b.startFastag, insp.pickupFastagBalance, insp.startFastag);
+          const returnFastag = nonEmpty(insp.returnFastagBalance, b.returnFastagBalance, b.returnFastag, b.return_fastag);
+          const tollUsed =
+            startFastag !== "" && returnFastag !== "" && Number(startFastag) >= Number(returnFastag)
               ? Number(startFastag) - Number(returnFastag)
               : "";
 
-        const pDate = parseDate(b.pickupDate || b.pickup_date);
-        const dDate = parseDate(b.dropDate || b.drop_date);
+          const { start, end } = getBookingOperationalDates(b);
+          const netAmt = bookingAmount(b);
+          const depositAmt = Number(b.securityDeposit || b.security_deposit || 0);
+          return {
+            "Booking #": b.bookingNumber || b.bookingId || `#${b.id || ""}`,
+            "Customer Name": b.userName || b.user_name || "Customer",
+            "Customer Phone": b.userPhone || b.user_phone || "",
+            "Customer Email": b.userEmail || b.user_email || "",
+            "Vehicle Name": b.vehicleName || b.carName || "Kruizly Fleet",
+            "Vehicle Reg": b.vehicleReg || b.regNo || "",
+            "Pickup Date": start ? formatDateDisplay(start) : (b.pickupDate || ""),
+            "Drop Date": end ? formatDateDisplay(end) : (b.dropDate || ""),
+            "Booked Days": bookingDays(b),
+            "Operational Status": String(b.status || b.bookingStatus || "CONFIRMED").toUpperCase(),
+            "Payment Status": String(b.paymentStatus || b.payment_status || "PAID").toUpperCase(),
+            "Net Rental Excl. Deposit (₹)": netAmt,
+            "Security Deposit (₹)": depositAmt,
+            "Gross Total Incl. Deposit (₹)": netAmt + depositAmt,
+            "Start Odometer (KM)": startOdo,
+            "End Odometer (KM)": endOdo,
+            "Distance Driven (KM)": dist,
+            "Start FASTag (₹)": startFastag,
+            "Return FASTag (₹)": returnFastag,
+            "FASTag Used (₹)": tollUsed,
+          };
+        });
+      }
 
-        return {
-          "Booking #":
-            b["Booking #"] ||
-            b.booking_number ||
-            b.bookingNumber ||
-            b.booking_id ||
-            b.bookingId ||
-            `#${b.id || ""}`,
-          "Customer Name":
-            b["Customer Name"] || b.userName || b.user_name || "Customer",
-          "Customer Phone":
-            b["Customer Phone"] || b.userPhone || b.user_phone || "",
-          "Customer Email":
-            b["Customer Email"] || b.userEmail || b.user_email || "",
-          "Assigned Fleet":
-            b["Vehicle Name"] || b.vehicleName || b.carName || "Kruizly Fleet",
-          "Vehicle Reg": b["Vehicle Reg"] || b.vehicleReg || b.regNo || "",
-          "Pickup Date": pDate
-            ? formatDateDisplay(pDate)
-            : b["Pickup Date"] || b.pickup_date || "",
-          "Drop Date": dDate
-            ? formatDateDisplay(dDate)
-            : b["Drop Date"] || b.drop_date || "",
-          Duration: b["Duration"] || (b.days ? `${b.days} Days` : "1 Days"),
-          "Start Odometer (KM)": startOdo,
-          "End Odometer (KM)": endOdo,
-          "Distance Driven (KM)": dist,
-          "Start FASTag (₹)": startFastag,
-          "Return FASTag (₹)": returnFastag,
-          "FASTag Used (₹)": tollUsed,
-          "Total Amount (₹)":
-            b["Total Amount (₹)"] ??
-            b.finalAmount ??
-            b.totalAmount ??
-            b.total_amount ??
-            0,
-          "Advance Paid (₹)":
-            b["Advance Paid (₹)"] ??
-            b.paymentAmountPaid ??
-            b.payment_amount_paid ??
-            b.advance_amount ??
-            0,
-          "Remaining Balance (₹)":
-            b["Remaining Balance (₹)"] ?? b.remaining_balance ?? 0,
-          "Payment Status":
-            b["Payment Status"] ||
-            String(b.paymentStatus || b.payment_status || "PAID").toUpperCase(),
-          "Trip Status":
-            b["Trip Status"] ||
-            String(b.status || b.bookingStatus || "CONFIRMED").toUpperCase(),
-        };
-      });
-
-      const dateStr = new Date().toISOString().slice(0, 10);
-      const filename = `KRUIZLY_Bookings_Report_${dateStr}.xlsx`;
+      const dateStr = fmtYmd(new Date());
+      const rangeTag = fromYmd || toYmd ? `_${fromYmd || "start"}_to_${toYmd || "present"}` : "";
+      const filename = `KRUIZLY_Manager_Export${rangeTag}_${dateStr}.xlsx`;
 
       if (typeof window.XLSX !== "undefined" && window.XLSX.utils) {
         const wb = window.XLSX.utils.book_new();
-        const ws = window.XLSX.utils.json_to_sheet(rows);
-        window.XLSX.utils.book_append_sheet(wb, ws, "Bookings");
+        const addSheet = (sheetRows, sheetName) => {
+          if (Array.isArray(sheetRows) && sheetRows.length > 0) {
+            const ws = window.XLSX.utils.json_to_sheet(sheetRows);
+            const keys = Object.keys(sheetRows[0]);
+            ws["!cols"] = keys.map((k) => {
+              const maxLen = Math.max(
+                k.length,
+                ...sheetRows.slice(0, 200).map((r) => String(r[k] ?? "").length),
+              );
+              return { wch: Math.min(42, Math.max(12, maxLen + 3)) };
+            });
+            window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
+          } else {
+            const ws = window.XLSX.utils.aoa_to_sheet([["No records found"]]);
+            window.XLSX.utils.book_append_sheet(wb, ws, sheetName);
+          }
+        };
+
+        if (exportData?.summary) addSheet(exportData.summary, "Summary & KPIs");
+        if (exportData?.daily_kpis) addSheet(exportData.daily_kpis, "Daily KPI Bifurcation");
+        if (exportData?.monthly_kpis) addSheet(exportData.monthly_kpis, "Monthly KPIs");
+        addSheet(rows, "Bookings");
+        if (exportData?.hub_kpis) addSheet(exportData.hub_kpis, "Hub KPIs");
+        if (exportData?.vehicles) addSheet(exportData.vehicles, "Fleet Performance");
+        if (exportData?.payments) addSheet(exportData.payments, "Payments");
         window.XLSX.writeFile(wb, filename);
       } else {
         const headers = Object.keys(rows[0] || {});
@@ -2817,7 +2805,7 @@ function initExportExcel() {
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", `KRUIZLY_Bookings_Report_${dateStr}.csv`);
+        link.setAttribute("download", `KRUIZLY_Manager_Export${rangeTag}_${dateStr}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);

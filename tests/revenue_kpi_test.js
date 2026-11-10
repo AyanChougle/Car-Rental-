@@ -437,6 +437,294 @@ assert.strictEqual(t6b.kpiHubRow.day_sales, 13000, "Intra-day booking +5000 adds
 
 console.log("✓ Test 6 Passed: Manual DB edits in kpi_metrics/kpi_hub_metrics stay intact across syncs, day rollovers, and new bookings.\n");
 
+// TEST 7: Export Datasheet Verification (Sort, Dates/Days Count, Amounts, Trip Status, Odo/FASTag, Daily -> Monthly KPI Bifurcation)
+console.log("--- Test 7: Export Datasheet (Sort, Odo/FASTag, Amounts, Trip Status, Daily -> Monthly Bifurcation) ---");
+
+function buildExportSnapshotForTest(rawBookings, { from = "", to = "", status = "all", sort = "desc", search = "" } = {}) {
+  const firstNonEmpty = (...vals) => {
+    for (const v of vals) {
+      if (v !== null && v !== undefined && String(v).trim() !== "") return v;
+    }
+    return null;
+  };
+  const normTs = (s) => {
+    if (!s) return 0;
+    const cleaned = String(s).replace(/(\d+)(st|nd|rd|th)\b/gi, "$1").trim();
+    const d = new Date(cleaned);
+    return isNaN(d.getTime()) ? 0 : d.getTime();
+  };
+  const fmtYmd = (ts) => {
+    const d = new Date(ts);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+
+  let [fromYmd, toYmd] = [from, to];
+  if (fromYmd && toYmd && fromYmd > toYmd) [fromYmd, toYmd] = [toYmd, fromYmd];
+  const hasDateFilter = Boolean(fromYmd || toYmd);
+
+  const dailyLedger = {};
+  const monthlyRollup = {};
+  const rowsWithSort = [];
+  const summary = {
+    exported_bookings: 0,
+    active_trips: 0,
+    completed_trips: 0,
+    cancelled_bookings: 0,
+    total_booked_days: 0,
+    window_overlap_days: 0,
+    net_rental_revenue: 0,
+    window_prorated_revenue: 0,
+    total_distance_km: 0,
+    total_fastag_used: 0,
+  };
+
+  for (const b of rawBookings) {
+    const bStat = String(firstNonEmpty(b.status, b.booking_status, "")).toLowerCase();
+    const pStat = String(firstNonEmpty(b.payment_status, b.paymentStatus, "")).toLowerCase();
+    const isCancelled = ["cancelled", "rejected"].includes(bStat) || ["cancelled", "rejected", "refunded"].includes(pStat);
+
+    let insp = b.return_inspection || {};
+    if (typeof insp === "string") {
+      try { insp = JSON.parse(insp); } catch { insp = {}; }
+    }
+
+    const startOdoRaw = firstNonEmpty(b.start_odometer, b.pickup_odometer, insp.pickupOdometer, insp.startOdometer);
+    const endOdoRaw = firstNonEmpty(b.end_odometer, b.return_odometer, insp.returnOdometer, insp.endOdometer);
+    const startFastagRaw = firstNonEmpty(b.start_fastag, b.pickup_fastag, insp.pickupFastagBalance, insp.startFastag);
+    const returnFastagRaw = firstNonEmpty(b.return_fastag, b.return_fastag_balance, insp.returnFastagBalance, insp.returnFastag);
+
+    const startOdo = startOdoRaw !== null ? Number(startOdoRaw) : "";
+    const endOdo = endOdoRaw !== null ? Number(endOdoRaw) : "";
+    const startFastag = startFastagRaw !== null ? Number(startFastagRaw) : "";
+    const returnFastag = returnFastagRaw !== null ? Number(returnFastagRaw) : "";
+
+    const distanceKm = typeof startOdo === "number" && typeof endOdo === "number" && endOdo >= startOdo ? endOdo - startOdo : "";
+    const fastagUsed = typeof startFastag === "number" && typeof returnFastag === "number" && startFastag >= returnFastag ? startFastag - returnFastag : "";
+
+    const hasReturned = !isCancelled && Boolean(endOdo !== "" || b.completed_at || b.returned_at || ["completed", "returned"].includes(bStat) || insp.returnAt || insp.returnedAt || insp.returnStatus === "returned");
+    const isActiveTrip = !isCancelled && !hasReturned && isBookingOnTrip(b, new Date("2026-11-05T12:00:00"));
+    const isPaid = ["paid", "advance_paid", "verified"].includes(pStat) || ["confirmed", "active", "completed", "returned", "in_trip", "started", "ongoing", "paid"].includes(bStat);
+
+    const pTs = normTs(b.pickup_date || b.created_at);
+    const dTs = normTs(b.drop_date);
+    const startYmd = fmtYmd(pTs);
+    const rawDays = Number(b.days || 0);
+    const diffDays = pTs > 0 && dTs > pTs ? Math.max(1, Math.ceil((dTs - pTs) / 86400000)) : 0;
+    const bookedDays = rawDays <= 0 ? Math.max(1, diffDays) : (diffDays > 0 && ((rawDays === 1 && diffDays > 1) || Math.abs(diffDays - rawDays) > 1) ? diffDays : Math.max(1, rawDays));
+    const dropYmd = dTs > 0 ? fmtYmd(dTs) : fmtYmd(pTs + Math.max(0, bookedDays - 1) * 86400000);
+
+    const normalizedBooking = { ...b, pickup_date: `${startYmd} 00:00:00`, days: bookedDays };
+    const isRevenueEligible = !isCancelled && (isPaid || isActiveTrip);
+    const split = isRevenueEligible ? calculateMonthlyRevenueSplit(normalizedBooking) : {};
+    const netRental = isCancelled ? 0 : Object.values(split).reduce((s, m) => s + m.amount, 0);
+
+    let overlapDays = bookedDays;
+    let windowRev = isRevenueEligible ? netRental : 0;
+    if (hasDateFilter) {
+      overlapDays = 0;
+      windowRev = 0;
+      if (Object.keys(split).length > 0) {
+        for (const mSplit of Object.values(split)) {
+          for (const [dayStr, price] of Object.entries(mSplit.daily_breakdown)) {
+            if (fromYmd && dayStr < fromYmd) continue;
+            if (toYmd && dayStr > toYmd) continue;
+            overlapDays++;
+            windowRev += price;
+          }
+        }
+      } else {
+        for (let i = 0; i < bookedDays; i++) {
+          const d = new Date(pTs + i * 86400000);
+          const dayStr = fmtYmd(d.getTime());
+          if (fromYmd && dayStr < fromYmd) continue;
+          if (toYmd && dayStr > toYmd) continue;
+          overlapDays++;
+        }
+      }
+      if (overlapDays === 0) continue;
+      windowRev = Math.round(windowRev * 100) / 100;
+    }
+
+    if (status !== "all") {
+      if (status === "active" && !isActiveTrip) continue;
+      if (status === "completed" && !hasReturned) continue;
+    }
+    if (search && !String(b.booking_id || "").toLowerCase().includes(search.toLowerCase())) continue;
+
+    if (!isCancelled && Object.keys(split).length > 0) {
+      for (const mSplit of Object.values(split)) {
+        for (const [dayStr, price] of Object.entries(mSplit.daily_breakdown)) {
+          if (fromYmd && dayStr < fromYmd) continue;
+          if (toYmd && dayStr > toYmd) continue;
+          const mKey = `${dayStr.slice(0, 7)}-01`;
+          if (!dailyLedger[dayStr]) dailyLedger[dayStr] = { date: dayStr, month: dayStr.slice(0, 7), billed_days: 0, revenue: 0 };
+          dailyLedger[dayStr].billed_days++;
+          dailyLedger[dayStr].revenue = Math.round((dailyLedger[dayStr].revenue + price) * 100) / 100;
+          if (!monthlyRollup[mKey]) monthlyRollup[mKey] = { month: dayStr.slice(0, 7), billed_days: 0, revenue: 0 };
+          monthlyRollup[mKey].billed_days++;
+          monthlyRollup[mKey].revenue = Math.round((monthlyRollup[mKey].revenue + price) * 100) / 100;
+        }
+      }
+    }
+
+    summary.exported_bookings++;
+    if (isCancelled) {
+      summary.cancelled_bookings++;
+    } else {
+      if (isRevenueEligible) {
+        summary.net_rental_revenue = Math.round((summary.net_rental_revenue + netRental) * 100) / 100;
+        summary.window_prorated_revenue = Math.round((summary.window_prorated_revenue + windowRev) * 100) / 100;
+      }
+      if (hasReturned) summary.completed_trips++;
+      else if (isActiveTrip) summary.active_trips++;
+      summary.total_booked_days += bookedDays;
+      summary.window_overlap_days += overlapDays;
+      if (typeof distanceKm === "number") summary.total_distance_km += distanceKm;
+      if (typeof fastagUsed === "number") summary.total_fastag_used += fastagUsed;
+    }
+
+    rowsWithSort.push({
+      sortTs: pTs,
+      id: Number(b.id || 0),
+      row: {
+        ref: b.booking_number || b.booking_id,
+        pickupYmd: startYmd,
+        dropYmd,
+        bookedDays,
+        overlapDays,
+        netRental,
+        windowRev,
+        statusLabel: isCancelled ? "CANCELLED" : (hasReturned ? "COMPLETED" : (isActiveTrip ? "ACTIVE (ON TRIP)" : "CONFIRMED / UPCOMING")),
+        startOdo,
+        endOdo,
+        distanceKm,
+        startFastag,
+        returnFastag,
+        fastagUsed,
+      },
+    });
+  }
+
+  rowsWithSort.sort((a, b) => {
+    const cmp = a.sortTs - b.sortTs || a.id - b.id;
+    return sort === "asc" ? cmp : -cmp;
+  });
+
+  const dailyKeys = Object.keys(dailyLedger).sort((a, b) => (sort === "asc" ? a.localeCompare(b) : b.localeCompare(a)));
+  const daily_kpis = dailyKeys.map((k) => dailyLedger[k]);
+  const monthKeys = Object.keys(monthlyRollup).sort((a, b) => (sort === "asc" ? a.localeCompare(b) : b.localeCompare(a)));
+  const monthly_kpis = monthKeys.map((k) => monthlyRollup[k]);
+
+  return { summary, bookings: rowsWithSort.map((x) => x.row), daily_kpis, monthly_kpis };
+}
+
+const exportSampleBookings = [
+  // Shuffled DB IDs on purpose (older booking has higher DB id=99) to prove chronological sorting fixes id DESC bug
+  {
+    id: 99,
+    booking_id: "KRZ-OCT-095",
+    pickup_date: "2026-10-29 10:00:00",
+    drop_date: "2026-11-05 10:00:00",
+    days: 7,
+    total_amount: 33997,
+    security_deposit: 5000, // Net = 28997
+    status: "", // Empty status should fallback cleanly to booking_status!
+    booking_status: "completed",
+    payment_status: "paid",
+    start_odometer: "", // Empty SQL col must NOT block return_inspection JSON value!
+    end_odometer: "",
+    start_fastag: "",
+    return_fastag: "",
+    return_inspection: JSON.stringify({
+      pickupOdometer: "12000",
+      returnOdometer: "12450",
+      pickupFastagBalance: "1000",
+      returnFastagBalance: "650",
+      returnStatus: "returned"
+    })
+  },
+  {
+    id: 12,
+    booking_id: "KRZ-NOV-101",
+    pickup_date: "2026-11-01 09:00:00",
+    drop_date: "2026-11-03 09:00:00",
+    days: 1, // Intentionally stale DB days=1 despite 2-day span -> export must self-correct to 2!
+    total_amount: 13000,
+    security_deposit: 5000, // Net = 8000 (2 days * 4000)
+    status: "active",
+    payment_status: "pending_verification",
+    pickup_at: "2026-11-01 09:30:00",
+    start_odometer: 45100,
+    start_fastag: 800
+  },
+  {
+    id: 50,
+    booking_id: "KRZ-NOV-102",
+    pickup_date: "2026-11-02 10:00:00",
+    drop_date: "2026-11-03 10:00:00",
+    days: 1,
+    total_amount: 4000,
+    security_deposit: 0,
+    status: "cancelled",
+    payment_status: "refunded",
+    refund_amount: 4000
+  }
+];
+
+const expDesc = buildExportSnapshotForTest(exportSampleBookings, { sort: "desc" });
+assert.deepStrictEqual(
+  expDesc.bookings.map((r) => r.ref),
+  ["KRZ-NOV-102", "KRZ-NOV-101", "KRZ-OCT-095"],
+  "Descending export must sort strictly newest pickup date first regardless of DB ID order"
+);
+const expAsc = buildExportSnapshotForTest(exportSampleBookings, { sort: "asc" });
+assert.deepStrictEqual(
+  expAsc.bookings.map((r) => r.ref),
+  ["KRZ-OCT-095", "KRZ-NOV-101", "KRZ-NOV-102"],
+  "Ascending export must sort oldest pickup date first"
+);
+
+const octBookingExp = expDesc.bookings.find((r) => r.ref === "KRZ-OCT-095");
+const novActiveExp = expDesc.bookings.find((r) => r.ref === "KRZ-NOV-101");
+const novCancelExp = expDesc.bookings.find((r) => r.ref === "KRZ-NOV-102");
+
+assert.strictEqual(octBookingExp.statusLabel, "COMPLETED", "Empty status with returned inspection & completed booking_status -> COMPLETED");
+assert.strictEqual(octBookingExp.startOdo, 12000, "Empty SQL start_odometer must fall back cleanly to return_inspection pickupOdometer");
+assert.strictEqual(octBookingExp.endOdo, 12450, "Empty SQL end_odometer must fall back cleanly to return_inspection returnOdometer");
+assert.strictEqual(octBookingExp.distanceKm, 450, "Distance Driven must be 12450 - 12000 = 450 KM");
+assert.strictEqual(octBookingExp.startFastag, 1000);
+assert.strictEqual(octBookingExp.returnFastag, 650);
+assert.strictEqual(octBookingExp.fastagUsed, 350, "FASTag Used must be 1000 - 650 = 350");
+
+assert.strictEqual(novActiveExp.bookedDays, 2, "Stale days=1 on Nov 1 -> Nov 3 booking must self-correct to 2 Booked Days");
+assert.strictEqual(novActiveExp.statusLabel, "ACTIVE (ON TRIP)");
+assert.strictEqual(novCancelExp.netRental, 0, "Cancelled booking has 0 net rental revenue");
+
+// Verify Daily -> Monthly KPI Bifurcation mathematical rollup (All Time)
+const nov1Daily = expDesc.daily_kpis.find((d) => d.date === "2026-11-01");
+assert.strictEqual(nov1Daily.billed_days, 2, "2026-11-01 must reflect both KRZ-OCT-095 and KRZ-NOV-101 running on that date");
+assert.strictEqual(nov1Daily.revenue, 8142.43, "2026-11-01 daily revenue must equal 4142.43 + 4000.00 = 8142.43");
+
+const octDailySumExp = Math.round(expDesc.daily_kpis.filter((d) => d.month === "2026-10").reduce((s, d) => s + d.revenue, 0) * 100) / 100;
+const novDailySumExp = Math.round(expDesc.daily_kpis.filter((d) => d.month === "2026-11").reduce((s, d) => s + d.revenue, 0) * 100) / 100;
+assert.strictEqual(octDailySumExp, 12427.29, "October daily bifurcation sums to ₹12,427.29");
+assert.strictEqual(novDailySumExp, 24569.71, "November daily bifurcation sums to ₹16,569.71 + ₹8,000 = ₹24,569.71");
+assert.strictEqual(expDesc.monthly_kpis.find((m) => m.month === "2026-10").revenue, octDailySumExp, "October Monthly KPI must equal sum of October Daily KPIs");
+assert.strictEqual(expDesc.monthly_kpis.find((m) => m.month === "2026-11").revenue, novDailySumExp, "November Monthly KPI must equal sum of November Daily KPIs");
+
+// Verify Executive / Admin selected date-range window export (2026-10-31 to 2026-11-02)
+const expWindow = buildExportSnapshotForTest(exportSampleBookings, { from: "2026-10-31", to: "2026-11-02", sort: "desc" });
+assert.strictEqual(expWindow.daily_kpis.length, 3, "Window [2026-10-31 .. 2026-11-02] must produce 3 daily rows");
+const windowDailyTotal = Math.round(expWindow.daily_kpis.reduce((s, d) => s + d.revenue, 0) * 100) / 100;
+assert.strictEqual(windowDailyTotal, expWindow.summary.window_prorated_revenue, "Sum of filtered Daily KPI Bifurcation revenues MUST equal Summary Prorated Revenue in Selected Dates");
+assert.strictEqual(expWindow.summary.completed_trips, 1);
+assert.strictEqual(expWindow.summary.active_trips, 1);
+assert.strictEqual(expWindow.summary.cancelled_bookings, 1);
+assert.strictEqual(expWindow.summary.total_distance_km, 450);
+assert.strictEqual(expWindow.summary.total_fastag_used, 350);
+
+console.log("✓ Test 7 Passed: Export chronological sort, odometer/FASTag fallback, stale day count fix, trip classification, and Daily->Monthly KPI bifurcation verified.\n");
+
 console.log("==================================================");
-console.log("ALL 6 VERIFICATION TESTS PASSED SUCCESSFULLY! (100%)");
+console.log("ALL 7 VERIFICATION TESTS PASSED SUCCESSFULLY! (100%)");
 console.log("==================================================");
