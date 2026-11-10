@@ -9947,7 +9947,7 @@ async function loadCustomerAnalytics() {
   initCustomerAnalyticsEvents();
   renderCustomerAnalytics();
   try {
-    const promises = [api.get("/admin/stats")];
+    const promises = [api.get("/admin/stats?_t=" + Date.now())];
     if (!usersData || usersData.length === 0) promises.push(api.get("/users"));
     if (!bookingsData || bookingsData.length === 0)
       promises.push(api.get("/bookings"));
@@ -10236,7 +10236,7 @@ async function loadBookingsAnalytics() {
   try {
     const [bkRes, statsRes] = await Promise.allSettled([
       api.get("/bookings"),
-      api.get("/admin/stats"),
+      api.get("/admin/stats?_t=" + Date.now()),
     ]);
     if (bkRes.status === "fulfilled" && Array.isArray(bkRes.value?.bookings)) {
       const seen = new Set();

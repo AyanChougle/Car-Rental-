@@ -67,24 +67,32 @@ if ($method === 'GET') {
 
         ensureKpiHubMetricsTable();
 
-        $forceSync = isset($_GET['sync']) || isset($_GET['recalculate']) || isset($_GET['force']);
-
-        // 1. Fetch persistent KPI rows directly from kpi_hub_metrics table in MySQL
-        $existingHubRows = Database::fetchAll("SELECT * FROM `kpi_hub_metrics` ORDER BY `hub_id` ASC") ?: [];
+        $forceReset = isset($_GET['force']) && ($_GET['force'] === '1' || $_GET['force'] === 'true');
 
         require_once __DIR__ . '/../services/KpiService.php';
 
-        // Only run syncMetrics with database persistence if table is completely empty or explicit sync requested
-        if (empty($existingHubRows) || $forceSync) {
-            KpiService::syncMetrics(true);
-            $existingHubRows = Database::fetchAll("SELECT * FROM `kpi_hub_metrics` ORDER BY `hub_id` ASC") ?: [];
-        }
-
-        // 2. Fetch fleet revenue breakdown in-memory without overwriting kpi_hub_metrics or kpi_metrics tables
-        $calcData = KpiService::syncMetrics(false);
+        // Reconcile manual edits between kpi_metrics <-> kpi_hub_metrics and apply ONLY non-zero booking deltas
+        $calcData = KpiService::syncMetrics(true, $forceReset);
         $fleetRevenue = $calcData['fleet'] ?? [];
 
-        // 3. Map actual database rows from kpi_hub_metrics table (strictly preserving any manual phpMyAdmin edits)
+        // 1. Read persistent KPI rows directly from kpi_hub_metrics table in MySQL
+        $existingHubRows = Database::fetchAll("SELECT * FROM `kpi_hub_metrics` ORDER BY `hub_id` ASC") ?: [];
+
+        // 2. Read monthly rows directly from kpi_metrics table in MySQL
+        $kpiMetricsRows = Database::fetchAll("SELECT * FROM `kpi_metrics` ORDER BY `metric_date` ASC") ?: [];
+        $monthlyRows = [];
+        foreach ($kpiMetricsRows as $km) {
+            $mKey = date('Y-m-01', strtotime((string)$km['metric_date']));
+            $monthlyRows[$mKey] = $km;
+        }
+
+        $currentMonthKey = date('Y-m-01');
+        $previousMonthKey = date('Y-m-01', strtotime('-1 month'));
+        $prevMonthSales = isset($monthlyRows[$previousMonthKey]['month_sales'])
+            ? (float)$monthlyRows[$previousMonthKey]['month_sales']
+            : 0.0;
+
+        // 3. Map actual database rows from kpi_hub_metrics table (strictly preserving manual phpMyAdmin edits)
         $hubsMap = [];
         $allHubRow = null;
         foreach ($existingHubRows as $hr) {
@@ -102,6 +110,7 @@ if ($method === 'GET') {
                 'hub_name' => (string)($hr['hub_name'] ?? ($hId === 2 ? 'Kandivali Hub, Mumbai' : ($hId === 1 ? 'Gavson Business Park, Ghansoli' : 'All Operating Hubs'))),
                 'total_revenue' => $totRev,
                 'month_revenue' => (float)($hr['month_revenue'] ?? 0.0),
+                'last_month_revenue' => $hId === 0 ? $prevMonthSales : (float)($hr['month_revenue'] ?? 0.0),
                 'total_bookings' => (int)($hr['total_bookings'] ?? 0),
                 'paid_bookings' => $paidCount,
                 'active_trips' => (int)($hr['active_trips'] ?? $onRoad),
@@ -142,7 +151,7 @@ if ($method === 'GET') {
             'week_sales' => 0.0,
             'total_revenue' => 0.0,
             'month_revenue' => 0.0,
-            'last_month_revenue' => 0.0,
+            'last_month_revenue' => $prevMonthSales,
             'paid_bookings' => 0,
             'avg_booking' => 0.0,
             'active_trips' => 0,
@@ -158,18 +167,7 @@ if ($method === 'GET') {
             'occupancy_pct' => 0.0,
         ];
 
-        // 4. Read monthly rows directly from kpi_metrics table in MySQL
-        $kpiMetricsRows = Database::fetchAll("SELECT * FROM `kpi_metrics` ORDER BY `metric_date` ASC") ?: [];
-        $monthlyRows = [];
-        foreach ($kpiMetricsRows as $km) {
-            $mKey = date('Y-m-01', strtotime((string)$km['metric_date']));
-            $monthlyRows[$mKey] = $km;
-        }
-
-        $currentMonthKey = date('Y-m-01');
-        $previousMonthKey = date('Y-m-01', strtotime('-1 month'));
-
-        // Keep current reporting month row strictly aligned with current kpi_hub_metrics table
+        // Seed current reporting month entry only if missing from kpi_metrics
         if (!isset($monthlyRows[$currentMonthKey])) {
             $monthlyRows[$currentMonthKey] = [
                 'metric_date' => $currentMonthKey,
@@ -189,13 +187,6 @@ if ($method === 'GET') {
                 'pending_payments' => $liveStats['pending_payments'],
                 'pending_docs' => $liveStats['pending_docs'],
             ];
-        } else {
-            if ($liveStats['month_revenue'] > 0) {
-                $monthlyRows[$currentMonthKey]['month_sales'] = $liveStats['month_revenue'];
-            }
-            if ($liveStats['total_revenue'] > 0) {
-                $monthlyRows[$currentMonthKey]['total_revenue'] = $liveStats['total_revenue'];
-            }
         }
 
         header('Content-Type: application/json; charset=utf-8');
@@ -255,13 +246,15 @@ if ($method === 'POST') {
     $daySales = isset($input['day_sales']) && $input['day_sales'] !== '' ? (float)$input['day_sales'] : (float)($existing['day_sales'] ?? 0.0);
     $weekSales = isset($input['week_sales']) && $input['week_sales'] !== '' ? (float)$input['week_sales'] : (float)($existing['week_sales'] ?? 0.0);
 
+    $syncTs = date('Y-m-d H:i:s');
+
     // Save directly into kpi_hub_metrics table in MySQL
     Database::execute(
         "INSERT INTO `kpi_hub_metrics` (
           `hub_id`, `hub_name`, `total_revenue`, `month_revenue`, `total_bookings`, `paid_bookings`,
           `active_trips`, `total_fleet`, `on_road_fleet`, `available_fleet`, `occupancy_pct`,
           `total_users`, `pending_docs`, `pending_payments`, `day_sales`, `week_sales`, `updated_at`
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           `total_revenue` = VALUES(`total_revenue`),
           `month_revenue` = VALUES(`month_revenue`),
@@ -277,11 +270,11 @@ if ($method === 'POST') {
           `pending_payments` = VALUES(`pending_payments`),
           `day_sales` = VALUES(`day_sales`),
           `week_sales` = VALUES(`week_sales`),
-          `updated_at` = CURRENT_TIMESTAMP",
+          `updated_at` = VALUES(`updated_at`)",
         [
             $hubId, $hubName, $totalRevenue, $monthRevenue, $totalBookings, $paidBookings,
             $activeTrips, $totalFleet, $onRoadFleet, $availableFleet, $occupancyPct,
-            $totalUsers, $pendingDocs, $pendingPayments, $daySales, $weekSales
+            $totalUsers, $pendingDocs, $pendingPayments, $daySales, $weekSales, $syncTs
         ]
     );
 
@@ -295,7 +288,7 @@ if ($method === 'POST') {
                   `total_bookings`, `paid_bookings`, `active_trips`, `total_fleet`,
                   `on_road_fleet`, `in_yard_fleet`, `occupancy_pct`, `total_users`,
                   `pending_payments`, `pending_docs`, `updated_at`
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON DUPLICATE KEY UPDATE
                   `day_sales` = VALUES(`day_sales`),
                   `week_sales` = VALUES(`week_sales`),
@@ -311,12 +304,12 @@ if ($method === 'POST') {
                   `total_users` = VALUES(`total_users`),
                   `pending_payments` = VALUES(`pending_payments`),
                   `pending_docs` = VALUES(`pending_docs`),
-                  `updated_at` = CURRENT_TIMESTAMP",
+                  `updated_at` = VALUES(`updated_at`)",
                 [
                     $curMonth, $daySales, $weekSales, $monthRevenue, $totalRevenue,
                     $totalBookings, $paidBookings, $activeTrips, $totalFleet,
                     $onRoadFleet, $availableFleet, $occupancyPct, $totalUsers,
-                    $pendingPayments, $pendingDocs
+                    $pendingPayments, $pendingDocs, $syncTs
                 ]
             );
         } catch (Throwable $_) {}

@@ -102,18 +102,15 @@ try {
     error_log("[summary.php ensureTable] " . $e->getMessage());
 }
 
-// 2. Read KPI fixture data DIRECTLY from MySQL database table `kpi_hub_metrics`
+// 2. Reconcile manual DB edits between kpi_metrics <-> kpi_hub_metrics and apply ONLY non-zero booking deltas
 $targetHubId = $isAllHubs ? 0 : $hubId;
-$hubRecord = Database::fetchOne("SELECT * FROM `kpi_hub_metrics` WHERE `hub_id` = ?", [$targetHubId]);
+try {
+    require_once __DIR__ . '/../services/KpiService.php';
+    KpiService::syncMetrics(true, false);
+} catch (Throwable $_) {}
 
-// Only initialize if row does not exist in database table
-if (!$hubRecord) {
-    try {
-        require_once __DIR__ . '/../services/KpiService.php';
-        KpiService::syncMetrics(true);
-        $hubRecord = Database::fetchOne("SELECT * FROM `kpi_hub_metrics` WHERE `hub_id` = ?", [$targetHubId]);
-    } catch (Throwable $_) {}
-}
+// 3. Read KPI fixture data DIRECTLY from MySQL database table `kpi_hub_metrics`
+$hubRecord = Database::fetchOne("SELECT * FROM `kpi_hub_metrics` WHERE `hub_id` = ?", [$targetHubId]);
 
 if ($hubRecord) {
     $totalRevenue = (float)($hubRecord['total_revenue'] ?? 0.0);

@@ -326,14 +326,136 @@ class KpiService
      */
     public static function getCachedMetrics(): array
     {
-        return self::syncMetrics();
+        return self::syncMetrics(false);
     }
 
     /**
-     * Recalculates all KPI metrics dynamically from MySQL and optionally updates kpi_metrics & kpi_hub_metrics.
-     * @param bool $persistToDatabase When false, calculates strictly in-memory without overwriting database tables.
+     * Reconciles `kpi_metrics` (current month row) and `kpi_hub_metrics` (hub_id = 0)
+     * so edits made directly in phpMyAdmin in EITHER table reflect immediately in both.
      */
-    public static function syncMetrics(bool $persistToDatabase = true): array
+    public static function reconcileTables(): void
+    {
+        try {
+            self::ensureTables();
+            $currentMonthKey = date('Y-m-01');
+            $curRow = Database::fetchOne("SELECT * FROM `kpi_metrics` WHERE `metric_date` = ? LIMIT 1", [$currentMonthKey]);
+            $hub0 = Database::fetchOne("SELECT * FROM `kpi_hub_metrics` WHERE `hub_id` = 0 LIMIT 1");
+            if (!$curRow || !$hub0) {
+                return;
+            }
+
+            $curTs = strtotime((string)($curRow['updated_at'] ?? '1970-01-01 00:00:00')) ?: 0;
+            $hubTs = strtotime((string)($hub0['updated_at'] ?? '1970-01-01 00:00:00')) ?: 0;
+
+            if ($curTs > $hubTs) {
+                $updAt = (string)$curRow['updated_at'];
+                Database::execute(
+                    "UPDATE `kpi_hub_metrics` SET
+                        `day_sales` = ?,
+                        `week_sales` = ?,
+                        `month_revenue` = ?,
+                        `total_revenue` = ?,
+                        `active_trips` = ?,
+                        `total_fleet` = ?,
+                        `on_road_fleet` = ?,
+                        `available_fleet` = ?,
+                        `occupancy_pct` = ?,
+                        `total_users` = ?,
+                        `pending_payments` = ?,
+                        `pending_docs` = ?,
+                        `updated_at` = ?
+                     WHERE `hub_id` = 0",
+                    [
+                        (float)$curRow['day_sales'],
+                        (float)$curRow['week_sales'],
+                        (float)$curRow['month_sales'],
+                        (float)$curRow['total_revenue'],
+                        (int)$curRow['active_trips'],
+                        (int)$curRow['total_fleet'],
+                        (int)$curRow['on_road_fleet'],
+                        (int)$curRow['in_yard_fleet'],
+                        (float)$curRow['occupancy_pct'],
+                        (int)$curRow['total_users'],
+                        (int)$curRow['pending_payments'],
+                        (int)$curRow['pending_docs'],
+                        $updAt,
+                    ]
+                );
+            } elseif ($hubTs > $curTs) {
+                $updAt = (string)$hub0['updated_at'];
+                Database::execute(
+                    "UPDATE `kpi_metrics` SET
+                        `day_sales` = ?,
+                        `week_sales` = ?,
+                        `month_sales` = ?,
+                        `total_revenue` = ?,
+                        `active_trips` = ?,
+                        `total_fleet` = ?,
+                        `on_road_fleet` = ?,
+                        `in_yard_fleet` = ?,
+                        `occupancy_pct` = ?,
+                        `total_users` = ?,
+                        `pending_payments` = ?,
+                        `pending_docs` = ?,
+                        `updated_at` = ?
+                     WHERE `metric_date` = ?",
+                    [
+                        (float)($hub0['day_sales'] ?? 0.0),
+                        (float)($hub0['week_sales'] ?? 0.0),
+                        (float)($hub0['month_revenue'] ?? 0.0),
+                        (float)($hub0['total_revenue'] ?? 0.0),
+                        (int)($hub0['active_trips'] ?? 0),
+                        (int)($hub0['total_fleet'] ?? 0),
+                        (int)($hub0['on_road_fleet'] ?? 0),
+                        (int)($hub0['available_fleet'] ?? 0),
+                        (float)($hub0['occupancy_pct'] ?? 0.0),
+                        (int)($hub0['total_users'] ?? 0),
+                        (int)($hub0['pending_payments'] ?? 0),
+                        (int)($hub0['pending_docs'] ?? 0),
+                        $updAt,
+                        $currentMonthKey,
+                    ]
+                );
+            }
+        } catch (Throwable $e) {
+            error_log("[KpiService::reconcileTables Exception] " . $e->getMessage());
+        }
+    }
+
+    private static function getLastCalcSnapshot(): ?array
+    {
+        try {
+            $row = Database::fetchOne("SELECT `value` FROM `settings` WHERE `key` = 'kpi_last_bookings_calc' LIMIT 1");
+            if (!$row || empty($row['value'])) {
+                return null;
+            }
+            $decoded = json_decode((string)$row['value'], true);
+            return is_array($decoded) ? $decoded : null;
+        } catch (Throwable $_) {
+            return null;
+        }
+    }
+
+    private static function saveLastCalcSnapshot(array $snapshot): void
+    {
+        try {
+            $json = json_encode($snapshot);
+            Database::execute("DELETE FROM `settings` WHERE `key` = 'kpi_last_bookings_calc'");
+            Database::execute(
+                "INSERT INTO `settings` (`key`, `value`) VALUES ('kpi_last_bookings_calc', ?)",
+                [$json]
+            );
+        } catch (Throwable $e) {
+            error_log("[KpiService::saveLastCalcSnapshot Exception] " . $e->getMessage());
+        }
+    }
+
+    /**
+     * Recalculates all KPI metrics dynamically from MySQL and safely applies deltas so manual DB edits are preserved.
+     * @param bool $persistToDatabase When false, calculates strictly in-memory without overwriting database tables.
+     * @param bool $forceReset When true, hard-resets `kpi_metrics` and `kpi_hub_metrics` from raw bookings.
+     */
+    public static function syncMetrics(bool $persistToDatabase = true, bool $forceReset = false): array
     {
         try {
             self::ensureTables();
@@ -672,7 +794,7 @@ class KpiService
                 }
             }
 
-            // 6. Finalize per-hub metrics (occupancy, rounding, users)
+            // 6. Finalize pure per-hub metrics (occupancy, rounding, users) strictly in memory
             foreach ($hubStats as $hId => &$hs) {
                 $onRoadCount = $hId === 0 ? count($onRoadVehiclesOverall) : count($onRoadVehiclesPerHub[$hId] ?? []);
                 $hs['on_road_fleet'] = $onRoadCount;
@@ -686,108 +808,62 @@ class KpiService
                 $hs['month_revenue'] = round($hs['month_revenue'], 2);
                 $hs['day_sales'] = round($hs['day_sales'], 2);
                 $hs['week_sales'] = round($hs['week_sales'], 2);
-
-                // Persist each hub record into kpi_hub_metrics table without overwriting user/booking revenues
-                if ($persistToDatabase) {
-                    Database::execute(
-                        "INSERT INTO `kpi_hub_metrics` (
-                            `hub_id`, `hub_name`, `total_revenue`, `month_revenue`, `total_bookings`, `paid_bookings`,
-                            `active_trips`, `total_fleet`, `on_road_fleet`, `available_fleet`, `occupancy_pct`,
-                            `total_users`, `pending_docs`, `pending_payments`, `day_sales`, `week_sales`, `updated_at`
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                        ON DUPLICATE KEY UPDATE
-                            `hub_name` = VALUES(`hub_name`),
-                            `total_revenue` = VALUES(`total_revenue`),
-                            `month_revenue` = VALUES(`month_revenue`),
-                            `total_bookings` = VALUES(`total_bookings`),
-                            `paid_bookings` = VALUES(`paid_bookings`),
-                            `active_trips` = VALUES(`active_trips`),
-                            `total_fleet` = VALUES(`total_fleet`),
-                            `on_road_fleet` = VALUES(`on_road_fleet`),
-                            `available_fleet` = VALUES(`available_fleet`),
-                            `occupancy_pct` = VALUES(`occupancy_pct`),
-                            `total_users` = VALUES(`total_users`),
-                            `pending_docs` = VALUES(`pending_docs`),
-                            `pending_payments` = VALUES(`pending_payments`),
-                            `day_sales` = VALUES(`day_sales`),
-                            `week_sales` = VALUES(`week_sales`),
-                            `updated_at` = CURRENT_TIMESTAMP",
-                        [
-                            $hs['hub_id'], $hs['hub_name'], $hs['total_revenue'], $hs['month_revenue'],
-                            $hs['total_bookings'], $hs['paid_bookings'], $hs['active_trips'],
-                            $hs['total_fleet'], $hs['on_road_fleet'], $hs['available_fleet'], $hs['occupancy_pct'],
-                            $hs['total_users'], $hs['pending_docs'], $hs['pending_payments'],
-                            $hs['day_sales'], $hs['week_sales']
-                        ]
-                    );
-                }
             }
             unset($hs);
 
-            // 7. Read existing historical months from kpi_metrics (e.g. July, August from prior master ledger)
+            // 7. Read existing DB rows strictly for persistence/reconciliation (never into pure booking calc)
             $existingLedger = [];
             try {
-                $eRows = Database::fetchAll("SELECT * FROM kpi_metrics ORDER BY metric_date ASC");
+                $eRows = Database::fetchAll("SELECT * FROM `kpi_metrics` ORDER BY `metric_date` ASC") ?: [];
                 foreach ($eRows as $er) {
                     $mKey = date('Y-m-01', strtotime((string)$er['metric_date']));
                     $existingLedger[$mKey] = $er;
                 }
             } catch (Throwable $_) {}
 
-            // Combine all known months
+            $existingHubRows = [];
+            try {
+                $hRows = Database::fetchAll("SELECT * FROM `kpi_hub_metrics` ORDER BY `hub_id` ASC") ?: [];
+                foreach ($hRows as $hr) {
+                    $existingHubRows[(int)$hr['hub_id']] = $hr;
+                }
+            } catch (Throwable $_) {}
+
+            // Combine all known months cleanly
             $allMonths = array_unique(array_merge(
+                ['2026-07-01', '2026-08-01'],
                 array_keys($existingLedger),
                 array_keys($monthlySalesOverall),
                 [$currentMonthKey]
             ));
             sort($allMonths);
 
+            // Compute pure monthly breakdown strictly from live bookings (+ fixed pre-launch Jul/Aug historical constants)
             $monthlyRows = [];
             $runningTotalRev = 0.0;
-            $runningBookingsCount = 0;
-            $runningPaidCount = 0;
 
             foreach ($allMonths as $mStart) {
-                $ex = $existingLedger[$mStart] ?? null;
-                $hasDynamicBookings = isset($monthlySalesOverall[$mStart]) && $monthlySalesOverall[$mStart] > 0;
                 $isCur = ($mStart === $currentMonthKey);
 
-                // Revenue ledger rule:
-                // Pre-launch historical baseline months (July & August 2026) preserve their baseline ledger values.
-                // Operational months derive dynamically from the daily revenue attribution of all eligible bookings.
-                $isHistoricalBaseline = ($mStart <= '2026-08-01');
-                if ($isHistoricalBaseline) {
-                    $mSales = (float)($ex['month_sales'] ?? ($mStart === '2026-07-01' ? 50540.00 : 281857.00));
+                if ($mStart === '2026-07-01') {
+                    $mSales = 50540.00;
+                } elseif ($mStart === '2026-08-01') {
+                    $mSales = 281857.00;
                 } elseif (isset($monthlySalesOverall[$mStart])) {
-                    $mSales = round($monthlySalesOverall[$mStart], 2);
-                } elseif ($mStart === '2026-09-01' && $ex && (float)($ex['month_sales'] ?? 0) > 0) {
-                    $mSales = (float)$ex['month_sales'];
+                    $mSales = round((float)$monthlySalesOverall[$mStart], 2);
                 } else {
                     $mSales = 0.0;
                 }
 
-                // Operational counts can still be recalculated from live bookings.
-                if ($isCur || $hasDynamicBookings) {
-                    $mBCount = $monthlyBookingsOverall[$mStart] ?? ($ex ? (int)($ex['total_bookings'] ?? 0) : 0);
-                    $mPCount = $monthlyPaidOverall[$mStart] ?? ($ex ? (int)($ex['paid_bookings'] ?? 0) : 0);
-                    $mCompCount = $monthlyCompletedOverall[$mStart] ?? ($ex ? (int)($ex['completed_trips'] ?? 0) : 0);
-                } elseif ($ex) {
-                    $mBCount = (int)($ex['total_bookings'] ?? 0);
-                    $mPCount = (int)($ex['paid_bookings'] ?? 0);
-                    $mCompCount = (int)($ex['completed_trips'] ?? 0);
-                } else {
-                    $mBCount = 0;
-                    $mPCount = 0;
-                    $mCompCount = 0;
-                }
+                $mBCount = (int)($monthlyBookingsOverall[$mStart] ?? 0);
+                $mPCount = (int)($monthlyPaidOverall[$mStart] ?? 0);
+                $mCompCount = (int)($monthlyCompletedOverall[$mStart] ?? 0);
 
                 $runningTotalRev += $mSales;
                 $rowTotalRev = round($runningTotalRev, 2);
-                $runningBookingsCount += $mBCount;
-                $runningPaidCount += $mPCount;
 
-                $rowDay = $isCur ? max($hubStats[0]['day_sales'], (float)($ex['day_sales'] ?? 0.0)) : 0.0;
-                $rowWeek = $isCur ? max($hubStats[0]['week_sales'], (float)($ex['week_sales'] ?? 0.0)) : 0.0;
+                $rowDay = $isCur ? round($hubStats[0]['day_sales'], 2) : 0.0;
+                $rowWeek = $isCur ? round($hubStats[0]['week_sales'], 2) : 0.0;
                 $rowActive = $isCur ? $hubStats[0]['active_trips'] : 0;
                 $rowOnRoad = $isCur ? $hubStats[0]['on_road_fleet'] : 0;
                 $rowFleet = $hubStats[0]['total_fleet'];
@@ -812,44 +888,9 @@ class KpiService
                     'pending_payments' => $isCur ? $pendingPayments : 0,
                     'pending_docs' => $isCur ? $pendingDocs : 0,
                 ];
-
-                // Persist into kpi_metrics table
-                if ($persistToDatabase) {
-                    Database::execute(
-                        "INSERT INTO `kpi_metrics` (
-                            `metric_date`, `day_sales`, `week_sales`, `month_sales`, `total_revenue`,
-                            `total_bookings`, `paid_bookings`, `active_trips`, `completed_trips`,
-                            `total_fleet`, `on_road_fleet`, `in_yard_fleet`, `occupancy_pct`,
-                            `total_users`, `pending_payments`, `pending_docs`, `updated_at`
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                        ON DUPLICATE KEY UPDATE
-                            `day_sales` = VALUES(`day_sales`),
-                            `week_sales` = VALUES(`week_sales`),
-                            `month_sales` = VALUES(`month_sales`),
-                            `total_revenue` = VALUES(`total_revenue`),
-                            `total_bookings` = VALUES(`total_bookings`),
-                            `paid_bookings` = VALUES(`paid_bookings`),
-                            `active_trips` = VALUES(`active_trips`),
-                            `completed_trips` = VALUES(`completed_trips`),
-                            `total_fleet` = VALUES(`total_fleet`),
-                            `on_road_fleet` = VALUES(`on_road_fleet`),
-                            `in_yard_fleet` = VALUES(`in_yard_fleet`),
-                            `occupancy_pct` = VALUES(`occupancy_pct`),
-                            `total_users` = VALUES(`total_users`),
-                            `pending_payments` = VALUES(`pending_payments`),
-                            `pending_docs` = VALUES(`pending_docs`),
-                            `updated_at` = CURRENT_TIMESTAMP",
-                        [
-                            $mStart, $rowDay, $rowWeek, $mSales, $rowTotalRev,
-                            $mBCount, $mPCount, $rowActive, $mCompCount,
-                            $rowFleet, $rowOnRoad, $rowInYard, $rowOcc,
-                            $totalUsers, $isCur ? $pendingPayments : 0, $isCur ? $pendingDocs : 0
-                        ]
-                    );
-                }
             }
 
-            // Sync live metrics for Hub 0, strictly matching cumulative running totals
+            // Align pure Hub 0 & Hub 1 totals
             $curMonthSales = (float)($monthlyRows[$currentMonthKey]['month_sales'] ?? $hubStats[0]['month_revenue']);
             $curDaySales = (float)($monthlyRows[$currentMonthKey]['day_sales'] ?? $hubStats[0]['day_sales']);
             $curWeekSales = (float)($monthlyRows[$currentMonthKey]['week_sales'] ?? $hubStats[0]['week_sales']);
@@ -859,7 +900,6 @@ class KpiService
             $hubStats[0]['day_sales'] = round($curDaySales, 2);
             $hubStats[0]['week_sales'] = round($curWeekSales, 2);
 
-            // Sync live metrics for Hub 1 (Gavson) and Hub 2 (Kandivali)
             $hub2Rev = (float)($hubStats[2]['total_revenue'] ?? 0.0);
             $hub2MonthRev = (float)($hubStats[2]['month_revenue'] ?? 0.0);
             $hub2DaySales = (float)($hubStats[2]['day_sales'] ?? 0.0);
@@ -870,31 +910,384 @@ class KpiService
             $hubStats[1]['day_sales'] = round(max(0.0, $curDaySales - $hub2DaySales), 2);
             $hubStats[1]['week_sales'] = round(max(0.0, $curWeekSales - $hub2WeekSales), 2);
 
+            // Build compact pure calculation snapshot for delta-aware persistence
+            $snapshotHubs = [];
+            foreach ($hubStats as $hId => $hs) {
+                $snapshotHubs[(string)$hId] = [
+                    'total_revenue' => (float)$hs['total_revenue'],
+                    'month_revenue' => (float)$hs['month_revenue'],
+                    'day_sales' => (float)$hs['day_sales'],
+                    'week_sales' => (float)$hs['week_sales'],
+                    'total_bookings' => (int)$hs['total_bookings'],
+                    'paid_bookings' => (int)$hs['paid_bookings'],
+                    'active_trips' => (int)$hs['active_trips'],
+                    'total_fleet' => (int)$hs['total_fleet'],
+                    'on_road_fleet' => (int)$hs['on_road_fleet'],
+                    'total_users' => (int)$hs['total_users'],
+                    'pending_docs' => (int)$hs['pending_docs'],
+                    'pending_payments' => (int)$hs['pending_payments'],
+                ];
+            }
+            $snapshotMonths = [];
+            foreach ($monthlyRows as $mKey => $mr) {
+                $snapshotMonths[$mKey] = [
+                    'month_sales' => (float)$mr['month_sales'],
+                    'total_revenue' => (float)$mr['total_revenue'],
+                    'day_sales' => (float)$mr['day_sales'],
+                    'week_sales' => (float)$mr['week_sales'],
+                    'total_bookings' => (int)$mr['total_bookings'],
+                    'paid_bookings' => (int)$mr['paid_bookings'],
+                    'active_trips' => (int)$mr['active_trips'],
+                    'completed_trips' => (int)$mr['completed_trips'],
+                    'total_fleet' => (int)$mr['total_fleet'],
+                    'on_road_fleet' => (int)$mr['on_road_fleet'],
+                    'total_users' => (int)$mr['total_users'],
+                    'pending_payments' => (int)$mr['pending_payments'],
+                    'pending_docs' => (int)$mr['pending_docs'],
+                ];
+            }
+            $newSnapshot = [
+                'calc_date' => $todayStr,
+                'calc_week' => $weekStartStr,
+                'calc_month' => $currentMonthKey,
+                'hubs' => $snapshotHubs,
+                'monthly' => $snapshotMonths,
+            ];
+
             if ($persistToDatabase) {
-                Database::execute(
-                    "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ?, `active_trips` = ?, `total_fleet` = ?, `on_road_fleet` = ?, `available_fleet` = ?, `occupancy_pct` = ? WHERE `hub_id` = 0",
-                    [
-                        $hubStats[0]['total_revenue'], $hubStats[0]['month_revenue'], $hubStats[0]['day_sales'], $hubStats[0]['week_sales'],
-                        $hubStats[0]['active_trips'], $hubStats[0]['total_fleet'], $hubStats[0]['on_road_fleet'], $hubStats[0]['available_fleet'], $hubStats[0]['occupancy_pct']
-                    ]
-                );
+                $syncTs = date('Y-m-d H:i:s');
+                if (empty($existingHubRows) || empty($existingLedger)) {
+                    $forceReset = true;
+                }
 
-                Database::execute(
-                    "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ?, `active_trips` = ?, `total_fleet` = ?, `on_road_fleet` = ?, `available_fleet` = ?, `occupancy_pct` = ? WHERE `hub_id` = 1",
-                    [
-                        $hubStats[1]['total_revenue'], $hubStats[1]['month_revenue'], $hubStats[1]['day_sales'], $hubStats[1]['week_sales'],
-                        $hubStats[1]['active_trips'], $hubStats[1]['total_fleet'], $hubStats[1]['on_road_fleet'], $hubStats[1]['available_fleet'], $hubStats[1]['occupancy_pct']
-                    ]
-                );
+                if ($forceReset) {
+                    foreach ($hubStats as $hs) {
+                        Database::execute(
+                            "INSERT INTO `kpi_hub_metrics` (
+                                `hub_id`, `hub_name`, `total_revenue`, `month_revenue`, `total_bookings`, `paid_bookings`,
+                                `active_trips`, `total_fleet`, `on_road_fleet`, `available_fleet`, `occupancy_pct`,
+                                `total_users`, `pending_docs`, `pending_payments`, `day_sales`, `week_sales`, `updated_at`
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ON DUPLICATE KEY UPDATE
+                                `hub_name` = VALUES(`hub_name`),
+                                `total_revenue` = VALUES(`total_revenue`),
+                                `month_revenue` = VALUES(`month_revenue`),
+                                `total_bookings` = VALUES(`total_bookings`),
+                                `paid_bookings` = VALUES(`paid_bookings`),
+                                `active_trips` = VALUES(`active_trips`),
+                                `total_fleet` = VALUES(`total_fleet`),
+                                `on_road_fleet` = VALUES(`on_road_fleet`),
+                                `available_fleet` = VALUES(`available_fleet`),
+                                `occupancy_pct` = VALUES(`occupancy_pct`),
+                                `total_users` = VALUES(`total_users`),
+                                `pending_docs` = VALUES(`pending_docs`),
+                                `pending_payments` = VALUES(`pending_payments`),
+                                `day_sales` = VALUES(`day_sales`),
+                                `week_sales` = VALUES(`week_sales`),
+                                `updated_at` = VALUES(`updated_at`)",
+                            [
+                                $hs['hub_id'], $hs['hub_name'], $hs['total_revenue'], $hs['month_revenue'],
+                                $hs['total_bookings'], $hs['paid_bookings'], $hs['active_trips'],
+                                $hs['total_fleet'], $hs['on_road_fleet'], $hs['available_fleet'], $hs['occupancy_pct'],
+                                $hs['total_users'], $hs['pending_docs'], $hs['pending_payments'],
+                                $hs['day_sales'], $hs['week_sales'], $syncTs
+                            ]
+                        );
+                    }
+                    foreach ($monthlyRows as $mStart => $mr) {
+                        Database::execute(
+                            "INSERT INTO `kpi_metrics` (
+                                `metric_date`, `day_sales`, `week_sales`, `month_sales`, `total_revenue`,
+                                `total_bookings`, `paid_bookings`, `active_trips`, `completed_trips`,
+                                `total_fleet`, `on_road_fleet`, `in_yard_fleet`, `occupancy_pct`,
+                                `total_users`, `pending_payments`, `pending_docs`, `updated_at`
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            ON DUPLICATE KEY UPDATE
+                                `day_sales` = VALUES(`day_sales`),
+                                `week_sales` = VALUES(`week_sales`),
+                                `month_sales` = VALUES(`month_sales`),
+                                `total_revenue` = VALUES(`total_revenue`),
+                                `total_bookings` = VALUES(`total_bookings`),
+                                `paid_bookings` = VALUES(`paid_bookings`),
+                                `active_trips` = VALUES(`active_trips`),
+                                `completed_trips` = VALUES(`completed_trips`),
+                                `total_fleet` = VALUES(`total_fleet`),
+                                `on_road_fleet` = VALUES(`on_road_fleet`),
+                                `in_yard_fleet` = VALUES(`in_yard_fleet`),
+                                `occupancy_pct` = VALUES(`occupancy_pct`),
+                                `total_users` = VALUES(`total_users`),
+                                `pending_payments` = VALUES(`pending_payments`),
+                                `pending_docs` = VALUES(`pending_docs`),
+                                `updated_at` = VALUES(`updated_at`)",
+                            [
+                                $mStart, $mr['day_sales'], $mr['week_sales'], $mr['month_sales'], $mr['total_revenue'],
+                                $mr['total_bookings'], $mr['paid_bookings'], $mr['active_trips'], $mr['completed_trips'],
+                                $mr['total_fleet'], $mr['on_road_fleet'], $mr['in_yard_fleet'], $mr['occupancy_pct'],
+                                $mr['total_users'], $mr['pending_payments'], $mr['pending_docs'], $syncTs
+                            ]
+                        );
+                    }
+                    self::saveLastCalcSnapshot($newSnapshot);
+                } else {
+                    // First propagate any manual phpMyAdmin edits between kpi_metrics <-> kpi_hub_metrics
+                    self::reconcileTables();
 
-                if (isset($hubStats[2])) {
-                    Database::execute(
-                        "UPDATE `kpi_hub_metrics` SET `total_revenue` = ?, `month_revenue` = ?, `day_sales` = ?, `week_sales` = ?, `active_trips` = ?, `total_fleet` = ?, `on_road_fleet` = ?, `available_fleet` = ?, `occupancy_pct` = ? WHERE `hub_id` = 2",
-                        [
-                            $hubStats[2]['total_revenue'], $hubStats[2]['month_revenue'], $hubStats[2]['day_sales'], $hubStats[2]['week_sales'],
-                            $hubStats[2]['active_trips'], $hubStats[2]['total_fleet'], $hubStats[2]['on_road_fleet'], $hubStats[2]['available_fleet'], $hubStats[2]['occupancy_pct']
-                        ]
-                    );
+                    // Re-read reconciled DB state
+                    $existingLedger = [];
+                    foreach (Database::fetchAll("SELECT * FROM `kpi_metrics` ORDER BY `metric_date` ASC") ?: [] as $er) {
+                        $mKey = date('Y-m-01', strtotime((string)$er['metric_date']));
+                        $existingLedger[$mKey] = $er;
+                    }
+                    $existingHubRows = [];
+                    foreach (Database::fetchAll("SELECT * FROM `kpi_hub_metrics` ORDER BY `hub_id` ASC") ?: [] as $hr) {
+                        $existingHubRows[(int)$hr['hub_id']] = $hr;
+                    }
+
+                    $lastSnapshot = self::getLastCalcSnapshot();
+                    if ($lastSnapshot === null) {
+                        // First initialization: capture baseline snapshot without altering any existing manual DB values
+                        self::saveLastCalcSnapshot($newSnapshot);
+                    } else {
+                        $curMonthUpd = substr((string)($existingLedger[$currentMonthKey]['updated_at'] ?? ''), 0, 10);
+                        $hub0Upd = substr((string)($existingHubRows[0]['updated_at'] ?? ''), 0, 10);
+                        $latestUpdDate = max($curMonthUpd, $hub0Upd);
+
+                        $dateChanged = (($lastSnapshot['calc_date'] ?? '') !== $todayStr);
+                        $weekChanged = (($lastSnapshot['calc_week'] ?? '') !== $weekStartStr);
+                        $monthChanged = (($lastSnapshot['calc_month'] ?? '') !== $currentMonthKey);
+
+                        $dayRolled = $dateChanged && ($latestUpdDate < $todayStr);
+                        $weekRolled = $weekChanged && ($latestUpdDate < $weekStartStr);
+
+                        $cumulMonthDelta = 0.0;
+                        $snapshotChanged = ($dateChanged || $weekChanged || $monthChanged);
+
+                        foreach ($allMonths as $mStart) {
+                            $pure = $monthlyRows[$mStart];
+                            $isCur = ($mStart === $currentMonthKey);
+
+                            if (!isset($existingLedger[$mStart])) {
+                                $prevTotal = 0.0;
+                                foreach ($existingLedger as $ek => $ev) {
+                                    if ($ek < $mStart) {
+                                        $prevTotal = (float)($ev['total_revenue'] ?? $prevTotal);
+                                    }
+                                }
+                                $newRowTotal = round($prevTotal + (float)$pure['month_sales'], 2);
+                                Database::execute(
+                                    "INSERT INTO `kpi_metrics` (
+                                        `metric_date`, `day_sales`, `week_sales`, `month_sales`, `total_revenue`,
+                                        `total_bookings`, `paid_bookings`, `active_trips`, `completed_trips`,
+                                        `total_fleet`, `on_road_fleet`, `in_yard_fleet`, `occupancy_pct`,
+                                        `total_users`, `pending_payments`, `pending_docs`, `updated_at`
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                    [
+                                        $mStart, $pure['day_sales'], $pure['week_sales'], $pure['month_sales'], $newRowTotal,
+                                        $pure['total_bookings'], $pure['paid_bookings'], $pure['active_trips'], $pure['completed_trips'],
+                                        $pure['total_fleet'], $pure['on_road_fleet'], $pure['in_yard_fleet'], $pure['occupancy_pct'],
+                                        $pure['total_users'], $pure['pending_payments'], $pure['pending_docs'], $syncTs
+                                    ]
+                                );
+                                $snapshotChanged = true;
+                                continue;
+                            }
+
+                            $ex = $existingLedger[$mStart];
+                            $prev = $lastSnapshot['monthly'][$mStart] ?? $snapshotMonths[$mStart];
+
+                            $dMonthSales = round((float)$pure['month_sales'] - (float)$prev['month_sales'], 2);
+                            $cumulMonthDelta = round($cumulMonthDelta + $dMonthSales, 2);
+                            $dBookings = (int)$pure['total_bookings'] - (int)$prev['total_bookings'];
+                            $dPaid = (int)$pure['paid_bookings'] - (int)$prev['paid_bookings'];
+                            $dCompleted = (int)$pure['completed_trips'] - (int)$prev['completed_trips'];
+
+                            $dDay = 0.0;
+                            $dWeek = 0.0;
+                            $dActive = 0;
+                            $dFleet = 0;
+                            $dOnRoad = 0;
+                            $dUsers = 0;
+                            $dPendPay = 0;
+                            $dPendDocs = 0;
+
+                            if ($isCur) {
+                                $dDay = $dateChanged ? 0.0 : round((float)$pure['day_sales'] - (float)$prev['day_sales'], 2);
+                                $dWeek = $weekChanged ? 0.0 : round((float)$pure['week_sales'] - (float)$prev['week_sales'], 2);
+                                $dActive = (int)$pure['active_trips'] - (int)$prev['active_trips'];
+                                $dFleet = (int)$pure['total_fleet'] - (int)$prev['total_fleet'];
+                                $dOnRoad = (int)$pure['on_road_fleet'] - (int)$prev['on_road_fleet'];
+                                $dUsers = (int)$pure['total_users'] - (int)$prev['total_users'];
+                                $dPendPay = (int)$pure['pending_payments'] - (int)$prev['pending_payments'];
+                                $dPendDocs = (int)$pure['pending_docs'] - (int)$prev['pending_docs'];
+                            }
+
+                            $hasChange = abs($dMonthSales) >= 0.01
+                                || abs($cumulMonthDelta) >= 0.01
+                                || $dBookings !== 0
+                                || $dPaid !== 0
+                                || $dCompleted !== 0
+                                || ($isCur && ($dayRolled || $weekRolled || abs($dDay) >= 0.01 || abs($dWeek) >= 0.01 || $dActive !== 0 || $dFleet !== 0 || $dOnRoad !== 0 || $dUsers !== 0 || $dPendPay !== 0 || $dPendDocs !== 0));
+
+                            if (!$hasChange) {
+                                continue;
+                            }
+
+                            $snapshotChanged = true;
+                            $uMonthSales = max(0.0, round((float)$ex['month_sales'] + $dMonthSales, 2));
+                            $uTotalRev = max(0.0, round((float)$ex['total_revenue'] + $cumulMonthDelta, 2));
+                            $uBookings = max(0, (int)$ex['total_bookings'] + $dBookings);
+                            $uPaid = max(0, (int)$ex['paid_bookings'] + $dPaid);
+                            $uCompleted = max(0, (int)$ex['completed_trips'] + $dCompleted);
+
+                            $uDay = ($isCur && $dayRolled) ? (float)$pure['day_sales'] : max(0.0, round((float)$ex['day_sales'] + $dDay, 2));
+                            $uWeek = ($isCur && $weekRolled) ? (float)$pure['week_sales'] : max(0.0, round((float)$ex['week_sales'] + $dWeek, 2));
+                            $uActive = max(0, (int)$ex['active_trips'] + $dActive);
+                            $uFleet = max(0, (int)$ex['total_fleet'] + $dFleet);
+                            $uOnRoad = max(0, (int)$ex['on_road_fleet'] + $dOnRoad);
+                            $uInYard = ($isCur && ($dFleet !== 0 || $dOnRoad !== 0)) ? max(0, $uFleet - $uOnRoad) : (int)$ex['in_yard_fleet'];
+                            $uOcc = ($isCur && ($dFleet !== 0 || $dOnRoad !== 0)) ? ($uFleet > 0 ? min(100.0, round(($uOnRoad / $uFleet) * 100, 2)) : 0.0) : (float)$ex['occupancy_pct'];
+                            $uUsers = max(0, (int)$ex['total_users'] + $dUsers);
+                            $uPendPay = max(0, (int)$ex['pending_payments'] + $dPendPay);
+                            $uPendDocs = max(0, (int)$ex['pending_docs'] + $dPendDocs);
+
+                            Database::execute(
+                                "UPDATE `kpi_metrics` SET
+                                    `day_sales` = ?,
+                                    `week_sales` = ?,
+                                    `month_sales` = ?,
+                                    `total_revenue` = ?,
+                                    `total_bookings` = ?,
+                                    `paid_bookings` = ?,
+                                    `active_trips` = ?,
+                                    `completed_trips` = ?,
+                                    `total_fleet` = ?,
+                                    `on_road_fleet` = ?,
+                                    `in_yard_fleet` = ?,
+                                    `occupancy_pct` = ?,
+                                    `total_users` = ?,
+                                    `pending_payments` = ?,
+                                    `pending_docs` = ?,
+                                    `updated_at` = ?
+                                 WHERE `metric_date` = ?",
+                                [
+                                    $uDay, $uWeek, $uMonthSales, $uTotalRev,
+                                    $uBookings, $uPaid, $uActive, $uCompleted,
+                                    $uFleet, $uOnRoad, $uInYard, $uOcc,
+                                    $uUsers, $uPendPay, $uPendDocs, $syncTs,
+                                    $mStart
+                                ]
+                            );
+                        }
+
+                        // Apply delta updates to kpi_hub_metrics strictly without wiping manual edits
+                        foreach ($hubStats as $hId => $hs) {
+                            if (!isset($existingHubRows[$hId])) {
+                                Database::execute(
+                                    "INSERT INTO `kpi_hub_metrics` (
+                                        `hub_id`, `hub_name`, `total_revenue`, `month_revenue`, `total_bookings`, `paid_bookings`,
+                                        `active_trips`, `total_fleet`, `on_road_fleet`, `available_fleet`, `occupancy_pct`,
+                                        `total_users`, `pending_docs`, `pending_payments`, `day_sales`, `week_sales`, `updated_at`
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                                    [
+                                        $hs['hub_id'], $hs['hub_name'], $hs['total_revenue'], $hs['month_revenue'],
+                                        $hs['total_bookings'], $hs['paid_bookings'], $hs['active_trips'],
+                                        $hs['total_fleet'], $hs['on_road_fleet'], $hs['available_fleet'], $hs['occupancy_pct'],
+                                        $hs['total_users'], $hs['pending_docs'], $hs['pending_payments'],
+                                        $hs['day_sales'], $hs['week_sales'], $syncTs
+                                    ]
+                                );
+                                $snapshotChanged = true;
+                                continue;
+                            }
+
+                            $exH = $existingHubRows[$hId];
+                            $prevH = $lastSnapshot['hubs'][(string)$hId] ?? $snapshotHubs[(string)$hId];
+                            $hubUpdDate = substr((string)($exH['updated_at'] ?? ''), 0, 10);
+                            $hubDayRolled = ($hId === 0) ? $dayRolled : ($dateChanged && ($hubUpdDate < $todayStr));
+                            $hubWeekRolled = ($hId === 0) ? $weekRolled : ($weekChanged && ($hubUpdDate < $weekStartStr));
+                            $hubMonthRolled = ($hId === 0) ? ($monthChanged && ($latestUpdDate < $currentMonthKey)) : ($monthChanged && ($hubUpdDate < $currentMonthKey));
+
+                            $dTotRev = round((float)$hs['total_revenue'] - (float)$prevH['total_revenue'], 2);
+                            $dMonRev = $monthChanged ? 0.0 : round((float)$hs['month_revenue'] - (float)$prevH['month_revenue'], 2);
+                            $dDayH = $dateChanged ? 0.0 : round((float)$hs['day_sales'] - (float)$prevH['day_sales'], 2);
+                            $dWeekH = $weekChanged ? 0.0 : round((float)$hs['week_sales'] - (float)$prevH['week_sales'], 2);
+                            $dBkH = (int)$hs['total_bookings'] - (int)$prevH['total_bookings'];
+                            $dPaidH = (int)$hs['paid_bookings'] - (int)$prevH['paid_bookings'];
+                            $dActiveH = (int)$hs['active_trips'] - (int)$prevH['active_trips'];
+                            $dFleetH = (int)$hs['total_fleet'] - (int)$prevH['total_fleet'];
+                            $dOnRoadH = (int)$hs['on_road_fleet'] - (int)$prevH['on_road_fleet'];
+                            $dUsersH = (int)$hs['total_users'] - (int)$prevH['total_users'];
+                            $dDocsH = (int)$hs['pending_docs'] - (int)$prevH['pending_docs'];
+                            $dPayH = (int)$hs['pending_payments'] - (int)$prevH['pending_payments'];
+
+                            $hubHasChange = abs($dTotRev) >= 0.01
+                                || abs($dMonRev) >= 0.01
+                                || abs($dDayH) >= 0.01
+                                || abs($dWeekH) >= 0.01
+                                || $hubDayRolled
+                                || $hubWeekRolled
+                                || $hubMonthRolled
+                                || $dBkH !== 0
+                                || $dPaidH !== 0
+                                || $dActiveH !== 0
+                                || $dFleetH !== 0
+                                || $dOnRoadH !== 0
+                                || $dUsersH !== 0
+                                || $dDocsH !== 0
+                                || $dPayH !== 0;
+
+                            if (!$hubHasChange) {
+                                continue;
+                            }
+
+                            $snapshotChanged = true;
+                            $uTotRev = max(0.0, round((float)$exH['total_revenue'] + $dTotRev, 2));
+                            $uMonRev = $hubMonthRolled ? (float)$hs['month_revenue'] : max(0.0, round((float)$exH['month_revenue'] + $dMonRev, 2));
+                            $uDayH = $hubDayRolled ? (float)$hs['day_sales'] : max(0.0, round((float)($exH['day_sales'] ?? 0.0) + $dDayH, 2));
+                            $uWeekH = $hubWeekRolled ? (float)$hs['week_sales'] : max(0.0, round((float)($exH['week_sales'] ?? 0.0) + $dWeekH, 2));
+                            $uBkH = max(0, (int)$exH['total_bookings'] + $dBkH);
+                            $uPaidH = max(0, (int)$exH['paid_bookings'] + $dPaidH);
+                            $uActiveH = max(0, (int)$exH['active_trips'] + $dActiveH);
+                            $uFleetH = max(0, (int)$exH['total_fleet'] + $dFleetH);
+                            $uOnRoadH = max(0, (int)$exH['on_road_fleet'] + $dOnRoadH);
+                            $uAvailH = ($dFleetH !== 0 || $dOnRoadH !== 0) ? max(0, $uFleetH - $uOnRoadH) : (int)$exH['available_fleet'];
+                            $uOccH = ($dFleetH !== 0 || $dOnRoadH !== 0) ? ($uFleetH > 0 ? min(100.0, round(($uOnRoadH / $uFleetH) * 100, 2)) : 0.0) : (float)$exH['occupancy_pct'];
+                            $uUsersH = max(0, (int)$exH['total_users'] + $dUsersH);
+                            $uDocsH = max(0, (int)$exH['pending_docs'] + $dDocsH);
+                            $uPayH = max(0, (int)$exH['pending_payments'] + $dPayH);
+
+                            Database::execute(
+                                "UPDATE `kpi_hub_metrics` SET
+                                    `total_revenue` = ?,
+                                    `month_revenue` = ?,
+                                    `day_sales` = ?,
+                                    `week_sales` = ?,
+                                    `total_bookings` = ?,
+                                    `paid_bookings` = ?,
+                                    `active_trips` = ?,
+                                    `total_fleet` = ?,
+                                    `on_road_fleet` = ?,
+                                    `available_fleet` = ?,
+                                    `occupancy_pct` = ?,
+                                    `total_users` = ?,
+                                    `pending_docs` = ?,
+                                    `pending_payments` = ?,
+                                    `updated_at` = ?
+                                 WHERE `hub_id` = ?",
+                                [
+                                    $uTotRev, $uMonRev, $uDayH, $uWeekH,
+                                    $uBkH, $uPaidH, $uActiveH,
+                                    $uFleetH, $uOnRoadH, $uAvailH, $uOccH,
+                                    $uUsersH, $uDocsH, $uPayH, $syncTs,
+                                    $hId
+                                ]
+                            );
+                        }
+
+                        if ($snapshotChanged) {
+                            self::saveLastCalcSnapshot($newSnapshot);
+                        }
+                    }
                 }
             }
 

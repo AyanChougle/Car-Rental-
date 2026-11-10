@@ -132,21 +132,10 @@ try {
         )->execute([$bid, $bNum]);
     });
 
-    // Automated KPI metrics sync into MySQL kpi_metrics table: subtracts cancelled booking revenue
+    // Automated KPI metrics sync into MySQL kpi_metrics & kpi_hub_metrics via delta-aware sync
     try {
         require_once __DIR__ . '/../services/KpiService.php';
-        $bRow = Database::fetchOne("SELECT final_amount, total_amount, security_deposit, advance_amount, pickup_date, pickup_hub_id FROM bookings WHERE id = ? OR booking_id = ? OR booking_number = ? LIMIT 1", [$bid, $bid, $bNum]);
-        if ($bRow) {
-            $tot = (float)($bRow['final_amount'] ?? $bRow['total_amount'] ?? 0);
-            $dep = (float)($bRow['security_deposit'] ?? 0);
-            $netRental = max(0.0, $tot - $dep);
-            if ($netRental <= 0 && !empty($bRow['advance_amount'])) {
-                $netRental = (float)$bRow['advance_amount'];
-            }
-            $hId = (int)($bRow['pickup_hub_id'] ?? 0);
-            $pDate = (string)($bRow['pickup_date'] ?? '');
-            KpiService::decrementBookingMetrics($netRental, $hId, $pDate);
-        }
+        KpiService::syncMetrics(true, false);
     } catch (Throwable $_) {}
 
     sendJsonResponse([

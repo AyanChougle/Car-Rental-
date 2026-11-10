@@ -360,6 +360,83 @@ assert.strictEqual(
 );
 console.log("✓ Test 5 Passed: All daily revenues roll up into exact monthly figures and match across panels.\n");
 
+// TEST 6: Manual Database Edits Reconciliation & Delta-Aware Preservation
+console.log("--- Test 6: Manual DB Edits Preservation & Delta-Aware Sync ---");
+function reconcileAndApplyDelta({ kpiMetricsRow, kpiHubRow, lastSnapshot, newCalc, todayStr }) {
+  // 1. Timestamp reconciliation between kpi_metrics (cur month) and kpi_hub_metrics (hub 0)
+  const curTs = new Date(kpiMetricsRow.updated_at).getTime();
+  const hubTs = new Date(kpiHubRow.updated_at).getTime();
+  if (curTs > hubTs) {
+    kpiHubRow = {
+      ...kpiHubRow,
+      day_sales: kpiMetricsRow.day_sales,
+      week_sales: kpiMetricsRow.week_sales,
+      month_revenue: kpiMetricsRow.month_sales,
+      total_revenue: kpiMetricsRow.total_revenue,
+      active_trips: kpiMetricsRow.active_trips,
+      updated_at: kpiMetricsRow.updated_at,
+    };
+  } else if (hubTs > curTs) {
+    kpiMetricsRow = {
+      ...kpiMetricsRow,
+      day_sales: kpiHubRow.day_sales,
+      week_sales: kpiHubRow.week_sales,
+      month_sales: kpiHubRow.month_revenue,
+      total_revenue: kpiHubRow.total_revenue,
+      active_trips: kpiHubRow.active_trips,
+      updated_at: kpiHubRow.updated_at,
+    };
+  }
+
+  // 2. Delta check against last booking calc snapshot
+  if (!lastSnapshot) {
+    return { kpiMetricsRow, kpiHubRow, lastSnapshot: newCalc };
+  }
+
+  const dateChanged = lastSnapshot.calc_date !== todayStr;
+  const dMonth = Math.round((newCalc.month_sales - lastSnapshot.month_sales) * 100) / 100;
+  const dTotal = Math.round((newCalc.total_revenue - lastSnapshot.total_revenue) * 100) / 100;
+  const dDay = dateChanged ? 0 : Math.round((newCalc.day_sales - lastSnapshot.day_sales) * 100) / 100;
+
+  if (dMonth !== 0 || dTotal !== 0 || dDay !== 0) {
+    kpiMetricsRow.month_sales = Math.max(0, Math.round((kpiMetricsRow.month_sales + dMonth) * 100) / 100);
+    kpiMetricsRow.total_revenue = Math.max(0, Math.round((kpiMetricsRow.total_revenue + dTotal) * 100) / 100);
+    kpiMetricsRow.day_sales = Math.max(0, Math.round((kpiMetricsRow.day_sales + dDay) * 100) / 100);
+
+    kpiHubRow.month_revenue = Math.max(0, Math.round((kpiHubRow.month_revenue + dMonth) * 100) / 100);
+    kpiHubRow.total_revenue = Math.max(0, Math.round((kpiHubRow.total_revenue + dTotal) * 100) / 100);
+    kpiHubRow.day_sales = Math.max(0, Math.round((kpiHubRow.day_sales + dDay) * 100) / 100);
+  }
+
+  return { kpiMetricsRow, kpiHubRow, lastSnapshot: newCalc };
+}
+
+// Case 6a: Admin edits kpi_metrics in phpMyAdmin (45000 / 1570988 / 8000 day) after a day rollover
+const t6a = reconcileAndApplyDelta({
+  kpiMetricsRow: { day_sales: 8000, week_sales: 25000, month_sales: 45000, total_revenue: 1570988, active_trips: 5, updated_at: "2026-11-10T10:05:00Z" },
+  kpiHubRow: { day_sales: 3700, week_sales: 22529, month_revenue: 29729, total_revenue: 1555717, active_trips: 5, updated_at: "2026-11-09T13:37:00Z" },
+  lastSnapshot: { calc_date: "2026-11-09", day_sales: 5000, month_sales: 29729, total_revenue: 1555717 },
+  newCalc: { calc_date: "2026-11-10", day_sales: 3700, month_sales: 29729, total_revenue: 1555717 },
+  todayStr: "2026-11-10"
+});
+assert.strictEqual(t6a.kpiHubRow.month_revenue, 45000, "Manual kpi_metrics edit (45000) must propagate to kpi_hub_metrics");
+assert.strictEqual(t6a.kpiHubRow.total_revenue, 1570988, "Manual total_revenue edit must propagate");
+assert.strictEqual(t6a.kpiMetricsRow.day_sales, 8000, "Today's manual day_sales (8000) must NOT be subtracted by yesterday's day_sales on day rollover");
+
+// Case 6b: Subsequent booking edit (+5000) adds on top of manual edit (45000 -> 50000), never reverts to 34729
+const t6b = reconcileAndApplyDelta({
+  kpiMetricsRow: t6a.kpiMetricsRow,
+  kpiHubRow: t6a.kpiHubRow,
+  lastSnapshot: t6a.lastSnapshot,
+  newCalc: { calc_date: "2026-11-10", day_sales: 8700, month_sales: 34729, total_revenue: 1560717 },
+  todayStr: "2026-11-10"
+});
+assert.strictEqual(t6b.kpiMetricsRow.month_sales, 50000, "New booking +5000 must add on top of manual 45000");
+assert.strictEqual(t6b.kpiHubRow.total_revenue, 1575988, "New booking +5000 must add on top of manual 1570988");
+assert.strictEqual(t6b.kpiHubRow.day_sales, 13000, "Intra-day booking +5000 adds cleanly to manual 8000");
+
+console.log("✓ Test 6 Passed: Manual DB edits in kpi_metrics/kpi_hub_metrics stay intact across syncs, day rollovers, and new bookings.\n");
+
 console.log("==================================================");
-console.log("ALL 5 VERIFICATION TESTS PASSED SUCCESSFULLY! (100%)");
+console.log("ALL 6 VERIFICATION TESTS PASSED SUCCESSFULLY! (100%)");
 console.log("==================================================");

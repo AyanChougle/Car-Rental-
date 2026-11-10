@@ -1019,9 +1019,8 @@ function renderDashboard() {
   const dynamicMonthlyRevenue = {};
   if (serverKpiStats?.monthly && typeof serverKpiStats.monthly === "object") {
     Object.entries(serverKpiStats.monthly).forEach(([mKey, mData]) => {
-      const sales = Number(mData?.month_sales ?? 0);
-      if (sales > 0) {
-        dynamicMonthlyRevenue[mKey] = sales;
+      if (mData?.month_sales !== undefined && mData?.month_sales !== null) {
+        dynamicMonthlyRevenue[mKey] = Number(mData.month_sales);
       }
     });
   }
@@ -1136,7 +1135,11 @@ function renderDashboard() {
   }
 
   // KPI 2: ACTIVE TRIPS (Auto-fetches the live on-road count)
-  const activeTripsCount = onTripFleetCount;
+  const activeTripsCount =
+    serverKpiStats?.effective?.active_trips !== undefined &&
+    serverKpiStats?.effective?.active_trips !== null
+      ? Number(serverKpiStats.effective.active_trips)
+      : onTripFleetCount;
   const kpiActiveTripsEl = document.getElementById("kpiActiveTrips");
   if (kpiActiveTripsEl) {
     kpiActiveTripsEl.innerHTML = `${activeTripsCount} <span style="font-size: 13px; font-weight: 600; color: #4fd7ff; margin-left: 4px;">(${inYardFleetCount} in yard)</span>`;
@@ -1150,11 +1153,11 @@ function renderDashboard() {
     return bStat === "completed";
   }).length;
   const completedTripsCount = selectedMonthKpi
-    ? Number(selectedMonthKpi.completed_trips || calculatedCompletedTripsCount)
-    : Math.max(
-        Number(serverKpiStats?.effective?.completed_trips || 0),
-        calculatedCompletedTripsCount,
-      );
+    ? Number(selectedMonthKpi.completed_trips ?? calculatedCompletedTripsCount)
+    : (serverKpiStats?.effective?.completed_trips !== undefined &&
+       serverKpiStats?.effective?.completed_trips !== null
+        ? Number(serverKpiStats.effective.completed_trips)
+        : calculatedCompletedTripsCount);
   const kpiCompletedTripsEl = document.getElementById("kpiCompletedTrips");
   if (kpiCompletedTripsEl)
     kpiCompletedTripsEl.textContent = String(completedTripsCount);
@@ -1199,11 +1202,11 @@ function renderDashboard() {
     (b) => !isBookingCancelled(b),
   ).length;
   const totalBookingsCount = selectedMonthKpi
-    ? Number(selectedMonthKpi.total_bookings || calculatedTotalBookingsCount)
-    : Math.max(
-        Number(serverKpiStats?.effective?.total_bookings || 0),
-        calculatedTotalBookingsCount,
-      );
+    ? Number(selectedMonthKpi.total_bookings ?? calculatedTotalBookingsCount)
+    : (serverKpiStats?.effective?.total_bookings !== undefined &&
+       serverKpiStats?.effective?.total_bookings !== null
+        ? Number(serverKpiStats.effective.total_bookings)
+        : calculatedTotalBookingsCount);
   const kpiTotalBookingsEl = document.getElementById("kpiTotalBookings");
   if (kpiTotalBookingsEl)
     kpiTotalBookingsEl.textContent = String(totalBookingsCount);
@@ -1516,13 +1519,16 @@ function renderDashboard() {
     daySales += proratedRevenue;
   });
   const isDefaultView = isAllTime || (!filterFromDate && !filterToDate);
-  const serverDaySales = Number(
+  const rawServerDaySales =
     serverKpiStats?.effective?.day_sales ??
-      serverKpiStats?.live?.day_sales ??
-      0,
-  );
-  if ((isDefaultView || activeQuickFilter === "today") && serverDaySales > 0) {
-    daySales = serverDaySales;
+    serverKpiStats?.live?.day_sales ??
+    serverKpiStats?.monthly?.[curMonthKey]?.day_sales;
+  if (
+    (isDefaultView || activeQuickFilter === "today") &&
+    rawServerDaySales !== undefined &&
+    rawServerDaySales !== null
+  ) {
+    daySales = Number(rawServerDaySales);
   }
 
   // 2. Week Sales (Sunday to Saturday prorated daily rental revenue without security deposit)
@@ -1545,16 +1551,16 @@ function renderDashboard() {
     weekSales += proratedRevenue;
   });
   weekSales = Math.round(weekSales * 100) / 100;
-  const serverWeekSales = Number(
+  const rawServerWeekSales =
     serverKpiStats?.effective?.week_sales ??
-      serverKpiStats?.live?.week_sales ??
-      0,
-  );
+    serverKpiStats?.live?.week_sales ??
+    serverKpiStats?.monthly?.[curMonthKey]?.week_sales;
   if (
     (isDefaultView || activeQuickFilter === "this_week") &&
-    serverWeekSales > 0
+    rawServerWeekSales !== undefined &&
+    rawServerWeekSales !== null
   ) {
-    weekSales = serverWeekSales;
+    weekSales = Number(rawServerWeekSales);
   }
 
   // 3. Month Sales (1st of month to today)
