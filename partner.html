@@ -449,6 +449,37 @@
 
               </div>
 
+              <!-- Host Payout Model -->
+              <div class="partner-field">
+
+                <label for="payoutModel">
+                  Preferred Payout Model *
+                </label>
+
+                <select id="payoutModel" required>
+                  <option value="revenue_share">Trip Revenue Share (60% Host / 40% Company)</option>
+                  <option value="fixed_monthly">Fixed Monthly Retainer</option>
+                </select>
+
+              </div>
+
+              <!-- Fixed Monthly Retainer Amount -->
+              <div class="partner-field" id="fixedMonthlyAmountField" hidden>
+
+                <label for="fixedMonthlyAmount">
+                  Expected Monthly Payout (INR) *
+                </label>
+
+                <input
+                  type="number"
+                  id="fixedMonthlyAmount"
+                  min="1000"
+                  step="500"
+                  placeholder="e.g. 25000"
+                />
+
+              </div>
+
             </div>
 
           </section>
@@ -679,7 +710,7 @@
   <!-- Scripts -->
   <script
     type="module"
-    src="js/partner.js"
+    src="js/partner.js?v=20261112-v3"
   ></script>
 
   <script src="js/carModels.js?v=20261001-v2"></script>

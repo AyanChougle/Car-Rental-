@@ -232,11 +232,14 @@ if ($method === 'POST') {
     $hubName = null;
     $hubLocation = null;
     if ($hubId && $hubId > 0) {
-        $hubRec = Database::fetchOne("SELECT name, city, address FROM hubs WHERE id = ?", [$hubId]);
-        if ($hubRec) {
-            $hubName = $hubRec['name'];
-            $hubLocation = !empty($hubRec['address']) ? $hubRec['address'] : ($hubRec['name'] . ', ' . ($hubRec['city'] ?? ''));
+        $hubRec = Database::fetchOne("SELECT id, name, city, address FROM hubs WHERE id = ? LIMIT 1", [$hubId]);
+        if (!$hubRec) {
+            sendErrorResponse("Invalid hub_id ($hubId): hub does not exist in database.", 400);
         }
+        $hubName = $hubRec['name'];
+        $hubLocation = !empty($hubRec['address']) ? $hubRec['address'] : ($hubRec['name'] . ', ' . ($hubRec['city'] ?? ''));
+    } else {
+        $hubId = null;
     }
 
     Database::execute(
@@ -272,6 +275,11 @@ if ($method === 'POST') {
             $isActiveFleet, $gallery, $user['firebase_uid'] ?? null
         ]
     );
+
+    try {
+        require_once __DIR__ . '/../services/KpiService.php';
+        KpiService::syncMetrics(true, false);
+    } catch (Throwable $_) {}
 
     sendJsonResponse(['success' => true, 'message' => "Vehicle $regNo saved to fleet.", 'regNo' => $regNo, 'hub_id' => $hubId]);
 }

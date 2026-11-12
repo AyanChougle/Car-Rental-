@@ -77,7 +77,7 @@ function renderFleetCards(records) {
       const bodyType = getVehicleBodyType(vehicle);
       const detailsId = `fleet-card-details-${index}`;
 
-      const hubLocationText = vehicle.hubName || vehicle.hub || vehicle.location || "Gavson Business Park, Ghansoli";
+      const hubLocationText = vehicle.hubName || vehicle.hub || vehicle.location || "Hub assigned at booking";
       return `
         <article
           class="fleet-card fleet-card--compact"
@@ -398,15 +398,23 @@ function applyFilters() {
     const cardHubId = String(card.dataset.hubId || "").trim();
     const cardHubName = String(card.dataset.hubName || "").toLowerCase();
 
-    // Hub Filter
+    // Hub Filter (DB-driven hub IDs & DB hub attributes only — zero hardcoded hub guesses)
     let matchesHub = true;
     if (selectedHub) {
       if (cardHubId) {
         matchesHub = cardHubId === String(selectedHub);
       } else {
-        if (selectedHub === "1") matchesHub = cardHubName.includes("gavson") || cardHubName.includes("ghansoli") || cardHubName.includes("navi mumbai");
-        else if (selectedHub === "2") matchesHub = cardHubName.includes("kandivali") || cardHubName.includes("mumbai");
-        else matchesHub = true;
+        const dbHub = Array.isArray(window.KRUIZLY_HUBS)
+          ? window.KRUIZLY_HUBS.find((h) => String(h.id) === String(selectedHub))
+          : null;
+        if (dbHub) {
+          const hubTokens = [dbHub.name, dbHub.city, dbHub.code]
+            .map((t) => String(t || "").trim().toLowerCase())
+            .filter((t) => t.length >= 3);
+          matchesHub = hubTokens.some((tok) => cardHubName.includes(tok));
+        } else {
+          matchesHub = false;
+        }
       }
     }
 
@@ -488,10 +496,17 @@ function applyFilters() {
     fleetEmptyState.hidden = anyMatching;
     const titleEl = fleetEmptyState.querySelector("h2");
     const subEl = fleetEmptyState.querySelector("p");
-    if (selectedHub && selectedHub !== "") {
+    const totalVehiclesLoaded = Array.isArray(window.fleetVehicles) ? window.fleetVehicles.length : 0;
+    if (window.fleetLoadError && totalVehiclesLoaded === 0) {
+      if (titleEl) titleEl.textContent = "Unable to load fleet vehicles";
+      if (subEl) subEl.textContent = String(window.fleetLoadError);
+    } else if (selectedHub && selectedHub !== "") {
       const hubLabel = document.querySelector(`input[name="filterHub"][value="${selectedHub}"]`)?.closest("label")?.textContent?.trim() || "this Hub";
       if (titleEl) titleEl.textContent = `No vehicles currently stationed at ${hubLabel}`;
-      if (subEl) subEl.textContent = "Select 'All Hubs' or 'Gavson — Navi Mumbai' to browse available fleet vehicles.";
+      if (subEl) subEl.textContent = "Select 'All Hubs' or another active hub to browse available fleet vehicles.";
+    } else if (totalVehiclesLoaded === 0) {
+      if (titleEl) titleEl.textContent = "No vehicles currently available";
+      if (subEl) subEl.textContent = "No fleet vehicles were returned from the database for this view.";
     } else {
       if (titleEl) titleEl.textContent = "No matching cars found";
       if (subEl) subEl.textContent = "Try clearing your filters or changing your search terms.";
@@ -691,7 +706,8 @@ async function applyFleetAvailabilityOverrides() {
       api.get("/hubs?active=1")
     ]);
 
-    if (hubsRes.status === "fulfilled" && hubsRes.value?.success && Array.isArray(hubsRes.value.hubs) && hubsRes.value.hubs.length) {
+    if (hubsRes.status === "fulfilled" && hubsRes.value?.success && Array.isArray(hubsRes.value.hubs)) {
+      window.KRUIZLY_HUBS = hubsRes.value.hubs;
       const hubOptionsWrap = document.getElementById("fleetHubFilterOptions");
       if (hubOptionsWrap) {
         const urlParams = new URLSearchParams(window.location.search);
@@ -721,35 +737,33 @@ async function applyFleetAvailabilityOverrides() {
       }
     }
 
-    const serverVehicles = (vehRes.status === "fulfilled" && Array.isArray(vehRes.value?.vehicles) && vehRes.value.vehicles.length > 0)
-      ? vehRes.value.vehicles
-      : (window.DEFAULT_FLEET_VEHICLES || window.fleetVehicles || []);
-    window.fleetVehicles = serverVehicles
-      .filter(v => v && v.status !== "removed" && v.status !== "disabled");
+    if (vehRes.status === "fulfilled" && vehRes.value && vehRes.value.success && Array.isArray(vehRes.value.vehicles)) {
+      window.fleetLoadError = null;
+      window.fleetVehicles = vehRes.value.vehicles
+        .filter((v) => v && v.status !== "removed" && v.status !== "disabled" && v.status !== "inactive");
+    } else {
+      window.fleetLoadError = (vehRes.status === "rejected" ? vehRes.reason?.message : vehRes.value?.error) || "Unable to load fleet vehicles from database.";
+      window.fleetVehicles = [];
+    }
   } catch (error) {
     console.warn("Could not load fleet:", error);
-    window.fleetVehicles = (window.DEFAULT_FLEET_VEHICLES && window.DEFAULT_FLEET_VEHICLES.length)
-      ? window.DEFAULT_FLEET_VEHICLES
-      : (window.fleetVehicles || []);
+    window.fleetLoadError = error?.message || "Unable to load fleet vehicles from database.";
+    window.fleetVehicles = [];
   }
 }
 
-// Render catalog immediately — always have vehicles visible
-const initialFleet = (Array.isArray(window.fleetVehicles) && window.fleetVehicles.length > 0)
+// Initial render: show currently loaded DB vehicles or loading/empty state without fake defaults
+const initialFleet = Array.isArray(window.fleetVehicles)
   ? window.fleetVehicles
-  : (Array.isArray(window.DEFAULT_FLEET_VEHICLES) && window.DEFAULT_FLEET_VEHICLES.length > 0)
-    ? window.DEFAULT_FLEET_VEHICLES
-    : [];
+  : [];
 
 window.fleetVehicles = initialFleet;
 renderFleetCards(window.fleetVehicles);
 applyFilters();
 
 applyFleetAvailabilityOverrides().then(() => {
-  if (Array.isArray(window.fleetVehicles) && window.fleetVehicles.length > 0) {
-    renderFleetCards(window.fleetVehicles);
-    applyFilters();
-  }
+  renderFleetCards(Array.isArray(window.fleetVehicles) ? window.fleetVehicles : []);
+  applyFilters();
 });
 
 window.addEventListener("kruizly:hubchange", (e) => {

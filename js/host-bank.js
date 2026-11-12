@@ -1,9 +1,19 @@
 // Host bank details (profile page, host role only)
 import { checkAuth, getCurrentUser } from "./auth.js?v=20260917-v1";
 import { api } from "./kruizly-api.js?v=20260930-bank";
+import {
+  fetchProtectedMediaPreview,
+  createDocPreviewSvg,
+  openImageLightbox,
+  isPdfDocument,
+  isBrowserRenderableImageMime,
+  extractFileExtension,
+  revokeObjectUrlSafely,
+} from "./image-lightbox.js?v=20261112-v3";
 
 const $ = (id) => document.getElementById(id);
 let passbookMediaId = "";
+let passbookPreviewObjectUrl = "";
 let loaded = false;
 
 function setStatus(msg, kind = "") {
@@ -35,12 +45,36 @@ async function loadBankDetails() {
     $("bankIfsc").value = d.ifscCode || "";
     passbookMediaId = d.passbookMediaId || "";
     if (passbookMediaId) {
-      $("bankPassbookNote").textContent = "Passbook photo uploaded. Choose a new file only to replace it.";
+      $("bankPassbookNote").textContent = "Passbook uploaded. Choose a new file only to replace it.";
       if (d.passbookUrl) {
         const img = $("bankPassbookPreview");
         if (img) {
-          img.src = d.passbookUrl;
-          img.hidden = false;
+          if (passbookPreviewObjectUrl) {
+            revokeObjectUrlSafely(passbookPreviewObjectUrl);
+            passbookPreviewObjectUrl = "";
+          }
+          try {
+            const preview = await fetchProtectedMediaPreview(d.passbookUrl);
+            if (preview.isBlob) {
+              passbookPreviewObjectUrl = preview.url;
+            }
+            if (preview.isPdf || preview.isNonInline || preview.isPlaceholder) {
+              const badge = preview.isPdf
+                ? "PDF"
+                : (preview.ext || "DOC").toUpperCase();
+              img.src = createDocPreviewSvg(badge, "Uploaded Passbook");
+            } else {
+              img.src = preview.url;
+            }
+            img.style.cursor = "zoom-in";
+            img.title = "Click to view full passbook";
+            img.onclick = () =>
+              openImageLightbox(d.passbookUrl, "Bank Passbook", "Uploaded Passbook Document");
+            img.hidden = false;
+          } catch (previewErr) {
+            console.warn("Passbook preview unavailable:", previewErr?.message || previewErr);
+            img.hidden = true;
+          }
         }
       }
     }
@@ -56,7 +90,7 @@ async function init() {
   const user = getCurrentUser();
   if (!ok || !user) return;
   const role = String(user.role || "").toLowerCase();
-  let isHost = role === "host" || role === "partner" || role === "admin" || role === "super_admin";
+  let isHost = role === "host" || role === "partner";
 
   if (!isHost) {
     try {
@@ -88,8 +122,25 @@ async function init() {
     const img = $("bankPassbookPreview");
     if (!f) return;
     passbookMediaId = ""; // new file must be uploaded on save
-    if (f.type.startsWith("image/") && img) { img.src = URL.createObjectURL(f); img.hidden = false; }
-    else if (img) img.hidden = true;
+    if (passbookPreviewObjectUrl) {
+      revokeObjectUrlSafely(passbookPreviewObjectUrl);
+      passbookPreviewObjectUrl = "";
+    }
+    if (img) {
+      img.onclick = null;
+      img.style.cursor = "default";
+      if (isBrowserRenderableImageMime(f.type, f.name)) {
+        const objUrl = URL.createObjectURL(f);
+        passbookPreviewObjectUrl = objUrl;
+        img.src = objUrl;
+      } else {
+        const badge = isPdfDocument(f.name, f.type)
+          ? "PDF"
+          : (extractFileExtension(f.name) || "FILE").toUpperCase();
+        img.src = createDocPreviewSvg(badge, f.name);
+      }
+      img.hidden = false;
+    }
     $("bankPassbookNote").textContent = f.name;
   });
 

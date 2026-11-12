@@ -15,13 +15,19 @@ if (!$bookingId) {
 }
 
 $user = Auth::requireAuth();
-$isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive'], true);
+$isStaff = in_array($user['role'] ?? '', ['admin', 'super_admin', 'manager', 'executive', 'accountant', 'accounts'], true);
 
 $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
     $b = Database::fetchOne(
-        "SELECT * FROM bookings WHERE booking_id = ? OR booking_number = ? OR id = ? LIMIT 1",
+        "SELECT b.*, v.hub_id AS v_hub_id
+         FROM bookings b
+         LEFT JOIN vehicles v ON (
+             (b.vehicle_id IS NOT NULL AND b.vehicle_id > 0 AND v.id = b.vehicle_id)
+             OR (b.vehicle_reg IS NOT NULL AND TRIM(b.vehicle_reg) <> '' AND b.vehicle_reg <> 'TBD' AND v.reg_no = b.vehicle_reg)
+         )
+         WHERE b.booking_id = ? OR b.booking_number = ? OR b.id = ? LIMIT 1",
         [$bookingId, $bookingId, $bookingId]
     );
 
@@ -58,25 +64,30 @@ if ($method === 'GET') {
     $pickupPhotoMediaIds = $inspection['pickupPhotoMediaIds'] ?? [];
     $pickupPhotos = $inspection['pickupPhotos'] ?? [];
 
-    $pickupHubName = null; $dropHubName = null;
-    try {
-        if (!empty($b['pickup_hub_id'])) {
-            $h = Database::fetchOne("SELECT name FROM hubs WHERE id = ? LIMIT 1", [(int)$b['pickup_hub_id']]);
-            $pickupHubName = $h['name'] ?? null;
-        }
-        if (!empty($b['drop_hub_id'])) {
-            $h = Database::fetchOne("SELECT name FROM hubs WHERE id = ? LIMIT 1", [(int)$b['drop_hub_id']]);
-            $dropHubName = $h['name'] ?? null;
-        }
-    } catch (Throwable $_) {}
+    $registeredHubs = KpiService::getRegisteredHubsMap();
+    $hubAttr = KpiService::resolveHubAttribution($b, $registeredHubs);
+    $paymentData = KpiService::loadDeduplicatedPayments();
+    $paymentsByBooking = $paymentData['by_booking'] ?? [];
+    $bkKey1 = strtoupper(ltrim((string)($b['booking_id'] ?? ''), '#'));
+    $bkKey2 = strtoupper(ltrim((string)($b['booking_number'] ?? ''), '#'));
+    $pAgg = $paymentsByBooking[$bkKey1] ?? ($paymentsByBooking[$bkKey2] ?? []);
+    $fin = KpiService::computeBookingFinancials($b, $pAgg);
+    $dates = KpiService::getBookingDates($b);
+    $split = KpiService::calculateMonthlyRevenueSplit($b, $fin);
+
+    $pickupHubName = $hubAttr['pickup_hub_id'] ? $hubAttr['pickup_hub_name'] : null;
+    $dropHubName = $hubAttr['drop_hub_id'] ? $hubAttr['drop_hub_name'] : null;
 
     sendJsonResponse([
         'success' => true,
         'booking' => [
-            'pickupHubId' => isset($b['pickup_hub_id']) ? (int)$b['pickup_hub_id'] : null,
-            'dropHubId' => isset($b['drop_hub_id']) ? (int)$b['drop_hub_id'] : null,
+            'pickupHubId' => $hubAttr['pickup_hub_id'] ?: null,
+            'dropHubId' => $hubAttr['drop_hub_id'] ?: null,
+            'reportingHubId' => $hubAttr['reporting_hub_id'] ?: null,
             'pickupHubName' => $pickupHubName,
             'dropHubName' => $dropHubName ?: $pickupHubName,
+            'reportingHubName' => $hubAttr['reporting_hub_name'],
+            'isCrossHubReturn' => $hubAttr['is_cross_hub_return'],
             'pickupLocation' => $pickupHubName ?: ($b['location'] ?? null),
             'dropLocation' => $dropHubName ?: $pickupHubName ?: ($b['location'] ?? null),
             'id' => $b['booking_id'],
@@ -93,19 +104,34 @@ if ($method === 'GET') {
             'pickupDate' => $b['pickup_date'],
             'dropDate' => $b['drop_date'],
             'duration' => $b['duration'],
-            'days' => (int)$b['days'],
-            'hours' => (int)$b['hours'],
+            'days' => $dates['days'],
+            'hours' => $dates['hours'],
             'withDriver' => (int)$b['with_driver'],
-            'baseAmount' => (float)$b['base_amount'],
-            'totalAmount' => (float)$b['total_amount'],
-            'finalAmount' => (float)$b['final_amount'],
+            'baseAmount' => $fin['base_rental'],
+            'baseRental' => $fin['base_rental'],
+            'driverCharges' => $fin['driver_charges'],
+            'extraCharges' => $fin['extra_charges'],
+            'totalAmount' => $fin['net_rental_before_refund'],
+            'finalAmount' => $fin['net_rental_before_refund'],
+            'netRentalBeforeRefund' => $fin['net_rental_before_refund'],
+            'netRentalRevenue' => $fin['net_rental_revenue'],
+            'grossCustomerPayable' => $fin['gross_customer_payable'],
             'advanceAmount' => (float)$b['advance_amount'],
-            'remainingBalance' => (float)$b['remaining_balance'],
-            'securityDeposit' => (float)$b['security_deposit'],
+            'verifiedCollected' => $fin['verified_collected'],
+            'paymentAmountPaid' => $fin['verified_collected'],
+            'netCollections' => $fin['net_collections'],
+            'refundAmount' => $fin['refund_amount'],
+            'refundStatus' => $b['refund_status'] ?? ($fin['refund_amount'] > 0 ? 'refunded' : 'none'),
+            'outstandingAmount' => $fin['outstanding_amount'],
+            'remainingBalance' => $fin['outstanding_amount'],
+            'securityDeposit' => $fin['security_deposit'],
             'couponCode' => $b['coupon_code'],
-            'couponDiscount' => (float)$b['coupon_discount'],
+            'couponDiscount' => $fin['coupon_discount'],
             'paymentPlan' => $b['payment_plan'],
             'paymentStatus' => $b['payment_status'],
+            'isCancelled' => $fin['is_cancelled'],
+            'isPaid' => $fin['is_paid'],
+            'hasPendingVerification' => $fin['has_pending_verification'],
             'status' => $b['status'],
             'bookingStatus' => $b['booking_status'],
             'paymentRef' => $b['payment_ref'],
@@ -128,8 +154,8 @@ if ($method === 'GET') {
             'pickupPhotos' => $pickupPhotos,
             'returnInspection' => $inspection,
             'paymentScreenshotUrl' => $b['payment_screenshot_url'],
-            'monthlyRevenueSplit' => (!empty($b['monthly_revenue_split']) ? (is_string($b['monthly_revenue_split']) ? json_decode($b['monthly_revenue_split'], true) : $b['monthly_revenue_split']) : KpiService::calculateMonthlyRevenueSplit($b)),
-            'monthly_revenue_split' => (!empty($b['monthly_revenue_split']) ? (is_string($b['monthly_revenue_split']) ? json_decode($b['monthly_revenue_split'], true) : $b['monthly_revenue_split']) : KpiService::calculateMonthlyRevenueSplit($b)),
+            'monthlyRevenueSplit' => $split,
+            'monthly_revenue_split' => $split,
             'createdAt' => $b['created_at'],
             'updatedAt' => $b['updated_at']
         ]
@@ -137,7 +163,7 @@ if ($method === 'GET') {
 }
 
 if ($method === 'PUT' || $method === 'POST') {
-    Auth::requireRole('admin', 'manager', 'executive');
+    Auth::requireRole('admin', 'super_admin', 'manager', 'executive');
     $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 
     $existing = Database::fetchOne(
@@ -315,26 +341,72 @@ if ($method === 'PUT' || $method === 'POST') {
         $existingInspection['inspectedBy'] = (string)($input['returnedBy'] ?? $input['inspectedBy']);
     }
 
-    // Date & Timeline updates
-    if (isset($input['pickupDate']) || isset($input['pickup_date'])) {
+    // Date & Timeline updates (strict validation using Unified Date Engine; never turns invalid dates into 24h)
+    $hasPickupEdit = isset($input['pickupDate']) || isset($input['pickup_date']);
+    $hasDropEdit = isset($input['dropDate']) || isset($input['drop_date']) || isset($input['returnDate']);
+    if ($hasPickupEdit || $hasDropEdit) {
+        $candPickup = $hasPickupEdit ? ($input['pickupDate'] ?? $input['pickup_date']) : ($existing['pickup_date'] ?? null);
+        $candDrop = $hasDropEdit ? ($input['dropDate'] ?? $input['drop_date'] ?? $input['returnDate']) : ($existing['drop_date'] ?? null);
+        $expDays = isset($input['days']) && is_numeric($input['days']) && (int)$input['days'] > 0
+            ? (int)$input['days']
+            : null;
+
+        $dateVal = KpiService::validateBookingDates($candPickup, $candDrop, true, $expDays);
+        if (empty($dateVal['valid'])) {
+            sendErrorResponse((string)($dateVal['error'] ?? 'Invalid pickup or return date/time.'), 400);
+        }
+
         $updates[] = "pickup_date = ?";
-        $params[] = (string)($input['pickupDate'] ?? $input['pickup_date']);
-    }
-    if (isset($input['dropDate']) || isset($input['drop_date']) || isset($input['returnDate'])) {
+        $params[] = (string)$dateVal['pickup_sql'];
         $updates[] = "drop_date = ?";
-        $params[] = (string)($input['dropDate'] ?? $input['drop_date'] ?? $input['returnDate']);
-    }
-    if (isset($input['days'])) {
+        $params[] = (string)$dateVal['drop_sql'];
         $updates[] = "days = ?";
-        $params[] = (int)$input['days'];
-    }
-    if (isset($input['hours'])) {
+        $params[] = (int)$dateVal['days'];
         $updates[] = "hours = ?";
-        $params[] = (int)$input['hours'];
-    }
-    if (isset($input['duration'])) {
+        $params[] = (int)$dateVal['hours'];
         $updates[] = "duration = ?";
-        $params[] = (string)$input['duration'];
+        $params[] = (string)$dateVal['duration'];
+    } else {
+        if (isset($input['days'])) {
+            $dInt = (int)$input['days'];
+            if ($dInt <= 0) {
+                sendErrorResponse('Booking days must be at least 1.', 400);
+            }
+            $updates[] = "days = ?";
+            $params[] = $dInt;
+        }
+        if (isset($input['hours'])) {
+            $hInt = (int)$input['hours'];
+            if ($hInt <= 0) {
+                sendErrorResponse('Booking hours must be greater than 0.', 400);
+            }
+            $updates[] = "hours = ?";
+            $params[] = $hInt;
+        }
+        if (isset($input['duration'])) {
+            $updates[] = "duration = ?";
+            $params[] = (string)$input['duration'];
+        }
+    }
+
+    // Validate hub edits strictly against DB registered hubs if supplied
+    if (isset($input['pickup_hub_id']) || isset($input['pickupHubId'])) {
+        $newPHub = (int)($input['pickup_hub_id'] ?? $input['pickupHubId']);
+        $registeredHubs = KpiService::getRegisteredHubsMap();
+        if ($newPHub > 0 && !isset($registeredHubs[$newPHub])) {
+            sendErrorResponse("Invalid pickup hub ID ($newPHub).", 400);
+        }
+        $updates[] = "pickup_hub_id = ?";
+        $params[] = $newPHub > 0 ? $newPHub : null;
+    }
+    if (isset($input['drop_hub_id']) || isset($input['dropHubId'])) {
+        $newDHub = (int)($input['drop_hub_id'] ?? $input['dropHubId']);
+        $registeredHubs = KpiService::getRegisteredHubsMap();
+        if ($newDHub > 0 && !isset($registeredHubs[$newDHub])) {
+            sendErrorResponse("Invalid return hub ID ($newDHub).", 400);
+        }
+        $updates[] = "drop_hub_id = ?";
+        $params[] = $newDHub > 0 ? $newDHub : null;
     }
     if (isset($input['location'])) {
         $updates[] = "location = ?";
@@ -354,29 +426,93 @@ if ($method === 'PUT' || $method === 'POST') {
         $updates[] = "user_phone = ?";
         $params[] = (string)($input['userPhone'] ?? $input['user_phone']);
     }
-    $depositVal = isset($input['securityDeposit']) ? (float)$input['securityDeposit'] : (float)($existing['security_deposit'] ?? 0);
-    if (isset($input['securityDeposit'])) {
+    // Financials updates (security deposit strictly excluded from net rental total)
+    $existingCols = [];
+    try {
+        foreach (Database::fetchAll("SHOW COLUMNS FROM bookings") as $colRow) {
+            $existingCols[strtolower((string)$colRow['Field'])] = true;
+        }
+    } catch (Throwable $_) {}
+
+    $depositVal = isset($input['securityDeposit']) || isset($input['security_deposit'])
+        ? max(0.0, round((float)($input['securityDeposit'] ?? $input['security_deposit']), 2))
+        : (float)($existing['security_deposit'] ?? 0.0);
+    if (isset($input['securityDeposit']) || isset($input['security_deposit'])) {
         $updates[] = "security_deposit = ?";
-        $params[] = (float)$input['securityDeposit'];
+        $params[] = $depositVal;
     }
 
-    if (isset($input['baseAmount']) || isset($input['base_amount'])) {
-        $baseAmt = (float)($input['baseAmount'] ?? $input['base_amount']);
+    $hasBaseInput = isset($input['baseAmount']) || isset($input['base_amount']);
+    $hasDriverInput = isset($input['driverCharges']) || isset($input['driver_charges']);
+    $hasExtraInput = isset($input['extraCharges']) || isset($input['extra_charges']);
+    $hasDiscInput = isset($input['couponDiscount']) || isset($input['coupon_discount']);
+    $hasTotalInput = isset($input['totalAmount']) || isset($input['total_amount']);
+
+    $driverVal = $hasDriverInput
+        ? max(0.0, round((float)($input['driverCharges'] ?? $input['driver_charges']), 2))
+        : max(0.0, round((float)($existing['driver_charges'] ?? 0.0), 2));
+    $extraVal = $hasExtraInput
+        ? max(0.0, round((float)($input['extraCharges'] ?? $input['extra_charges']), 2))
+        : max(0.0, round((float)($existing['extra_charges'] ?? 0.0), 2));
+    $discVal = $hasDiscInput
+        ? max(0.0, round((float)($input['couponDiscount'] ?? $input['coupon_discount']), 2))
+        : max(0.0, round((float)($existing['coupon_discount'] ?? 0.0), 2));
+
+    if ($hasDriverInput && isset($existingCols['driver_charges'])) {
+        $updates[] = "driver_charges = ?";
+        $params[] = $driverVal;
+    }
+    if ($hasExtraInput && isset($existingCols['extra_charges'])) {
+        $updates[] = "extra_charges = ?";
+        $params[] = $extraVal;
+    }
+    if ($hasDiscInput) {
+        $updates[] = "coupon_discount = ?";
+        $params[] = $discVal;
+    }
+
+    $baseAmt = $hasBaseInput
+        ? max(0.0, round((float)($input['baseAmount'] ?? $input['base_amount']), 2))
+        : max(0.0, round((float)($existing['base_amount'] ?? 0.0), 2));
+
+    if ($hasBaseInput) {
         $updates[] = "base_amount = ?";
         $params[] = $baseAmt;
-    } elseif (isset($input['totalAmount']) || isset($input['total_amount'])) {
-        $tot = (float)($input['totalAmount'] ?? $input['total_amount']);
-        $calcBase = max(0.0, $tot - $depositVal);
+    } elseif ($hasTotalInput) {
+        $tot = max(0.0, round((float)($input['totalAmount'] ?? $input['total_amount']), 2));
+        $baseAmt = max(0.0, round($tot + $discVal - $driverVal - $extraVal, 2));
         $updates[] = "base_amount = ?";
-        $params[] = $calcBase;
+        $params[] = $baseAmt;
     }
 
-    if (isset($input['totalAmount']) || isset($input['total_amount'])) {
-        $tot = (float)($input['totalAmount'] ?? $input['total_amount']);
+    if ($hasTotalInput || $hasBaseInput || $hasDriverInput || $hasExtraInput || $hasDiscInput) {
+        $netTotal = $hasTotalInput
+            ? max(0.0, round((float)($input['totalAmount'] ?? $input['total_amount']), 2))
+            : max(0.0, round($baseAmt + $driverVal + $extraVal - $discVal, 2));
         $updates[] = "total_amount = ?";
         $updates[] = "final_amount = ?";
-        $params[] = $tot;
-        $params[] = $tot;
+        $params[] = $netTotal;
+        $params[] = $netTotal;
+    }
+
+    if ($newStatus && in_array(strtolower((string)$newStatus), ['cancelled', 'rejected'], true)) {
+        if (!isset($input['paymentStatus']) && max(0.0, (float)($existing['payment_amount_paid'] ?? 0.0)) <= 0.0) {
+            $updates[] = "payment_status = ?";
+            $params[] = "cancelled";
+        }
+        $updates[] = "remaining_balance = ?";
+        $params[] = 0.00;
+        if (isset($existingCols['remaining_amount'])) {
+            $updates[] = "remaining_amount = ?";
+            $params[] = 0.00;
+        }
+        try {
+            $canonId = $existing['booking_id'] ?: ($existing['booking_number'] ?: (string)$existing['id']);
+            Database::execute(
+                "UPDATE payments SET status = 'rejected', refund_reason = 'Voided when booking marked cancelled', updated_at = CURRENT_TIMESTAMP WHERE (booking_id = ? OR booking_id = ?) AND status = 'pending'",
+                [$canonId, (string)($existing['booking_number'] ?? $canonId)]
+            );
+        } catch (Throwable $_) {}
     }
 
     $updates[] = "return_inspection = ?";

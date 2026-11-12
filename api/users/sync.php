@@ -34,6 +34,11 @@ $updated = Database::fetchOne(
     [$user['id'] ?? 0, $user['firebase_uid'] ?? '', $user['email'] ?? '']
 );
 
+try {
+    require_once __DIR__ . '/../services/KpiService.php';
+    KpiService::syncMetrics(true, false);
+} catch (Throwable $_) {}
+
 sendJsonResponse([
     'success' => true,
     'message' => 'User synchronized with MySQL database.',

@@ -6,6 +6,12 @@
 import { checkAuth, getCurrentUser } from "./auth.js?v=20260917-v1";
 import { api } from "./kruizly-api.js?v=20261001-v2";
 import "./nav-helper.js?v=20260928-v2";
+import {
+  createDocPreviewSvg,
+  isPdfDocument,
+  isBrowserRenderableImageMime,
+  extractFileExtension,
+} from "./image-lightbox.js?v=20261112-v3";
 
 // ============================================================
 // DOM ELEMENTS
@@ -20,11 +26,22 @@ const carPhotosInput = document.getElementById("carPhotos");
 const carPhotoPreview = document.getElementById("carPhotoPreview");
 const myListingsSection = document.getElementById("myListingsSection");
 const myListingsWrap = document.getElementById("myListingsWrap");
+const payoutModelSelect = document.getElementById("payoutModel");
+const fixedMonthlyField = document.getElementById("fixedMonthlyAmountField");
+
+if (payoutModelSelect && fixedMonthlyField) {
+  const syncPayoutVisibility = () => {
+    fixedMonthlyField.hidden = payoutModelSelect.value !== "fixed_monthly";
+  };
+  payoutModelSelect.addEventListener("change", syncPayoutVisibility);
+  syncPayoutVisibility();
+}
 
 const MAX_HOST_PHOTOS = 6;
 const MAX_HOST_PHOTO_BYTES = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_PARTNER_EXTS = [
-  "jpg", "jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "svg", "avif", "heic", "heif",
+  "jpg", "jpeg", "jpe", "jfif", "jfi", "png", "gif", "webp", "bmp", "dib",
+  "tif", "tiff", "svg", "avif", "avis", "heic", "heif", "hif", "hvic", "ico",
   "zip", "zipx", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "tar.gz", "tar.bz2", "tar.xz",
   "pdf", "doc", "docx"
 ];
@@ -32,7 +49,9 @@ const HOST_PHOTO_TYPES = new Set([
   "image/jpeg", "image/pjpeg", "image/png", "image/x-png", "image/webp", "image/gif",
   "image/bmp", "image/x-ms-bmp", "image/x-bmp", "image/tiff", "image/x-tiff",
   "image/svg+xml", "image/svg", "image/avif", "image/heic", "image/heic-sequence",
-  "image/heif", "image/heif-sequence",
+  "image/heif", "image/heif-sequence", "image/x-icon", "image/vnd.microsoft.icon",
+  "application/pdf", "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/zip", "application/x-zip-compressed", "application/x-zip",
   "application/x-7z-compressed", "application/vnd.rar", "application/x-tar", "application/gzip"
 ]);
@@ -50,11 +69,20 @@ carPhotosInput?.addEventListener("change", () => {
   const files = Array.from(carPhotosInput.files || []).slice(0, MAX_HOST_PHOTOS);
 
   files.forEach((file) => {
-    const url = URL.createObjectURL(file);
-    hostPhotoPreviewUrls.push(url);
+    const canInline = isBrowserRenderableImageMime(file.type, file.name);
+    let thumbSrc = "";
+    if (canInline) {
+      thumbSrc = URL.createObjectURL(file);
+      hostPhotoPreviewUrls.push(thumbSrc);
+    } else {
+      const badge = isPdfDocument(file.name, file.type)
+        ? "PDF"
+        : (extractFileExtension(file.name) || "FILE").toUpperCase();
+      thumbSrc = createDocPreviewSvg(badge, file.name);
+    }
     carPhotoPreview?.insertAdjacentHTML(
       "beforeend",
-      `<img src="${url}" alt="Vehicle photo preview" style="width:100%;height:105px;object-fit:cover;border:1px solid var(--line);border-radius:9px;" />`
+      `<img src="${thumbSrc}" alt="Vehicle file preview" style="width:100%;height:105px;object-fit:cover;border:1px solid var(--line);border-radius:9px;" />`
     );
   });
 });
@@ -246,6 +274,9 @@ if (form) {
     // Owner
     const ownerName = getValue("ownerName");
     const ownerPhone = getValue("ownerPhone");
+    const payoutModel = (getValue("payoutModel") || "revenue_share").toLowerCase();
+    const fixedMonthlyInput = document.getElementById("fixedMonthlyAmount");
+    const fixedMonthlyAmount = payoutModel === "fixed_monthly" ? Number(fixedMonthlyInput?.value || 0) : 0;
 
     if (!brand) {
       showError("Please select your vehicle brand.");
@@ -278,6 +309,11 @@ if (form) {
     }
     if (!/^[6-9]\d{9}$/.test(cleanOwnerPhone)) {
       showError("Please enter a valid 10-digit Indian mobile number starting with 6, 7, 8, or 9.");
+      return;
+    }
+
+    if (payoutModel === "fixed_monthly" && (!Number.isFinite(fixedMonthlyAmount) || fixedMonthlyAmount < 1000)) {
+      showError("Please enter a valid expected monthly payout (minimum Rs. 1,000) for Fixed Monthly Retainer.");
       return;
     }
 
@@ -361,7 +397,11 @@ if (form) {
         seats,
         regNo: regNumber,
         city: location,
-        expectedPrice: 0,
+        expectedPrice: payoutModel === "fixed_monthly" ? fixedMonthlyAmount : 0,
+        payoutModel,
+        payout_model: payoutModel,
+        fixedMonthlyAmount,
+        fixed_monthly_amount: fixedMonthlyAmount,
         userName: ownerName,
         userPhone: ownerPhone,
         userEmail: currentUser.email || null,

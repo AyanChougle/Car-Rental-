@@ -63,6 +63,10 @@ class JwtService {
      */
     public static function verifyToken(string $token): ?array {
         try {
+            if (!defined('JWT_SECRET') || strlen(JWT_SECRET) < 16) {
+                error_log("[JwtService] JWT_SECRET is missing or too weak.");
+                return null;
+            }
             $parts = explode('.', trim($token));
             
             if (count($parts) !== 3) {
@@ -119,6 +123,9 @@ class JwtService {
      * @return string
      */
     private static function encodeAndSign(array $payload): string {
+        if (!defined('JWT_SECRET') || strlen(JWT_SECRET) < 16) {
+            throw new RuntimeException('JWT_SECRET must be configured with at least 16 characters.');
+        }
         $header = [
             'alg' => self::ALGORITHM,
             'typ' => 'JWT',

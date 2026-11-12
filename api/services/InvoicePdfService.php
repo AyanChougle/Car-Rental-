@@ -10,6 +10,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/KpiService.php';
 
 class InvoicePdfService {
     /**
@@ -36,6 +37,11 @@ class InvoicePdfService {
 
         $pdfPath = $invoiceDir . '/invoice.pdf';
 
+        $paymentData = KpiService::loadDeduplicatedPayments();
+        $pByB = $paymentData['by_booking'] ?? [];
+        $bkRef = strtoupper(ltrim((string)($booking['booking_id'] ?? $booking['booking_number'] ?? ''), '#'));
+        $fin = KpiService::computeBookingFinancials($booking, $pByB[$bkRef] ?? []);
+
         // Check or create record in invoices table
         $invoice = Database::fetchOne(
             "SELECT * FROM invoices WHERE booking_id = ? LIMIT 1",
@@ -43,9 +49,9 @@ class InvoicePdfService {
         );
 
         $invoiceNumber = $invoice['invoice_number'] ?? ('INV-' . strtoupper(substr(md5($booking['booking_id']), 0, 8)));
-        $total = (float)$booking['total_amount'];
-        $advance = (float)($booking['payment_amount_paid'] ?: $booking['advance_amount'] ?: 0);
-        $balance = (float)$booking['remaining_balance'];
+        $total = (float)$fin['net_rental_before_refund'];
+        $advance = (float)$fin['verified_collected'];
+        $balance = (float)$fin['outstanding_amount'];
 
         if (!$invoice) {
             $invoiceId = 'INV-' . bin2hex(random_bytes(6));
@@ -56,14 +62,14 @@ class InvoicePdfService {
                     $invoiceId, $invoiceNumber, $booking['booking_id'], $booking['user_id'], $booking['firebase_uid'],
                     $booking['user_name'] ?: 'Customer', $booking['user_email'] ?: 'customer@kruizly.com', $booking['user_phone'],
                     $booking['vehicle_name'], $booking['vehicle_reg'], $booking['pickup_date'], $booking['drop_date'], $booking['duration'],
-                    $booking['base_amount'], $booking['coupon_discount'], 0.00, $booking['security_deposit'],
+                    $fin['base_rental'], $fin['coupon_discount'], 0.00, $fin['security_deposit'],
                     $total, $advance, $balance, $pdfPath
                 ]
             );
         }
 
         // Generate PDF
-        self::renderPdfToFile($booking, $invoiceNumber, $pdfPath);
+        self::renderPdfToFile($booking, $fin, $invoiceNumber, $pdfPath);
 
         return $pdfPath;
     }
@@ -71,19 +77,24 @@ class InvoicePdfService {
     /**
      * Minimal pure-PHP vector PDF generator for high-speed server execution
      */
-    private static function renderPdfToFile(array $b, string $invoiceNumber, string $outputPath): void {
+    private static function renderPdfToFile(array $b, array $fin, string $invoiceNumber, string $outputPath): void {
         $customerName = htmlspecialchars($b['user_name'] ?: 'Valued Customer');
         $customerEmail = htmlspecialchars($b['user_email'] ?: '');
         $customerPhone = htmlspecialchars($b['user_phone'] ?: 'N/A');
         $vehicle = htmlspecialchars($b['vehicle_name'] . " (" . $b['vehicle_reg'] . ")");
-        $pickup = date('d M Y, h:i A', strtotime($b['pickup_date']));
-        $drop = date('d M Y, h:i A', strtotime($b['drop_date']));
+        $pTs = KpiService::parseValidTimestamp($b['pickup_date'] ?? null);
+        $dTs = KpiService::parseValidTimestamp($b['drop_date'] ?? null);
+        $pickup = $pTs ? date('d M Y, h:i A', $pTs) : (string)($b['pickup_date'] ?? 'N/A');
+        $drop = $dTs ? date('d M Y, h:i A', $dTs) : (string)($b['drop_date'] ?? 'N/A');
         $duration = htmlspecialchars($b['duration'] ?: '1 Day');
-        $total = number_format((float)$b['total_amount'], 2);
-        $paid = number_format((float)($b['payment_amount_paid'] ?: $b['advance_amount'] ?: 0), 2);
-        $balance = number_format((float)$b['remaining_balance'], 2);
-        $discount = number_format((float)$b['coupon_discount'], 2);
-        $deposit = number_format((float)$b['security_deposit'], 2);
+        $baseRentalStr = number_format((float)$fin['base_rental'], 2);
+        $driverStr = number_format((float)$fin['driver_charges'], 2);
+        $extraStr = number_format((float)$fin['extra_charges'], 2);
+        $total = number_format((float)$fin['net_rental_before_refund'], 2);
+        $paid = number_format((float)$fin['verified_collected'], 2);
+        $balance = number_format((float)$fin['outstanding_amount'], 2);
+        $discount = number_format((float)$fin['coupon_discount'], 2);
+        $deposit = number_format((float)$fin['security_deposit'], 2);
         $dateStr = date('d-M-Y');
 
         // Construct PostScript-like pure PDF 1.4 document
@@ -117,22 +128,31 @@ class InvoicePdfService {
 
             // Table Rows
             "BT /F2 10 Tf 60 450 Td (Vehicle Base Rental Charges ($duration)) Tj ET",
-            "BT /F2 10 Tf 450 450 Td (Rs. " . number_format((float)$b['base_amount'], 2) . ") Tj ET",
+            "BT /F2 10 Tf 450 450 Td (Rs. $baseRentalStr) Tj ET",
             "0.8 g 50 440 500 0.5 re f 0 g",
 
-            "BT /F2 10 Tf 60 425 Td (Refundable Security Deposit) Tj ET",
-            "BT /F2 10 Tf 450 425 Td (Rs. $deposit) Tj ET",
+            "BT /F2 10 Tf 60 425 Td (Driver Charges) Tj ET",
+            "BT /F2 10 Tf 450 425 Td (Rs. $driverStr) Tj ET",
             "0.8 g 50 415 500 0.5 re f 0 g",
 
-            "BT /F2 10 Tf 60 400 Td (Promotional Coupon Discount" . ($b['coupon_code'] ? " (" . $b['coupon_code'] . ")" : "") . ") Tj ET",
-            "BT /F2 10 Tf 450 400 Td (-Rs. $discount) Tj ET",
+            "BT /F2 10 Tf 60 400 Td (Additional / Extra Charges) Tj ET",
+            "BT /F2 10 Tf 450 400 Td (Rs. $extraStr) Tj ET",
             "0.8 g 50 390 500 0.5 re f 0 g",
 
+            "BT /F2 10 Tf 60 375 Td (Promotional Coupon Discount" . ($b['coupon_code'] ? " (" . $b['coupon_code'] . ")" : "") . ") Tj ET",
+            "BT /F2 10 Tf 450 375 Td (-Rs. $discount) Tj ET",
+            "0.8 g 50 365 500 0.5 re f 0 g",
+
+            "BT /F2 10 Tf 60 350 Td (Refundable Security Deposit (Excluded from Rental Revenue)) Tj ET",
+            "BT /F2 10 Tf 450 350 Td (Rs. $deposit) Tj ET",
+            "0.8 g 50 340 500 0.5 re f 0 g",
+
             // Summary Totals
-            "0.95 g 300 290 250 85 re f 0 g",
-            "BT /F1 11 Tf 315 355 Td (Total Amount:) Tj 450 355 Td (Rs. $total) Tj ET",
-            "BT /F2 10 Tf 315 335 Td (Token Paid:) Tj 450 335 Td (Rs. $paid) Tj ET",
-            "BT /F1 11 Tf 315 310 Td (Balance Due:) Tj 450 310 Td (Rs. $balance) Tj ET",
+            "0.95 g 300 220 250 105 re f 0 g",
+            "BT /F1 11 Tf 315 305 Td (Net Rental Total:) Tj 450 305 Td (Rs. $total) Tj ET",
+            "BT /F2 10 Tf 315 285 Td (Refundable Deposit:) Tj 450 285 Td (Rs. $deposit) Tj ET",
+            "BT /F2 10 Tf 315 265 Td (Verified Paid:) Tj 450 265 Td (Rs. $paid) Tj ET",
+            "BT /F1 11 Tf 315 240 Td (Balance Due:) Tj 450 240 Td (Rs. $balance) Tj ET",
 
             // Footer
             "0.8 g 50 120 500 0.5 re f 0 g",

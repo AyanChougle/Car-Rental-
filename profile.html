@@ -118,8 +118,10 @@
             type="button"
             class="prof-tab-btn"
             data-tab="prof-tab-listings"
+            id="listingsTabBtn"
             role="tab"
             aria-selected="false"
+            hidden
           >
             My Listings
           </button>
@@ -737,9 +739,9 @@
                   <input type="text" id="bankBranch" maxlength="100" placeholder="e.g. Andheri West" required />
                 </div>
                 <div class="field full">
-                  <label for="bankPassbookFile"> Passbook Front Page Photo </label>
+                  <label for="bankPassbookFile"> Passbook Front Page Photo / PDF </label>
                   <img id="bankPassbookPreview" class="doc-upload__preview" alt="Passbook front page preview" hidden />
-                  <input type="file" id="bankPassbookFile" accept="image/*,.pdf" />
+                  <input type="file" id="bankPassbookFile" accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.jpe,.jfif,.jfi,.png,.gif,.webp,.avif,.avis,.bmp,.dib,.tif,.tiff,.svg,.heic,.heif,.hif,.hvic,.ico" />
                   <p id="bankPassbookNote" class="form-status"></p>
                 </div>
               </div>
@@ -780,7 +782,7 @@
               <input
                 type="file"
                 id="mediaFile"
-                accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/webm,video/quicktime"
+                accept="image/*,application/pdf,video/mp4,video/webm,video/quicktime,.pdf,.jpg,.jpeg,.jpe,.jfif,.jfi,.png,.gif,.webp,.avif,.avis,.bmp,.dib,.tif,.tiff,.svg,.heic,.heif,.hif,.hvic,.ico"
                 hidden
               />
 
@@ -1325,9 +1327,9 @@
        SCRIPTS
   ========================================================== -->
 
-    <script type="module" src="js/vehicles.js?v=20261106-v1"></script>
-    <script type="module" src="js/profile.js?v=20261016-v2"></script>
-    <script type="module" src="js/host-bank.js?v=20261016-v2"></script>
+    <script type="module" src="js/vehicles.js?v=20261112-v1"></script>
+    <script type="module" src="js/profile.js?v=20261112-v3"></script>
+    <script type="module" src="js/host-bank.js?v=20261112-v3"></script>
     <script src="js/glass-ui.js?v=20261016-v1"></script>
     <script src="js/kruizly-motion.js?v=20261016-v1"></script>
   </body>

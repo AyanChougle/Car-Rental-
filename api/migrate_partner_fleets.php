@@ -9,6 +9,11 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/config/database.php';
 
+if (PHP_SAPI !== 'cli') {
+    require_once __DIR__ . '/middleware/auth.php';
+    Auth::requireRole('admin', 'super_admin');
+}
+
 header('Content-Type: application/json; charset=utf-8');
 
 try {

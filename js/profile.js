@@ -9,6 +9,14 @@ import { checkAuth, getCurrentUser, logout } from "./auth.js?v=20260917-v1";
 import { api, API_BASE_URL } from "./kruizly-api.js?v=20261001-v2";
 import "./nav-helper.js?v=20260928-v2";
 import { formatBookingNumber } from "./booking-reference.js";
+import {
+  openImageLightbox,
+  isPdfDocument,
+  isBrowserRenderableImageMime,
+  extractFileExtension,
+  fetchProtectedMediaPreview,
+  revokeObjectUrlSafely,
+} from "./image-lightbox.js?v=20261112-v3";
 
 let currentUser = null;
 
@@ -41,16 +49,24 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_EXTENSIONS = [
   "jpg",
   "jpeg",
+  "jpe",
+  "jfif",
+  "jfi",
   "png",
   "gif",
   "webp",
   "bmp",
+  "dib",
   "tif",
   "tiff",
   "svg",
   "avif",
+  "avis",
   "heic",
   "heif",
+  "hif",
+  "hvic",
+  "ico",
   "zip",
   "zipx",
   "7z",
@@ -355,6 +371,18 @@ async function loadProtectedMediaPreview(user, mediaUrl, imageElement) {
       throw new Error(`Media request failed (${response.status})`);
     }
 
+    const responseContentType = (response.headers.get("content-type") || "")
+      .split(";")[0]
+      .trim()
+      .toLowerCase();
+    if (
+      responseContentType === "application/json" ||
+      responseContentType === "text/html" ||
+      responseContentType === "application/xhtml+xml"
+    ) {
+      throw new Error("Invalid media response");
+    }
+
     const blob = await response.blob();
 
     const objectUrl = URL.createObjectURL(blob);
@@ -365,21 +393,33 @@ async function loadProtectedMediaPreview(user, mediaUrl, imageElement) {
     */
 
     if (imageElement.dataset.objectUrl) {
-      URL.revokeObjectURL(imageElement.dataset.objectUrl);
+      revokeObjectUrlSafely(imageElement.dataset.objectUrl);
     }
 
     imageElement.dataset.objectUrl = objectUrl;
 
-    const isPdf = blob.type === "application/pdf" || url.toLowerCase().includes(".pdf");
-    if (isPdf) {
-      imageElement.src = createDocPreviewSvg("Uploaded PDF Document", "PDF", "%23ef476f");
+    const mime = (blob.type || responseContentType || "").toLowerCase();
+    const isPdf = isPdfDocument(url, mime);
+    const isRenderable = !isPdf && isBrowserRenderableImageMime(mime, url);
+
+    if (isPdf || !isRenderable) {
+      const extLabel = isPdf
+        ? "PDF"
+        : (extractFileExtension(url) || "DOC").toUpperCase();
+      imageElement.src = createDocPreviewSvg(
+        `Uploaded ${extLabel}`,
+        extLabel,
+        isPdf ? "%23ef476f" : "%2338bdf8",
+      );
       imageElement.style.cursor = "pointer";
-      imageElement.title = "Click to view / open uploaded PDF in new tab";
-      imageElement.onclick = () => window.open(objectUrl, "_blank");
+      imageElement.title = "Click to view / download uploaded document";
+      imageElement.onclick = () =>
+        openImageLightbox(url, "KYC Document", `${extLabel} File`);
     } else {
       imageElement.src = objectUrl;
-      imageElement.style.cursor = "default";
-      imageElement.onclick = null;
+      imageElement.style.cursor = "zoom-in";
+      imageElement.title = "Click to enlarge";
+      imageElement.onclick = () => openImageLightbox(url, "KYC Document");
     }
 
     imageElement.hidden = false;
@@ -525,23 +565,24 @@ async function loadMyListings(userParam) {
     const res = await api.get("/users/partner-cars");
     let listings = Array.isArray(res?.partnerCars) ? res.partnerCars : [];
 
-    const isStaffOrAdmin = ["admin", "manager", "executive"].includes(
-      String(currentU.role || "").toLowerCase(),
-    );
+    const userRole = String(currentU.role || "").toLowerCase();
+    const isHostRole = userRole === "host" || userRole === "partner";
 
-    const uEmail = String(currentU.email || "").toLowerCase().trim();
-    const uPhone = String(currentU.phone || "").replace(/\D/g, "").slice(-10);
-    const uUid = String(currentU.uid || currentU.firebaseUid || "").trim();
-    const uName = String(currentU.name || "").toLowerCase().trim();
-    const isGenericAdmin = ["carrentpedatabase@gmail.com", "admin@kruizly.com", "currentpedatabase@gmail.com"].includes(uEmail);
-
-    // Whatever partner cars the API returned for this authenticated host user from the database is displayed
+    // Only cars strictly owned by the logged-in user (enforced server-side as well)
     let displayedListings = listings;
+    const hasOwnListings = displayedListings.length > 0;
+    const canViewHostTabs = isHostRole || hasOwnListings;
 
-    // If host has listings, reveal bank details tab
-    if (displayedListings.length > 0) {
-      const bankBtn = $("bankTabBtn");
-      if (bankBtn) bankBtn.hidden = false;
+    const listingsBtn = $("listingsTabBtn");
+    if (listingsBtn) listingsBtn.hidden = !canViewHostTabs;
+    const bankBtn = $("bankTabBtn");
+    if (bankBtn) bankBtn.hidden = !canViewHostTabs;
+
+    if (!canViewHostTabs) {
+      const listingsPanel = $("prof-tab-listings");
+      if (listingsPanel && !listingsPanel.hidden) {
+        document.querySelector('.prof-tab-btn[data-tab="prof-tab-info"]')?.click();
+      }
     }
 
     const totalMonthHostPayout = displayedListings.reduce((sum, item) => {
@@ -622,11 +663,11 @@ async function loadMyListings(userParam) {
         let hostPhone = listing.userPhone || "";
         let hostEmail = listing.userEmail || "";
 
-        const regNo = listing.regNo || listing.regNumber || "MH04MU1178";
-        const locationVal = listing.city || listing.location || "Gavson Business Park, Ghansoli";
+        const regNo = listing.regNo || listing.regNumber || "Pending RC";
+        const locationVal = listing.city || listing.location || "Location pending";
         const transmissionVal = listing.transmission || "Manual";
-        const yearVal = listing.year || 2025;
-        const submittedDate = listing.createdAt ? formatDate(listing.createdAt) : "14 Oct 2026";
+        const yearVal = listing.year || "";
+        const submittedDate = listing.createdAt ? formatDate(listing.createdAt) : "—";
 
         return `
         <article class="profile-listing-card" style="background: #111418; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column;">
@@ -2545,7 +2586,7 @@ async function loadUserMedia(user) {
             ${
               isVideo
                 ? `<video src="${escapeHtml(fileUrl)}" controls style="width:100%;height:100%;object-fit:cover;"></video>`
-                : `<img src="${escapeHtml(fileUrl)}" alt="${escapeHtml(fileName)}" loading="lazy" style="width:100%;height:100%;object-fit:cover;" />`
+                : `<img class="kr-media-protected-thumb" data-media-src="${escapeHtml(fileUrl)}" data-media-name="${escapeHtml(fileName)}" data-media-mime="${escapeHtml(item.mimeType || "")}" alt="${escapeHtml(fileName)}" style="width:100%;height:100%;object-fit:cover;cursor:zoom-in;" />`
             }
             <button type="button" class="btn-delete-media" data-media-id="${escapeHtml(mediaId)}" title="Delete Media" style="position:absolute;top:8px;right:8px;width:30px;height:30px;background:rgba(239,71,111,0.9);color:white;border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.5);font-size:16px;font-weight:bold;z-index:2;transition:transform 0.15s ease;">×</button>
           </div>
@@ -2557,6 +2598,42 @@ async function loadUserMedia(user) {
       `;
       })
       .join("");
+
+    // Hydrate protected media thumbnails with authenticated blob URLs
+    const authTok = await getAuthToken(user);
+    gridEl.querySelectorAll(".kr-media-protected-thumb").forEach(async (imgEl) => {
+      const src = imgEl.dataset.mediaSrc || "";
+      const name = imgEl.dataset.mediaName || "Uploaded Media";
+      const mime = imgEl.dataset.mediaMime || "";
+      if (!src) return;
+      imgEl.onclick = () => openImageLightbox(src, name);
+      try {
+        const resolved = await fetchProtectedMediaPreview(src, {
+          baseUrl: MEDIA_SERVER_URL,
+          token: authTok,
+          filename: name,
+          mimeType: mime,
+        });
+        if (!imgEl.isConnected) {
+          if (resolved.isBlob) revokeObjectUrlSafely(resolved.url);
+          return;
+        }
+        if (resolved.isPdf || resolved.isNonInline || resolved.isPlaceholder) {
+          if (resolved.isBlob) revokeObjectUrlSafely(resolved.url);
+          const badge = resolved.isPdf
+            ? "PDF"
+            : (resolved.ext || extractFileExtension(name) || "FILE").toUpperCase();
+          imgEl.src = createDocPreviewSvg(name, badge, resolved.isPdf ? "%23ef476f" : "%2338bdf8");
+        } else {
+          imgEl.src = resolved.url;
+        }
+      } catch (_) {
+        if (imgEl.isConnected) {
+          const extBadge = (extractFileExtension(name) || "FILE").toUpperCase();
+          imgEl.src = createDocPreviewSvg(name, extBadge, "%2394a3b8");
+        }
+      }
+    });
 
     // Wire delete buttons
     gridEl.querySelectorAll(".btn-delete-media").forEach((btn) => {

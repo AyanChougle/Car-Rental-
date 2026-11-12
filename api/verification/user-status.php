@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
 
-$admin = Auth::requireRole('admin', 'manager', 'executive');
+$admin = Auth::requireRole('admin', 'super_admin', 'manager', 'executive');
 $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 
 $targetUid = trim((string)($_GET['uid'] ?? $input['uid'] ?? $input['firebaseUid'] ?? ''));
@@ -115,6 +115,11 @@ try {
             $pdo->prepare("UPDATE verification SET " . implode(', ', $verUpdates) . ", updated_at = CURRENT_TIMESTAMP WHERE firebase_uid = ?")->execute($vParams);
         }
     });
+
+    try {
+        require_once __DIR__ . '/../services/KpiService.php';
+        KpiService::syncMetrics(true, false);
+    } catch (Throwable $_) {}
 
     sendJsonResponse([
         'success' => true,

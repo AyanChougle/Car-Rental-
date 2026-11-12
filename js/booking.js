@@ -188,7 +188,10 @@ async function initBooking(vehicle) {
     driverRate.textContent = "₹" + formatCurrency(vehicle.driverPrice || 2000);
   if (deposit)
     deposit.textContent = "₹" + formatCurrency(vehicle.securityDeposit);
-  const resolvedHubName = vehicle.hubName || vehicle.location || (String(vehicle.hubId || vehicle.hub_id) === "2" ? "Kandivali Hub, Mumbai" : "Gavson Business Park, Ghansoli, Navi Mumbai");
+  const dbHubForVehicle = (Array.isArray(window.KRUIZLY_HUBS) && (vehicle.hubId || vehicle.hub_id))
+    ? window.KRUIZLY_HUBS.find((h) => String(h.id) === String(vehicle.hubId || vehicle.hub_id))
+    : null;
+  const resolvedHubName = vehicle.hubName || dbHubForVehicle?.name || vehicle.hub || vehicle.location || "Assigned upon confirmation";
   if (location)
     location.textContent = resolvedHubName;
 
@@ -718,6 +721,23 @@ async function initBooking(vehicle) {
 
       const numericBookingId = generateNumericBookingId();
 
+      if (!pDate || !dDate || isNaN(pDate.getTime()) || isNaN(dDate.getTime()) || dDate <= pDate) {
+        if (submitButton) submitButton.disabled = false;
+        if (statusEl) {
+          statusEl.textContent = "Please provide valid pickup and return dates.";
+          statusEl.classList.add("form-status--error");
+        }
+        return;
+      }
+
+      const resolvedBookingHubName =
+        vehicle.hubName ||
+        (Array.isArray(window.KRUIZLY_HUBS) && (vehicle.hubId || vehicle.hub_id)
+          ? (window.KRUIZLY_HUBS.find((h) => String(h.id) === String(vehicle.hubId || vehicle.hub_id))?.name || "")
+          : "") ||
+        vehicle.location ||
+        "";
+
       const bookingRecord = {
         bookingId: numericBookingId,
         bookingNumber: numericBookingId,
@@ -732,8 +752,8 @@ async function initBooking(vehicle) {
         vehicleName: vehicle.brand + " " + vehicle.model,
         vehicleCategory: vehicle.category,
 
-        pickupDate: pDate ? `${toLocalDateTime(pDate).replace("T", " ")}:00` : new Date().toISOString(),
-        dropDate: dDate ? `${toLocalDateTime(dDate).replace("T", " ")}:00` : new Date().toISOString(),
+        pickupDate: `${toLocalDateTime(pDate).replace("T", " ")}:00`,
+        dropDate: `${toLocalDateTime(dDate).replace("T", " ")}:00`,
         duration: calculation.duration.formattedDuration,
         durationDays: calculation.days,
         days: calculation.days,
@@ -744,6 +764,7 @@ async function initBooking(vehicle) {
         hourlyRate: calculation.hourlyRate,
         driverRate: vehicle.driverPrice || 2000,
         driverHourlyRate: calculation.driverHourlyRate,
+        driverCharges: calculation.driverTotal || 0,
         securityDeposit: calculation.securityDeposit,
         baseAmount: calculation.rentalTotal,
         couponCode: calculation.appliedCoupons?.length
@@ -752,6 +773,7 @@ async function initBooking(vehicle) {
             ? calculation.couponApplied.code
             : null,
         couponDiscount: calculation.couponDiscount || 0,
+        netRentalRevenue: calculation.finalAmount,
         finalAmount: calculation.finalAmount,
         totalAmount: calculation.finalAmount,
 
@@ -762,11 +784,11 @@ async function initBooking(vehicle) {
 
         pickup_hub_id: Number(vehicle.hubId || vehicle.hub_id || 0) || null,
         drop_hub_id: Number(vehicle.hubId || vehicle.hub_id || 0) || null,
-        pickupHubName: vehicle.hubName || "",
-        dropHubName: vehicle.hubName || "",
-        location: vehicle.hubName || vehicle.location || "",
-        pickupLocation: vehicle.hubName || vehicle.location || "",
-        dropLocation: vehicle.hubName || vehicle.location || "",
+        pickupHubName: resolvedBookingHubName,
+        dropHubName: resolvedBookingHubName,
+        location: resolvedBookingHubName,
+        pickupLocation: resolvedBookingHubName,
+        dropLocation: resolvedBookingHubName,
 
         status: "pending_payment",
         bookingStatus: "pending_payment",

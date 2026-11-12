@@ -12,6 +12,11 @@ import "./nav-helper.js?v=20260928-v2";
 import { openReturnModal } from "./return-inspection.js";
 import { MEDIA_SERVER_URL } from "./media-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
+import {
+  openImageLightbox,
+  fetchProtectedMediaPreview,
+  revokeObjectUrlSafely,
+} from "./image-lightbox.js?v=20261112-v3";
 
 async function getAuthToken() {
   try {
@@ -212,24 +217,18 @@ async function openManagerPaymentModal(booking) {
     title.textContent = `Booking #${formatBookingNumber(booking)}`;
   }
 
-  const screenshotMarkup = booking.paymentScreenshotURL
+  const proofSource =
+    booking.paymentScreenshotURL || booking.paymentScreenshotMediaId || "";
+  const screenshotMarkup = proofSource
     ? `
-        <img
-          src="${escapeHtml(booking.paymentScreenshotURL)}"
-          alt="Payment screenshot"
-          style="width:100%;max-height:400px;object-fit:contain;border-radius:10px;background:#000;"
-        />
+        <div
+          id="managerPaymentScreenshotPreview"
+          style="min-height:140px;display:grid;place-items:center;color:var(--sub);border:1px solid var(--line);border-radius:10px;background:#060a11;overflow:hidden;"
+        >
+          Loading payment proof preview...
+        </div>
       `
-    : booking.paymentScreenshotMediaId
-      ? `
-          <div
-            id="managerPaymentScreenshotPreview"
-            style="min-height:120px;display:grid;place-items:center;color:var(--sub);border:1px solid var(--line);border-radius:10px;"
-          >
-            Loading payment screenshot...
-          </div>
-        `
-      : `<p style="color:var(--sub);">No payment screenshot uploaded.</p>`;
+    : `<p style="color:var(--sub);">No payment screenshot uploaded.</p>`;
 
   body.innerHTML = `
     <div style="display:grid;gap:12px;">
@@ -259,34 +258,69 @@ async function openManagerPaymentModal(booking) {
 
   modal.hidden = false;
 
-  if (booking.paymentScreenshotMediaId && !booking.paymentScreenshotURL) {
+  if (proofSource) {
     const preview = document.getElementById("managerPaymentScreenshotPreview");
 
     try {
-      const objectUrl = await fetchManagerPaymentScreenshot(
-        booking.paymentScreenshotMediaId,
-      );
+      const token = await getAuthToken();
+      const resolved = await fetchProtectedMediaPreview(proofSource, {
+        baseUrl: MEDIA_SERVER_URL,
+        token,
+      });
 
       if (activeManagerPaymentBooking !== booking || !preview?.isConnected) {
-        URL.revokeObjectURL(objectUrl);
+        if (resolved.isBlob) revokeObjectUrlSafely(resolved.url);
         return;
       }
 
-      managerPaymentScreenshotObjectUrl = objectUrl;
-      preview.innerHTML = `
-        <img
-          src="${escapeHtml(objectUrl)}"
-          alt="Payment screenshot"
-          style="width:100%;max-height:400px;object-fit:contain;border-radius:10px;background:#000;"
-        />
-      `;
+      if (resolved.isBlob) {
+        managerPaymentScreenshotObjectUrl = resolved.url;
+      }
+
+      const openFullProof = () => {
+        openImageLightbox(
+          proofSource,
+          `Payment Proof — #${formatBookingNumber(booking)}`,
+          `${booking.userName || "Customer"} · Ref: ${booking.paymentRef || "N/A"}`,
+        );
+      };
+
+      if (resolved.isPdf) {
+        preview.innerHTML = `
+          <div style="width:100%;">
+            <iframe
+              src="${escapeHtml(resolved.url)}#toolbar=0"
+              title="Payment proof PDF"
+              style="width:100%;height:340px;border:none;background:#0b1322;display:block;"
+            ></iframe>
+            <div style="padding:8px 10px;display:flex;justify-content:flex-end;border-top:1px solid var(--line);">
+              <button type="button" id="managerPayProofFullBtn" class="btn btn--outline btn--sm">Open Full PDF Viewer</button>
+            </div>
+          </div>
+        `;
+        preview.querySelector("#managerPayProofFullBtn")?.addEventListener("click", openFullProof);
+      } else if (resolved.isNonInline) {
+        const extLabel = (resolved.ext || "FILE").toUpperCase();
+        preview.innerHTML = `<div style="padding:20px;text-align:center;"><div style="font-weight:800;color:#38bdf8;margin-bottom:8px;">${escapeHtml(extLabel)} Receipt</div><button type="button" id="managerPayProofFullBtn" class="btn btn--outline btn--sm">Inspect / Download ${escapeHtml(extLabel)}</button></div>`;
+        preview.querySelector("#managerPayProofFullBtn")?.addEventListener("click", openFullProof);
+      } else {
+        preview.innerHTML = `
+          <img
+            src="${escapeHtml(resolved.url)}"
+            alt="Payment screenshot"
+            title="Click to enlarge"
+            style="width:100%;max-height:400px;object-fit:contain;border-radius:10px;background:#000;cursor:zoom-in;"
+          />
+        `;
+        preview.querySelector("img")?.addEventListener("click", openFullProof);
+      }
     } catch (error) {
       console.error("Manager payment screenshot error:", error);
 
       if (preview?.isConnected) {
         preview.innerHTML = `
           <p style="color:#ef476f;padding:16px;text-align:center;">
-            The screenshot was uploaded, but its preview could not be loaded.
+            ${escapeHtml(error?.message || "The proof was uploaded, but its preview could not be loaded.")}
           </p>
         `;
       }
@@ -2354,24 +2388,16 @@ async function fetchManagerDocumentPreview(mediaUrl) {
   }
 
   const token = await getAuthToken();
-  const url = String(mediaUrl).startsWith("http")
-    ? String(mediaUrl)
-    : `${MEDIA_SERVER_URL}${mediaUrl}`;
-
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+  const resolved = await fetchProtectedMediaPreview(mediaUrl, {
+    baseUrl: MEDIA_SERVER_URL,
+    token,
   });
-
-  if (!response.ok) {
-    throw new Error(`Could not load document (${response.status}).`);
-  }
-
-  const blob = await response.blob();
-  const isPdf =
-    blob.type === "application/pdf" || url.toLowerCase().includes(".pdf");
-  return { url: URL.createObjectURL(blob), isPdf };
+  return {
+    url: resolved.url,
+    isPdf: resolved.isPdf,
+    isNonInline: resolved.isNonInline,
+    ext: resolved.ext,
+  };
 }
 
 async function openManagerDocumentModal(user, type) {

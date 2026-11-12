@@ -64,7 +64,7 @@ if ($method === 'GET') {
 }
 
 if ($method === 'PUT' || $method === 'POST') {
-    Auth::requireRole('admin', 'manager');
+    Auth::requireRole('admin', 'manager', 'super_admin');
     $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 
     $updates = [];
@@ -83,8 +83,16 @@ if ($method === 'PUT' || $method === 'POST') {
         $params[] = (int)$input['available'];
     }
     if (isset($input['status'])) {
+        $st = strtolower(trim((string)$input['status']));
+        $allowedVehStatuses = ['available', 'booked', 'on_trip', 'in_trip', 'maintenance', 'inactive', 'removed'];
+        if (!in_array($st, $allowedVehStatuses, true)) {
+            sendErrorResponse("Invalid vehicle status '$st'.", 400);
+        }
         $updates[] = "status = ?";
-        $params[] = (string)$input['status'];
+        $params[] = $st;
+        if (in_array($st, ['maintenance', 'inactive', 'removed'], true) && !isset($input['available'])) {
+            $updates[] = "available = 0";
+        }
     }
     if (isset($input['priceDay']) || isset($input['price_day'])) {
         $pDay = (float)($input['priceDay'] ?? $input['price_day']);
@@ -135,8 +143,24 @@ if ($method === 'PUT' || $method === 'POST') {
     }
     if (isset($input['hubId']) || isset($input['hub_id'])) {
         $hId = (int)($input['hubId'] ?? $input['hub_id']);
-        $updates[] = "hub_id = ?";
-        $params[] = $hId > 0 ? $hId : null;
+        if ($hId > 0) {
+            $hubRec = Database::fetchOne("SELECT id, name, city, address FROM hubs WHERE id = ? LIMIT 1", [$hId]);
+            if (!$hubRec) {
+                sendErrorResponse("Invalid hub_id ($hId): hub does not exist in database.", 400);
+            }
+            $updates[] = "hub_id = ?";
+            $params[] = $hId;
+            if (!isset($input['hub'])) {
+                $updates[] = "hub = ?";
+                $params[] = $hubRec['name'];
+            }
+            if (!isset($input['location'])) {
+                $updates[] = "location = ?";
+                $params[] = !empty($hubRec['address']) ? $hubRec['address'] : ($hubRec['name'] . ', ' . ($hubRec['city'] ?? ''));
+            }
+        } else {
+            $updates[] = "hub_id = NULL";
+        }
     }
     if (isset($input['hub'])) {
         $updates[] = "hub = ?";
@@ -177,15 +201,24 @@ if ($method === 'PUT' || $method === 'POST') {
         );
     }
 
+    try {
+        require_once __DIR__ . '/../services/KpiService.php';
+        KpiService::syncMetrics(true, false);
+    } catch (Throwable $_) {}
+
     sendJsonResponse(['success' => true, 'message' => "Vehicle '$identifier' updated successfully in database."]);
 }
 
 if ($method === 'DELETE') {
-    Auth::requireRole('admin', 'manager');
+    Auth::requireRole('admin', 'manager', 'super_admin');
     Database::execute(
         "UPDATE vehicles SET available = 0, status = 'removed', updated_at = CURRENT_TIMESTAMP WHERE reg_no = ? OR car_id = ? OR id = ?",
         [$identifier, $identifier, $idNum]
     );
+    try {
+        require_once __DIR__ . '/../services/KpiService.php';
+        KpiService::syncMetrics(true, false);
+    } catch (Throwable $_) {}
     sendJsonResponse(['success' => true, 'message' => "Vehicle '$identifier' removed from active fleet."]);
 }
 

@@ -44,7 +44,12 @@ try {
                     if (!is_file($dfPath)) continue;
 
                     $ext = strtolower(pathinfo($df, PATHINFO_EXTENSION));
-                    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'gif'], true)) continue;
+                    $allowedDocExts = [
+                        'jpg', 'jpeg', 'jpe', 'jfif', 'jfi', 'png', 'webp', 'avif', 'avis',
+                        'gif', 'bmp', 'dib', 'tif', 'tiff', 'svg', 'heic', 'heif', 'hif', 'hvic', 'ico',
+                        'pdf', 'doc', 'docx', 'zip', '7z', 'rar',
+                    ];
+                    if (!in_array($ext, $allowedDocExts, true)) continue;
 
                     $cdSuffix = '/';
                     if (str_ends_with($cd, '/verification') || str_ends_with($cd, '\\verification')) {
@@ -54,10 +59,7 @@ try {
                     }
 
                     $relPath = 'users/' . $entry . $cdSuffix . $df;
-                    $docUrl = '/api/media/file.php?path=' . urlencode($relPath);
-                    if ($ext === 'pdf') {
-                        $docUrl .= '&ext=.pdf';
-                    }
+                    $docUrl = '/api/media/file.php?path=' . urlencode($relPath) . '&ext=.' . $ext;
                     $lowerDf = strtolower($df);
 
                     $isLicense = str_contains($lowerDf, 'license') || str_contains($lowerDf, 'dl') || str_contains($lowerDf, 'driving');

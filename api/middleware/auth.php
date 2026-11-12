@@ -198,6 +198,10 @@ class Auth {
                         "SELECT * FROM users WHERE firebase_uid = ? OR (email IS NOT NULL AND email != '' AND email = ?) LIMIT 1",
                         [$firebaseUid, $userEmail]
                     );
+                    try {
+                        require_once __DIR__ . '/../services/KpiService.php';
+                        KpiService::syncMetrics(true, false);
+                    } catch (Throwable $_) {}
                 } elseif ($elevatedRole && strtolower($user['role'] ?? '') !== $elevatedRole) {
                     // Automatically synchronize elevated role (admin, manager, executive, accountant, host)
                     Database::execute("UPDATE users SET role = ? WHERE id = ?", [$elevatedRole, $user['id']]);

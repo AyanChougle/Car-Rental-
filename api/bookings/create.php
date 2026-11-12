@@ -7,38 +7,39 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
-if (!headers_sent()) { header('X-Kruizly-Create-Rev: 2026-09-30-v4'); }
+require_once __DIR__ . '/../services/KpiService.php';
+if (!headers_sent()) { header('X-Kruizly-Create-Rev: 2026-11-12-v5'); }
 
 $user = Auth::requireAuth();
 $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 
 $isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive', 'accountant', 'super_admin'], true);
 
-$pickupDate = date('Y-m-d H:i:s', strtotime((string)($input['pickupDate'] ?? 'now')));
-$dropDate = date('Y-m-d H:i:s', strtotime((string)($input['dropDate'] ?? '+1 day')));
+// Strict date & duration validation using Unified Date Engine (reject invalid/reversed/<24h dates without substituting now)
+$rawPickup = $input['pickupDate'] ?? $input['pickup_date'] ?? null;
+$rawDrop = $input['dropDate'] ?? $input['drop_date'] ?? $input['returnDate'] ?? null;
+$explicitDays = isset($input['days']) && is_numeric($input['days']) && (int)$input['days'] > 0
+    ? (int)$input['days']
+    : null;
 
-// STRICT SECURITY & BUSINESS RULE: Minimum booking duration is 24 hours (86,400 seconds)
-$pTs = strtotime($pickupDate);
-$dTs = strtotime($dropDate);
-if ($pTs === false || $pTs < time() - 3600) {
-    $pTs = time();
-    $pickupDate = date('Y-m-d H:i:s', $pTs);
-}
-if ($dTs === false || $dTs < $pTs + 86400) {
-    $dTs = $pTs + 86400;
-    $dropDate = date('Y-m-d H:i:s', $dTs);
+$dateValidation = KpiService::validateBookingDates($rawPickup, $rawDrop, true, $explicitDays);
+if (empty($dateValidation['valid'])) {
+    sendErrorResponse((string)($dateValidation['error'] ?? 'Invalid pickup or return date/time.'), 400);
 }
 
-$diffSeconds = $dTs - $pTs;
-$hours = max(24, (int)ceil($diffSeconds / 3600));
-$days = max(1, (int)ceil($hours / 24));
-$fullDays = (int)floor($hours / 24);
-$remHours = $hours % 24;
-if ($fullDays > 0 && $remHours > 0) {
-    $duration = "{$fullDays} Day" . ($fullDays > 1 ? "s" : "") . " {$remHours} Hr" . ($remHours > 1 ? "s" : "") . " ({$hours} hrs)";
-} else {
-    $duration = "{$fullDays} Day" . ($fullDays > 1 ? "s" : "") . " ({$hours} hrs)";
+$pTs = (int)$dateValidation['pickup_ts'];
+$dTs = (int)$dateValidation['drop_ts'];
+if (!$isStaff && $pTs < (time() - 7200)) {
+    sendErrorResponse('Pickup date & time cannot be in the past.', 400);
 }
+
+$pickupDate = (string)$dateValidation['pickup_sql'];
+$dropDate = (string)$dateValidation['drop_sql'];
+$hours = (int)$dateValidation['hours'];
+$days = (int)$dateValidation['days'];
+$fullDays = (int)$dateValidation['full_days'];
+$remHours = (int)$dateValidation['rem_hours'];
+$duration = (string)$dateValidation['duration'];
 
 $monthCode = strtoupper(date('M', strtotime($pickupDate)));
 $prefix = 'KRZ-' . $monthCode . '-';
@@ -94,37 +95,48 @@ $vehicleName = $vehicle ? ($vehicle['brand'] . ' ' . $vehicle['model']) : ($inpu
 $vehicleCategory = $vehicle ? (string)($vehicle['category'] ?: 'suv') : ($input['vehicleCategory'] ?? 'suv');
 $isLuxury = strtolower($vehicleCategory) === 'luxury';
 
-// Server-side authoritative price calculation (tamper-proof)
-$priceDay = $vehicle ? (float)($vehicle['price_day'] ?? 0.00) : (float)($input['dayRate'] ?? $input['priceDay'] ?? 0.00);
+// Server-side authoritative price calculation (tamper-proof; uses exact same 24h duration block)
+$priceDay = $vehicle ? (float)($vehicle['price_day'] ?? 0.00) : ($isStaff ? (float)($input['dayRate'] ?? $input['priceDay'] ?? 0.00) : 0.00);
+if ($isStaff && isset($input['dayRate']) && (float)$input['dayRate'] > 0 && !$vehicle) {
+    $priceDay = (float)$input['dayRate'];
+}
 $hourlyRate = $priceDay > 0 ? round($priceDay / 24, 2) : 0.00;
 
-$fullDays = (int)floor($hours / 24);
-$remHours = (int)($hours % 24);
-$baseAmount = (float)($fullDays * $priceDay);
-if ($remHours > 0 && $priceDay > 0) {
-    $baseAmount += round($remHours * ($priceDay / 24), 2);
+$baseAmount = 0.00;
+if ($priceDay > 0) {
+    $baseAmount = round(($fullDays * $priceDay) + ($remHours > 0 ? round($remHours * ($priceDay / 24), 2) : 0.00), 2);
+    $baseAmount = max($priceDay, $baseAmount);
 }
-$baseAmount = max($priceDay, $baseAmount);
-if ($baseAmount <= 0) {
-    $baseAmount = (float)($input['baseAmount'] ?? $input['rentalTotal'] ?? 0.00);
+if ($isStaff && isset($input['baseAmount']) && is_numeric($input['baseAmount']) && (float)$input['baseAmount'] > 0) {
+    $baseAmount = round((float)$input['baseAmount'], 2);
+} elseif ($baseAmount <= 0 && $isStaff && isset($input['rentalTotal']) && (float)$input['rentalTotal'] > 0) {
+    $baseAmount = round((float)$input['rentalTotal'], 2);
+}
+if ($baseAmount <= 0.0) {
+    sendErrorResponse('Unable to determine base rental amount for the selected vehicle and dates.', 400);
 }
 
 $withDriver = (int)($input['withDriver'] ?? 0);
-$driverDailyRate = $vehicle ? (float)($vehicle['driver_price'] ?? 2000.00) : 2000.00;
-$driverHourlyRate = round($driverDailyRate / 24, 2);
+$driverDailyRate = ($vehicle && isset($vehicle['driver_price']) && (float)$vehicle['driver_price'] > 0)
+    ? (float)$vehicle['driver_price']
+    : ($withDriver ? 2000.00 : 0.00);
+$driverHourlyRate = $driverDailyRate > 0 ? round($driverDailyRate / 24, 2) : 0.00;
 $driverTotal = 0.00;
 if ($withDriver) {
-    $driverTotal = (float)($fullDays * $driverDailyRate);
-    if ($remHours > 0) {
-        $driverTotal += round($remHours * ($driverDailyRate / 24), 2);
-    }
+    $driverTotal = round(($fullDays * $driverDailyRate) + ($remHours > 0 ? round($remHours * ($driverDailyRate / 24), 2) : 0.00), 2);
     $driverTotal = max($driverDailyRate, $driverTotal);
+    if ($isStaff && isset($input['driverCharges']) && is_numeric($input['driverCharges'])) {
+        $driverTotal = max(0.0, round((float)$input['driverCharges'], 2));
+    }
 }
+$extraCharges = $isStaff ? max(0.0, round((float)($input['extraCharges'] ?? $input['extra_charges'] ?? 0.0), 2)) : 0.00;
 
-// Authoritative Security Deposit from vehicle database record
+// Authoritative Security Deposit from vehicle database record (never included in rental revenue)
 $securityDeposit = ($vehicle && isset($vehicle['security_deposit']) && (float)$vehicle['security_deposit'] > 0)
     ? (float)$vehicle['security_deposit']
-    : (isset($input['securityDeposit']) && (float)$input['securityDeposit'] > 0 ? (float)$input['securityDeposit'] : ($isLuxury ? 15000.00 : 5000.00));
+    : (($isStaff && isset($input['securityDeposit']) && (float)$input['securityDeposit'] >= 0)
+        ? round((float)$input['securityDeposit'], 2)
+        : ($isLuxury ? 15000.00 : 5000.00));
 
 // Server-side coupon verification
 $couponCode = trim((string)($input['couponCode'] ?? ''));
@@ -147,26 +159,17 @@ if ($couponCode !== '') {
         }
     }
     if ($couponDiscount === 0.00 && $isStaff) {
-        $couponDiscount = (float)($input['couponDiscount'] ?? 0.00);
+        $couponDiscount = max(0.0, round((float)($input['couponDiscount'] ?? 0.00), 2));
     }
+} elseif ($isStaff && isset($input['couponDiscount']) && (float)$input['couponDiscount'] > 0) {
+    $couponDiscount = max(0.0, round((float)$input['couponDiscount'], 2));
 }
 
-// Authoritative total amount payable: Base rental + Driver - Coupon discount (Security deposit is NOT included in booking total)
-$grossTotal = $baseAmount + $driverTotal;
+// Authoritative net rental payable: Base rental + Driver + Extra charges - Coupon discount (Security deposit EXCLUDED)
+$grossTotal = round($baseAmount + $driverTotal + $extraCharges, 2);
 $totalAmount = max(0.00, round($grossTotal - $couponDiscount, 2));
 
-// Authoritative payment plan calculation (tamper-proof)
-$paymentPlan = trim((string)($input['paymentPlan'] ?? 'full'));
-if ($paymentPlan === 'advance') {
-    $advanceAmount = min(500.00, $totalAmount); // Fixed ₹500 Token
-    $remainingBalance = max(0.00, round($totalAmount - $advanceAmount, 2));
-} else {
-    $paymentPlan = 'full';
-    $advanceAmount = $totalAmount;
-    $remainingBalance = 0.00;
-}
-
-// Enforce initial payment status (customers cannot self-mark as paid or confirmed)
+// Enforce initial payment & booking status (customers cannot self-mark as paid or confirmed)
 if ($isStaff) {
     $paymentStatus = trim((string)($input['paymentStatus'] ?? 'pending_payment'));
     $status = trim((string)($input['status'] ?? 'pending_payment'));
@@ -175,18 +178,46 @@ if ($isStaff) {
     $status = 'pending_payment';
 }
 
-$pickupHubId = isset($input['pickup_hub_id']) ? (int)$input['pickup_hub_id'] : (isset($input['hub_id']) ? (int)$input['hub_id'] : null);
-$dropHubId = isset($input['drop_hub_id']) ? (int)$input['drop_hub_id'] : $pickupHubId;
-
-// Resolve hub: prefer explicit ids, then the vehicle's own hub
-if (!$pickupHubId && !empty($vehicle['hub_id'] ?? null)) { $pickupHubId = (int)$vehicle['hub_id']; }
-if (!$dropHubId) { $dropHubId = $pickupHubId; }
-$locationText = '';
-if ($pickupHubId) {
-    $hubRow = Database::fetchOne("SELECT name FROM hubs WHERE id = ? LIMIT 1", [$pickupHubId]);
-    $locationText = (string)($hubRow['name'] ?? '');
+// Authoritative payment plan & balance (unverified advance_amount NEVER reduces remaining_balance)
+$paymentPlan = trim((string)($input['paymentPlan'] ?? 'full'));
+if ($paymentPlan === 'advance') {
+    $advanceAmount = min(500.00, $totalAmount); // Fixed ₹500 requested token
+} else {
+    $paymentPlan = 'full';
+    $advanceAmount = $totalAmount;
 }
-if ($locationText === '') { $locationText = trim((string)($input['pickupHubName'] ?? $input['location'] ?? '')); }
+
+$initialPaid = 0.00;
+if ($isStaff && in_array(strtolower($paymentStatus), ['paid', 'verified', 'advance_paid'], true)) {
+    if (isset($input['paymentAmountPaid']) && is_numeric($input['paymentAmountPaid'])) {
+        $initialPaid = max(0.0, round((float)$input['paymentAmountPaid'], 2));
+    } else {
+        $initialPaid = (strtolower($paymentStatus) === 'advance_paid') ? $advanceAmount : $totalAmount;
+    }
+}
+$remainingBalance = max(0.00, round($totalAmount - $initialPaid, 2));
+
+// Database-driven Hub Resolution (NEVER silently default missing hub_id to Hub 1)
+$registeredHubs = KpiService::getRegisteredHubsMap();
+$rawPickupHub = isset($input['pickup_hub_id']) && $input['pickup_hub_id'] !== '' ? (int)$input['pickup_hub_id'] : (isset($input['hub_id']) && $input['hub_id'] !== '' ? (int)$input['hub_id'] : 0);
+$rawDropHub = isset($input['drop_hub_id']) && $input['drop_hub_id'] !== '' ? (int)$input['drop_hub_id'] : 0;
+
+if ($rawPickupHub > 0 && !isset($registeredHubs[$rawPickupHub])) {
+    sendErrorResponse("Invalid pickup hub ID ($rawPickupHub).", 400);
+}
+if ($rawDropHub > 0 && !isset($registeredHubs[$rawDropHub])) {
+    sendErrorResponse("Invalid return hub ID ($rawDropHub).", 400);
+}
+
+$vehHubId = ($vehicle && !empty($vehicle['hub_id']) && isset($registeredHubs[(int)$vehicle['hub_id']]))
+    ? (int)$vehicle['hub_id']
+    : 0;
+$pickupHubId = $rawPickupHub > 0 ? $rawPickupHub : ($vehHubId > 0 ? $vehHubId : null);
+$dropHubId = $rawDropHub > 0 ? $rawDropHub : $pickupHubId;
+
+$locationText = ($pickupHubId && isset($registeredHubs[$pickupHubId]))
+    ? (string)($registeredHubs[$pickupHubId]['name'] ?? '')
+    : trim((string)($input['pickupHubName'] ?? $input['location'] ?? ''));
 
 
 $dbUserId = null;
@@ -212,9 +243,10 @@ $nextId = (int)($maxRow['next_id'] ?? 1);
 try {
     Database::transaction(function($pdo) use (
         $nextId, $bookingId, $bookingNumber, $user, $dbUserId, $vehicleId, $vehicleReg, $vehicleName, $vehicleCategory,
-        $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $priceDay, $hourlyRate, $driverDailyRate, $driverHourlyRate, $baseAmount, $couponCode,
-        $couponDiscount, $totalAmount, $advanceAmount, $remainingBalance, $paymentPlan, $paymentStatus,
-        $status, $pickupHubId, $dropHubId, $securityDeposit, $locationText, $userName, $userEmail, $userPhone, $userAge, $input
+        $pickupDate, $dropDate, $duration, $days, $hours, $withDriver, $priceDay, $hourlyRate, $driverDailyRate, $driverHourlyRate,
+        $driverTotal, $extraCharges, $baseAmount, $couponCode, $couponDiscount, $totalAmount, $advanceAmount, $initialPaid,
+        $remainingBalance, $paymentPlan, $paymentStatus, $status, $pickupHubId, $dropHubId, $securityDeposit, $locationText,
+        $userName, $userEmail, $userPhone, $userAge, $input
     ) {
         // 1. Insert or update booking (schema-adaptive: only writes columns that exist in the live table)
         $row = [
@@ -240,12 +272,17 @@ try {
             'hourly_rate' => $hourlyRate,
             'driver_rate' => $driverDailyRate,
             'driver_hourly_rate' => $driverHourlyRate,
+            'driver_charges' => $driverTotal,
+            'extra_charges' => $extraCharges,
             'base_amount' => $baseAmount,
             'coupon_code' => $couponCode ?: null,
             'coupon_discount' => $couponDiscount,
             'total_amount' => $totalAmount,
             'final_amount' => $totalAmount,
             'advance_amount' => $advanceAmount,
+            'payment_amount_paid' => $initialPaid,
+            'refund_amount' => 0.00,
+            'refund_status' => 'none',
             'remaining_balance' => $remainingBalance,
             'remaining_amount' => $remainingBalance,
             'payment_plan' => $paymentPlan,
@@ -260,9 +297,8 @@ try {
             'monthly_revenue_split' => null,
         ];
 
-        // Ensure monthly revenue split is calculated for exact month attribution
+        // Ensure monthly revenue split is calculated for exact month/day attribution
         try {
-            require_once __DIR__ . '/../services/KpiService.php';
             $split = KpiService::calculateMonthlyRevenueSplit($row);
             if (!empty($split)) {
                 $row['monthly_revenue_split'] = json_encode($split);
@@ -342,7 +378,6 @@ try {
 
     // Automated KPI metrics sync: dynamically recalculate authoritative metrics from live database records
     try {
-        require_once __DIR__ . '/../services/KpiService.php';
         KpiService::syncMetrics();
     } catch (Throwable $_) {}
 
@@ -350,7 +385,27 @@ try {
         'success' => true,
         'message' => 'Booking reservation created successfully.',
         'bookingId' => $bookingId,
-        'bookingNumber' => $bookingNumber
+        'bookingNumber' => $bookingNumber,
+        'dates' => [
+            'pickupDate' => $pickupDate,
+            'dropDate' => $dropDate,
+            'days' => $days,
+            'hours' => $hours,
+            'duration' => $duration,
+        ],
+        'financials' => [
+            'baseRental' => $baseAmount,
+            'driverCharges' => $driverTotal,
+            'extraCharges' => $extraCharges,
+            'couponDiscount' => $couponDiscount,
+            'netRental' => $totalAmount,
+            'securityDeposit' => $securityDeposit,
+            'grossCustomerPayable' => round($totalAmount + $securityDeposit, 2),
+            'verifiedCollected' => $initialPaid,
+            'remainingBalance' => $remainingBalance,
+        ],
+        'pickupHubId' => $pickupHubId,
+        'dropHubId' => $dropHubId,
     ], 201);
 } catch (Throwable $e) {
     error_log("[Booking Create Error] " . $e->getMessage());

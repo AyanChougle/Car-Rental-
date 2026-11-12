@@ -18,7 +18,11 @@ import { formatBookingNumber } from "./booking-reference.js";
 import {
   openImageLightbox,
   isPdfDocument,
-} from "./image-lightbox.js?v=20260928-v1";
+  fetchProtectedMediaPreview,
+  revokeObjectUrlSafely,
+} from "./image-lightbox.js?v=20261112-v3";
+
+let activeAdminPassbookObjectUrl = "";
 
 async function getAuthToken() {
   try {
@@ -346,8 +350,11 @@ function paymentStatusText(booking) {
         booking.paymentRef ? ` • ${escapeHtml(booking.paymentRef)}` : ""
       }`;
 
-    case "advance_paid":
-      return `Token paid • ${formatINR(booking.paymentAmountPaid || booking.paymentAmount || 500)} received • ${formatINR(booking.remainingBalance || 0)} due at pickup`;
+    case "advance_paid": {
+      const paidAmt = Number(booking.verifiedCollected ?? booking.paymentAmountPaid ?? booking.paymentAmount ?? 0);
+      const dueAmt = Number(booking.outstandingAmount ?? booking.remainingBalance ?? 0);
+      return `Token paid • ${formatINR(paidAmt)} received • ${formatINR(dueAmt)} due at pickup`;
+    }
 
     case "pending_verification":
       return `Verification Pending${
@@ -621,30 +628,23 @@ function applyKpiStats() {
   const pendingPayments = $("statPendingPayments");
   if (pendingPayments) pendingPayments.textContent = eff.pending_payments || 0;
 
-  // Users KPIs
+  // Users KPIs (strict DB values — no synthetic ratio estimation)
   const totalUsers = $("statTotalUsers");
-  if (totalUsers) totalUsers.textContent = eff.total_users || 0;
+  if (totalUsers) totalUsers.textContent = eff.total_users ?? 0;
 
   const activeRenters = $("statActiveRenters");
   if (activeRenters)
     activeRenters.textContent =
-      eff.active_renters ||
-      eff.verified_users ||
-      Math.round((eff.total_users || 0) * 0.75);
+      eff.active_renters ?? eff.verified_users ?? 0;
 
   const verifiedCustomers = $("statVerifiedCustomers");
   if (verifiedCustomers)
     verifiedCustomers.textContent =
-      eff.verified_customers || Math.round((eff.total_users || 0) * 0.85);
+      eff.verified_customers ?? eff.verified_users ?? 0;
 
   const repeatCustomers = $("statRepeatCustomers");
   if (repeatCustomers)
-    repeatCustomers.textContent =
-      eff.repeat_customers ||
-      Math.max(
-        0,
-        (eff.paid_bookings || 0) - Math.round((eff.total_users || 0) * 0.5),
-      );
+    repeatCustomers.textContent = eff.repeat_customers ?? 0;
 
   // Fleets KPIs
   const totalFleet = $("statTotalFleet");
@@ -1063,14 +1063,49 @@ function openAdminPassbookModal(uid, url, status) {
   const container = document.getElementById("adminBankPassbookContainer");
   if (!modal || !container) return;
 
+  if (activeAdminPassbookObjectUrl) {
+    revokeObjectUrlSafely(activeAdminPassbookObjectUrl);
+    activeAdminPassbookObjectUrl = "";
+  }
+
   container.innerHTML = "";
   if (!url) {
     container.innerHTML =
       '<div style="color:var(--sub);">No passbook photo provided.</div>';
-  } else if (url.toLowerCase().endsWith(".pdf")) {
-    container.innerHTML = `<iframe src="${url}#toolbar=0" style="width:100%; height:100%; border:none; background:#fff;"></iframe>`;
   } else {
-    container.innerHTML = `<img src="${url}" style="max-width:100%; max-height:100%; object-fit:contain;" alt="Passbook" />`;
+    container.innerHTML =
+      '<div style="color:var(--sub);padding:24px;text-align:center;">Loading passbook preview…</div>';
+    void (async () => {
+      try {
+        const preview = await fetchProtectedMediaPreview(url);
+        if (currentAdminBankReviewUid !== uid || !container.isConnected) {
+          if (preview.isBlob) revokeObjectUrlSafely(preview.url);
+          return;
+        }
+        if (preview.isBlob) {
+          activeAdminPassbookObjectUrl = preview.url;
+        }
+        if (preview.isPdf) {
+          container.innerHTML = `<iframe src="${escapeHtml(preview.url)}#toolbar=0" style="width:100%; height:100%; border:none; background:#0b1322;"></iframe>`;
+        } else if (preview.isNonInline) {
+          const extLabel = (preview.ext || "FILE").toUpperCase();
+          container.innerHTML = `<div style="padding:24px;text-align:center;color:#e2e8f0;"><div style="font-weight:800;color:#38bdf8;margin-bottom:8px;">${escapeHtml(extLabel)} Document</div><button type="button" id="adminPassbookOpenFullBtn" class="btn btn--outline btn--sm">Open / Download</button></div>`;
+          container
+            .querySelector("#adminPassbookOpenFullBtn")
+            ?.addEventListener("click", () => {
+              openImageLightbox(url, "Host Bank Passbook", `UID: ${uid}`);
+            });
+        } else {
+          container.innerHTML = `<img src="${escapeHtml(preview.url)}" style="max-width:100%; max-height:100%; object-fit:contain; cursor:zoom-in;" alt="Passbook" />`;
+          container.querySelector("img")?.addEventListener("click", () => {
+            openImageLightbox(url, "Host Bank Passbook", `UID: ${uid}`);
+          });
+        }
+      } catch (err) {
+        if (currentAdminBankReviewUid !== uid || !container.isConnected) return;
+        container.innerHTML = `<div style="padding:24px;text-align:center;color:#fca5a5;"><strong>Unable to load passbook preview</strong><div style="color:var(--sub);font-size:12px;margin-top:6px;">${escapeHtml(err?.message || "Media unavailable.")}</div></div>`;
+      }
+    })();
   }
 
   const approveBtn = document.getElementById("adminApproveBankBtn");
@@ -1088,6 +1123,10 @@ document.addEventListener("DOMContentLoaded", () => {
   document
     .getElementById("closeAdminBankPassbookModal")
     ?.addEventListener("click", () => {
+      if (activeAdminPassbookObjectUrl) {
+        revokeObjectUrlSafely(activeAdminPassbookObjectUrl);
+        activeAdminPassbookObjectUrl = "";
+      }
       const modal = document.getElementById("adminBankPassbookModal");
       if (modal) {
         modal.hidden = true;
@@ -1182,33 +1221,15 @@ async function loadAllAdminData() {
 }
 
 // ============================================================================
-// CANONICAL 7 ACTIVE FLEETS & MASTER CATALOG FALLBACK
+// FLEET ROSTER & DATABASE FLEET ACCESS (NO HARDCODED FALLBACKS)
 // ============================================================================
 const DEFAULT_7_ACTIVE_FLEETS = [];
-const DEFAULT_ACTIVE_REGS = [
-  "MH03EL1025",
-  "MH05GJ4711",
-  "MH48GJ4153",
-  "MH04MU1178",
-  "MH05FV3454",
-  "MH43CU1632",
-  "MH02FU6808",
-];
+const DEFAULT_ACTIVE_REGS = [];
 
 let adminFleetVehicles = [];
 
 function getEffectiveFleetVehicles() {
-  if (Array.isArray(adminFleetVehicles) && adminFleetVehicles.length > 0) {
-    return adminFleetVehicles;
-  }
-  if (typeof getMasterCatalogVehicles === "function") {
-    const master = getMasterCatalogVehicles();
-    if (Array.isArray(master) && master.length > 0) {
-      adminFleetVehicles = master;
-      return master;
-    }
-  }
-  return [];
+  return Array.isArray(adminFleetVehicles) ? adminFleetVehicles : [];
 }
 
 function normalizeActivePlate(plate) {
@@ -1276,7 +1297,7 @@ function renderAdminActiveFleetRoster(activeRegs, allVehicles) {
 
   if (chipsWrap) {
     if (!activeRegs.length) {
-      chipsWrap.innerHTML = `<span style="color:var(--sub); font-size:13px;">No active fleet selected. Standard fleet will be used.</span>`;
+      chipsWrap.innerHTML = `<span style="color:var(--sub); font-size:13px;">No active fleet selected. Add vehicles to the active fleet roster below.</span>`;
     } else {
       chipsWrap.innerHTML = activeRegs
         .map((reg) => {
@@ -1339,21 +1360,21 @@ function renderAdminActiveFleetRoster(activeRegs, allVehicles) {
     resetBtn.addEventListener("click", async () => {
       if (
         !confirm(
-          "Reset the Manager Active Fleet roster to the default 7 Kruizly vehicles?",
+          "Reset the Manager Active Fleet roster to vehicles marked as Active Fleet in the database?",
         )
       )
         return;
       resetBtn.disabled = true;
       resetBtn.textContent = "Resetting...";
       try {
-        localStorage.removeItem("kruizly_admin_active_regs");
+        try { localStorage.removeItem("kruizly_admin_active_regs"); } catch (_) {}
         await api.post("/vehicles/active-fleet.php", { action: "reset" });
         await loadFleetManagement();
       } catch (err) {
         alert("Error resetting active fleet: " + err.message);
       } finally {
         resetBtn.disabled = false;
-        resetBtn.textContent = "Reset to Default Fleet Roster";
+        resetBtn.textContent = "Reset to DB Active Fleet Roster";
       }
     });
   }
@@ -1364,14 +1385,12 @@ async function loadFleetManagement() {
 
   try {
     const [res, activeRes] = await Promise.all([
-      api.get("/vehicles", { hub_id: getSelectedHubId() }).catch(() => null),
-      api.get("/vehicles/active-fleet.php?_t=" + Date.now()).catch(() => null),
+      api.get("/vehicles", { hub_id: getSelectedHubId() }),
+      api.get("/vehicles/active-fleet.php?_t=" + Date.now()),
     ]);
 
     let rawVehicles =
-      Array.isArray(res?.vehicles) && res.vehicles.length > 0
-        ? res.vehicles
-        : getMasterCatalogVehicles();
+      res && res.success && Array.isArray(res.vehicles) ? res.vehicles : [];
 
     // Deduplicate and normalize fleet vehicles
     const seenVeh = new Set();
@@ -1409,28 +1428,14 @@ async function loadFleetManagement() {
     }
 
     // Check localStorage for active fleet overrides
-    let storedActiveRegs = null;
-    try {
-      const raw = localStorage.getItem("kruizly_admin_active_regs");
-      if (raw) storedActiveRegs = JSON.parse(raw);
-    } catch (e) {}
-
-    let rawList =
-      Array.isArray(activeRes?.activeRegs) && activeRes.activeRegs.length > 0
-        ? activeRes.activeRegs
-        : storedActiveRegs && storedActiveRegs.length > 0
-          ? storedActiveRegs
-          : DEFAULT_ACTIVE_REGS;
+    let rawList = Array.isArray(activeRes?.activeRegs) ? activeRes.activeRegs : [];
 
     let activeRegs = Array.from(
-      new Set(rawList.map((r) => normalizeActivePlate(r))),
+      new Set(rawList.map((r) => normalizeActivePlate(r)).filter(Boolean)),
     );
 
     try {
-      localStorage.setItem(
-        "kruizly_admin_active_regs",
-        JSON.stringify(activeRegs),
-      );
+      localStorage.removeItem("kruizly_admin_active_regs");
     } catch (e) {}
 
     currentActiveFleetRegs = activeRegs;
@@ -1739,10 +1744,7 @@ function renderFleetManagementTable(vehicles = adminFleetVehicles, activeRegs = 
           activeList = Array.from(
             new Set(activeList.map((r) => normalizeActivePlate(r)))
           );
-          localStorage.setItem(
-            "kruizly_admin_active_regs",
-            JSON.stringify(activeList)
-          );
+          try { localStorage.removeItem("kruizly_admin_active_regs"); } catch (_) {}
 
           await api.post("/vehicles/active-fleet.php", {
             action: checkbox.checked ? "add" : "remove",
@@ -1784,10 +1786,7 @@ function renderFleetManagementTable(vehicles = adminFleetVehicles, activeRegs = 
           activeList = Array.from(
             new Set(activeList.map((r) => normalizeActivePlate(r)))
           );
-          localStorage.setItem(
-            "kruizly_admin_active_regs",
-            JSON.stringify(activeList)
-          );
+          try { localStorage.removeItem("kruizly_admin_active_regs"); } catch (_) {}
 
           await api.post("/vehicles/active-fleet.php", {
             action: isCurrentlyActive ? "remove" : "add",
@@ -2459,6 +2458,7 @@ async function runAdminDatabaseExport(triggerBtn) {
       addSheet(exportData.users, "Users");
       addSheet(exportData.coupons, "Coupons");
       addSheet(exportData.verification, "KYC Verifications");
+      addSheet(exportData.financial_reconciliation, "Financial Reconciliation");
 
       window.XLSX.writeFile(wb, filename);
     } else {
@@ -3400,14 +3400,23 @@ async function fetchAdminDocumentPreview(mediaUrl) {
 
     const response = await fetch(finalUrl, { headers });
     if (!response.ok) {
-      if (isFullHttp) return { url: finalUrl, isPdf: isPdfDocument(finalUrl) };
       throw new Error(`Media server status ${response.status}`);
     }
+    const contentType = (response.headers.get("content-type") || "")
+      .split(";")[0]
+      .trim()
+      .toLowerCase();
+    if (
+      contentType === "application/json" ||
+      contentType === "text/html" ||
+      contentType === "application/xhtml+xml"
+    ) {
+      throw new Error("Media preview returned an error page.");
+    }
     const blob = await response.blob();
-    const isPdf = blob.type === "application/pdf" || isPdfDocument(finalUrl);
-    return { url: URL.createObjectURL(blob), isPdf, isBlob: true };
+    const isPdf = blob.type === "application/pdf" || isPdfDocument(finalUrl, contentType);
+    return { url: URL.createObjectURL(blob), isPdf, isBlob: true, mimeType: blob.type || contentType };
   } catch (err) {
-    if (isFullHttp) return { url: finalUrl, isPdf: isPdfDocument(finalUrl) };
     throw err;
   }
 }
@@ -3952,23 +3961,50 @@ function renderBookingsTable(bookings) {
     const vehicle =
       booking.vehicleName || booking.carName || booking.vehicle || "Vehicle";
 
+    const rawRefund = Number(booking.refundAmount ?? booking.refund_amount ?? 0);
+    const rawBeforeRefund =
+      booking.netRentalBeforeRefund !== undefined && booking.netRentalBeforeRefund !== null
+        ? Number(booking.netRentalBeforeRefund)
+        : null;
     const rawTot = Number(
-      booking.totalAmount ?? booking.finalAmount ?? booking.amount ?? 0,
+      rawBeforeRefund ??
+        booking.finalAmount ??
+        booking.totalAmount ??
+        booking.amount ??
+        0,
     );
     const rawDep = Number(
       booking.securityDeposit ?? booking.security_deposit ?? 0,
     );
     const rawBase = Number(booking.baseAmount ?? booking.base_amount ?? 0);
+    const rawDriver = Number(
+      booking.driverCharges ?? booking.driverTotal ?? booking.driver_charges ?? 0,
+    );
+    const rawExtra = Number(
+      booking.extraCharges ?? booking.extra_charges ?? 0,
+    );
     const rawDisc = Number(
       booking.couponDiscount ?? booking.coupon_discount ?? 0,
     );
-    const baseAmt =
-      rawBase > 0
-        ? Math.max(0, rawBase - rawDisc)
-        : rawTot > 0
-          ? rawTot
-          : 0;
-    const totalAmt = rawTot > 0 ? rawTot : baseAmt;
+    const pStatLower = String(
+      booking.paymentStatus ?? booking.payment_status ?? "",
+    ).toLowerCase();
+    const isCancelledRow =
+      status === "cancelled" ||
+      status === "rejected" ||
+      pStatLower === "cancelled" ||
+      pStatLower === "rejected" ||
+      pStatLower === "refunded";
+    const contractAmt =
+      rawBeforeRefund !== null
+        ? rawBeforeRefund
+        : rawBase > 0 || rawDriver > 0 || rawExtra > 0
+          ? Math.max(0, rawBase + rawDriver + rawExtra - rawDisc)
+          : Math.max(0, rawTot);
+    const baseAmt = isCancelledRow
+      ? contractAmt
+      : Math.max(0, contractAmt - rawRefund);
+    const totalAmt = baseAmt;
     const amount = baseAmt;
 
     const startOdo = getStartOdometer(booking);
@@ -4090,8 +4126,9 @@ function renderBookingsTable(bookings) {
               padding:14px;
               white-space:nowrap;
             "
-            <div style="font-weight:700;color:#06d6a0;">${formatINR(baseAmt)}</div>
-            ${rawDep > 0 ? `<small style="color:var(--sub);font-size:11px;display:block;margin-top:2px;">Deposit: ₹${rawDep}</small>` : ''}
+          >
+            <div style="font-weight:700;color:${isCancelledRow ? "var(--sub);text-decoration:line-through" : "#06d6a0"};">${formatINR(baseAmt)}</div>
+            ${rawDep > 0 ? `<small style="color:var(--sub);font-size:11px;display:block;margin-top:2px;">+ Deposit: ₹${rawDep}</small>` : ""}
           </td>
 
           <td style="padding:14px;">
@@ -6856,40 +6893,26 @@ async function openPaymentModal(booking) {
         </div>
 
         ${
-          screenshotSrc
+          screenshotSrc || booking.paymentScreenshotMediaId
             ? `
-              <img
-                src="${escapeHtml(screenshotSrc)}"
-                alt="Payment screenshot"
-                onerror="this.onerror=null;this.src='${proofFallbackSvg}';"
-                style="
-                  width:100%;
-                  max-height:400px;
-                  object-fit:contain;
-                  border-radius:10px;
-                  background:#000;
-                  margin-top:10px;
-                "
-              />
-            `
-            : booking.paymentScreenshotMediaId
-              ? `
                 <div
                   id="paymentScreenshotPreview"
                   style="
-                    min-height:120px;
+                    min-height:140px;
                     display:grid;
                     place-items:center;
                     color:var(--sub);
                     border:1px solid var(--line);
                     border-radius:10px;
                     margin-top:10px;
+                    overflow:hidden;
+                    background:#060a11;
                   "
                 >
-                  Loading payment screenshot...
+                  Loading payment proof preview...
                 </div>
               `
-              : `
+            : `
               <p
                 style="
                   color:var(--sub);
@@ -6906,41 +6929,79 @@ async function openPaymentModal(booking) {
 
   showModal("paymentModal");
 
-  if (booking.paymentScreenshotMediaId && !screenshotSrc) {
+  const proofSource = screenshotSrc || booking.paymentScreenshotMediaId || "";
+  if (proofSource) {
     const preview = $("paymentScreenshotPreview");
 
     try {
-      const objectUrl = await fetchMediaBlobUrl(
-        booking.paymentScreenshotMediaId,
-      );
+      const resolved = await fetchProtectedMediaPreview(proofSource);
 
       if (activePaymentBooking !== booking || !preview?.isConnected) {
-        URL.revokeObjectURL(objectUrl);
+        if (resolved.isBlob) revokeObjectUrlSafely(resolved.url);
         return;
       }
 
-      activePaymentScreenshotObjectUrl = objectUrl;
+      if (resolved.isBlob) {
+        activePaymentScreenshotObjectUrl = resolved.url;
+      }
 
-      preview.innerHTML = `
-        <img
-          src="${escapeHtml(objectUrl)}"
-          alt="Payment screenshot"
-          style="
-            width:100%;
-            max-height:400px;
-            object-fit:contain;
-            border-radius:10px;
-            background:#000;
-          "
-        />
-      `;
+      const bookingRef = booking.bookingId || booking.bookingNumber || booking.id || "";
+      const openFullProof = () => {
+        openImageLightbox(
+          proofSource,
+          `Payment Proof — Booking #${bookingRef}`,
+          `${booking.customerName || "Customer"} · Ref: ${booking.paymentRef || "N/A"}`,
+        );
+      };
+
+      if (resolved.isPdf) {
+        preview.innerHTML = `
+          <div style="width:100%;">
+            <iframe
+              src="${escapeHtml(resolved.url)}#toolbar=0"
+              title="Payment proof PDF"
+              style="width:100%; height:360px; border:none; background:#0b1322; display:block;"
+            ></iframe>
+            <div style="padding:8px 12px; display:flex; justify-content:flex-end; border-top:1px solid var(--line);">
+              <button type="button" id="adminPayProofFullBtn" class="btn btn--outline btn--sm">Open Full PDF Viewer</button>
+            </div>
+          </div>
+        `;
+        preview.querySelector("#adminPayProofFullBtn")?.addEventListener("click", openFullProof);
+      } else if (resolved.isNonInline) {
+        const extLabel = (resolved.ext || "FILE").toUpperCase();
+        preview.innerHTML = `
+          <div style="padding:20px; text-align:center;">
+            <div style="font-weight:800; color:#38bdf8; margin-bottom:8px;">${escapeHtml(extLabel)} Receipt</div>
+            <button type="button" id="adminPayProofFullBtn" class="btn btn--outline btn--sm">Inspect / Download ${escapeHtml(extLabel)}</button>
+          </div>
+        `;
+        preview.querySelector("#adminPayProofFullBtn")?.addEventListener("click", openFullProof);
+      } else {
+        preview.innerHTML = `
+          <img
+            src="${escapeHtml(resolved.url)}"
+            alt="Payment screenshot"
+            title="Click to enlarge"
+            style="
+              width:100%;
+              max-height:400px;
+              object-fit:contain;
+              border-radius:10px;
+              background:#000;
+              cursor:zoom-in;
+            "
+          />
+        `;
+        preview.querySelector("img")?.addEventListener("click", openFullProof);
+      }
     } catch (error) {
       console.error("PAYMENT SCREENSHOT LOAD ERROR:", error);
 
       if (preview?.isConnected) {
         preview.innerHTML = `
           <p style="color:#ef476f;padding:16px;text-align:center;">
-            The screenshot was uploaded, but its preview could not be loaded.
+            ${escapeHtml(error?.message || "The proof was uploaded, but its preview could not be loaded.")}
           </p>
         `;
       }
@@ -6997,17 +7058,22 @@ function updateRevenueStats() {
       s === "cancelled" ||
       s === "rejected" ||
       p === "cancelled" ||
-      p === "rejected"
+      p === "rejected" ||
+      p === "refunded"
     )
       return sum;
-    if (p === "advance_paid") return sum + Number(b.advanceAmount || 500);
-    const dep = Number(b.securityDeposit || b.security_deposit || 0);
-    const tot = Number(b.finalAmount || b.totalAmount || 0);
+    if (b.netRentalRevenue !== undefined && b.netRentalRevenue !== null) {
+      return sum + Number(b.netRentalRevenue);
+    }
     const base = Number(b.baseAmount || 0);
+    const drv = Number(b.driverCharges || b.driverTotal || 0);
+    const ext = Number(b.extraCharges || 0);
     const disc = Number(b.couponDiscount || 0);
-    let net = 0;
-    if (base > 0) net = Math.max(0, base - disc);
-    else if (tot > 0) net = tot;
+    const ref = Number(b.refundAmount || 0);
+    const tot = Number(b.finalAmount || b.totalAmount || 0);
+    const net = base > 0 || drv > 0 || ext > 0
+      ? Math.max(0, base + drv + ext - disc - ref)
+      : Math.max(0, tot - ref);
     return sum + net;
   }, 0);
 
@@ -7078,13 +7144,8 @@ function updateRevenueStats() {
       : typeof getEffectiveFleetVehicles === "function"
         ? getEffectiveFleetVehicles()
         : [];
-  const totFleetNum = Math.max(
-    1,
-    Number(
-      effKpi?.total_fleet ||
-        effKpi?.fleet_count ||
-        (fleetList.length ? fleetList.length : 39),
-    ),
+  const totFleetNum = Number(
+    effKpi?.total_fleet ?? effKpi?.fleet_count ?? fleetList.length ?? 0,
   );
   const nowMs = Date.now();
   const onRoadCount = bookingsData.filter((b) => {
@@ -7138,7 +7199,7 @@ function updateRevenueStats() {
       if (endWindow && nowMs > endWindow + 7 * 24 * 60 * 60 * 1000) return false;
       return true;
     }
-    if (s === "active" || s === "started" || s === "confirmed" || s === "paid") {
+    if (s === "active" || s === "started") {
       if (pMs && nowMs < pMs) return false;
       if (endWindow && nowMs > endWindow) return false;
       return true;
@@ -7266,20 +7327,10 @@ async function fetchHostCarMedia(car) {
 }
 
 async function fetchMediaBlobUrl(mediaId) {
-  const headers = await mediaAuthHeaders();
-
-  const response = await fetch(
-    `${MEDIA_SERVER_URL}/api/media/file/${encodeURIComponent(mediaId)}`,
-    { headers },
-  );
-
-  if (!response.ok) {
-    throw new Error(`Could not load photo (${response.status}).`);
-  }
-
-  const blob = await response.blob();
-
-  return URL.createObjectURL(blob);
+  const resolved = await fetchProtectedMediaPreview(mediaId, {
+    baseUrl: MEDIA_SERVER_URL,
+  });
+  return resolved.url;
 }
 
 // Loads + caches the server-hosted photos for one car. Cheap on repeat
@@ -7556,7 +7607,7 @@ function renderHostCarsTable(cars) {
 
                     <input
                       type="file"
-                      accept="image/*"
+                      accept="image/*,application/pdf,.pdf,.jpg,.jpeg,.jpe,.jfif,.jfi,.png,.webp,.avif,.avis,.gif,.bmp,.dib,.tif,.tiff,.svg,.heic,.heif,.hif,.hvic,.ico"
                       multiple
                       class="host-photo-input"
                       data-hid="${escapeHtml(car.id)}"

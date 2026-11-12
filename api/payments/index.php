@@ -7,9 +7,10 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../services/KpiService.php';
 
 $user = Auth::requireAuth();
-$isStaff = in_array($user['role'] ?? '', ['admin', 'manager', 'executive', 'accountant'], true);
+$isStaff = in_array(strtolower((string)($user['role'] ?? '')), ['admin', 'super_admin', 'manager', 'executive', 'accountant', 'accounts'], true);
 $hubIdFilter = isset($_GET['hub_id']) && $_GET['hub_id'] !== '' ? (int)$_GET['hub_id'] : 0;
 
 
@@ -90,7 +91,11 @@ if (!$isStaff) {
     try {
         $bookingPayments = Database::fetchAll(
             "SELECT b.id AS b_id, b.booking_id, b.booking_number, b.firebase_uid,
-                    COALESCE(NULLIF(b.advance_amount, 0), NULLIF(b.final_amount, 0), b.total_amount, 0.0) AS amount,
+                    CASE
+                        WHEN b.payment_amount_paid > 0 THEN b.payment_amount_paid
+                        WHEN LOWER(COALESCE(b.payment_status, '')) IN ('paid', 'verified') THEN COALESCE(NULLIF(b.final_amount, 0), b.total_amount, 0.0)
+                        ELSE COALESCE(NULLIF(b.advance_amount, 0), NULLIF(b.final_amount, 0), b.total_amount, 0.0)
+                    END AS amount,
                     COALESCE(NULLIF(b.payment_method, ''), 'UPI') AS method,
                     COALESCE(NULLIF(b.payment_ref, ''), b.booking_number, b.booking_id) AS utr,
                     b.payment_ref,
@@ -120,10 +125,9 @@ if (!$isStaff) {
                AND LOWER(COALESCE(b.status, '')) NOT IN ('cancelled', 'rejected')
                AND LOWER(COALESCE(b.payment_status, '')) NOT IN ('cancelled', 'rejected', 'refunded')
                AND (
-                   (b.payment_status IS NOT NULL AND TRIM(b.payment_status) <> '' AND b.payment_status != 'unpaid')
+                   LOWER(COALESCE(b.payment_status, '')) IN ('paid', 'advance_paid', 'verified', 'pending_verification')
                    OR (b.payment_ref IS NOT NULL AND TRIM(b.payment_ref) <> '')
                    OR (b.payment_screenshot_url IS NOT NULL AND TRIM(b.payment_screenshot_url) <> '')
-                   OR b.total_amount > 0
                )
              ORDER BY b.created_at DESC",
             [$hubIdFilter, $hubIdFilter, $hubIdFilter]
@@ -145,13 +149,25 @@ if (!$isStaff) {
     } catch (Throwable $_) {}
 }
 
-// Bulletproof deduplication by payment_id or id
+// Bulletproof deduplication by payment_id / utr per booking (matching KpiService)
 $dedupedPayments = [];
 $seenPayments = [];
+$seenUtrs = [];
 foreach ($rows as $r) {
-    $payKey = trim((string)($r['payment_id'] ?? $r['id'] ?? ''));
+    $payKey = strtoupper(trim((string)($r['payment_id'] ?? $r['id'] ?? '')));
     if ($payKey !== '' && isset($seenPayments[$payKey])) {
         continue;
+    }
+    $bidClean = strtoupper(ltrim(trim((string)($r['booking_id'] ?? '')), '#'));
+    $utrClean = strtoupper(trim((string)($r['utr'] ?? $r['payment_ref'] ?? '')));
+    $statClean = strtolower(trim((string)($r['status'] ?? 'pending')));
+    $amtClean = number_format((float)($r['amount'] ?? 0), 2, '.', '');
+    if ($bidClean !== '' && $utrClean !== '' && $statClean !== 'rejected') {
+        $uKey = $bidClean . '|' . $utrClean . '|' . $amtClean;
+        if (isset($seenUtrs[$uKey])) {
+            continue;
+        }
+        $seenUtrs[$uKey] = true;
     }
     if ($payKey !== '') {
         $seenPayments[$payKey] = true;

@@ -7,6 +7,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../services/KpiService.php';
 
 $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 $bookingId = trim((string)($_GET['bookingId'] ?? $_GET['id'] ?? $_GET['booking_id'] ?? $input['bookingId'] ?? $input['id'] ?? ''));
@@ -16,7 +17,7 @@ if (!$bookingId) {
 }
 
 $user = Auth::requireAuth();
-$isStaff = in_array(strtolower((string)($user['role'] ?? '')), ['admin', 'manager', 'executive', 'accounts', 'super_admin'], true);
+$isStaff = in_array(strtolower((string)($user['role'] ?? '')), ['admin', 'manager', 'executive', 'accountant', 'accounts', 'super_admin'], true);
 
 $invoice = Database::fetchOne(
     "SELECT * FROM invoices WHERE booking_id = ? OR invoice_number = ? OR invoice_id = ? LIMIT 1",
@@ -54,7 +55,23 @@ if (!$isStaff && $invoice['firebase_uid'] !== $user['firebase_uid']) {
     sendErrorResponse('Access denied.', 403);
 }
 
-$balance = (float)$invoice['balance_due'];
+$paymentData = KpiService::loadDeduplicatedPayments();
+$pByB = $paymentData['by_booking'] ?? [];
+$bkRef = strtoupper(ltrim((string)($booking['booking_id'] ?? $invoice['booking_id']), '#'));
+$pAgg = $pByB[$bkRef] ?? [];
+$fin = $booking ? KpiService::computeBookingFinancials($booking, $pAgg) : [
+    'base_rental' => (float)$invoice['base_amount'],
+    'driver_charges' => 0.0,
+    'extra_charges' => 0.0,
+    'coupon_discount' => (float)$invoice['coupon_discount'],
+    'security_deposit' => (float)$invoice['security_deposit'],
+    'net_rental_before_refund' => (float)$invoice['total_amount'],
+    'verified_collected' => (float)$invoice['amount_paid'],
+    'outstanding_amount' => (float)$invoice['balance_due'],
+    'gross_customer_payable' => (float)$invoice['total_amount'] + (float)$invoice['security_deposit'],
+];
+
+$balance = (float)$fin['outstanding_amount'];
 $isFull = ($balance <= 0.01);
 
 sendJsonResponse([
@@ -74,20 +91,22 @@ sendJsonResponse([
             'registration' => $invoice['vehicle_reg'] ?: ($booking['vehicle_reg'] ?? '')
         ],
         'charges' => [
-            'rental' => (float)$invoice['base_amount'],
-            'driver' => 0.00,
+            'rental' => (float)$fin['base_rental'],
+            'driver' => (float)$fin['driver_charges'],
+            'extraCharges' => (float)$fin['extra_charges'],
             'extraKm' => 0.00,
             'lateFee' => 0.00,
             'fuel' => 0.00,
             'damage' => 0.00,
-            'discount' => (float)$invoice['coupon_discount'],
-            'securityDeposit' => (float)$invoice['security_deposit']
+            'discount' => (float)$fin['coupon_discount'],
+            'securityDeposit' => (float)$fin['security_deposit']
         ],
         'taxRate' => 0,
         'notes' => $booking['notes'] ?? '',
-        'total' => (float)$invoice['total_amount'],
-        'subtotal' => (float)$invoice['total_amount'],
-        'amountPaid' => (float)$invoice['amount_paid'],
+        'total' => (float)$fin['net_rental_before_refund'],
+        'subtotal' => (float)$fin['net_rental_before_refund'],
+        'grossCustomerPayable' => (float)$fin['gross_customer_payable'],
+        'amountPaid' => (float)$fin['verified_collected'],
         'balanceDue' => $balance,
         'status' => $invoice['status'],
         'paymentPlan' => $booking['payment_plan'] ?? ($isFull ? 'full' : 'advance'),
@@ -104,10 +123,12 @@ sendJsonResponse([
         'pickupDate' => $invoice['pickup_date'],
         'dropDate' => $invoice['drop_date'],
         'duration' => $invoice['duration'],
-        'baseAmount' => (float)$invoice['base_amount'],
-        'couponDiscount' => (float)$invoice['coupon_discount'],
-        'securityDeposit' => (float)$invoice['security_deposit'],
-        'totalAmount' => (float)$invoice['total_amount'],
+        'baseAmount' => (float)$fin['base_rental'],
+        'driverCharges' => (float)$fin['driver_charges'],
+        'extraCharges' => (float)$fin['extra_charges'],
+        'couponDiscount' => (float)$fin['coupon_discount'],
+        'securityDeposit' => (float)$fin['security_deposit'],
+        'totalAmount' => (float)$fin['net_rental_before_refund'],
         'emailStatus' => $invoice['email_status'],
         'createdAt' => $invoice['created_at']
     ]

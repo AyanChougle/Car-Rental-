@@ -8,7 +8,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
 
-Auth::requireRole('admin');
+Auth::requireRole('admin', 'super_admin');
 
 $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
 $targetUid = trim((string)($_GET['uid'] ?? $input['uid'] ?? ''));
@@ -19,7 +19,7 @@ if (!$targetUid) {
     sendErrorResponse('User UID is required.', 400);
 }
 
-$validRoles = ['customer', 'admin', 'manager', 'executive', 'host', 'accountant'];
+$validRoles = ['customer', 'admin', 'super_admin', 'manager', 'executive', 'host', 'accountant'];
 if ($role && !in_array($role, $validRoles, true)) {
     sendErrorResponse("Invalid role '$role'.", 400);
 }
@@ -32,6 +32,11 @@ Database::execute(
      WHERE firebase_uid = ? OR id = ?",
     [$role, $status, $targetUid, is_numeric($targetUid) ? (int)$targetUid : 0]
 );
+
+try {
+    require_once __DIR__ . '/../services/KpiService.php';
+    KpiService::syncMetrics(true, false);
+} catch (Throwable $_) {}
 
 sendJsonResponse(['success' => true, 'message' => "User permissions updated."]);
 

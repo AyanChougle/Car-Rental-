@@ -76,6 +76,11 @@ try {
     // Load full user record
     $user = Database::fetchOne("SELECT * FROM users WHERE id = ? LIMIT 1", [$userId]);
 
+    try {
+        require_once __DIR__ . '/../services/KpiService.php';
+        KpiService::syncMetrics(true, false);
+    } catch (Throwable $_) {}
+
     sendJsonResponse([
         'success' => true,
         'message' => 'Registration successful.',

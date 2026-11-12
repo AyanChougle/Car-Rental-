@@ -7,6 +7,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../services/KpiService.php';
 
 $user = Auth::requireAuth();
 
@@ -43,10 +44,15 @@ if (!empty($cleanPhone)) {
 
 $sql = "SELECT * FROM bookings WHERE " . implode(" OR ", $whereClauses) . " ORDER BY created_at DESC";
 $rows = Database::fetchAll($sql, $params);
+$paymentAggs = KpiService::loadDeduplicatedPayments();
 
-$bookings = array_map(function($b) {
-    $status = $b['status'];
-    if ($b['payment_status'] === 'rejected' && ($status === 'pending_verification' || $status === 'pending_payment')) {
+$bookings = array_map(function($b) use ($paymentAggs) {
+    $bidKey = (string)($b['id'] ?? '');
+    $fin = KpiService::computeBookingFinancials($b, $paymentAggs[$bidKey] ?? []);
+    $dt = KpiService::getBookingDates($b);
+
+    $status = strtolower(trim((string)($b['status'] ?? '')));
+    if ($fin['is_cancelled'] || (($b['payment_status'] ?? '') === 'rejected' && in_array($status, ['pending_verification', 'pending_payment'], true))) {
         $status = 'cancelled';
     }
 
@@ -60,7 +66,7 @@ $bookings = array_map(function($b) {
 
     $isPickedUp = !empty($b['pickup_at']) ||
                   !empty($b['start_odometer']) ||
-                  in_array($status, ['active', 'in_trip', 'completed'], true) ||
+                  in_array($status, ['active', 'in_trip', 'ongoing', 'started', 'completed'], true) ||
                   (!empty($inspection['pickupStatus']) && $inspection['pickupStatus'] === 'picked_up');
 
     $pickupStatus = $isPickedUp ? 'picked_up' : ($inspection['pickupStatus'] ?? 'awaiting pickup');
@@ -84,20 +90,29 @@ $bookings = array_map(function($b) {
         'vehicleCategory' => $b['vehicle_category'],
         'pickupDate' => $b['pickup_date'],
         'dropDate' => $b['drop_date'],
-        'duration' => $b['duration'],
-        'days' => (int)$b['days'],
-        'hours' => (int)$b['hours'],
+        'duration' => $b['duration'] ?: ($dt['days'] . ' Days'),
+        'days' => $dt['days'],
+        'hours' => $dt['hours'],
         'withDriver' => (int)$b['with_driver'],
-        'baseAmount' => (float)$b['base_amount'],
-        'totalAmount' => (float)$b['total_amount'],
-        'finalAmount' => (float)$b['final_amount'],
+        'baseAmount' => $fin['base_rental'],
+        'baseRental' => $fin['base_rental'],
+        'driverCharges' => $fin['driver_charges'],
+        'extraCharges' => $fin['extra_charges'],
+        'totalAmount' => $fin['net_rental_before_refund'],
+        'finalAmount' => $fin['net_rental_before_refund'],
+        'netRentalBeforeRefund' => $fin['net_rental_before_refund'],
+        'netRentalRevenue' => $fin['net_rental_revenue'],
+        'grossCustomerPayable' => $fin['gross_customer_payable'],
         'advanceAmount' => (float)$b['advance_amount'],
-        'remainingBalance' => (float)$b['remaining_balance'],
-        'securityDeposit' => (float)$b['security_deposit'],
+        'verifiedCollected' => $fin['verified_collected'],
+        'refundAmount' => $fin['refund_amount'],
+        'remainingBalance' => $fin['outstanding_amount'],
+        'outstandingAmount' => $fin['outstanding_amount'],
+        'securityDeposit' => $fin['security_deposit'],
         'couponCode' => $b['coupon_code'],
-        'couponDiscount' => (float)$b['coupon_discount'],
+        'couponDiscount' => $fin['coupon_discount'],
         'paymentPlan' => $b['payment_plan'],
-        'paymentStatus' => $b['payment_status'],
+        'paymentStatus' => $fin['is_cancelled'] ? ($fin['refund_amount'] > 0 ? 'refunded' : 'cancelled') : $b['payment_status'],
         'status' => $status,
         'bookingStatus' => $b['booking_status'] ?? $status,
         'cancellationReason' => $b['cancellation_reason'] ?? null,

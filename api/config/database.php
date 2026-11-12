@@ -14,6 +14,11 @@ class Database {
 
     public static function getConnection(): PDO {
         if (self::$instance === null) {
+            if (DB_NAME === '' || DB_USER === '') {
+                error_log("[Database Config Error] DB_NAME or DB_USER is not configured in environment/.env");
+                sendErrorResponse("Database configuration error on server.", 500);
+            }
+
             $hosts = array_values(array_unique([DB_HOST, '127.0.0.1', 'localhost']));
             $lastException = null;
 
@@ -53,7 +58,7 @@ class Database {
             if (self::$instance === null) {
                 $msg = $lastException ? $lastException->getMessage() : 'Unknown error';
                 error_log("[Database Connection Error] " . $msg);
-                sendErrorResponse("Database connection failed: " . $msg, 500);
+                sendErrorResponse("Database connection failed. Please try again later.", 500);
             }
         }
 

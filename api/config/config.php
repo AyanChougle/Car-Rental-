@@ -1,9 +1,9 @@
 <?php
 /**
- * api/config/config.php (UPDATED)
+ * api/config/config.php
  * 
  * Central Configuration for KRUIZLY PHP Backend.
- * Hostinger MySQL + JWT (no Firebase dependency).
+ * Loads protected environment variables from .env (never commit secrets in source).
  */
 
 declare(strict_types=1);
@@ -11,34 +11,85 @@ declare(strict_types=1);
 // Set default timezone to Indian Standard Time (Navi Mumbai)
 date_default_timezone_set('Asia/Kolkata');
 
-// Error reporting for production vs development
-$isLocal = in_array($_SERVER['HTTP_HOST'] ?? '', ['127.0.0.1', '127.0.0.1', 'localhost:5502', 'localhost:5501'], true);
-if ($isLocal) {
+// Load .env file if present and not already injected into environment
+(static function (): void {
+    $envPath = __DIR__ . '/../../.env';
+    if (!is_file($envPath) || !is_readable($envPath)) {
+        return;
+    }
+    $lines = @file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (!is_array($lines)) {
+        return;
+    }
+    foreach ($lines as $line) {
+        $trimmed = trim($line);
+        if ($trimmed === '' || $trimmed[0] === '#') {
+            continue;
+        }
+        $pos = strpos($trimmed, '=');
+        if ($pos === false) {
+            continue;
+        }
+        $key = trim(substr($trimmed, 0, $pos));
+        $val = trim(substr($trimmed, $pos + 1));
+        if ($key === '') {
+            continue;
+        }
+        if ((str_starts_with($val, '"') && str_ends_with($val, '"')) ||
+            (str_starts_with($val, "'") && str_ends_with($val, "'"))) {
+            $val = substr($val, 1, -1);
+        }
+        $existing = getenv($key);
+        if (($existing === false || $existing === '') && (!isset($_ENV[$key]) || $_ENV[$key] === '')) {
+            putenv("$key=$val");
+            $_ENV[$key] = $val;
+            $_SERVER[$key] = $val;
+        }
+    }
+})();
+
+function kruizlyEnv(string $key, ?string $default = null): ?string {
+    $val = getenv($key);
+    if ($val === false && isset($_ENV[$key])) {
+        $val = (string)$_ENV[$key];
+    }
+    if ($val === false && isset($_SERVER[$key])) {
+        $val = (string)$_SERVER[$key];
+    }
+    if ($val === false || trim((string)$val) === '') {
+        return $default;
+    }
+    return (string)$val;
+}
+
+// Error reporting for production vs development (never leak errors in production)
+$isLocal = in_array($_SERVER['HTTP_HOST'] ?? '', ['127.0.0.1', 'localhost', 'localhost:5502', 'localhost:5501'], true)
+    || (kruizlyEnv('APP_ENV', 'production') === 'local');
+if ($isLocal && PHP_SAPI === 'cli') {
     error_reporting(E_ALL);
     ini_set('display_errors', '1');
 } else {
-    error_reporting(0);
+    error_reporting(E_ALL & ~E_DEPRECATED & ~E_STRICT);
     ini_set('display_errors', '0');
 }
 
 // ------------------------------------------------------------
-// 1. DATABASE CONFIGURATION (Hostinger MySQL)
+// 1. DATABASE CONFIGURATION (Protected Environment Variables)
 // ------------------------------------------------------------
-define('DB_HOST', getenv('DB_HOST') ?: 'localhost');
-define('DB_PORT', getenv('DB_PORT') ?: '3306');
-define('DB_NAME', getenv('DB_NAME') ?: 'u303154098_carRentpe');
-define('DB_USER', getenv('DB_USER') ?: 'u303154098_omkar');
-define('DB_PASS', getenv('DB_PASS') !== false ? getenv('DB_PASS') : 'Pa$$@12123');
+define('DB_HOST', kruizlyEnv('DB_HOST', 'localhost'));
+define('DB_PORT', kruizlyEnv('DB_PORT', '3306'));
+define('DB_NAME', kruizlyEnv('DB_NAME', ''));
+define('DB_USER', kruizlyEnv('DB_USER', ''));
+define('DB_PASS', kruizlyEnv('DB_PASS', ''));
 define('DB_CHARSET', 'utf8mb4');
 
 // ------------------------------------------------------------
 // 2. FIREBASE & JWT AUTHENTICATION
 // ------------------------------------------------------------
-define('FIREBASE_PROJECT_ID', getenv('FIREBASE_PROJECT_ID') ?: 'carrentpeweb');
+define('FIREBASE_PROJECT_ID', kruizlyEnv('FIREBASE_PROJECT_ID', 'carrentpeweb'));
 
-// SECURITY: In production, this MUST come from environment variable
-// Generate a strong key: php -r "echo bin2hex(random_bytes(32));"
-define('JWT_SECRET', getenv('JWT_SECRET') ?: 'dev_key_change_in_production_immediately');
+// SECURITY: Must be supplied strictly via environment / .env (no hardcoded fallback secret)
+define('JWT_SECRET', trim((string)kruizlyEnv('JWT_SECRET', '')));
 
 // Admin emails that auto-get admin role on first login
 define('ADMIN_EMAILS', ['ayan@kruizly.com', 'admin@kruizly.com', 'ayanchougle@gmail.com', 'carrentpedatabase@gmail.com', 'currentpedatabase@gmail.com']);
@@ -50,22 +101,32 @@ define('JWT_REFRESH_TOKEN_TTL', 604800); // 7 days
 // ------------------------------------------------------------
 // 3. FILE STORAGE PATHS (Hostinger Filesystem)
 // ------------------------------------------------------------
-$storagePath = realpath(__DIR__ . '/../../storage') ?: (__DIR__ . '/../../storage');
+$envStorage = trim((string)kruizlyEnv('STORAGE_ROOT', ''));
+if ($envStorage !== '' && (str_contains($envStorage, 'YOUR_') || str_contains($envStorage, '<'))) {
+    $envStorage = '';
+}
+$storagePath = $envStorage !== ''
+    ? $envStorage
+    : (realpath(__DIR__ . '/../../storage') ?: (__DIR__ . '/../../storage'));
 if (!is_dir($storagePath)) {
     @mkdir($storagePath, 0755, true);
 }
 define('STORAGE_ROOT', $storagePath);
-define('MAX_UPLOAD_SIZE', 10 * 1024 * 1024); // 10 MB
+define('MAX_UPLOAD_SIZE', (int)(kruizlyEnv('MAX_UPLOAD_SIZE', (string)(10 * 1024 * 1024))));
 
 // ------------------------------------------------------------
 // 4. SMTP EMAIL CONFIGURATION
 // ------------------------------------------------------------
-define('SMTP_HOST', getenv('SMTP_HOST') ?: 'smtp.gmail.com');
-define('SMTP_PORT', (int)(getenv('SMTP_PORT') ?: 587));
-define('SMTP_USER', getenv('SMTP_USER') ?: 'carrentpedatabase@gmail.com');
-define('SMTP_PASS', getenv('SMTP_PASS') ?: 'ydgallypuahfjnrc');
-define('SMTP_FROM_EMAIL', getenv('SMTP_FROM_EMAIL') ?: 'carrentpedatabase@gmail.com');
-define('SMTP_FROM_NAME', getenv('SMTP_FROM_NAME') ?: 'KRUIZLY Car Rentals');
+define('SMTP_HOST', kruizlyEnv('SMTP_HOST', ''));
+define('SMTP_PORT', (int)kruizlyEnv('SMTP_PORT', '587'));
+$envSmtpUser = trim((string)kruizlyEnv('SMTP_USER', ''));
+if (str_contains($envSmtpUser, 'YOUR_') || str_contains($envSmtpUser, '<')) {
+    $envSmtpUser = 'support@kruizly.com';
+}
+define('SMTP_USER', $envSmtpUser);
+define('SMTP_PASS', kruizlyEnv('SMTP_PASS', ''));
+define('SMTP_FROM_EMAIL', kruizlyEnv('SMTP_FROM_EMAIL', SMTP_USER ?: 'support@kruizly.com'));
+define('SMTP_FROM_NAME', kruizlyEnv('SMTP_FROM_NAME', 'KRUIZLY Car Rentals'));
 
 // ------------------------------------------------------------
 // 5. COMPANY DETAILS

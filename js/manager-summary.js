@@ -7,6 +7,14 @@ import {
 } from "./auth.js?v=20260908-v5";
 import { api } from "./kruizly-api.js?v=20261001-v2";
 import "./nav-helper.js?v=20260928-v2";
+import {
+  isBookingOnRoadNow,
+  isBookingReturned,
+  hasBookingPhysicalHandover,
+  isVehicleOnRoadNow,
+  getFleetLiveStatusInfo as sharedGetFleetLiveStatusInfo,
+  computeUnifiedFleetAndTripSummary,
+} from "./fleet-status.js?v=20261112-v4";
 
 /* ============================================================
    KRUIZLY MANAGER SUMMARY DASHBOARD
@@ -179,337 +187,21 @@ export function matchBookingToFleet(b) {
 }
 
 export function isVehicleOnTripNow(vehicleOrReg, bookings = rawBookings) {
-  if (!vehicleOrReg || !Array.isArray(bookings) || bookings.length === 0)
-    return false;
-
-  let targetReg = "";
-  let targetCarId = "";
-  let targetModel = "";
-  let targetBrand = "";
-
-  if (typeof vehicleOrReg === "string") {
-    targetReg = vehicleOrReg
-      .trim()
-      .toUpperCase()
-      .replace(/[\s\-_]/g, "");
-  } else if (typeof vehicleOrReg === "object" && vehicleOrReg !== null) {
-    targetReg = String(vehicleOrReg.regNo || vehicleOrReg.reg_no || "")
-      .trim()
-      .toUpperCase()
-      .replace(/[\s\-_]/g, "");
-    targetCarId = String(vehicleOrReg.carId || vehicleOrReg.car_id || "")
-      .trim()
-      .toUpperCase()
-      .replace(/[\s\-_]/g, "");
-    targetModel = String(vehicleOrReg.model || "")
-      .trim()
-      .toUpperCase();
-    targetBrand = String(vehicleOrReg.brand || "")
-      .trim()
-      .toUpperCase();
-  }
-
-  // Safety check: if no registration, carId, or model, cannot match
-  if (!targetReg && !targetCarId && !targetModel) return false;
-
-  const nowMs = Date.now();
-
-  return bookings.some((b) => {
-    if (isBookingCancelled(b)) return false;
-    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (bStat === "completed" || bStat === "cancelled" || bStat === "rejected")
-      return false;
-
-    const bReg = String(b.vehicleReg || b.regNo || "")
-      .trim()
-      .toUpperCase()
-      .replace(/[\s\-_]/g, "");
-    const bCarId = String(b.carId || b.car_id || "")
-      .trim()
-      .toUpperCase()
-      .replace(/[\s\-_]/g, "");
-    const bName = String(b.vehicleName || b.carName || "")
-      .trim()
-      .toUpperCase();
-    const matched = matchBookingToFleet(b);
-    const matchedClean = matched
-      ? matched.toUpperCase().replace(/[\s\-_]/g, "")
-      : "";
-
-    let isTargetCar = false;
-
-    // 1. Match by registration if target has reg
-    if (targetReg) {
-      if (
-        (matchedClean && matchedClean === targetReg) ||
-        (bReg &&
-          (bReg === targetReg ||
-            bReg.includes(targetReg) ||
-            targetReg.includes(bReg)))
-      ) {
-        isTargetCar = true;
-      }
-      if (!isTargetCar && bReg) {
-        const rSimp = bReg
-          .replace(/[CG]/g, "C")
-          .replace(/[UY]/g, "U")
-          .replace(/[FL]/g, "F");
-        const tSimp = targetReg
-          .replace(/[CG]/g, "C")
-          .replace(/[UY]/g, "U")
-          .replace(/[FL]/g, "F");
-        if (rSimp === tSimp || rSimp.includes(tSimp) || tSimp.includes(rSimp)) {
-          isTargetCar = true;
-        }
-      }
-    }
-
-    // 2. Match by carId
-    if (!isTargetCar && targetCarId && bCarId) {
-      if (bCarId === targetCarId || bCarId.includes(targetCarId)) {
-        isTargetCar = true;
-      }
-    }
-
-    // 3. Match by Model Name (especially for catalog cars like Baleno without registration)
-    if (!isTargetCar && targetModel && targetModel.length >= 3) {
-      if (bName && bName.includes(targetModel)) {
-        isTargetCar = true;
-      }
-    }
-
-    if (!isTargetCar) return false;
-
-    // 1. If car was already returned or trip completed, it is in yard (NOT on trip)
-    let insp = b.returnInspection || b.return_inspection;
-    if (typeof insp === "string") {
-      try { insp = JSON.parse(insp); } catch (e) { insp = {}; }
-    }
-    if (!insp || typeof insp !== "object") insp = {};
-
-    const hasBeenReturned =
-      bStat === "completed" ||
-      bStat === "returned" ||
-      Boolean(
-        b.returnOdometer ||
-        b.return_odometer ||
-        b.endOdometer ||
-        b.end_odometer ||
-        b.completedAt ||
-        b.returnedAt ||
-        insp.returnOdometer ||
-        insp.endOdometer ||
-        insp.returnAt ||
-        insp.returnedAt ||
-        insp.returnStatus === 'returned'
-      );
-
-    if (hasBeenReturned) return false;
-
-    const { start, end } = getBookingOperationalDates(b);
-    const startMs = start ? start.getTime() : 0;
-    const endMs = end ? end.getTime() + 2 * 60 * 60 * 1000 : 0;
-
-    // Physical handover proof
-    const hasPhysicalHandover = Boolean(
-      b.pickupAt ||
-      b.pickup_at ||
-      b.startOdometer ||
-      b.start_odometer ||
-      insp.pickupOdometer ||
-      insp.pickupAt ||
-      insp.pickupStatus === 'picked_up' ||
-      bStat === "in_trip" ||
-      bStat === "ongoing"
-    );
-
-    if (bStat === "in_trip" || bStat === "ongoing") {
-      return true;
-    }
-
-    if (hasPhysicalHandover) {
-      if (bStat === "active" || bStat === "started") {
-        return true;
-      }
-      if (endMs && nowMs > endMs + 7 * 24 * 60 * 60 * 1000) {
-        return false;
-      }
-      return true;
-    }
-
-    // If booking starts in the future and vehicle hasn't been physically handed over, vehicle is in yard
-    if (startMs && nowMs < startMs) {
-      return false;
-    }
-
-    // If trip window ended without physical handover, it expired / no-show -> vehicle is in yard
-    if (endMs && nowMs > endMs + 24 * 60 * 60 * 1000) {
-      return false;
-    }
-
-    // 3. Confirmed / Paid / Active booking currently within the operational trip window
-    const isQualifyingBooking =
-      bStat === "active" ||
-      bStat === "started" ||
-      bStat === "ongoing" ||
-      bStat === "confirmed" ||
-      bStat === "approved" ||
-      bStat === "paid" ||
-      bStat === "advance_paid" ||
-      b.pickupStatus === "picked_up" ||
-      String(b.paymentStatus || "").toLowerCase() === "paid";
-
-    if (isQualifyingBooking) {
-      if (startMs && endMs) {
-        if (nowMs >= startMs && nowMs <= endMs + 24 * 60 * 60 * 1000) {
-          return true;
-        }
-      } else if (startMs && nowMs >= startMs) {
-        return true;
-      }
-    }
-
-    return false;
-  });
+  return isVehicleOnRoadNow(
+    vehicleOrReg,
+    bookings,
+    activeFleetsRoster,
+    rawVehicles,
+  );
 }
 
 export function getFleetLiveStatusInfo(vehicleOrReg, bookings = rawBookings) {
-  let targetReg = "";
-  let targetCarId = "";
-  let targetModel = "";
-
-  if (typeof vehicleOrReg === "string") {
-    targetReg = vehicleOrReg
-      .trim()
-      .toUpperCase()
-      .replace(/[\s\-_]/g, "");
-  } else if (typeof vehicleOrReg === "object" && vehicleOrReg !== null) {
-    targetReg = String(vehicleOrReg.regNo || vehicleOrReg.reg_no || "")
-      .trim()
-      .toUpperCase()
-      .replace(/[\s\-_]/g, "");
-    targetCarId = String(vehicleOrReg.carId || vehicleOrReg.car_id || "")
-      .trim()
-      .toUpperCase()
-      .replace(/[\s\-_]/g, "");
-    targetModel = String(vehicleOrReg.model || "")
-      .trim()
-      .toUpperCase();
-  }
-
-  const todayStartMs = new Date().setHours(0, 0, 0, 0);
-
-  const carBookings = bookings.filter((b) => {
-    if (isBookingCancelled(b)) return false;
-    const bReg = String(b.vehicleReg || b.regNo || "")
-      .trim()
-      .toUpperCase()
-      .replace(/[\s\-_]/g, "");
-    const bCarId = String(b.carId || b.car_id || "")
-      .trim()
-      .toUpperCase()
-      .replace(/[\s\-_]/g, "");
-    const bName = String(b.vehicleName || b.carName || "")
-      .trim()
-      .toUpperCase();
-    const matched = matchBookingToFleet(b);
-    const matchedClean = matched
-      ? matched.toUpperCase().replace(/[\s\-_]/g, "")
-      : "";
-
-    if (targetReg) {
-      if (
-        (matchedClean && matchedClean === targetReg) ||
-        (bReg &&
-          (bReg === targetReg ||
-            bReg.includes(targetReg) ||
-            targetReg.includes(bReg)))
-      ) {
-        return true;
-      }
-      if (bReg) {
-        const rSimp = bReg
-          .replace(/[CG]/g, "C")
-          .replace(/[UY]/g, "U")
-          .replace(/[FL]/g, "F");
-        const tSimp = targetReg
-          .replace(/[CG]/g, "C")
-          .replace(/[UY]/g, "U")
-          .replace(/[FL]/g, "F");
-        if (rSimp === tSimp || rSimp.includes(tSimp) || tSimp.includes(rSimp)) {
-          return true;
-        }
-      }
-    }
-    if (
-      targetCarId &&
-      bCarId &&
-      (bCarId === targetCarId || bCarId.includes(targetCarId))
-    ) {
-      return true;
-    }
-    if (
-      targetModel &&
-      targetModel.length >= 3 &&
-      bName &&
-      bName.includes(targetModel)
-    ) {
-      return true;
-    }
-    return false;
-  });
-
-  const isOnTrip = isVehicleOnTripNow(vehicleOrReg, bookings);
-
-  // Return booking: ONLY vehicles actively out on trip can have a scheduled return
-  const returnBooking = carBookings.find((b) => {
-    if (!isOnTrip) return false;
-    if (isBookingCancelled(b)) return false;
-    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (bStat === "completed" || bStat === "returned" || bStat === "cancelled" || bStat === "rejected") return false;
-    const hasReturned = Boolean(
-      b.returnOdometer ||
-        b.return_odometer ||
-        b.endOdometer ||
-        b.end_odometer ||
-        b.completedAt ||
-        b.returnedAt
-    );
-    if (hasReturned) return false;
-    const { end } = getBookingOperationalDates(b);
-    return end && end.getTime() >= todayStartMs;
-  });
-
-  // Pickup booking: ONLY vehicles currently in yard can have an upcoming scheduled pickup
-  const pickupBooking = carBookings.find((b) => {
-    if (isOnTrip) return false;
-    if (isBookingCancelled(b)) return false;
-    const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-    if (bStat === "completed" || bStat === "returned" || bStat === "cancelled" || bStat === "rejected") return false;
-
-    // If already physically handed over, not awaiting pickup
-    const hasHandover = Boolean(
-      b.pickupAt ||
-      b.pickup_at ||
-      b.startOdometer ||
-      b.start_odometer ||
-      bStat === "in_trip"
-    );
-    if (hasHandover) return false;
-
-    const { start } = getBookingOperationalDates(b);
-    const startMs = start ? start.getTime() : 0;
-    return startMs && startMs >= todayStartMs;
-  });
-
-  return {
-    isOnTrip,
-    isInYard: !isOnTrip,
-    hasScheduledReturn: !!returnBooking,
-    returnBooking,
-    hasScheduledPickup: !!pickupBooking,
-    pickupBooking,
-  };
+  return sharedGetFleetLiveStatusInfo(
+    vehicleOrReg,
+    bookings,
+    activeFleetsRoster,
+    rawVehicles,
+  );
 }
 
 function setVisible(element, visible) {
@@ -647,31 +339,32 @@ function isVerifiedRevenue(b) {
 
 function bookingAmount(b) {
   if (!b) return 0;
-  const deposit = Number(b.securityDeposit ?? b.security_deposit ?? 0);
-  const total = Number(
-    b.finalAmount ?? b.totalAmount ?? b.amount ?? b.paymentAmountPaid ?? 0,
-  );
-  const base = Number(b.baseAmount ?? b.base_amount ?? 0);
-  const discount = Number(b.couponDiscount ?? b.coupon_discount ?? 0);
+  // Prefer unified server Financial Engine DTO fields (net of refunds, excludes refundable security deposit)
+  if (b.netRentalRevenue !== undefined && b.netRentalRevenue !== null && b.netRentalRevenue !== "") {
+    return Math.max(0, Number(b.netRentalRevenue) || 0);
+  }
+  if (b.netRentalBeforeRefund !== undefined && b.netRentalBeforeRefund !== null && b.netRentalBeforeRefund !== "") {
+    const refund = Number(b.refundAmount ?? b.refund_amount ?? 0);
+    return Math.max(0, (Number(b.netRentalBeforeRefund) || 0) - refund);
+  }
 
-  // Pure fleet rental revenue (strictly excluding security deposits):
-  if (base > 0 && deposit > 0 && total >= base + deposit - 1) {
-    return Math.max(0, total - deposit);
+  const deposit = Number(b.securityDeposit ?? b.security_deposit ?? 0);
+  const driver = Number(b.driverCharges ?? b.driver_charges ?? 0);
+  const extra = Number(b.extraCharges ?? b.extra_charges ?? 0);
+  const base = Number(b.baseRental ?? b.baseAmount ?? b.base_amount ?? 0);
+  const discount = Number(b.couponDiscount ?? b.coupon_discount ?? 0);
+  const refund = Number(b.refundAmount ?? b.refund_amount ?? 0);
+
+  if (base > 0 || driver > 0 || extra > 0) {
+    return Math.max(0, base + driver + extra - discount - refund);
   }
-  if (base > 0) {
-    return Math.max(0, base - discount);
-  }
-  if (total > 0 && deposit > 0 && total > deposit) {
-    return Math.max(0, total - deposit);
+
+  const total = Number(b.finalAmount ?? b.totalAmount ?? b.amount ?? 0);
+  if (total > 0 && deposit > 0 && total >= deposit) {
+    return Math.max(0, total - deposit - refund);
   }
   if (total > 0) {
-    return Math.max(0, total - discount);
-  }
-  const pStat = String(b.paymentStatus || "").toLowerCase();
-  if (pStat === "advance_paid") {
-    return Number(
-      b.advanceAmount || b.paymentAmountPaid || b.paymentAmount || 500,
-    );
+    return Math.max(0, total - refund);
   }
   return 0;
 }
@@ -1110,36 +803,18 @@ function renderDashboard() {
   if (kpiTotalRevenueEl)
     kpiTotalRevenueEl.textContent = formatINR(totalRevenue);
 
-  // Operational Fleet Status (Count on-trip vs yard)
-  let onTripFleetCount = 0;
-  let inYardFleetCount = 0;
-  activeFleetsRoster.forEach((f) => {
-    if (isVehicleOnTripNow(f, rawBookings)) {
-      onTripFleetCount++;
-    } else {
-      inYardFleetCount++;
-    }
+  // Operational Fleet Status (Unified On-Road / In-Yard engine: only On-Road vehicles count as Active Trips; Yard vehicles are Non-Active)
+  const unifiedFleetSummary = computeUnifiedFleetAndTripSummary({
+    rosterVehicles: activeFleetsRoster,
+    allVehicles: rawVehicles,
+    bookings: rawBookings,
+    serverKpi: serverKpiStats?.effective || null,
   });
+  const onTripFleetCount = unifiedFleetSummary.onTripFleetCount;
+  const inYardFleetCount = unifiedFleetSummary.inYardFleetCount;
+  const activeTripsCount = unifiedFleetSummary.activeTripsCount;
 
-  if (
-    serverKpiStats?.effective?.on_road_fleet !== undefined &&
-    Number(serverKpiStats.effective.on_road_fleet) >= 0
-  ) {
-    onTripFleetCount = Number(serverKpiStats.effective.on_road_fleet);
-  }
-  if (
-    serverKpiStats?.effective?.available_fleet !== undefined &&
-    Number(serverKpiStats.effective.available_fleet) >= 0
-  ) {
-    inYardFleetCount = Number(serverKpiStats.effective.available_fleet);
-  }
-
-  // KPI 2: ACTIVE TRIPS (Auto-fetches the live on-road count)
-  const activeTripsCount =
-    serverKpiStats?.effective?.active_trips !== undefined &&
-    serverKpiStats?.effective?.active_trips !== null
-      ? Number(serverKpiStats.effective.active_trips)
-      : onTripFleetCount;
+  // KPI 2: ACTIVE TRIPS (Strictly matches On-Road Fleets count; Yard fleets are Non-Active)
   const kpiActiveTripsEl = document.getElementById("kpiActiveTrips");
   if (kpiActiveTripsEl) {
     kpiActiveTripsEl.innerHTML = `${activeTripsCount} <span style="font-size: 13px; font-weight: 600; color: #4fd7ff; margin-left: 4px;">(${inYardFleetCount} in yard)</span>`;
@@ -1212,30 +887,12 @@ function renderDashboard() {
     kpiTotalBookingsEl.textContent = String(totalBookingsCount);
 
   // KPI 6: AVERAGE OCCUPANCY (%)
-  // Formula: currently on-trip fleet count / total active fleet count * 100 (strictly clamped to <= 100%)
-  const activeFleetCount = activeFleetsRoster.length || 7;
-  const safeOnTripCount = Math.min(
-    activeFleetCount,
-    Math.max(0, onTripFleetCount),
-  );
-  const calculatedOccupancyPct = activeFleetCount
-    ? Math.min(
-        100,
-        Math.max(0, Math.round((safeOnTripCount / activeFleetCount) * 100)),
-      )
-    : 0;
+  // Formula: currently on-trip fleet count / total active roster fleet count * 100 (clamped <= 100%, no hardcoded fallback)
+  const activeFleetCount =
+    unifiedFleetSummary.totalFleet || activeFleetsRoster.length;
   const occupancyPct = selectedMonthKpi
     ? Math.min(100, Math.max(0, Number(selectedMonthKpi.occupancy_pct || 0)))
-    : Math.min(
-        100,
-        Math.max(
-          0,
-          Number(
-            serverKpiStats?.effective?.fleet_utilization ??
-              calculatedOccupancyPct,
-          ),
-        ),
-      );
+    : unifiedFleetSummary.utilizationPct;
   const kpiAvgOccupancyEl = document.getElementById("kpiAvgOccupancy");
   if (kpiAvgOccupancyEl) kpiAvgOccupancyEl.textContent = String(inYardFleetCount);
 
@@ -1778,14 +1435,29 @@ function renderDashboard() {
         })
         .join("");
 
+      const unmappedRegs = Array.from(
+        new Set(
+          unmappedBookings
+            .map((ub) => String(ub.vehicleReg || ub.vehicleName || "").trim())
+            .filter(Boolean),
+        ),
+      );
+      const unmappedTitle =
+        unmappedRegs.length === 1
+          ? unmappedRegs[0]
+          : `Non-Roster Vehicles (${unmappedRegs.length || unmappedCount})`;
+      const unmappedRegLabel =
+        unmappedRegs.length > 0
+          ? unmappedRegs.slice(0, 3).join(", ") + (unmappedRegs.length > 3 ? "…" : "")
+          : "CATALOG";
       const unmappedHtml =
         unmappedCount > 0 && fleetStatusFilter === "all"
           ? `
         <tr style="transition: background 0.15s ease; background: rgba(255, 209, 102, 0.04); border-left: 3px solid #ffd166;">
           <td><strong style="color: #ffd166; font-size: 1.05rem;">${unmappedCount}</strong></td>
-          <td><strong style="color: #ffffff;">Maruti Baleno</strong> <small style="color: #ffd166; font-size: 11px; font-weight:700;">(Partner / External)</small></td>
-          <td style="color: var(--sub); font-family: monospace; font-size: 12.5px;">MH01BALENO</td>
-          <td><span class="badge" style="background: rgba(255, 209, 102, 0.15); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.3); padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; white-space: nowrap;">Partner / Outsourced</span></td>
+          <td><strong style="color: #ffffff;">${unmappedTitle}</strong> <small style="color: #ffd166; font-size: 11px; font-weight:700;">(Outside Active Roster)</small></td>
+          <td style="color: var(--sub); font-family: monospace; font-size: 12.5px;">${unmappedRegLabel}</td>
+          <td><span class="badge" style="background: rgba(255, 209, 102, 0.15); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.3); padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; white-space: nowrap;">Non-Roster / External</span></td>
           <td><span style="color:#06d6a0; font-weight:700;">${unmappedDays} days</span></td>
           <td><strong style="color:#ffffff;">${formatINR(unmappedRevenue)}</strong></td>
           <td style="color: var(--sub);">${formatINR(Math.round(unmappedRevenue / unmappedCount))} <small style="font-size:11px;">/ booking</small></td>
@@ -1795,19 +1467,19 @@ function renderDashboard() {
 
       const reconciledLedgerDiff = Math.max(
         0,
-        effectiveFleetRevenue - grandTotalRevenue,
+        Math.round((effectiveFleetRevenue - grandTotalRevenue) * 100) / 100,
       );
       const ledgerHtml =
-        reconciledLedgerDiff > 0 && fleetStatusFilter === "all"
+        reconciledLedgerDiff > 1 && fleetStatusFilter === "all"
           ? `
         <tr style="transition: background 0.15s ease; background: rgba(79, 215, 255, 0.04); border-left: 3px solid #4fd7ff;">
           <td><strong style="color: #4fd7ff; font-size: 1.05rem;">—</strong></td>
-          <td><strong style="color: #ffffff;">Verified Historical Fleet Ledger</strong> <small style="color: #4fd7ff; font-size: 11px; font-weight:700;">(July – August Completed Rentals)</small></td>
-          <td style="color: var(--sub); font-family: monospace; font-size: 12.5px;">KRZ-HISTORICAL</td>
+          <td><strong style="color: #ffffff;">Server Ledger Adjustment</strong> <small style="color: #4fd7ff; font-size: 11px; font-weight:700;">(Reconciled Period Diff)</small></td>
+          <td style="color: var(--sub); font-family: monospace; font-size: 12.5px;">RECONCILED</td>
           <td><span class="badge" style="background: rgba(79, 215, 255, 0.15); color: #4fd7ff; border: 1px solid rgba(79, 215, 255, 0.3); padding: 3px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 700; white-space: nowrap;">Verified Ledger</span></td>
           <td><span style="color:#06d6a0; font-weight:700;">—</span></td>
           <td><strong style="color:#ffffff;">${formatINR(reconciledLedgerDiff)}</strong></td>
-          <td style="color: var(--sub);">Completed</td>
+          <td style="color: var(--sub);">Adjusted</td>
           <td><strong style="color:#4fd7ff;">${formatINR(reconciledLedgerDiff)}</strong></td>
         </tr>`
           : "";

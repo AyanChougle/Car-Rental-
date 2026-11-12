@@ -9,6 +9,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../services/KpiService.php';
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
@@ -17,42 +18,8 @@ if ($method === 'OPTIONS') {
     exit;
 }
 
-// Canonical 7 Kruizly Fleet vehicles
-$defaultActiveRegs = [
-    'MH03EL1025',
-    'MH05GJ4711',
-    'MH48GJ4153',
-    'MH04MU1178',
-    'MH05FV3454',
-    'MH43CU1632',
-    'MH02FU6808'
-];
-
-$canonicalFleetCarIds = [
-    'CRP-002',
-    'CRP-003',
-    'CRP-005',
-    'CRP-006',
-    'CRP-007',
-    'CRP-008',
-    'CRP-009',
-    'CRP-033',
-    'CRP-034',
-    'CRP-035',
-    'CRP-036',
-    'CRP-037',
-    'CRP-038',
-    'CRP-039'
-];
-
 function normalizeActiveReg(string $reg): string {
-    $r = strtoupper(trim($reg));
-    $map = [
-        'MH03EF1025' => 'MH03EL1025',
-        'MH48CJ4153' => 'MH48GJ4153',
-        'MH43CY1632' => 'MH43CU1632'
-    ];
-    return $map[$r] ?? $r;
+    return KpiService::normalizeRegKey($reg);
 }
 
 if ($method === 'GET') {
@@ -126,7 +93,7 @@ if ($method === 'GET') {
             'available' => (int)$v['available'],
             'status' => $v['status'],
             'imageUrl' => $img,
-            'isActiveFleet' => true
+            'isActiveFleet' => !empty($v['is_active_fleet'])
         ];
 
         if ($cleanReg !== '') {
@@ -147,41 +114,27 @@ if ($method === 'GET') {
         $vehiclesMap['CAT-' . str_pad((string)$id, 3, '0', STR_PAD_LEFT)] = $item;
     }
 
-    // If no explicit manager roster exists, the live DB vehicles for the selected Hub are the roster.
-    // Never manufacture vehicles from a hardcoded catalog.
-    if (!$setting || empty($setting['value'])) {
-        $activeRegs = [];
+    // If no explicit manager_active_fleets setting exists, honor DB vehicles marked is_active_fleet = 1 (never dump catalog-only cars into operational roster).
+    if ((!$setting || empty($setting['value'])) && empty($activeRegs)) {
         foreach ($allDbVehicles as $v) {
+            if (empty($v['is_active_fleet'])) {
+                continue;
+            }
             $reg = strtoupper(trim((string)($v['reg_no'] ?? '')));
             $carId = strtoupper(trim((string)($v['car_id'] ?? '')));
-            $activeRegs[] = $reg !== '' && $reg !== 'TBD' ? normalizeActiveReg($reg) : ($carId !== '' ? $carId : 'CAT-' . (int)$v['id']);
+            $activeRegs[] = ($reg !== '' && $reg !== 'TBD') ? normalizeActiveReg($reg) : ($carId !== '' ? $carId : 'CAT-' . (int)$v['id']);
         }
         $activeRegs = array_values(array_unique(array_filter($activeRegs)));
     }
 
-    // Default metadata for the 7 standard Kruizly fleets
-    $standardFleetMeta = [
-        'MH03EF1025' => ['carId' => 'CRP-002', 'brand' => 'Suzuki', 'model' => 'Fronx', 'year' => 2026, 'category' => 'compact-suv', 'transmission' => 'Automatic', 'fuel' => 'Petrol', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Aditi Lotankar', 'acquisitionDate' => '2026-07-20', 'priceDay' => 3500, 'image' => 'assets/fleet/Suzuki Fronx.png'],
-        'MH03EL1025' => ['carId' => 'CRP-002', 'brand' => 'Suzuki', 'model' => 'Fronx', 'year' => 2026, 'category' => 'compact-suv', 'transmission' => 'Automatic', 'fuel' => 'Petrol', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Aditi Lotankar', 'acquisitionDate' => '2026-07-20', 'priceDay' => 3500, 'image' => 'assets/fleet/Suzuki Fronx.png'],
-        'MH05GJ4711' => ['carId' => 'CRP-003', 'brand' => 'Suzuki', 'model' => 'Ertiga', 'year' => 2026, 'category' => 'mpv', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 7, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Viren Gupta', 'acquisitionDate' => '2026-07-24', 'priceDay' => 4000, 'image' => 'assets/fleet/Suzuki Ertiga.png'],
-        'MH48GJ4153' => ['carId' => 'CRP-005', 'brand' => 'Toyota', 'model' => 'Glanza', 'year' => 2026, 'category' => 'hatchback', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Ajay Vishwakarma', 'acquisitionDate' => '2026-07-29', 'priceDay' => 3000, 'image' => 'assets/fleet/Toyota Glanza.png'],
-        'MH48CJ4153' => ['carId' => 'CRP-005', 'brand' => 'Toyota', 'model' => 'Glanza', 'year' => 2026, 'category' => 'hatchback', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Ajay Vishwakarma', 'acquisitionDate' => '2026-07-29', 'priceDay' => 3000, 'image' => 'assets/fleet/Toyota Glanza.png'],
-        'MH04MU1178' => ['carId' => 'CRP-006', 'brand' => 'Toyota', 'model' => 'Glanza', 'year' => 2026, 'category' => 'hatchback', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Kundan Singh', 'acquisitionDate' => '2026-08-04', 'priceDay' => 3000, 'image' => 'assets/fleet/Toyota Glanza.png'],
-        'MH05FV3454' => ['carId' => 'CRP-007', 'brand' => 'Tata', 'model' => 'Punch', 'year' => 2026, 'category' => 'compact-suv', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Tai Phad', 'acquisitionDate' => '2026-08-13', 'priceDay' => 3000, 'image' => 'assets/fleet/Tata Punch.png'],
-        'MH43CU1632' => ['carId' => 'CRP-008', 'brand' => 'Suzuki', 'model' => 'Fronx', 'year' => 2026, 'category' => 'compact-suv', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Amol Gole', 'acquisitionDate' => '2026-08-19', 'priceDay' => 3200, 'image' => 'assets/fleet/Suzuki Fronx.png'],
-        'MH43CY1632' => ['carId' => 'CRP-008', 'brand' => 'Suzuki', 'model' => 'Fronx', 'year' => 2026, 'category' => 'compact-suv', 'transmission' => 'Manual', 'fuel' => 'Petrol + CNG', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Amol Gole', 'acquisitionDate' => '2026-08-19', 'priceDay' => 3200, 'image' => 'assets/fleet/Suzuki Fronx.png'],
-        'MH02FU6808' => ['carId' => 'CRP-009', 'brand' => 'Mahindra', 'model' => 'XUV 700', 'year' => 2026, 'category' => 'suv', 'transmission' => 'Automatic', 'fuel' => 'Petrol', 'seats' => 5, 'hub' => 'Gavson Business Park, Ghansoli', 'acquisitionType' => 'Partner', 'ownerName' => 'Saif Feroz Shaikh', 'acquisitionDate' => '2026-08-01', 'priceDay' => 5500, 'image' => 'assets/fleet/Mahindra XUV 700.png'],
-    ];
-
-    // Build active fleet roster
+    // Build operational fleet roster strictly from database matches
     $activeFleetList = [];
     $seenKeys = [];
 
-    // Resolve vehicles from activeRegs setting
     foreach ($activeRegs as $reg) {
         $regUpper = strtoupper(trim((string)$reg));
         $simp = str_replace(['C', 'G'], 'C', str_replace(['U', 'Y'], 'U', str_replace(['F', 'L'], 'F', preg_replace('/[^A-Z0-9]/', '', $regUpper))));
-        
+
         $catNum = -1;
         if (is_numeric($regUpper)) {
             $catNum = (int)$regUpper;
@@ -194,47 +147,16 @@ if ($method === 'GET') {
         if ($matchedVeh) {
             $mKey = $matchedVeh['id'] ?? $matchedVeh['carId'] ?? $matchedVeh['regNo'];
             if (empty($seenKeys[$mKey])) {
+                $matchedVeh['isActiveFleet'] = true;
                 $activeFleetList[] = $matchedVeh;
                 $seenKeys[$mKey] = true;
-            }
-        } elseif (false && isset($standardFleetMeta[$regUpper])) {
-            $m = $standardFleetMeta[$regUpper];
-            if (empty($seenKeys[$m['carId']])) {
-                $activeFleetList[] = [
-                    'id' => null,
-                    'carId' => $m['carId'],
-                    'regNo' => $regUpper,
-                    'brand' => $m['brand'],
-                    'model' => $m['model'],
-                    'year' => $m['year'],
-                    'category' => $m['category'],
-                    'transmission' => $m['transmission'],
-                    'fuel' => $m['fuel'],
-                    'seats' => $m['seats'],
-                    'priceDay' => (float)$m['priceDay'],
-                    'priceHour' => round($m['priceDay'] / 24),
-                    'available' => 1,
-                    'status' => 'available',
-                    'imageUrl' => $m['image'],
-                    'isActiveFleet' => true
-                ];
-                $seenKeys[$m['carId']] = true;
             }
         }
     }
 
-    // Include canonical partner fleets (CRP-002 to CRP-009) if not already added
-    foreach ($canonicalFleetCarIds as $cId) {
-        if (isset($vehiclesByCarId[$cId])) {
-            $cVeh = $vehiclesByCarId[$cId];
-            $cKey = $cVeh['id'] ?? $cId;
-            if (empty($seenKeys[$cKey])) {
-                if (in_array($cId, $activeRegs, true) || in_array($cVeh['regNo'], $activeRegs, true) || count($activeFleetList) < 7) {
-                    $activeFleetList[] = $cVeh;
-                    $seenKeys[$cKey] = true;
-                }
-            }
-        }
+    foreach ($vehiclesById as $vid => $vItem) {
+        $mKey = $vItem['id'] ?? $vItem['carId'] ?? $vItem['regNo'];
+        $vehiclesById[$vid]['isActiveFleet'] = !empty($seenKeys[$mKey]);
     }
 
     sendJsonResponse([
@@ -249,8 +171,8 @@ if ($method === 'GET') {
 }
 
 if ($method === 'POST') {
-    // Only Admin or Manager can modify active fleet roster
-    $user = Auth::requireRole('admin', 'manager');
+    // Only Admin, Super Admin or Manager can modify active fleet roster
+    $user = Auth::requireRole('admin', 'super_admin', 'manager');
 
     $input = json_decode((string)file_get_contents('php://input'), true) ?: $_POST;
     $action = trim((string)($input['action'] ?? 'toggle'));
@@ -309,24 +231,38 @@ if ($method === 'POST') {
     }
     $targetAliases = array_values(array_unique(array_filter($targetAliases)));
 
-    // Fetch existing settings
+    // Fetch existing settings; if missing, seed from current DB rows marked is_active_fleet = 1 (never from hardcoded arrays)
     $setting = null;
     try {
         $setting = Database::fetchOne("SELECT `value` FROM settings WHERE `key` = 'manager_active_fleets' ORDER BY updated_at DESC LIMIT 1");
     } catch (Throwable $_) {
         $setting = Database::fetchOne("SELECT `value` FROM settings WHERE `key` = 'manager_active_fleets' LIMIT 1");
     }
-    $currentActiveRegs = $defaultActiveRegs;
+    $currentActiveRegs = [];
 
     if ($setting && !empty($setting['value'])) {
         $decoded = json_decode($setting['value'], true);
-        if (is_array($decoded) && count($decoded) > 0) {
-            $currentActiveRegs = array_values(array_unique(array_map('normalizeActiveReg', $decoded)));
+        if (is_array($decoded)) {
+            $currentActiveRegs = array_values(array_unique(array_filter(array_map('normalizeActiveReg', $decoded))));
         }
+    } else {
+        $flaggedRows = Database::fetchAll("SELECT id, car_id, reg_no FROM vehicles WHERE is_active_fleet = 1 AND status != 'removed'");
+        foreach ($flaggedRows as $fv) {
+            $r = strtoupper(trim((string)($fv['reg_no'] ?? '')));
+            $c = strtoupper(trim((string)($fv['car_id'] ?? '')));
+            $currentActiveRegs[] = ($r !== '' && $r !== 'TBD') ? normalizeActiveReg($r) : ($c !== '' ? $c : ('CAT-' . (int)$fv['id']));
+        }
+        $currentActiveRegs = array_values(array_unique(array_filter($currentActiveRegs)));
     }
 
     if ($action === 'reset') {
-        $currentActiveRegs = $defaultActiveRegs;
+        $currentActiveRegs = [];
+        $flaggedRows = Database::fetchAll("SELECT id, car_id, reg_no FROM vehicles WHERE is_active_fleet = 1 AND status != 'removed'");
+        foreach ($flaggedRows as $fv) {
+            $r = strtoupper(trim((string)($fv['reg_no'] ?? '')));
+            $c = strtoupper(trim((string)($fv['car_id'] ?? '')));
+            $currentActiveRegs[] = ($r !== '' && $r !== 'TBD') ? normalizeActiveReg($r) : ($c !== '' ? $c : ('CAT-' . (int)$fv['id']));
+        }
     } elseif ($action === 'set' && isset($input['activeRegs']) && is_array($input['activeRegs'])) {
         $currentActiveRegs = array_values(array_unique(array_filter(array_map(function($r) {
             return normalizeActiveReg(strtoupper(trim((string)$r)));
@@ -428,6 +364,10 @@ if ($method === 'POST') {
                 array_merge($currentActiveRegs, $currentActiveRegs)
             );
         }
+    } catch (Throwable $_) {}
+
+    try {
+        KpiService::syncMetrics(true, false);
     } catch (Throwable $_) {}
 
     sendJsonResponse([

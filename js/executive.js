@@ -16,9 +16,17 @@ import { checkAuth, getCurrentUser, setStoredUser, isExecutiveUser, isManagerUse
 import { api, API_BASE_URL, getAuthToken } from "./kruizly-api.js?v=20261017-v14";
 import "./nav-helper.js?v=20260928-v2";
 import { formatBookingNumber } from "./booking-reference.js";
-import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20260917-v6";
-import { openImageLightbox, isPdfDocument } from "./image-lightbox.js?v=20261017-v14";
+import { initialiseAdminCalendar, loadAdminCalendar } from "./admin.js?v=20261112-v3";
+import {
+  openImageLightbox,
+  isPdfDocument,
+  fetchProtectedMediaPreview,
+  revokeObjectUrlSafely,
+} from "./image-lightbox.js?v=20261112-v3";
 import { MEDIA_SERVER_URL } from "./media-config.js";
+
+let activeExecPaymentObjectUrl = "";
+let activeExecPassbookObjectUrl = "";
 
 function $(id) {
   return document.getElementById(id);
@@ -732,6 +740,7 @@ async function exportExecutiveDatasheet() {
       addSheet(exportData.vehicles, "Vehicles");
       addSheet(exportData.payments, "Payments");
       addSheet(exportData.verification, "KYC Verifications");
+      addSheet(exportData.financial_reconciliation, "Financial Reconciliation");
 
       window.XLSX.writeFile(wb, filename);
     } else {
@@ -833,9 +842,19 @@ function renderBookingsTable() {
         <tbody>
           ${paginatedBookings
             .map((b) => {
-              const baseAmt = (b.baseAmount !== undefined && b.baseAmount !== null && Number(b.baseAmount) > 0)
-                ? Number(b.baseAmount)
-                : Math.max(0, Number(b.finalAmount || b.totalAmount || 0) - Number(b.securityDeposit || 0));
+              const rawDisc = Number(b.couponDiscount ?? b.coupon_discount ?? 0);
+              const rawDriver = Number(b.driverCharges ?? b.driverTotal ?? b.driver_charges ?? 0);
+              const rawExtra = Number(b.extraCharges ?? b.extra_charges ?? 0);
+              const rawRefund = Number(b.refundAmount ?? b.refund_amount ?? 0);
+              const rawBStat = String(b.status ?? b.booking_status ?? "").toLowerCase();
+              const rawPStat = String(b.paymentStatus ?? b.payment_status ?? "").toLowerCase();
+              const isCancelledRow = rawBStat === "cancelled" || rawBStat === "rejected" || rawPStat === "cancelled" || rawPStat === "rejected" || rawPStat === "refunded";
+              const contractAmt = (b.netRentalBeforeRefund !== undefined && b.netRentalBeforeRefund !== null)
+                ? Number(b.netRentalBeforeRefund)
+                : ((b.baseAmount !== undefined && b.baseAmount !== null && Number(b.baseAmount) > 0)
+                    ? Math.max(0, Number(b.baseAmount) + rawDriver + rawExtra - rawDisc)
+                    : Math.max(0, Number(b.finalAmount || b.totalAmount || 0)));
+              const baseAmt = isCancelledRow ? contractAmt : Math.max(0, contractAmt - rawRefund);
 
               const statusClass =
                 b.status === "active" || b.status === "confirmed"
@@ -853,7 +872,7 @@ function renderBookingsTable() {
 
               const rawTot = Number(b.finalAmount ?? b.totalAmount ?? 0);
               const rawDep = Number(b.securityDeposit ?? 0);
-              const totalAmt = (rawTot > 0) ? rawTot : (baseAmt + rawDep);
+              const totalAmt = baseAmt;
 
               return `
                 <tr style="border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13.5px;">
@@ -873,7 +892,7 @@ function renderBookingsTable() {
                   </td>
                   <td style="padding: 12px 10px; white-space: nowrap;">
                     <div style="font-weight: 700; color: #06d6a0;">${formatMoney(baseAmt)}</div>
-                    ${rawDep > 0 ? `<small style="color: var(--sub); font-size: 11px; display: block; margin-top: 2px;">Total: ${formatMoney(totalAmt)} (₹${rawDep} dep)</small>` : `<small style="color: var(--sub); font-size: 11px; display: block; margin-top: 2px;">Total: ${formatMoney(totalAmt)}</small>`}
+                    ${rawDep > 0 ? `<small style="color: var(--sub); font-size: 11px; display: block; margin-top: 2px;">+ ${formatMoney(rawDep)} refundable dep</small>` : `<small style="color: var(--sub); font-size: 11px; display: block; margin-top: 2px;">Net Rental</small>`}
                   </td>
                   <td style="padding: 12px 10px; font-weight: 700; ${statusClass}">${escapeHtml(displayStatus)}</td>
                   <td style="padding: 12px 10px; text-align: right;">
@@ -1017,9 +1036,9 @@ function openPickupModal(booking) {
   if (previewBox) previewBox.innerHTML = "";
   if (statusEl) statusEl.textContent = "";
 
-  const total = Number(booking.finalAmount || booking.totalAmount || 0);
-  const paid = Number(booking.advanceAmount || (booking.paymentStatus === "paid" ? total : 0));
-  const rem = Math.max(0, Number(booking.remainingBalance ?? (total - paid)));
+  const total = Number(booking.netRentalBeforeRefund ?? booking.finalAmount ?? booking.totalAmount ?? 0);
+  const paid = Number(booking.verifiedCollected ?? booking.amountPaid ?? (booking.paymentStatus === "paid" ? total : 0));
+  const rem = Math.max(0, Number(booking.outstandingAmount ?? booking.remainingBalance ?? (total - paid)));
 
   if (balanceDisplay) balanceDisplay.textContent = `₹${Math.round(rem).toLocaleString("en-IN")}`;
   if (fullPaidCheck) fullPaidCheck.checked = rem > 0;
@@ -1423,33 +1442,23 @@ function renderPaymentsTable() {
   });
 }
 
-function openPaymentModal(payment) {
+async function openPaymentModal(payment) {
   activePaymentItem = payment;
+  if (activeExecPaymentObjectUrl) {
+    revokeObjectUrlSafely(activeExecPaymentObjectUrl);
+    activeExecPaymentObjectUrl = "";
+  }
   const modal = $("managerPaymentModal");
   const title = $("managerPaymentModalTitle");
   const body = $("managerPaymentModalBody");
 
   if (title) title.textContent = `Payment Verification — #${payment.bookingNumber || payment.bookingId}`;
 
-  let screenshotImg = "";
+  const proofSource = payment.screenshotUrl || payment.screenshotMediaId || "";
   const curStaffTok = localStorage.getItem("kruizly_token") || sessionStorage.getItem("kruizly_token") || "";
-  const staffTokParam = curStaffTok ? `&token=${encodeURIComponent(curStaffTok)}` : "";
-  const isLocalHost = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-  const mediaOrigin = isLocalHost ? "https://kruizly.com" : "";
-  if (payment.screenshotUrl) {
-    let sUrl = payment.screenshotUrl;
-    if (sUrl.startsWith("/api/")) {
-      sUrl = `${mediaOrigin}${sUrl}`;
-    }
-    if (curStaffTok && (sUrl.includes("/api/media/") || sUrl.includes("/media/")) && !sUrl.includes("token=")) {
-      sUrl = `${sUrl}${sUrl.includes("?") ? "&" : "?"}${staffTokParam.replace(/^&/, "")}`;
-    }
-    screenshotImg = `<img src="${escapeHtml(sUrl)}" alt="Payment Receipt" class="manager-modal-screenshot-img" />`;
-  } else if (payment.screenshotMediaId) {
-    screenshotImg = `<img src="${mediaOrigin}/api/media/file.php?id=${encodeURIComponent(payment.screenshotMediaId)}${staffTokParam}" alt="Payment Receipt" class="manager-modal-screenshot-img" onerror="this.onerror=null;this.parentElement.innerHTML='<div style=\\'padding:20px;text-align:center;color:var(--sub);\\'>No image file found on server.</div>';" />`;
-  } else {
-    screenshotImg = `<div style="padding: 20px; text-align: center; color: var(--sub); border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;">No screenshot receipt attached.</div>`;
-  }
+  const screenshotSectionMarkup = proofSource
+    ? `<div id="managerPaymentScreenshotPreview" style="min-height:140px;display:grid;place-items:center;color:var(--sub);border:1px solid rgba(255,255,255,0.12);border-radius:10px;background:#060a11;overflow:hidden;">Loading payment proof preview…</div>`
+    : `<div style="padding: 20px; text-align: center; color: var(--sub); border: 1px dashed rgba(255,255,255,0.1); border-radius: 8px;">No screenshot receipt attached.</div>`;
 
   const relBooking = allBookings.find(
     (bk) => bk.id === payment.bookingId || bk.bookingNumber === payment.bookingNumber || bk.bookingId === payment.bookingId
@@ -1492,8 +1501,8 @@ function openPaymentModal(payment) {
           </div>
         </div>
         <div class="manager-modal-screenshot-section">
-          <span class="manager-modal-section-title">Payment Screenshot</span>
-          ${screenshotImg}
+          <span class="manager-modal-section-title">Payment Proof</span>
+          ${screenshotSectionMarkup}
         </div>
       </div>
     `;
@@ -1503,9 +1512,60 @@ function openPaymentModal(payment) {
     modal.hidden = false;
     modal.style.display = "flex";
   }
+
+  if (proofSource && body) {
+    const previewEl = body.querySelector("#managerPaymentScreenshotPreview");
+    if (!previewEl) return;
+    try {
+      const token = curStaffTok || (await getAuthToken());
+      const resolved = await fetchProtectedMediaPreview(proofSource, {
+        baseUrl: MEDIA_SERVER_URL,
+        token,
+      });
+      if (activePaymentItem !== payment || !previewEl.isConnected) {
+        if (resolved.isBlob) revokeObjectUrlSafely(resolved.url);
+        return;
+      }
+      if (resolved.isBlob) {
+        activeExecPaymentObjectUrl = resolved.url;
+      }
+      const openFullProof = () => {
+        openImageLightbox(
+          proofSource,
+          `Payment Proof — #${payment.bookingNumber || payment.bookingId}`,
+          `${payment.userName || "Customer"} · Ref: ${payment.utr || payment.paymentRef || "N/A"}`,
+        );
+      };
+      if (resolved.isPdf) {
+        previewEl.innerHTML = `
+          <div style="width:100%;">
+            <iframe src="${escapeHtml(resolved.url)}#toolbar=0" title="Payment proof PDF" style="width:100%;height:320px;border:none;background:#0b1322;display:block;"></iframe>
+            <div style="padding:8px 10px;display:flex;justify-content:flex-end;border-top:1px solid rgba(255,255,255,0.08);">
+              <button type="button" id="execPayProofFullBtn" class="btn btn--outline btn--sm">Open Full PDF Viewer</button>
+            </div>
+          </div>
+        `;
+        previewEl.querySelector("#execPayProofFullBtn")?.addEventListener("click", openFullProof);
+      } else if (resolved.isNonInline) {
+        const extLabel = (resolved.ext || "FILE").toUpperCase();
+        previewEl.innerHTML = `<div style="padding:20px;text-align:center;"><div style="font-weight:800;color:#38bdf8;margin-bottom:8px;">${escapeHtml(extLabel)} Receipt</div><button type="button" id="execPayProofFullBtn" class="btn btn--outline btn--sm">Inspect / Download ${escapeHtml(extLabel)}</button></div>`;
+        previewEl.querySelector("#execPayProofFullBtn")?.addEventListener("click", openFullProof);
+      } else {
+        previewEl.innerHTML = `<img src="${escapeHtml(resolved.url)}" alt="Payment Receipt" class="manager-modal-screenshot-img" style="cursor:zoom-in;" title="Click to enlarge" />`;
+        previewEl.querySelector("img")?.addEventListener("click", openFullProof);
+      }
+    } catch (err) {
+      if (activePaymentItem !== payment || !previewEl.isConnected) return;
+      previewEl.innerHTML = `<div style="padding:20px;text-align:center;color:#fca5a5;"><strong>Unable to load payment proof</strong><div style="color:var(--sub);font-size:12px;margin-top:6px;">${escapeHtml(err?.message || "Media unavailable on server.")}</div></div>`;
+    }
+  }
 }
 
 function closePaymentModal() {
+  if (activeExecPaymentObjectUrl) {
+    revokeObjectUrlSafely(activeExecPaymentObjectUrl);
+    activeExecPaymentObjectUrl = "";
+  }
   const modal = $("managerPaymentModal");
   if (modal) {
     modal.hidden = true;
@@ -1727,21 +1787,22 @@ async function fetchExecDocumentPreview(rawUrl) {
 
   try {
     const token = await getAuthToken();
-    const headers = {};
-    if (token) headers.Authorization = `Bearer ${token}`;
-
-    const res = await fetch(finalUrl, { headers });
-    if (!res.ok) {
-      if (isFullHttp) return { url: finalUrl, isPdf: isPdfDocument(finalUrl) };
-      throw new Error(`Media server status ${res.status}`);
+    const resolved = await fetchProtectedMediaPreview(finalUrl, {
+      baseUrl: MEDIA_SERVER_URL,
+      token,
+    });
+    if (resolved.isBlob) {
+      activeExecDocObjectUrls.push(resolved.url);
     }
-    const blob = await res.blob();
-    const isPdf = blob.type === "application/pdf" || isPdfDocument(finalUrl);
-    const blobUrl = URL.createObjectURL(blob);
-    activeExecDocObjectUrls.push(blobUrl);
-    return { url: blobUrl, originalUrl: finalUrl, isPdf, isBlob: true };
+    return {
+      url: resolved.url,
+      originalUrl: resolved.originalUrl,
+      isPdf: resolved.isPdf,
+      isNonInline: resolved.isNonInline,
+      ext: resolved.ext,
+      isBlob: resolved.isBlob,
+    };
   } catch (err) {
-    if (isFullHttp) return { url: finalUrl, isPdf: isPdfDocument(finalUrl) };
     return {
       url: `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='260' viewBox='0 0 400 260'%3E%3Crect width='100%25' height='100%25' fill='%23121926' rx='12'/%3E%3Ctext x='50%25' y='46%25' fill='%2348d7ff' font-family='sans-serif' font-size='14' font-weight='bold' text-anchor='middle'%3EProtected Document on Cloud%3C/text%3E%3Ctext x='50%25' y='58%25' fill='%237b8798' font-family='sans-serif' font-size='12' text-anchor='middle'%3ERef: ${encodeURIComponent(String(str).slice(-20))}%3C/text%3E%3C/svg%3E`,
       isPdf: false
@@ -2131,7 +2192,7 @@ function openBookingDetailModal(b) {
           <div><strong>Base Amount:</strong> ${formatMoney(b.baseAmount)}</div>
           <div><strong>Coupon Discount:</strong> ${b.couponDiscount ? `-₹${b.couponDiscount}` : "₹0"} (${escapeHtml(b.couponCode || "None")})</div>
           <div><strong>Security Deposit:</strong> ${formatMoney(b.securityDeposit)}</div>
-          <div style="font-size: 15px; font-weight: 700; color: #06d6a0; margin-top: 4px;"><strong>Total Amount:</strong> ${formatMoney(b.finalAmount || b.totalAmount)}</div>
+          <div style="font-size: 15px; font-weight: 700; color: #06d6a0; margin-top: 4px;"><strong>Total Amount:</strong> ${formatMoney(b.netRentalBeforeRefund ?? b.finalAmount ?? b.totalAmount)}</div>
           <div><strong>Payment Status:</strong> <span style="font-weight:700; text-transform:uppercase;">${escapeHtml(b.paymentStatus || "pending")}</span></div>
           <div><strong>Payment Ref:</strong> <span style="font-family:monospace;">${escapeHtml(b.paymentRef || "—")}</span></div>
         </div>
@@ -2242,13 +2303,49 @@ function openPassbookModal(uid, url, status) {
   const container = $("execBankPassbookContainer");
   if (!modal || !container) return;
 
+  if (activeExecPassbookObjectUrl) {
+    revokeObjectUrlSafely(activeExecPassbookObjectUrl);
+    activeExecPassbookObjectUrl = "";
+  }
+
   container.innerHTML = "";
   if (!url) {
     container.innerHTML = '<div style="color:var(--sub);">No passbook photo provided.</div>';
-  } else if (url.toLowerCase().endsWith(".pdf")) {
-    container.innerHTML = `<iframe src="${escapeHtml(url)}#toolbar=0" style="width:100%; height:100%; border:none; background:#fff;"></iframe>`;
   } else {
-    container.innerHTML = `<img src="${escapeHtml(url)}" style="max-width:100%; max-height:100%; object-fit:contain;" alt="Passbook" />`;
+    container.innerHTML = '<div style="color:var(--sub);padding:24px;text-align:center;">Loading passbook preview…</div>';
+    void (async () => {
+      try {
+        const token = await getAuthToken();
+        const preview = await fetchProtectedMediaPreview(url, {
+          baseUrl: MEDIA_SERVER_URL,
+          token,
+        });
+        if (currentBankReviewUid !== uid || !container.isConnected) {
+          if (preview.isBlob) revokeObjectUrlSafely(preview.url);
+          return;
+        }
+        if (preview.isBlob) {
+          activeExecPassbookObjectUrl = preview.url;
+        }
+        if (preview.isPdf) {
+          container.innerHTML = `<iframe src="${escapeHtml(preview.url)}#toolbar=0" style="width:100%; height:100%; border:none; background:#0b1322;"></iframe>`;
+        } else if (preview.isNonInline) {
+          const extLabel = (preview.ext || "FILE").toUpperCase();
+          container.innerHTML = `<div style="padding:24px;text-align:center;color:#e2e8f0;"><div style="font-weight:800;color:#38bdf8;margin-bottom:8px;">${escapeHtml(extLabel)} Document</div><button type="button" id="execPassbookOpenFullBtn" class="btn btn--outline btn--sm">Open / Download</button></div>`;
+          container.querySelector("#execPassbookOpenFullBtn")?.addEventListener("click", () => {
+            openImageLightbox(url, "Host Bank Passbook", `UID: ${uid}`);
+          });
+        } else {
+          container.innerHTML = `<img src="${escapeHtml(preview.url)}" style="max-width:100%; max-height:100%; object-fit:contain; cursor:zoom-in;" alt="Passbook" />`;
+          container.querySelector("img")?.addEventListener("click", () => {
+            openImageLightbox(url, "Host Bank Passbook", `UID: ${uid}`);
+          });
+        }
+      } catch (err) {
+        if (currentBankReviewUid !== uid || !container.isConnected) return;
+        container.innerHTML = `<div style="padding:24px;text-align:center;color:#fca5a5;"><strong>Unable to load passbook preview</strong><div style="color:var(--sub);font-size:12px;margin-top:6px;">${escapeHtml(err?.message || "Media unavailable.")}</div></div>`;
+      }
+    })();
   }
 
   // Hide action buttons if already verified or rejected
@@ -2262,6 +2359,10 @@ function openPassbookModal(uid, url, status) {
 
 document.addEventListener("DOMContentLoaded", () => {
   $("closeExecBankPassbookModal")?.addEventListener("click", () => {
+    if (activeExecPassbookObjectUrl) {
+      revokeObjectUrlSafely(activeExecPassbookObjectUrl);
+      activeExecPassbookObjectUrl = "";
+    }
     safeHide($("execBankPassbookModal"));
   });
 

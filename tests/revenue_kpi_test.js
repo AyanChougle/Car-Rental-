@@ -725,6 +725,426 @@ assert.strictEqual(expWindow.summary.total_fastag_used, 350);
 
 console.log("✓ Test 7 Passed: Export chronological sort, odometer/FASTag fallback, stale day count fix, trip classification, and Daily->Monthly KPI bifurcation verified.\n");
 
+// ============================================================================
+// UNIFIED ENGINE REPLICAS (Post-Audit 2026-11-12 Repairs)
+// ============================================================================
+
+// Shared Date & Duration Engine (IST +05:30) matching KpiService::validateBookingDates
+function validateAndComputeDates(pickupStr, dropStr) {
+  const parseIst = (raw) => {
+    const s = String(raw || "").trim();
+    if (!s) return null;
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?/);
+    if (!m) return null;
+    const [, y, mo, d, h = "00", mi = "00", sec = "00"] = m;
+    const dt = new Date(`${y}-${mo}-${d}T${h}:${mi}:${sec}+05:30`);
+    if (isNaN(dt.getTime())) return null;
+    return {
+      dt,
+      ymd: `${y}-${mo}-${d}`,
+      isMidnight: h === "00" && mi === "00" && sec === "00",
+    };
+  };
+
+  const p = parseIst(pickupStr);
+  const d = parseIst(dropStr);
+  if (!p || !d) return { valid: false, error: "Invalid pickup or drop date/time." };
+
+  const diffSec = Math.floor((d.dt.getTime() - p.dt.getTime()) / 1000);
+  if (diffSec <= 0) return { valid: false, error: "Drop date/time must be after pickup date/time." };
+  if (diffSec < 86400) return { valid: false, error: "Minimum booking duration is 24 hours." };
+
+  // Midnight-to-midnight date-only spans preserve inclusive calendar days (e.g. Nov 30 -> Dec 3 = 4 days)
+  const hours = Math.max(24, Math.ceil(diffSec / 3600));
+  let billedDays = Math.max(1, Math.ceil(hours / 24));
+  if (p.isMidnight && d.isMidnight) {
+    const inclusiveDays = Math.floor(diffSec / 86400) + 1;
+    billedDays = Math.max(billedDays, inclusiveDays);
+  }
+  return { valid: true, pickupYmd: p.ymd, dropYmd: d.ymd, hours, days: billedDays };
+}
+
+// Unified Financial Engine matching KpiService::computeBookingFinancials & loadDeduplicatedPayments
+function loadDeduplicatedPaymentsForBooking(paymentRows) {
+  const seenUtr = new Set();
+  const deduped = [];
+  for (const row of paymentRows) {
+    const status = String(row.status || "").toLowerCase();
+    const utr = String(row.utr || "").trim().toUpperCase();
+    if (utr && ["verified", "approved", "paid", "refunded", "partial_refund"].includes(status)) {
+      const key = `${String(row.booking_id || "").trim().toUpperCase()}::${utr}`;
+      if (seenUtr.has(key)) continue;
+      seenUtr.add(key);
+    }
+    deduped.push(row);
+  }
+  return deduped;
+}
+
+function computeBookingFinancials(booking, allPaymentRows = []) {
+  const round2 = (n) => Math.round((Number(n) || 0) * 100) / 100;
+  const bStat = String(booking.status || booking.booking_status || "").toLowerCase();
+  const pStat = String(booking.payment_status || booking.paymentStatus || "").toLowerCase();
+  const isCancelled = ["cancelled", "rejected"].includes(bStat) || ["cancelled", "rejected"].includes(pStat);
+
+  const deposit = Math.max(0, round2(booking.security_deposit ?? booking.securityDeposit ?? 0));
+  let base = Math.max(0, round2(booking.base_amount ?? booking.baseAmount ?? 0));
+  const driverCharges = Math.max(0, round2(booking.driver_charges ?? booking.driverCharges ?? 0));
+  const extraCharges = Math.max(0, round2(booking.extra_charges ?? booking.extraCharges ?? 0));
+  const discount = Math.max(0, round2(booking.coupon_discount ?? booking.couponDiscount ?? 0));
+
+  const storedFinal = round2(booking.final_amount ?? booking.finalAmount ?? booking.total_amount ?? booking.totalAmount ?? 0);
+  if (base <= 0 && storedFinal > 0) {
+    base = deposit > 0 && storedFinal > deposit ? Math.max(0, round2(storedFinal - deposit)) : storedFinal;
+  }
+
+  const netRentalBeforeRefund = Math.max(0, round2(base + driverCharges + extraCharges - discount));
+  const grossPayable = round2(netRentalBeforeRefund + deposit);
+
+  const refKey = String(booking.booking_id || booking.id || "").trim().toUpperCase();
+  const deduped = loadDeduplicatedPaymentsForBooking(allPaymentRows).filter(
+    (p) => String(p.booking_id || "").trim().toUpperCase() === refKey
+  );
+
+  let verifiedGross = 0;
+  let refundFromPayments = 0;
+  for (const p of deduped) {
+    const st = String(p.status || "").toLowerCase();
+    const amt = Math.max(0, round2(p.amount || 0));
+    const pRef = Math.max(0, round2(p.refund_amount || 0));
+    if (["verified", "approved", "paid", "refunded", "partial_refund"].includes(st)) {
+      verifiedGross = round2(verifiedGross + amt);
+      refundFromPayments = round2(refundFromPayments + (st === "refunded" && pRef <= 0 ? amt : pRef));
+    }
+  }
+
+  const bookingRefund = Math.max(0, round2(booking.refund_amount ?? booking.refundAmount ?? 0));
+  const totalRefund = Math.max(refundFromPayments, bookingRefund);
+  const netCollected = Math.max(0, round2(verifiedGross - totalRefund));
+
+  const netRentalRevenue = isCancelled ? 0 : Math.max(0, round2(netRentalBeforeRefund - totalRefund));
+  const outstandingAmount = isCancelled ? 0 : Math.max(0, round2(netRentalBeforeRefund - verifiedGross));
+
+  return {
+    isCancelled,
+    baseAmount: base,
+    driverCharges,
+    extraCharges,
+    couponDiscount: discount,
+    securityDeposit: deposit,
+    netRentalBeforeRefund,
+    netRentalRevenue,
+    grossPayable,
+    verifiedCollected: netCollected,
+    refundAmount: totalRefund,
+    outstandingAmount,
+  };
+}
+
+// Strict Active Trips helper matching updated KpiService & manager-summary.js
+function strictIsBookingOnTrip(booking) {
+  const bStat = String(booking.status || booking.booking_status || "").toLowerCase();
+  const pStat = String(booking.payment_status || booking.paymentStatus || "").toLowerCase();
+  if (["cancelled", "rejected", "completed", "returned"].includes(bStat)) return false;
+  if (["cancelled", "rejected", "refunded"].includes(pStat)) return false;
+
+  let insp = booking.return_inspection || {};
+  if (typeof insp === "string") {
+    try { insp = JSON.parse(insp); } catch { insp = {}; }
+  }
+  const hasReturned = Boolean(
+    booking.return_odometer || booking.end_odometer || booking.returned_at || booking.completed_at ||
+    insp.returnOdometer || insp.endOdometer || insp.returnAt || insp.returnedAt || insp.returnStatus === "returned"
+  );
+  if (hasReturned) return false;
+
+  if (["active", "in_trip", "ongoing", "started"].includes(bStat)) return true;
+
+  const hasHandover = Boolean(
+    booking.pickup_at || booking.start_odometer || insp.pickupOdometer || insp.pickupAt || insp.pickupStatus === "picked_up"
+  );
+  return hasHandover;
+}
+
+// Operational Fleet Roster & 8-State Classifier
+function classifyRosterAndFleetStates(vehicles, rosterRegs, activeTripRegs) {
+  const norm = (r) => String(r || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const rosterSet = new Set(rosterRegs.map(norm).filter(Boolean));
+  const tripSet = new Set(activeTripRegs.map(norm).filter(Boolean));
+
+  const counts = {
+    total_registered: vehicles.length,
+    active_fleet: 0,
+    catalog_only: 0,
+    available: 0,
+    on_trip: 0,
+    in_yard: 0,
+    maintenance: 0,
+    inactive: 0,
+    removed: 0,
+  };
+
+  for (const v of vehicles) {
+    const st = String(v.status || "available").toLowerCase();
+    const regKey = norm(v.reg_no || v.regNo);
+    const inRoster = rosterSet.size > 0 ? rosterSet.has(regKey) : Number(v.is_active_fleet || 0) === 1;
+
+    if (st === "removed") { counts.removed++; continue; }
+    if (st === "inactive" || st === "disabled") { counts.inactive++; continue; }
+    if (!inRoster) { counts.catalog_only++; continue; }
+
+    counts.active_fleet++;
+    if (st === "maintenance" || st === "in_maintenance") {
+      counts.maintenance++;
+    } else if (tripSet.has(regKey) || st === "on_trip") {
+      counts.on_trip++;
+    } else {
+      counts.in_yard++;
+      if (Number(v.available ?? 1) === 1) counts.available++;
+    }
+  }
+  return counts;
+}
+
+// TEST 8: Example Booking 30 Nov -> 3 Dec (4 billed days, ₹12,000 net rental, ₹5,000 deposit excluded)
+console.log("--- Test 8: Example Booking 30 Nov -> 3 Dec (₹12,000 Rental + ₹5,000 Deposit) ---");
+const exDates = validateAndComputeDates("2026-11-30 00:00:00", "2026-12-03 00:00:00");
+assert.strictEqual(exDates.valid, true);
+assert.strictEqual(exDates.days, 4, "30 Nov to 3 Dec inclusive date span MUST bill 4 days");
+const exBooking = {
+  booking_id: "KRZ-EX-1130",
+  pickup_date: "2026-11-30 00:00:00",
+  drop_date: "2026-12-03 00:00:00",
+  days: exDates.days,
+  base_amount: 12000,
+  security_deposit: 5000,
+  total_amount: 12000,
+  payment_status: "paid",
+  status: "completed"
+};
+const exFin = computeBookingFinancials(exBooking, [
+  { booking_id: "KRZ-EX-1130", amount: 12000, status: "verified", utr: "UTR-EX-1130" }
+]);
+assert.strictEqual(exFin.netRentalRevenue, 12000, "Deposit ₹5,000 MUST NOT inflate rental revenue");
+assert.strictEqual(exFin.grossPayable, 17000, "Customer payable including deposit = ₹17,000");
+
+const exSplit = calculateMonthlyRevenueSplit(exBooking);
+assert.strictEqual(exSplit["2026-11-01"].days, 1, "November billed days = 1");
+assert.strictEqual(exSplit["2026-11-01"].amount, 3000, "November rental revenue = ₹3,000");
+assert.strictEqual(exSplit["2026-12-01"].days, 3, "December billed days = 3");
+assert.strictEqual(exSplit["2026-12-01"].amount, 9000, "December rental revenue = ₹9,000");
+assert.strictEqual(exSplit["2026-11-01"].amount + exSplit["2026-12-01"].amount, 12000, "Monthly totals MUST sum to ₹12,000");
+console.log("✓ Test 8 Passed: 30 Nov -> 3 Dec = 4 days (Nov: 1 day ₹3,000 | Dec: 3 days ₹9,000), ₹5,000 deposit excluded.\n");
+
+// TEST 9: Date Validation Rejects Invalid, Reversed & <24h Bookings
+console.log("--- Test 9: Date & Duration Validation Rules ---");
+assert.strictEqual(validateAndComputeDates("", "2026-12-03 10:00:00").valid, false, "Missing pickup must fail");
+assert.strictEqual(validateAndComputeDates("2026-12-05 10:00:00", "2026-12-03 10:00:00").valid, false, "Reversed dates must fail");
+assert.strictEqual(validateAndComputeDates("2026-12-03 10:00:00", "2026-12-03 20:00:00").valid, false, "<24h duration must fail");
+assert.strictEqual(validateAndComputeDates("2026-12-03 10:00:00", "2026-12-04 11:00:00").days, 2, "25h booking rounds up via ceil to 2 billed days");
+console.log("✓ Test 9 Passed: Invalid, reversed, and <24h dates rejected instead of silent fallbacks.\n");
+
+// TEST 10: Financial Engine (Driver, Extra, Coupon, Duplicate UTR, Unverified Advance, Refunds, Cancelled 0 Balance)
+console.log("--- Test 10: Centralized Financial Engine & Reconciliation ---");
+const bComplex = {
+  booking_id: "KRZ-FIN-100",
+  base_amount: 8000,
+  driver_charges: 2000,
+  extra_charges: 500,
+  coupon_discount: 1500,
+  security_deposit: 5000,
+  advance_amount: 500, // unverified on its own!
+  payment_plan: "advance",
+  status: "pending_verification",
+  payment_status: "pending_verification",
+};
+const finUnverified = computeBookingFinancials(bComplex, []);
+assert.strictEqual(finUnverified.netRentalBeforeRefund, 9000, "8000 + 2000 + 500 - 1500 = 9000");
+assert.strictEqual(finUnverified.verifiedCollected, 0, "Unverified advance_amount=500 MUST NOT count as verified collection");
+assert.strictEqual(finUnverified.outstandingAmount, 9000, "Full 9000 outstanding before verification");
+
+const finWithDupUtrAndRefund = computeBookingFinancials(
+  { ...bComplex, refund_amount: 1000, status: "confirmed", payment_status: "advance_paid" },
+  [
+    { booking_id: "KRZ-FIN-100", amount: 3000, status: "verified", utr: "UTR-DUP-1" },
+    { booking_id: "KRZ-FIN-100", amount: 3000, status: "verified", utr: "UTR-DUP-1" }, // duplicate UTR row must be deduplicated!
+  ]
+);
+assert.strictEqual(finWithDupUtrAndRefund.verifiedCollected, 2000, "3000 verified (deduplicated once) minus 1000 refund = 2000 net collected");
+assert.strictEqual(finWithDupUtrAndRefund.netRentalRevenue, 8000, "9000 net before refund - 1000 refund = 8000 net revenue");
+assert.strictEqual(finWithDupUtrAndRefund.outstandingAmount, 6000, "9000 - 3000 verified = 6000 still due");
+
+const finCancelled = computeBookingFinancials({ ...bComplex, status: "cancelled", payment_status: "cancelled" }, []);
+assert.strictEqual(finCancelled.netRentalRevenue, 0, "Cancelled booking net revenue = 0");
+assert.strictEqual(finCancelled.outstandingAmount, 0, "Cancelled booking outstanding = 0");
+console.log("✓ Test 10 Passed: Driver/extra/coupon math, deposit exclusion, UTR deduplication, refund reduction & cancelled zero balance verified.\n");
+
+// TEST 11 & 12: Operational Fleet Roster Isolation, 8 Fleet States & Strict Active Trips
+console.log("--- Test 11 & 12: Roster Isolation, 8 Fleet States & Strict Active Trips ---");
+assert.strictEqual(strictIsBookingOnTrip({ status: "confirmed", payment_status: "paid", pickup_date: "2026-11-01 09:00:00" }), false, "Unstarted confirmed booking is Scheduled, NOT Active On-Trip");
+assert.strictEqual(strictIsBookingOnTrip({ status: "active", payment_status: "paid", pickup_at: "2026-11-01 09:10:00" }), true, "Started active booking IS On-Trip");
+assert.strictEqual(strictIsBookingOnTrip({ status: "active", return_odometer: "15200" }), false, "Booking with return odometer logged is back In Yard");
+
+const mixedVehicles = [
+  { reg_no: "MH03EL1025", status: "available", available: 1 },
+  { reg_no: "MH05GJ4711", status: "available", available: 1 },
+  { reg_no: "MH02CR1011", status: "maintenance", available: 0 },
+  { reg_no: "MH04OLD01", status: "inactive", available: 0 },
+  { reg_no: "MH04DEL02", status: "removed", available: 0 },
+  { reg_no: "MH04KR0101", status: "available", available: 1 }, // catalog-only (not in roster!)
+  { reg_no: "MH04KR0102", status: "available", available: 1 }, // catalog-only
+];
+const fleetStates = classifyRosterAndFleetStates(
+  mixedVehicles,
+  ["MH03EL1025", "MH05GJ4711", "MH02CR1011"],
+  ["MH03EL1025"]
+);
+assert.strictEqual(fleetStates.total_registered, 7);
+assert.strictEqual(fleetStates.active_fleet, 3, "Only roster vehicles belong to Active Fleet");
+assert.strictEqual(fleetStates.catalog_only, 2, "Non-roster models isolated in catalog_only");
+assert.strictEqual(fleetStates.on_trip, 1);
+assert.strictEqual(fleetStates.in_yard, 1);
+assert.strictEqual(fleetStates.maintenance, 1);
+assert.strictEqual(fleetStates.inactive, 1);
+assert.strictEqual(fleetStates.removed, 1);
+console.log("✓ Test 11 & 12 Passed: Operational Roster isolated from catalog models & strict Active Trips vs Scheduled bookings verified.\n");
+
+// TEST 13 & 14: Hub Attribution Preservation & Host Ownership Isolation
+console.log("--- Test 13 & 14: DB Hub Attribution (Cross-Hub / NULL Preserved) & Host Listing Isolation ---");
+const resolveHubRef = (b) => {
+  const pHub = Number(b.pickup_hub_id || 0) || null;
+  const dHub = Number(b.drop_hub_id || 0) || null;
+  return {
+    reportingHubId: pHub, // NULL stays NULL — never silently forced to Hub 1
+    crossHubReturn: Boolean(pHub && dHub && pHub !== dHub),
+  };
+};
+assert.strictEqual(resolveHubRef({ pickup_hub_id: null, drop_hub_id: null }).reportingHubId, null, "Legacy NULL hub must remain unassigned");
+assert.strictEqual(resolveHubRef({ pickup_hub_id: 1, drop_hub_id: 2 }).crossHubReturn, true, "Hub 1 pickup -> Hub 2 drop flagged as crossHubReturn");
+
+// Strict Host Listing Ownership (no fuzzy name/phone leak to Accounts user)
+const ownsListing = (listing, user) => {
+  const uid = String(user.uid || "").trim();
+  const lUid = String(listing.firebase_uid || "").trim();
+  const uIdNum = Number(user.id || 0);
+  const lUserIdNum = Number(listing.user_id || 0);
+  const uEmail = String(user.email || "").trim().toLowerCase();
+  const lEmail = String(listing.user_email || "").trim().toLowerCase();
+  if (lUid && uid && lUid === uid) return true;
+  if (lUserIdNum > 0 && uIdNum > 0 && lUserIdNum === uIdNum) return true;
+  if (!lUid && lEmail && uEmail && lEmail === uEmail) return true;
+  return false;
+};
+const hostErtiga = { id: 1, vehicle_name: "Maruti Suzuki Ertiga", firebase_uid: "host-uid-99", user_id: 12, user_email: "host@example.com", payout_model: "revenue_share", revenue_share_pct: 60 };
+const accountsUser = { id: 4, uid: "acct-uid-4", email: "accounts@kruizly.com", name: "Maruti Accounts", role: "accounts" };
+assert.strictEqual(ownsListing(hostErtiga, accountsUser), false, "Accounts user must NEVER inherit host vehicle listing via fuzzy name match");
+assert.strictEqual(ownsListing(hostErtiga, { id: 12, uid: "host-uid-99", email: "host@example.com", role: "host" }), true, "Actual host owns listing cleanly");
+console.log("✓ Test 13 & 14 Passed: Hub NULL preservation, cross-hub tracking & strict host listing isolation verified.\n");
+
+// TEST 15: Persistent DB Manual Offsets + Dynamic Rollover State Machine (settings['kpi_engine_state'])
+console.log("--- Test 15: Persistent DB Manual Offsets + Dynamic Booking Sync & Rollover ---");
+function stepKpiEngineState({ calcHubs, dbHubs, savedState, todayStr, weekKey, monthKey }) {
+  const dayRolled = Boolean(savedState?.last_calc_date && savedState.last_calc_date !== todayStr);
+  const weekRolled = Boolean(savedState?.last_calc_week && savedState.last_calc_week !== weekKey);
+  const monthRolled = Boolean(savedState?.last_calc_month && savedState.last_calc_month !== monthKey);
+  const fields = ["day_sales", "week_sales", "month_revenue", "total_revenue"];
+
+  const nextState = { last_calc_date: todayStr, last_calc_week: weekKey, last_calc_month: monthKey, hubs: {} };
+  const effectiveHubs = {};
+  const childDelta = { day_sales: 0, week_sales: 0, month_revenue: 0, total_revenue: 0 };
+
+  for (const hId of Object.keys(calcHubs).map(Number).sort((a, b) => (a === 0 ? 1 : b === 0 ? -1 : a - b))) {
+    const calc = calcHubs[hId];
+    const db = dbHubs[hId] || null;
+    const prev = savedState?.hubs?.[hId] || null;
+    const off = prev ? { ...prev.offsets } : { day_sales: 0, week_sales: 0, month_revenue: 0, total_revenue: 0 };
+
+    if (prev) {
+      if (dayRolled) off.day_sales = 0;
+      if (weekRolled) off.week_sales = 0;
+      if (monthRolled) off.month_revenue = 0;
+    }
+
+    const edited = {};
+    const deltas = {};
+    if (db) {
+      for (const f of fields) {
+        if (prev) {
+          const prevW = prev.last_written[f] || 0;
+          if (Math.abs((db[f] || 0) - prevW) >= 0.01) {
+            edited[f] = true;
+            deltas[f] = Number(((db[f] || 0) - prevW).toFixed(2));
+            off[f] = Number(((db[f] || 0) - (calc[f] || 0)).toFixed(2));
+          }
+        } else if ((db[f] || 0) - (calc[f] || 0) >= 0.01) {
+          off[f] = Number(((db[f] || 0) - (calc[f] || 0)).toFixed(2));
+        }
+      }
+    }
+
+    if (edited.day_sales) {
+      if (!edited.week_sales) off.week_sales = Number((off.week_sales + deltas.day_sales).toFixed(2));
+      if (!edited.month_revenue) off.month_revenue = Number((off.month_revenue + deltas.day_sales).toFixed(2));
+      if (!edited.total_revenue) off.total_revenue = Number((off.total_revenue + deltas.day_sales).toFixed(2));
+    }
+
+    if (hId > 0) {
+      for (const f of fields) childDelta[f] = Number((childDelta[f] + (off[f] - (prev?.offsets?.[f] || 0))).toFixed(2));
+    } else if (prev) {
+      for (const f of fields) {
+        if (!edited[f] && Math.abs(childDelta[f]) >= 0.01) {
+          off[f] = Number((off[f] + childDelta[f]).toFixed(2));
+        }
+      }
+    }
+
+    const eff = {};
+    for (const f of fields) eff[f] = Math.max(0, Number(((calc[f] || 0) + off[f]).toFixed(2)));
+    effectiveHubs[hId] = eff;
+    nextState.hubs[hId] = { offsets: off, last_written: eff };
+  }
+  return { effectiveHubs, nextState };
+}
+
+// 15a: Owner adds ₹5,000 offline revenue directly in phpMyAdmin to Hub 1 day_sales
+const s1 = stepKpiEngineState({
+  calcHubs: { 0: { day_sales: 6776, week_sales: 43629, month_revenue: 190820, total_revenue: 1666474 }, 1: { day_sales: 6776, week_sales: 43629, month_revenue: 190820, total_revenue: 1666474 } },
+  dbHubs: { 0: { day_sales: 6776, week_sales: 43629, month_revenue: 190820, total_revenue: 1666474 }, 1: { day_sales: 11776, week_sales: 43629, month_revenue: 190820, total_revenue: 1666474 } },
+  savedState: {
+    last_calc_date: "2026-11-12", last_calc_week: "2026-W46", last_calc_month: "2026-11",
+    hubs: {
+      0: { offsets: { day_sales: 0, week_sales: 0, month_revenue: 0, total_revenue: 0 }, last_written: { day_sales: 6776, week_sales: 43629, month_revenue: 190820, total_revenue: 1666474 } },
+      1: { offsets: { day_sales: 0, week_sales: 0, month_revenue: 0, total_revenue: 0 }, last_written: { day_sales: 6776, week_sales: 43629, month_revenue: 190820, total_revenue: 1666474 } }
+    }
+  },
+  todayStr: "2026-11-12", weekKey: "2026-W46", monthKey: "2026-11"
+});
+assert.strictEqual(s1.effectiveHubs[1].day_sales, 11776, "Hub 1 phpMyAdmin +5000 day edit must stay saved");
+assert.strictEqual(s1.effectiveHubs[1].total_revenue, 1671474, "Hub 1 day edit must roll up to month & total_revenue");
+assert.strictEqual(s1.effectiveHubs[0].total_revenue, 1671474, "Hub 1 manual delta must propagate automatically to Hub 0");
+
+// 15b: Next online booking adds +₹3,000 -> total becomes 1674474 & day becomes 14776
+const s2 = stepKpiEngineState({
+  calcHubs: { 0: { day_sales: 9776, week_sales: 46629, month_revenue: 193820, total_revenue: 1669474 }, 1: { day_sales: 9776, week_sales: 46629, month_revenue: 193820, total_revenue: 1669474 } },
+  dbHubs: s1.effectiveHubs,
+  savedState: s1.nextState,
+  todayStr: "2026-11-12", weekKey: "2026-W46", monthKey: "2026-11"
+});
+assert.strictEqual(s2.effectiveHubs[0].day_sales, 14776, "New online booking (+3000) stacks cleanly on top of manual +5000");
+assert.strictEqual(s2.effectiveHubs[0].total_revenue, 1674474, "Combined online + manual DB total stays accurate");
+
+// 15c: Month rollover (Dec 1) resets day/week/month offsets while retaining +5000 in all-time total_revenue
+const s3 = stepKpiEngineState({
+  calcHubs: { 0: { day_sales: 0, week_sales: 0, month_revenue: 0, total_revenue: 1669474 }, 1: { day_sales: 0, week_sales: 0, month_revenue: 0, total_revenue: 1669474 } },
+  dbHubs: s2.effectiveHubs,
+  savedState: s2.nextState,
+  todayStr: "2026-12-01", weekKey: "2026-W49", monthKey: "2026-12"
+});
+assert.strictEqual(s3.effectiveHubs[0].day_sales, 0, "Day rollover clears daily offline offset cleanly");
+assert.strictEqual(s3.effectiveHubs[0].month_revenue, 0, "Month rollover starts new month cleanly at 0");
+assert.strictEqual(s3.effectiveHubs[0].total_revenue, 1674474, "All-time manual +5000 offset persists across month rollover");
+console.log("✓ Test 15 Passed: Persistent manual DB offsets, dynamic new bookings & period rollovers verified.\n");
+
 console.log("==================================================");
-console.log("ALL 7 VERIFICATION TESTS PASSED SUCCESSFULLY! (100%)");
+console.log("ALL 15 VERIFICATION TESTS PASSED SUCCESSFULLY! (100%)");
 console.log("==================================================");

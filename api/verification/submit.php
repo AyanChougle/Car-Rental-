@@ -118,6 +118,11 @@ try {
         }
     });
 
+    try {
+        require_once __DIR__ . '/../services/KpiService.php';
+        KpiService::syncMetrics(true, false);
+    } catch (Throwable $_) {}
+
     sendJsonResponse([
         'success' => true,
         'message' => 'Identity verification documents submitted successfully for review.',

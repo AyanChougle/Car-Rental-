@@ -11,12 +11,10 @@
     ((location.hostname === "localhost" || location.hostname === "127.0.0.1")
       ? "https://kruizly.com/api" : location.origin + "/api")).replace(/\/$/, "");
 
-  const DEFAULT_HUBS = [
-    { id: 1, name: "Gavson Business Park, Ghansoli", code: "GAV-01", city: "Navi Mumbai", state: "Maharashtra", status: "active" },
-    { id: 2, name: "Kandivali Hub, Mumbai", code: "KAND-01", city: "Mumbai", state: "Maharashtra", status: "active" }
-  ];
+  const DEFAULT_HUBS = [];
 
-  let hubs = [...DEFAULT_HUBS];
+  let hubs = [];
+  let hubLoadError = "";
   let selector = null;
 
   function getSelectedHubId() {
@@ -41,15 +39,19 @@
         headers: { Accept: "application/json" },
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success && Array.isArray(data.hubs) && data.hubs.length > 0) {
+      if (res.ok && data.success && Array.isArray(data.hubs)) {
         hubs = data.hubs;
-      } else if (!hubs.length) {
-        hubs = [...DEFAULT_HUBS];
+        hubLoadError = "";
+      } else {
+        hubs = [];
+        hubLoadError = data.error || "Unable to load hubs from database.";
       }
     } catch (err) {
-      console.warn("Hub context fetch note:", err);
-      if (!hubs.length) hubs = [...DEFAULT_HUBS];
+      console.warn("Hub context fetch error:", err);
+      hubs = [];
+      hubLoadError = "Unable to connect to hub directory.";
     }
+    window.KRUIZLY_HUB_LOAD_ERROR = hubLoadError;
     return hubs;
   }
 
@@ -168,7 +170,7 @@
     const hub = selectedHub();
     const metaLabel = hub
       ? `${hub.code || "HUB"} · ${hub.city || ""}${hub.state ? ", " + hub.state : ""}`
-      : (hubs.length ? "All active Hubs" : "All operating Hubs");
+      : (hubs.length ? "All active Hubs" : (hubLoadError || "No active Hubs available"));
 
     if (meta) {
       const metaText = meta.querySelector(".hub-context-meta-text");
@@ -185,7 +187,7 @@
       const hub = selectedHub();
       const metaLabel = hub
         ? `${hub.code || "HUB"} · ${hub.city || ""}${hub.state ? ", " + hub.state : ""}`
-        : "All active Hubs";
+        : (hubs.length ? "All active Hubs" : (hubLoadError || "No active Hubs available"));
       if (meta) {
         const metaText = meta.querySelector(".hub-context-meta-text");
         if (metaText) {

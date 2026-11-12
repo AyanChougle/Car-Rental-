@@ -18,7 +18,13 @@ import {
 } from "./auth.js?v=20260908-v5";
 import { api } from "./kruizly-api.js?v=20261001-v2";
 import "./nav-helper.js?v=20260928-v2";
-import { openImageLightbox } from "./image-lightbox.js?v=20260912-v1";
+import {
+  openImageLightbox,
+  fetchProtectedMediaPreview,
+  revokeObjectUrlSafely,
+} from "./image-lightbox.js?v=20261112-v3";
+
+let activeAccountsProofObjectUrl = "";
 
 function $(id) {
   return document.getElementById(id);
@@ -144,6 +150,12 @@ function initEvents() {
       hideModal("accountsReviewModal");
     }
   });
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("kruizly:hubchange", () => {
+      loadPaymentsData();
+    });
+  }
 }
 
 async function loadPaymentsData() {
@@ -152,9 +164,13 @@ async function loadPaymentsData() {
     wrap.innerHTML = `<div class="manager-state" style="padding: 28px; text-align: center; color: var(--sub);">Loading payment records...</div>`;
 
   try {
+    const selectedHubId =
+      (typeof localStorage !== "undefined" &&
+        localStorage.getItem("kruizly_selected_hub_id")) ||
+      "";
     const [paymentsRes, bookingsRes] = await Promise.allSettled([
-      api.get("/payments"),
-      api.get("/bookings"),
+      api.get("/payments", selectedHubId ? { hub_id: selectedHubId } : {}),
+      api.get("/bookings", selectedHubId ? { hub_id: selectedHubId } : {}),
     ]);
 
     let rawPayments = [];
@@ -194,15 +210,52 @@ async function loadPaymentsData() {
 
       const pStat = String(b.paymentStatus || "").toLowerCase();
       const bStat = String(b.status || b.bookingStatus || "").toLowerCase();
-      if (["cancelled", "rejected", "refunded"].includes(pStat) || ["cancelled", "rejected"].includes(bStat)) {
+      if (
+        ["cancelled", "rejected", "refunded"].includes(pStat) ||
+        ["cancelled", "rejected"].includes(bStat)
+      ) {
         return;
       }
 
+      const hasSubmittedProof = Boolean(
+        String(b.paymentRef || "").trim() ||
+          String(b.paymentScreenshotUrl || "").trim(),
+      );
       const isVerified =
         ["paid", "advance_paid", "verified"].includes(pStat) ||
         ["confirmed", "active", "in_trip", "completed"].includes(bStat);
+
+      // Never synthesize pending verification rows for unpaid bookings that never submitted proof
+      if (!isVerified && !hasSubmittedProof) {
+        return;
+      }
+
       const isRejected = ["rejected", "cancelled"].includes(pStat);
       const status = isVerified ? "verified" : isRejected ? "rejected" : "pending";
+      const firstPositive = (...vals) => {
+        for (const v of vals) {
+          const num = Number(v);
+          if (Number.isFinite(num) && num > 0) return num;
+        }
+        return 0;
+      };
+      const displayAmt = isVerified
+        ? firstPositive(
+            b.verifiedCollected,
+            b.paymentAmountPaid,
+            b.netRentalBeforeRefund,
+            b.finalAmount,
+            b.totalAmount,
+          )
+        : firstPositive(
+            b.pendingPaymentAmount,
+            b.paymentAmountPaid,
+            b.advanceAmount,
+            b.netRentalBeforeRefund,
+            b.finalAmount,
+            b.totalAmount,
+            b.verifiedCollected,
+          );
 
       combined.push({
         id: b.id || b.bookingId,
@@ -214,10 +267,11 @@ async function loadPaymentsData() {
         userPhone: b.userPhone || b.phone || "",
         vehicleName: b.carName || b.vehicleName || "Vehicle",
         vehicleReg: b.vehicleReg || "",
-        amount: Number(b.paymentAmountPaid || b.advanceAmount || b.totalAmount || 0),
+        amount: displayAmt,
         method: b.paymentMethod || "UPI",
         utr: b.paymentRef || b.bookingNumber || b.bookingId || "",
         screenshotUrl: b.paymentScreenshotUrl || "",
+        screenshotMediaId: b.paymentScreenshotMediaId || b.screenshotMediaId || "",
         status,
         verifiedBy: b.verifiedBy || "",
         createdAt: b.createdAt || b.pickupDate || "",
@@ -303,8 +357,8 @@ function renderPaymentsTable() {
   let filtered = allPayments.filter((p) => {
     const status = String(p.status || "").toLowerCase();
     const isVerified = ["verified", "approved", "paid"].includes(status);
-    const isRejected = ["rejected", "failed", "cancelled"].includes(status);
-    const isPending = !isVerified && !isRejected;
+    const isRejected = ["rejected", "failed", "cancelled", "refunded", "partial_refund"].includes(status);
+    const isPending = ["pending", "pending_verification"].includes(status);
 
     if (statusFilter === "pending" && !isPending) return false;
     if (statusFilter === "verified" && !isVerified) return false;
@@ -358,7 +412,8 @@ function renderPaymentsTable() {
   filtered.forEach((p, idx) => {
     const rawStatus = String(p.status || "").toLowerCase();
     const isVerified = ["verified", "approved", "paid"].includes(rawStatus);
-    const isRejected = ["rejected", "failed", "cancelled"].includes(rawStatus);
+    const isRefunded = ["refunded", "partial_refund"].includes(rawStatus);
+    const isRejected = ["rejected", "failed", "cancelled"].includes(rawStatus) || isRefunded;
     const statusClass = isVerified
       ? "verified"
       : isRejected
@@ -366,9 +421,11 @@ function renderPaymentsTable() {
         : "pending";
     const statusLabel = isVerified
       ? "VERIFIED"
-      : isRejected
-        ? "REJECTED"
-        : "PENDING";
+      : isRefunded
+        ? "REFUNDED"
+        : isRejected
+          ? "REJECTED"
+          : "PENDING";
     const targetBid = p.bookingId || p.id || p.bookingNumber;
     const verifierName =
       p.verifiedBy || p.verified_by || (isVerified ? "—" : "—");
@@ -427,13 +484,22 @@ function renderPaymentsTable() {
   });
 }
 
-function openReviewModal(p) {
+async function openReviewModal(p) {
   activePaymentItem = p;
   const body = $("accountsReviewBody");
   if (!body) return;
 
-  const proofUrl =
-    p.screenshotUrl || p.paymentScreenshotUrl || p.proofUrl || "";
+  if (activeAccountsProofObjectUrl) {
+    revokeObjectUrlSafely(activeAccountsProofObjectUrl);
+    activeAccountsProofObjectUrl = "";
+  }
+
+  const proofSource =
+    p.screenshotUrl ||
+    p.paymentScreenshotUrl ||
+    p.proofUrl ||
+    p.screenshotMediaId ||
+    "";
   const verifierSelect = $("accountsVerifierSelect");
   if (verifierSelect && p.verifiedBy) {
     verifierSelect.value = p.verifiedBy;
@@ -459,16 +525,15 @@ function openReviewModal(p) {
       </div>
     </div>
     ${
-      proofUrl
+      proofSource
         ? `
       <div style="margin-top:14px;">
-        <span style="color:var(--sub); font-size:12px; font-weight:700; display:block; margin-bottom:6px;">PAYMENT PROOF SCREENSHOT (CLICK TO ENLARGE)</span>
-        <div id="accountsProofZoomWrap" style="position:relative; cursor:zoom-in; border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.15); background:#060a11;" role="button" tabindex="0" title="Click to enlarge payment screenshot">
-          <img src="${escapeHtml(proofUrl)}" alt="Payment proof" style="width:100%; max-height:280px; object-fit:contain; display:block; transition:transform 200ms ease;" />
-          <div style="position:absolute; bottom:8px; right:8px; background:rgba(3,7,13,0.85); backdrop-filter:blur(8px); color:#4fd7ff; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid rgba(79,215,255,0.4); pointer-events:none; display:inline-flex; align-items:center; gap:5px;">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-            <span>Click to Enlarge</span>
-          </div>
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;">
+          <span style="color:var(--sub); font-size:12px; font-weight:700;">PAYMENT PROOF (CLICK TO ENLARGE)</span>
+          <button type="button" id="accountsProofEnlargeBtn" style="background:rgba(79,215,255,0.14); border:1px solid rgba(79,215,255,0.38); color:#4fd7ff; padding:3px 10px; border-radius:999px; font-size:11px; font-weight:700; cursor:pointer;">Full View</button>
+        </div>
+        <div id="accountsProofZoomWrap" style="position:relative; cursor:zoom-in; border-radius:8px; overflow:hidden; border:1px solid rgba(255,255,255,0.15); background:#060a11; min-height:140px; display:flex; align-items:center; justify-content:center;" role="button" tabindex="0" title="Click to enlarge payment proof">
+          <div style="color:var(--sub); font-size:13px; padding:20px;">Loading payment proof preview…</div>
         </div>
       </div>
     `
@@ -482,18 +547,67 @@ function openReviewModal(p) {
     }
   `;
 
+  showModal("accountsReviewModal");
+
   const zoomWrap = $("accountsProofZoomWrap");
-  if (zoomWrap && proofUrl) {
-    zoomWrap.addEventListener("click", () => {
-      openImageLightbox(
-        proofUrl,
-        `Payment Proof — Booking #${p.bookingId || p.id}`,
-        `${p.userName || "Customer"} · Ref: ${p.utr || p.paymentRef || "N/A"}`,
-      );
-    });
+  const enlargeBtn = $("accountsProofEnlargeBtn");
+  const openFullViewer = () => {
+    openImageLightbox(
+      proofSource,
+      `Payment Proof — Booking #${p.bookingId || p.id}`,
+      `${p.userName || "Customer"} · Ref: ${p.utr || p.paymentRef || "N/A"}`,
+    );
+  };
+
+  if (enlargeBtn && proofSource) {
+    enlargeBtn.addEventListener("click", openFullViewer);
   }
 
-  showModal("accountsReviewModal");
+  if (zoomWrap && proofSource) {
+    zoomWrap.addEventListener("click", openFullViewer);
+
+    try {
+      const preview = await fetchProtectedMediaPreview(proofSource);
+      if (activePaymentItem !== p || !zoomWrap.isConnected) {
+        if (preview.isBlob) revokeObjectUrlSafely(preview.url);
+        return;
+      }
+
+      if (preview.isBlob) {
+        activeAccountsProofObjectUrl = preview.url;
+      }
+
+      if (preview.isPdf) {
+        zoomWrap.innerHTML = `
+          <iframe src="${escapeHtml(preview.url)}#toolbar=0" title="Payment proof PDF" style="width:100%; height:300px; border:none; background:#0b1322; display:block;"></iframe>
+        `;
+      } else if (preview.isNonInline) {
+        const extLabel = (preview.ext || "FILE").toUpperCase();
+        zoomWrap.innerHTML = `
+          <div style="padding:22px; text-align:center;">
+            <div style="display:inline-block; padding:4px 12px; border-radius:999px; background:rgba(56,189,248,0.16); color:#38bdf8; font-size:12px; font-weight:800; margin-bottom:8px;">${escapeHtml(extLabel)}</div>
+            <div style="color:#e2e8f0; font-size:13px; font-weight:600;">Click "Full View" to inspect or download this ${escapeHtml(extLabel)} receipt.</div>
+          </div>
+        `;
+      } else {
+        zoomWrap.innerHTML = `
+          <img src="${escapeHtml(preview.url)}" alt="Payment proof" style="width:100%; max-height:280px; object-fit:contain; display:block; transition:transform 200ms ease;" />
+          <div style="position:absolute; bottom:8px; right:8px; background:rgba(3,7,13,0.85); backdrop-filter:blur(8px); color:#4fd7ff; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; border:1px solid rgba(79,215,255,0.4); pointer-events:none; display:inline-flex; align-items:center; gap:5px;">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+            <span>Click to Enlarge</span>
+          </div>
+        `;
+      }
+    } catch (err) {
+      if (activePaymentItem !== p || !zoomWrap.isConnected) return;
+      zoomWrap.innerHTML = `
+        <div style="padding:18px; text-align:center; color:#fca5a5; font-size:12px;">
+          <strong style="display:block; margin-bottom:4px;">Unable to load payment proof preview</strong>
+          <span style="color:var(--sub);">${escapeHtml(err?.message || "Click Full View to retry or download.")}</span>
+        </div>
+      `;
+    }
+  }
 }
 
 async function handleApprovePayment() {
@@ -513,11 +627,20 @@ async function handleApprovePayment() {
       `/payments/${encodeURIComponent(targetId)}/verify`,
       {
         action: "approve",
+        paymentId: activePaymentItem.paymentId || activePaymentItem.id || null,
         verifiedBy: verifierName,
       },
     );
 
     hideModal("accountsReviewModal");
+    try {
+      if (typeof BroadcastChannel !== "undefined") {
+        const ch = new BroadcastChannel("kruizly_kpi_sync");
+        ch.postMessage({ type: "KPI_UPDATED", timestamp: Date.now() });
+        ch.close();
+      }
+      localStorage.setItem("kruizly_kpi_last_sync", String(Date.now()));
+    } catch (_) {}
     alert(`Payment #${targetId} verified & approved by ${verifierName}!`);
     await loadPaymentsData();
   } catch (err) {
@@ -552,12 +675,21 @@ async function handleRejectPayment() {
   try {
     await api.post(`/payments/${encodeURIComponent(targetId)}/verify`, {
       action: "reject",
+      paymentId: activePaymentItem.paymentId || activePaymentItem.id || null,
       reason,
       verifiedBy: verifierName,
     });
 
     if (reasonWrap) reasonWrap.style.display = "none";
     hideModal("accountsReviewModal");
+    try {
+      if (typeof BroadcastChannel !== "undefined") {
+        const ch = new BroadcastChannel("kruizly_kpi_sync");
+        ch.postMessage({ type: "KPI_UPDATED", timestamp: Date.now() });
+        ch.close();
+      }
+      localStorage.setItem("kruizly_kpi_last_sync", String(Date.now()));
+    } catch (_) {}
     alert(`Payment #${targetId} rejected.`);
     await loadPaymentsData();
   } catch (err) {
@@ -577,6 +709,10 @@ function showModal(id) {
 }
 
 function hideModal(id) {
+  if (id === "accountsReviewModal" && activeAccountsProofObjectUrl) {
+    revokeObjectUrlSafely(activeAccountsProofObjectUrl);
+    activeAccountsProofObjectUrl = "";
+  }
   const m = $(id);
   if (m) {
     m.hidden = true;

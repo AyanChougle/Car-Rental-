@@ -21,7 +21,7 @@ if ($method === 'POST') {
 }
 
 if ($method === 'GET') {
-    $user = Auth::requireRole('admin', 'manager', 'executive', 'accountant');
+    $user = Auth::requireRole('admin', 'super_admin', 'manager', 'executive', 'accountant', 'accounts');
 
     $status = trim((string)($_GET['status'] ?? ''));
     $search = trim((string)($_GET['search'] ?? ''));
@@ -32,6 +32,8 @@ if ($method === 'GET') {
                    COALESCE(NULLIF(b.user_email, ''), NULLIF(u.email, ''), '') AS resolved_user_email,
                    COALESCE(NULLIF(b.user_phone, ''), NULLIF(u.phone, ''), '') AS resolved_user_phone,
                    COALESCE(NULLIF(b.vehicle_name, ''), NULLIF(v.model, ''), 'Vehicle') AS resolved_vehicle_name,
+                   v.hub_id AS v_hub_id,
+                   v.reg_no AS v_reg_no,
                    ph.name AS pickup_hub_name,
                    dh.name AS drop_hub_name
             FROM bookings b
@@ -90,7 +92,11 @@ if ($method === 'GET') {
     }
     $rows = $dedupedRows;
 
-    $bookings = array_map(function($b) {
+    $paymentData = KpiService::loadDeduplicatedPayments();
+    $paymentsByBooking = $paymentData['by_booking'] ?? [];
+    $registeredHubs = KpiService::getRegisteredHubsMap();
+
+    $bookings = array_map(function($b) use ($paymentsByBooking, $registeredHubs) {
         $status = $b['status'];
         $inspection = [];
         if (!empty($b['return_inspection'])) {
@@ -123,8 +129,23 @@ if ($method === 'GET') {
         $rawBId = trim((string)($b['booking_id'] ?? ''));
         $rawBNum = trim((string)($b['booking_number'] ?? ''));
         $rowId = (int)($b['id'] ?? 1);
-        $bId = ($rawBId !== '') ? $rawBId : (($rawBNum !== '') ? $rawBNum : ('KRZ-SEP-' . str_pad((string)$rowId, 3, '0', STR_PAD_LEFT)));
+        $bId = ($rawBId !== '') ? $rawBId : (($rawBNum !== '') ? $rawBNum : ('KRZ-BOOK-' . str_pad((string)$rowId, 3, '0', STR_PAD_LEFT)));
         $bNum = ($rawBNum !== '') ? $rawBNum : $bId;
+
+        $bkLookup = strtoupper(ltrim($bId, '#'));
+        $bkNumLookup = strtoupper(ltrim($bNum, '#'));
+        $pAgg = $paymentsByBooking[$bkLookup] ?? ($paymentsByBooking[$bkNumLookup] ?? []);
+
+        $fin = KpiService::computeBookingFinancials($b, $pAgg);
+        $dates = KpiService::getBookingDates($b);
+        $hubAttr = KpiService::resolveHubAttribution($b, $registeredHubs);
+        $split = KpiService::calculateMonthlyRevenueSplit($b, $fin);
+        if (empty($split) && !empty($b['monthly_revenue_split']) && !$fin['is_cancelled']) {
+            $decodedSplit = is_string($b['monthly_revenue_split']) ? json_decode($b['monthly_revenue_split'], true) : $b['monthly_revenue_split'];
+            if (is_array($decodedSplit)) {
+                $split = $decodedSplit;
+            }
+        }
 
         return [
             'id' => $bId,
@@ -141,28 +162,46 @@ if ($method === 'GET') {
             'vehicleReg' => $b['vehicle_reg'],
             'vehicleName' => $b['resolved_vehicle_name'] ?? ($b['vehicle_name'] ?: 'Vehicle'),
             'vehicleCategory' => $b['vehicle_category'],
-            'hubId' => (int)($b['pickup_hub_id'] ?? 0),
-            'hub_id' => (int)($b['pickup_hub_id'] ?? 0),
-            'pickupHubId' => (int)($b['pickup_hub_id'] ?? 0),
-            'dropHubId' => (int)($b['drop_hub_id'] ?? $b['pickup_hub_id'] ?? 0),
-            'pickupHubName' => $b['pickup_hub_name'] ?? null,
-            'dropHubName' => $b['drop_hub_name'] ?? null,
+            'hubId' => $hubAttr['reporting_hub_id'] ?: null,
+            'hub_id' => $hubAttr['reporting_hub_id'] ?: null,
+            'pickupHubId' => $hubAttr['pickup_hub_id'] ?: null,
+            'dropHubId' => $hubAttr['drop_hub_id'] ?: null,
+            'reportingHubId' => $hubAttr['reporting_hub_id'] ?: null,
+            'pickupHubName' => $b['pickup_hub_name'] ?? ($hubAttr['pickup_hub_id'] ? $hubAttr['pickup_hub_name'] : null),
+            'dropHubName' => $b['drop_hub_name'] ?? ($hubAttr['drop_hub_id'] ? $hubAttr['drop_hub_name'] : null),
+            'reportingHubName' => $hubAttr['reporting_hub_name'],
+            'isCrossHubReturn' => $hubAttr['is_cross_hub_return'],
             'pickupDate' => $b['pickup_date'],
             'dropDate' => $b['drop_date'],
             'duration' => $b['duration'],
-            'days' => (int)$b['days'],
-            'hours' => (int)$b['hours'],
+            'days' => $dates['days'],
+            'hours' => $dates['hours'],
             'withDriver' => (int)$b['with_driver'],
-            'baseAmount' => (float)$b['base_amount'],
-            'totalAmount' => (float)$b['total_amount'],
-            'finalAmount' => (float)$b['final_amount'],
+            'baseAmount' => $fin['base_rental'],
+            'baseRental' => $fin['base_rental'],
+            'driverCharges' => $fin['driver_charges'],
+            'extraCharges' => $fin['extra_charges'],
+            'totalAmount' => $fin['net_rental_before_refund'],
+            'finalAmount' => $fin['net_rental_before_refund'],
+            'netRentalBeforeRefund' => $fin['net_rental_before_refund'],
+            'netRentalRevenue' => $fin['net_rental_revenue'],
+            'grossCustomerPayable' => $fin['gross_customer_payable'],
             'advanceAmount' => (float)$b['advance_amount'],
-            'remainingBalance' => (float)$b['remaining_balance'],
-            'securityDeposit' => (float)$b['security_deposit'],
+            'verifiedCollected' => $fin['verified_collected'],
+            'paymentAmountPaid' => $fin['verified_collected'],
+            'netCollections' => $fin['net_collections'],
+            'refundAmount' => $fin['refund_amount'],
+            'refundStatus' => $b['refund_status'] ?? ($fin['refund_amount'] > 0 ? 'refunded' : 'none'),
+            'outstandingAmount' => $fin['outstanding_amount'],
+            'remainingBalance' => $fin['outstanding_amount'],
+            'securityDeposit' => $fin['security_deposit'],
             'couponCode' => $b['coupon_code'],
-            'couponDiscount' => (float)$b['coupon_discount'],
+            'couponDiscount' => $fin['coupon_discount'],
             'paymentPlan' => $b['payment_plan'],
             'paymentStatus' => $b['payment_status'],
+            'isCancelled' => $fin['is_cancelled'],
+            'isPaid' => $fin['is_paid'],
+            'hasPendingVerification' => $fin['has_pending_verification'],
             'status' => $status,
             'bookingStatus' => $b['booking_status'] ?? $status,
             'paymentRef' => $b['payment_ref'],
@@ -185,8 +224,8 @@ if ($method === 'GET') {
             'pickupPhotos' => $pickupPhotos,
             'returnInspection' => $inspection,
             'paymentScreenshotUrl' => $b['payment_screenshot_url'],
-            'monthlyRevenueSplit' => (!empty($b['monthly_revenue_split']) ? (is_string($b['monthly_revenue_split']) ? json_decode($b['monthly_revenue_split'], true) : $b['monthly_revenue_split']) : KpiService::calculateMonthlyRevenueSplit($b)),
-            'monthly_revenue_split' => (!empty($b['monthly_revenue_split']) ? (is_string($b['monthly_revenue_split']) ? json_decode($b['monthly_revenue_split'], true) : $b['monthly_revenue_split']) : KpiService::calculateMonthlyRevenueSplit($b)),
+            'monthlyRevenueSplit' => $split,
+            'monthly_revenue_split' => $split,
             'createdAt' => $b['created_at'],
             'updatedAt' => $b['updated_at']
         ];

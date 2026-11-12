@@ -21,6 +21,12 @@ import { api } from "./kruizly-api.js?v=20261001-v2";
 
 import { PAYMENT_CONFIG } from "./payment-config.js";
 import { formatBookingNumber } from "./booking-reference.js";
+import {
+  createDocPreviewSvg,
+  isPdfDocument,
+  isBrowserRenderableImageMime,
+  extractFileExtension,
+} from "./image-lightbox.js?v=20261112-v3";
 
 import "./nav-helper.js?v=20260930-v6";
 import {
@@ -49,7 +55,8 @@ const PAYMENT_SCREENSHOT_MAX_SIZE =
   5 * 1024 * 1024;
 
 const ALLOWED_PAYMENT_EXTENSIONS = [
-  "jpg", "jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "svg", "avif", "heic", "heif",
+  "jpg", "jpeg", "jpe", "jfif", "jfi", "png", "gif", "webp", "bmp", "dib",
+  "tif", "tiff", "svg", "avif", "avis", "heic", "heif", "hif", "hvic", "ico",
   "zip", "zipx", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "tar.gz", "tar.bz2", "tar.xz",
   "pdf", "doc", "docx"
 ];
@@ -58,7 +65,7 @@ const ALLOWED_SCREENSHOT_TYPES = [
   "image/jpeg", "image/pjpeg", "image/png", "image/x-png", "image/webp", "image/gif",
   "image/bmp", "image/x-ms-bmp", "image/x-bmp", "image/tiff", "image/x-tiff",
   "image/svg+xml", "image/svg", "image/avif", "image/heic", "image/heic-sequence",
-  "image/heif", "image/heif-sequence",
+  "image/heif", "image/heif-sequence", "image/x-icon", "image/vnd.microsoft.icon",
   "application/zip", "application/x-zip-compressed", "application/x-zip", "multipart/x-zip",
   "application/x-zipx", "application/x-7z-compressed", "application/x-7z",
   "application/vnd.rar", "application/x-rar-compressed", "application/x-rar",
@@ -738,12 +745,11 @@ function initialiseScreenshotPreview() {
       ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
       : `${Math.round(file.size / 1024)} KB`;
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
+    const renderLocalPreview = (thumbSrc) => {
       if (preview) {
         preview.innerHTML = `
           <div class="payment-preview-card">
-            <img src="${e.target.result}" alt="Payment Screenshot Preview" class="payment-preview-thumb" />
+            <img src="${thumbSrc}" alt="Payment Proof Preview" class="payment-preview-thumb" />
             <div class="payment-preview-meta">
               <span class="payment-preview-name">${file.name}</span>
               <span class="payment-preview-size">
@@ -765,7 +771,17 @@ function initialiseScreenshotPreview() {
         }
       }
     };
-    reader.readAsDataURL(file);
+
+    if (isBrowserRenderableImageMime(file.type, file.name)) {
+      const reader = new FileReader();
+      reader.onload = (e) => renderLocalPreview(e.target.result);
+      reader.readAsDataURL(file);
+    } else {
+      const badge = isPdfDocument(file.name, file.type)
+        ? "PDF"
+        : (extractFileExtension(file.name) || "FILE").toUpperCase();
+      renderLocalPreview(createDocPreviewSvg(badge, file.name));
+    }
   });
 }
 
@@ -923,15 +939,26 @@ function displayBooking(
     $("paymentDuration").textContent = formattedDuration;
   }
 
-  const totalAmount = Number(booking.totalAmount ?? booking.finalAmount ?? booking.rentalTotal ?? 0);
+  const refundDeduction = Number(booking.refundAmount || 0);
+  const bStatLower = String(booking.status || "").toLowerCase();
+  const baseContractAmount = Number(
+    booking.netRentalBeforeRefund ??
+    booking.totalAmount ??
+    booking.finalAmount ??
+    booking.rentalTotal ??
+    0
+  );
+  const totalAmount = bStatLower === "cancelled" || bStatLower === "rejected"
+    ? baseContractAmount
+    : Math.max(0, baseContractAmount - refundDeduction);
   const couponDiscount = Number(booking.couponDiscount || 0);
   const couponCode = booking.couponCode;
   const securityDeposit = Number(booking.securityDeposit || 0);
+  const driverCharges = Number(booking.driverCharges ?? booking.driverTotal ?? 0);
+  const extraCharges = Number(booking.extraCharges ?? booking.extra_charges ?? 0);
   const rentalCharges = Number(
-    booking.baseAmount ||
-    booking.rentalTotal ||
-    totalAmount
-  );
+    booking.baseAmount || booking.rentalTotal || 0
+  ) + driverCharges + extraCharges || totalAmount;
 
   if ($("paymentTotalRental")) {
     $("paymentTotalRental").textContent = `₹${formatCurrency(rentalCharges)}`;
@@ -1188,29 +1215,44 @@ async function initialisePaymentUI(booking) {
 
   const securityDep = Number(booking.securityDeposit || 0);
   const baseAmt = Number(booking.baseAmount || 0);
+  const driverCharges = Number(booking.driverCharges ?? booking.driverTotal ?? 0);
+  const extraCharges = Number(booking.extraCharges ?? booking.extra_charges ?? 0);
   const couponDisc = Number(booking.couponDiscount || 0);
 
-  // Fallback calculation for any booking record missing pre-calculated totals
-  if (totalAmount <= 0) {
+  // Prefer server-computed contract net rental (base + driver + extras - coupon, excl. deposit)
+  const serverNetRental = booking.netRentalBeforeRefund ?? booking.finalAmount ?? booking.totalAmount;
+  if (serverNetRental !== undefined && serverNetRental !== null && Number(serverNetRental) > 0) {
+    const partialRefund = Number(booking.refundAmount || 0);
+    totalAmount = Math.max(0, Number(serverNetRental) - partialRefund);
+  } else if (baseAmt > 0 || driverCharges > 0 || extraCharges > 0) {
+    totalAmount = Math.max(0, baseAmt + driverCharges + extraCharges - couponDisc);
+  } else if (totalAmount <= 0) {
     const catalog = window.fleetVehicles || [];
     const vehicle = catalog.find((item) => item.regNo === booking.vehicleReg) || {};
-    const priceDay = Number(booking.priceDay || vehicle.priceDay || 2600);
-    const driverVal = booking.withDriver ? Number(booking.driverPrice || vehicle.driverPrice || 1500) : 0;
-    const numDays = Number(booking.days || booking.durationDays || 1);
+    const priceDay = Number(booking.priceDay || vehicle.priceDay || 0);
+    const driverVal = booking.withDriver ? Number(booking.driverPrice || vehicle.driverPrice || 0) : 0;
+    const numDays = Number(booking.days || booking.durationDays || 0);
 
-    totalAmount = Math.max(0, (priceDay * numDays) + (driverVal * numDays) - couponDisc);
+    totalAmount = (priceDay > 0 && numDays > 0)
+      ? Math.max(0, (priceDay * numDays) + (driverVal * numDays) - couponDisc)
+      : 0;
   }
 
   totalBookingAmount = totalAmount;
   displayBooking(booking);
   await loadVehicleImage(booking);
 
-  isAdvancePaidVerified = (booking.paymentStatus === "advance_paid");
-  const advPaid = Number(booking.advanceAmount || (isAdvancePaidVerified ? 500 : 0));
+  const verifiedCollected = Number(booking.verifiedCollected ?? booking.amountPaid ?? 0);
+  isAdvancePaidVerified = (booking.paymentStatus === "advance_paid") || (verifiedCollected > 0 && booking.paymentStatus !== "paid");
+  const advPaid = verifiedCollected > 0
+    ? verifiedCollected
+    : (isAdvancePaidVerified ? Number(booking.advanceAmount || 0) : 0);
   const remBal = Number(
-    booking.remainingBalance !== undefined && booking.remainingBalance !== null
-      ? booking.remainingBalance
-      : Math.max(0, totalAmount - advPaid)
+    booking.outstandingAmount !== undefined && booking.outstandingAmount !== null
+      ? booking.outstandingAmount
+      : (booking.remainingBalance !== undefined && booking.remainingBalance !== null
+          ? booking.remainingBalance
+          : Math.max(0, totalAmount - advPaid))
   );
 
   const urlPlan = urlParams.get("plan");
@@ -1509,7 +1551,9 @@ async function submitPayment(
       booking.paymentAmountPaid ??
       (plan === "advance" ? Math.min(500, total) : total))
     );
-    const remBalance = plan === "full" ? 0 : Math.max(0, total - payAmount);
+    // Keep outstanding balance at unverified remaining balance until Accounts/Admin verifies this receipt
+    const alreadyVerified = Number(booking.verifiedCollected ?? booking.amountPaid ?? 0);
+    const remBalance = Math.max(0, total - alreadyVerified);
 
     const finalBookingRecord = {
       ...booking,
@@ -1855,9 +1899,10 @@ async function startPaymentPage() {
       return;
     }
 
-    const totalAmt = Number(booking.finalAmount ?? booking.totalAmount ?? booking.amount ?? 0);
-    const advPaidAmt = Number(booking.advanceAmount || (booking.paymentPlan === "advance" && booking.paymentStatus === "advance_paid" ? 500 : 0));
-    const remBal = Number(booking.remainingBalance !== undefined && booking.remainingBalance !== null ? booking.remainingBalance : (booking.paymentPlan === "advance" ? Math.max(0, totalAmt - (advPaidAmt || 500)) : 0));
+    const totalAmt = Number(booking.netRentalBeforeRefund ?? booking.finalAmount ?? booking.totalAmount ?? booking.amount ?? 0);
+    const verifiedPaid = Number(booking.verifiedCollected ?? booking.amountPaid ?? 0);
+    const advPaidAmt = verifiedPaid > 0 ? verifiedPaid : (booking.paymentStatus === "advance_paid" ? Number(booking.advanceAmount || 0) : 0);
+    const remBal = Number(booking.outstandingAmount ?? booking.remainingBalance ?? Math.max(0, totalAmt - advPaidAmt));
     const urlPlan = urlParams.get("plan");
 
     // Only redirect if booking is cancelled or rejected

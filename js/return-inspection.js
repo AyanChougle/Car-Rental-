@@ -42,7 +42,8 @@ export const DAMAGE_CHECKLIST = [
 ];
 
 const ALLOWED_INSPECTION_EXTS = [
-  "jpg", "jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "svg", "avif", "heic", "heif",
+  "jpg", "jpeg", "jpe", "jfif", "jfi", "png", "gif", "webp", "bmp", "dib",
+  "tif", "tiff", "svg", "avif", "avis", "heic", "heif", "hif", "hvic", "ico",
   "zip", "zipx", "7z", "rar", "tar", "gz", "tgz", "bz2", "xz", "tar.gz", "tar.bz2", "tar.xz",
   "pdf", "doc", "docx"
 ];
@@ -50,7 +51,9 @@ const RETURN_PHOTO_TYPES = [
   "image/jpeg", "image/pjpeg", "image/png", "image/x-png", "image/webp", "image/gif",
   "image/bmp", "image/x-ms-bmp", "image/x-bmp", "image/tiff", "image/x-tiff",
   "image/svg+xml", "image/svg", "image/avif", "image/heic", "image/heic-sequence",
-  "image/heif", "image/heif-sequence",
+  "image/heif", "image/heif-sequence", "image/x-icon", "image/vnd.microsoft.icon",
+  "application/pdf", "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/zip", "application/x-zip-compressed", "application/x-zip",
   "application/x-7z-compressed", "application/vnd.rar", "application/x-tar", "application/gzip",
   "application/octet-stream", "binary/octet-stream"

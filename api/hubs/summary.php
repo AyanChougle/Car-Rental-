@@ -1,27 +1,23 @@
 <?php
 /**
  * api/hubs/summary.php
- * GET /api/hubs/summary?hub_id=ID
- * Hub-scoped operational and revenue summary read directly from MySQL database tables (`kpi_hub_metrics`)
+ * GET /api/hubs/summary?hub_id=ID[&from=YYYY-MM-DD&to=YYYY-MM-DD]
+ * Hub-scoped operational, fleet, and financial summary derived dynamically via KpiService.
  */
 declare(strict_types=1);
 
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../services/KpiService.php';
 
 $user = Auth::requireRole('admin', 'manager', 'executive', 'accountant');
-$hubId = isset($_GET['hub_id']) && $_GET['hub_id'] !== '' ? (int)$_GET['hub_id'] : (isset($_GET['id']) ? (int)$_GET['id'] : 0);
+$rawHubParam = $_GET['hub_id'] ?? $_GET['id'] ?? '0';
+$isUnassigned = ($rawHubParam === 'unassigned');
+$hubId = (!$isUnassigned && $rawHubParam !== '' && $rawHubParam !== 'all') ? (int)$rawHubParam : 0;
 
-// Auto-seed default hubs if missing so Hub 1 (Ghansoli) and Hub 2 (Kandivali) never 404
-try {
-    Database::execute(
-        "INSERT INTO `hubs` (`id`, `name`, `code`, `city`, `state`, `country`, `address`, `contact_phone`, `contact_email`, `operating_hours`, `pickup_instructions`, `status`) VALUES
-         (1, 'Gavson Business Park, Ghansoli', 'GAV-01', 'Navi Mumbai', 'Maharashtra', 'India', 'Gavson Business Park, Ghansoli, Navi Mumbai, Maharashtra 400701', '+91 91671 64547', 'support@kruizly.com', '24/7', 'Report to Gate 1 / Parking Bay A. Executive will hand over keys and inspect vehicle.', 'active'),
-         (2, 'Kandivali Hub, Mumbai', 'KAND-01', 'Mumbai', 'Maharashtra', 'India', 'Kandivali West, Link Road, Mumbai, Maharashtra 400067', '+91 91671 64547', 'support@kruizly.com', '24/7', 'Report to Kruizly Kandivali Hub Counter. Vehicle inspection and key handoff available 24/7.', 'active')
-         ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `city` = VALUES(`city`), `address` = VALUES(`address`)"
-    );
-} catch (Throwable $_) {}
+$fromParam = trim((string)($_GET['from'] ?? $_GET['from_date'] ?? $_GET['startDate'] ?? ''));
+$toParam = trim((string)($_GET['to'] ?? $_GET['to_date'] ?? $_GET['endDate'] ?? ''));
 
-/* If the staff account has a fixed hub assignment, never allow it to read another hub. */
+/* If the staff account has a fixed hub assignment, restrict cross-hub access. */
 try {
     $assigned = Database::fetchOne(
         "SELECT hub_id FROM admin_users WHERE firebase_uid = ? LIMIT 1",
@@ -34,146 +30,99 @@ try {
     }
 } catch (Throwable $_) {}
 
-$isAllHubs = ($hubId <= 0);
+$isAllHubs = (!$isUnassigned && $hubId <= 0);
 
 if ($isAllHubs) {
     $hub = [
         'id' => 0,
         'name' => 'All Operating Hubs',
         'code' => 'ALL',
-        'city' => 'Mumbai & Navi Mumbai',
-        'state' => 'Maharashtra',
-        'status' => 'active'
+        'city' => 'All Locations',
+        'state' => '',
+        'status' => 'active',
+    ];
+} elseif ($isUnassigned) {
+    $hub = [
+        'id' => 0,
+        'name' => 'Unassigned / Legacy Hub',
+        'code' => 'UNASSIGNED',
+        'city' => '',
+        'state' => '',
+        'status' => 'active',
     ];
 } else {
     $hub = Database::fetchOne("SELECT id, name, code, city, state, status FROM hubs WHERE id = ?", [$hubId]);
     if (!$hub) {
-        $hub = [
-            'id' => $hubId,
-            'name' => $hubId === 2 ? 'Kandivali Hub, Mumbai' : 'Gavson Business Park, Ghansoli',
-            'code' => $hubId === 2 ? 'KAND-01' : 'GAV-01',
-            'city' => $hubId === 2 ? 'Mumbai' : 'Navi Mumbai',
-            'state' => 'Maharashtra',
-            'status' => 'active'
-        ];
+        sendErrorResponse("Hub #$hubId not found in database.", 404);
     }
 }
 
-// 1. Ensure kpi_hub_metrics table exists and seed initial baseline only if empty
-try {
-    Database::execute(
-        "CREATE TABLE IF NOT EXISTS `kpi_hub_metrics` (
-          `id` INT AUTO_INCREMENT PRIMARY KEY,
-          `hub_id` INT NOT NULL UNIQUE,
-          `hub_name` VARCHAR(255) NOT NULL,
-          `total_revenue` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-          `month_revenue` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-          `total_bookings` INT NOT NULL DEFAULT 0,
-          `paid_bookings` INT NOT NULL DEFAULT 0,
-          `active_trips` INT NOT NULL DEFAULT 0,
-          `total_fleet` INT NOT NULL DEFAULT 0,
-          `on_road_fleet` INT NOT NULL DEFAULT 0,
-          `available_fleet` INT NOT NULL DEFAULT 0,
-          `occupancy_pct` DECIMAL(5,2) NOT NULL DEFAULT 0.00,
-          `total_users` INT NOT NULL DEFAULT 0,
-          `pending_docs` INT NOT NULL DEFAULT 0,
-          `pending_payments` INT NOT NULL DEFAULT 0,
-          `day_sales` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-          `week_sales` DECIMAL(12,2) NOT NULL DEFAULT 0.00,
-          `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-          INDEX `idx_hub_metrics_hub` (`hub_id`)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;"
-    );
+$hasDateFilter = ($fromParam !== '' || $toParam !== '');
+$filters = [
+    'from' => $fromParam !== '' ? $fromParam : null,
+    'to' => $toParam !== '' ? $toParam : null,
+    'hub_id' => $hubId > 0 ? $hubId : null,
+    'unassigned_only' => $isUnassigned,
+];
 
-    $cnt = (int)(Database::fetchOne("SELECT COUNT(*) AS c FROM `kpi_hub_metrics`")['c'] ?? 0);
-    if ($cnt === 0) {
-        Database::execute(
-            "INSERT INTO `kpi_hub_metrics` 
-             (`hub_id`, `hub_name`, `total_revenue`, `month_revenue`, `total_bookings`, `paid_bookings`, `active_trips`, `total_fleet`, `on_road_fleet`, `available_fleet`, `occupancy_pct`, `total_users`, `pending_docs`, `pending_payments`, `day_sales`, `week_sales`)
-             VALUES
-             (0, 'All Operating Hubs', 0.00, 0.00, 0, 0, 0, 0, 0, 0, 0.00, 0, 0, 0, 0.00, 0.00),
-             (1, 'Gavson Business Park, Ghansoli', 0.00, 0.00, 0, 0, 0, 0, 0, 0, 0.00, 0, 0, 0, 0.00, 0.00),
-             (2, 'Kandivali Hub, Mumbai', 0.00, 0.00, 0, 0, 0, 0, 0, 0, 0.00, 0, 0, 0, 0.00, 0.00)
-             ON DUPLICATE KEY UPDATE `hub_name` = VALUES(`hub_name`)"
-        );
-    }
-} catch (Throwable $e) {
-    error_log("[summary.php ensureTable] " . $e->getMessage());
-}
+$report = KpiService::computeFilteredReport($filters, !$hasDateFilter && !$isUnassigned && $hubId <= 0);
+$targetStats = $isUnassigned
+    ? ($report['unassigned_hub'] ?? [])
+    : ($hubId > 0 ? ($report['hubs'][$hubId] ?? $report['live']) : ($report['hubs'][0] ?? $report['live']));
 
-// 2. Reconcile manual DB edits between kpi_metrics <-> kpi_hub_metrics and apply ONLY non-zero booking deltas
-$targetHubId = $isAllHubs ? 0 : $hubId;
-try {
-    require_once __DIR__ . '/../services/KpiService.php';
-    KpiService::syncMetrics(true, false);
-} catch (Throwable $_) {}
-
-// 3. Read KPI fixture data DIRECTLY from MySQL database table `kpi_hub_metrics`
-$hubRecord = Database::fetchOne("SELECT * FROM `kpi_hub_metrics` WHERE `hub_id` = ?", [$targetHubId]);
-
-if ($hubRecord) {
-    $totalRevenue = (float)($hubRecord['total_revenue'] ?? 0.0);
-    $monthRevenue = (float)($hubRecord['month_revenue'] ?? 0.0);
-    $totalBookingsCount = (int)($hubRecord['total_bookings'] ?? 0);
-    $paidBookingsCount = (int)($hubRecord['paid_bookings'] ?? 0);
-    $activeTrips = (int)($hubRecord['active_trips'] ?? 0);
-    $fleetCount = (int)($hubRecord['total_fleet'] ?? 0);
-    $onRoad = (int)($hubRecord['on_road_fleet'] ?? $activeTrips);
-    $available = (int)($hubRecord['available_fleet'] ?? max(0, $fleetCount - $onRoad));
-    $occupancy = (float)($hubRecord['occupancy_pct'] ?? ($fleetCount > 0 ? round(($onRoad / $fleetCount) * 100, 2) : 0.0));
-    $userCount = (int)($hubRecord['total_users'] ?? 0);
-    $pendingDocs = (int)($hubRecord['pending_docs'] ?? 0);
-    $pendingPayments = (int)($hubRecord['pending_payments'] ?? 0);
-    $dayRevenue = (float)($hubRecord['day_sales'] ?? 0.0);
-    $weekRevenue = (float)($hubRecord['week_sales'] ?? 0.0);
-    $avgBookingVal = $paidBookingsCount > 0 ? round($totalRevenue / $paidBookingsCount, 2) : 0.0;
-} else {
-    // Dynamic fallback if row not found in kpi_hub_metrics
-    $totalRevenue = 0.0;
-    $monthRevenue = 0.0;
-    $totalBookingsCount = 0;
-    $paidBookingsCount = 0;
-    $activeTrips = 0;
-    $fleetCount = 0;
-    $onRoad = 0;
-    $available = 0;
-    $occupancy = 0.0;
-    $userCount = 0;
-    $pendingDocs = 0;
-    $pendingPayments = 0;
-    $dayRevenue = 0.0;
-    $weekRevenue = 0.0;
-    $avgBookingVal = 0.0;
+$summary = $report['live'] ?? [];
+if (!$isAllHubs && !$hasDateFilter && !empty($targetStats)) {
+    // Use per-hub exact counters for unscoped single-hub reads
+    $totalRev = (float)($targetStats['total_revenue'] ?? 0.0);
+    $paidCount = (int)($targetStats['paid_bookings'] ?? 0);
+    $summary = array_merge($summary, [
+        'total_revenue' => $totalRev,
+        'booking_revenue' => $totalRev,
+        'month_revenue' => (float)($targetStats['month_revenue'] ?? 0.0),
+        'day_sales' => (float)($targetStats['day_sales'] ?? 0.0),
+        'week_sales' => (float)($targetStats['week_sales'] ?? 0.0),
+        'verified_collections' => (float)($targetStats['verified_collections'] ?? 0.0),
+        'total_refunds' => (float)($targetStats['refund_amount'] ?? 0.0),
+        'outstanding_amount' => (float)($targetStats['outstanding_amount'] ?? 0.0),
+        'security_deposits_held' => (float)($targetStats['security_deposits'] ?? 0.0),
+        'total_bookings' => (int)($targetStats['total_bookings'] ?? 0),
+        'cancelled_bookings' => (int)($targetStats['cancelled_bookings'] ?? 0),
+        'paid_bookings' => $paidCount,
+        'avg_booking' => $paidCount > 0 ? round($totalRev / $paidCount, 2) : 0.0,
+        'active_trips' => (int)($targetStats['active_trips'] ?? 0),
+        'active_rentals' => (int)($targetStats['active_trips'] ?? 0),
+        'scheduled_bookings' => (int)($targetStats['scheduled_bookings'] ?? 0),
+        'completed_trips' => (int)($targetStats['completed_trips'] ?? 0),
+        'total_registered_vehicles' => (int)($targetStats['total_registered_fleet'] ?? 0),
+        'active_fleet' => (int)($targetStats['total_fleet'] ?? 0),
+        'total_fleet' => (int)($targetStats['total_fleet'] ?? 0),
+        'fleet_count' => (int)($targetStats['total_fleet'] ?? 0),
+        'available_recorded' => (int)($targetStats['available_recorded_fleet'] ?? 0),
+        'on_road_fleet' => (int)($targetStats['on_road_fleet'] ?? 0),
+        'on_trip_fleet' => (int)($targetStats['on_road_fleet'] ?? 0),
+        'available_fleet' => (int)($targetStats['available_fleet'] ?? 0),
+        'available_in_yard' => (int)($targetStats['available_fleet'] ?? 0),
+        'in_yard_fleet' => (int)($targetStats['available_fleet'] ?? 0),
+        'maintenance_fleet' => (int)($targetStats['maintenance_fleet'] ?? 0),
+        'inactive_fleet' => (int)($targetStats['inactive_fleet'] ?? 0),
+        'removed_fleet' => (int)($targetStats['removed_fleet'] ?? 0),
+        'fleet_utilization' => (float)($targetStats['occupancy_pct'] ?? 0.0),
+        'occupancy_pct' => (float)($targetStats['occupancy_pct'] ?? 0.0),
+        'revenue_per_vehicle' => (float)($targetStats['revenue_per_vehicle'] ?? 0.0),
+        'pending_payments' => (int)($targetStats['pending_payments'] ?? 0),
+        'cross_hub_outbound' => (int)($targetStats['cross_hub_outbound'] ?? 0),
+        'cross_hub_inbound' => (int)($targetStats['cross_hub_inbound'] ?? 0),
+    ]);
 }
 
 sendJsonResponse([
     'success' => true,
     'hub' => $hub,
-    'data' => [
-        'total_users' => $userCount,
-        'total_bookings' => $totalBookingsCount,
-        'pending_docs' => $pendingDocs,
-        'pending_payments' => $pendingPayments,
-        'day_sales' => round($dayRevenue, 2),
-        'week_sales' => round($weekRevenue, 2),
-        'total_revenue' => round($totalRevenue, 2),
-        'month_revenue' => round($monthRevenue, 2),
-        'last_month_revenue' => round($monthRevenue, 2),
-        'paid_bookings' => $paidBookingsCount,
-        'avg_booking' => $avgBookingVal,
-        'active_trips' => $activeTrips,
-        'completed_trips' => max(0, $totalBookingsCount - $activeTrips),
-        'total_fleet' => $fleetCount,
-        'fleet_count' => $fleetCount,
-        'on_road_fleet' => $onRoad,
-        'on_trip_fleet' => $onRoad,
-        'active_rentals' => $onRoad,
-        'available_fleet' => $available,
-        'available_in_yard' => $available,
-        'in_yard_fleet' => $available,
-        'fleet_utilization' => $occupancy,
-        'occupancy_pct' => $occupancy,
-        'updated_at' => $hubRecord['updated_at'] ?? date('Y-m-d H:i:s')
-    ]
+    'data' => array_merge($summary, [
+        'updated_at' => date('Y-m-d H:i:s'),
+    ]),
+    'daily' => $report['daily'] ?? [],
+    'monthly' => $report['monthly'] ?? [],
+    'reconciliation' => $report['reconciliation'] ?? [],
+    'diagnostics' => $report['diagnostics'] ?? [],
 ]);

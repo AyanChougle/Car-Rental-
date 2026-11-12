@@ -40,9 +40,18 @@ $userVerDir = STORAGE_ROOT . '/users/' . $safeUid . '/verification';
 
 if (is_dir($userVerDir)) {
     $diskFiles = @scandir($userVerDir) ?: [];
+    $allowedDocExts = [
+        'jpg', 'jpeg', 'jpe', 'jfif', 'jfi', 'png', 'webp', 'avif', 'avis',
+        'gif', 'bmp', 'dib', 'tif', 'tiff', 'svg', 'heic', 'heif', 'hif', 'hvic', 'ico',
+        'pdf', 'doc', 'docx', 'zip', '7z', 'rar',
+    ];
     foreach ($diskFiles as $df) {
         if ($df === '.' || $df === '..') continue;
-        $docUrl = '/api/media/file.php?id=' . urlencode("users/$safeUid/verification/$df");
+        $dfPath = $userVerDir . '/' . $df;
+        if (!is_file($dfPath)) continue;
+        $ext = strtolower(pathinfo($df, PATHINFO_EXTENSION));
+        if (!in_array($ext, $allowedDocExts, true)) continue;
+        $docUrl = '/api/media/file.php?id=' . urlencode("users/$safeUid/verification/$df") . '&ext=.' . $ext;
         $lowerDf = strtolower($df);
 
         $isLicense = str_contains($lowerDf, 'license') || str_contains($lowerDf, 'dl') || str_contains($lowerDf, 'driving');
